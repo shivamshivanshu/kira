@@ -57,23 +57,65 @@ func randTimestamp(r *rand.Rand) string {
 	return tm.In(offsets[r.Intn(len(offsets))]).Format(time.RFC3339)
 }
 
+// randDate draws an optional due value: usually a valid RFC3339 date (the raw
+// canonical emission path), sometimes an arbitrary token (the parser is
+// shape-only for due, so adversarial values must round-trip too).
+func randDate(r *rand.Rand) *string {
+	switch r.Intn(4) {
+	case 0:
+		return nil
+	case 1:
+		return maybe(r)
+	default:
+		base := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+		s := base.AddDate(0, 0, r.Intn(4000)).Format(time.DateOnly)
+		return &s
+	}
+}
+
+// randLinks draws a canonical links map: nil, or known types with non-empty
+// target lists (the parser drops empty lists, so the generator never emits them).
+func randLinks(r *rand.Rand) map[string][]string {
+	var links map[string][]string
+	for _, typ := range LinkTypes {
+		if r.Intn(3) != 0 {
+			continue
+		}
+		targets := make([]string, 1+r.Intn(3))
+		for i := range targets {
+			targets[i] = pick(r)
+		}
+		if links == nil {
+			links = map[string][]string{}
+		}
+		links[typ] = targets
+	}
+	return links
+}
+
 func randItem(r *rand.Rand) *Item {
 	it := &Item{
-		ID:        pickNonEmpty(r),
-		Number:    fmt.Sprintf("KIRA-%d", r.Intn(1000)),
-		Aliases:   randList(r),
-		Type:      []string{"ticket", "epic"}[r.Intn(2)],
-		Title:     pickNonEmpty(r),
-		State:     pickNonEmpty(r),
-		Priority:  maybe(r),
-		Owner:     maybe(r),
-		Reporter:  maybe(r),
-		Labels:    randList(r),
-		Epic:      maybe(r),
-		BlockedBy: randList(r),
-		Created:   randTimestamp(r),
-		Updated:   randTimestamp(r),
-		Body:      "\n## Description\n" + pick(r) + "\n---\nmid-body rule\n",
+		ID:         pickNonEmpty(r),
+		Number:     fmt.Sprintf("KIRA-%d", r.Intn(1000)),
+		Aliases:    randList(r),
+		Type:       []string{"ticket", "epic"}[r.Intn(2)],
+		Subtype:    maybe(r),
+		Title:      pickNonEmpty(r),
+		State:      pickNonEmpty(r),
+		Resolution: maybe(r),
+		Priority:   maybe(r),
+		Rank:       maybe(r),
+		Owner:      maybe(r),
+		Reporter:   maybe(r),
+		Labels:     randList(r),
+		Epic:       maybe(r),
+		BlockedBy:  randList(r),
+		Links:      randLinks(r),
+		Sprint:     maybe(r),
+		Due:        randDate(r),
+		Created:    randTimestamp(r),
+		Updated:    randTimestamp(r),
+		Body:       "\n## Description\n" + pick(r) + "\n---\nmid-body rule\n",
 	}
 	if r.Intn(2) == 0 {
 		e := float64(r.Intn(100)) + float64(r.Intn(4))*0.25

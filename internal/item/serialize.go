@@ -20,9 +20,12 @@ func (it *Item) Serialize() string {
 	writeLine(&b, keyNumber, emitScalar(it.Number))
 	writeLine(&b, keyAliases, emitList(it.Aliases))
 	writeLine(&b, keyType, emitScalar(it.Type))
+	writeOptScalar(&b, keySubtype, it.Subtype)
 	writeLine(&b, keyTitle, emitQuoted(it.Title))
 	writeLine(&b, keyState, emitScalar(it.State))
+	writeOptScalar(&b, keyResolution, it.Resolution)
 	writeOptScalar(&b, keyPriority, it.Priority)
+	writeOptScalar(&b, keyRank, it.Rank)
 	writeOptScalar(&b, keyOwner, it.Owner)
 	writeOptScalar(&b, keyReporter, it.Reporter)
 	writeLine(&b, keyLabels, emitList(it.Labels))
@@ -32,6 +35,11 @@ func (it *Item) Serialize() string {
 	}
 	writeLine(&b, keyEpic, epic)
 	writeLine(&b, keyBlockedBy, emitList(it.BlockedBy))
+	writeLinks(&b, it.Links)
+	writeOptScalar(&b, keySprint, it.Sprint)
+	if it.Due != nil {
+		writeLine(&b, keyDue, emitDate(*it.Due))
+	}
 	writeOptFloat(&b, keyEstimate, it.Estimate)
 	writeLine(&b, keyCreated, emitTimestamp(it.Created))
 	writeLine(&b, keyUpdated, emitTimestamp(it.Updated))
@@ -59,6 +67,25 @@ func writeOptScalar(b *strings.Builder, key string, v *string) {
 func writeOptFloat(b *strings.Builder, key string, v *float64) {
 	if v != nil {
 		writeLine(b, key, EmitFloat(*v))
+	}
+}
+
+// writeLinks emits the typed-links block mapping in the fixed LinkTypes order,
+// one indented line per non-empty type; the key is omitted entirely when no
+// link of any type is present (docs/design/02-data-model.md §1, §8).
+func writeLinks(b *strings.Builder, links map[string][]string) {
+	first := true
+	for _, typ := range LinkTypes {
+		targets := links[typ]
+		if len(targets) == 0 {
+			continue
+		}
+		if first {
+			b.WriteString(keyLinks + ":\n")
+			first = false
+		}
+		b.WriteString("  ")
+		writeLine(b, typ, emitList(targets))
 	}
 }
 
@@ -119,6 +146,17 @@ func emitQuoted(s string) string {
 // reqTimestamp reads the bare scalar text back unchanged; any future change
 // that routes timestamps through emitScalar must preserve this invariant.
 func emitTimestamp(s string) string { return s }
+
+// emitDate renders a due value: a valid date verbatim (emitScalar would
+// re-quote it, same !!timestamp tagging as emitTimestamp), anything else via
+// emitScalar — the parser is shape-only for due, so an invalid value kept in a
+// hand-edited file must still serialize to parseable YAML.
+func emitDate(s string) string {
+	if ValidDate(s) {
+		return s
+	}
+	return emitScalar(s)
+}
 
 // marshalScalar YAML-encodes a single scalar value and strips the trailing
 // newline yaml.Marshal always appends.

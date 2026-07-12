@@ -22,11 +22,11 @@ func newQueryCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// Tree is the default render; --flat opts out (docs/design/04-cli.md query).
 			res, err := s.List(cfg, core.ListOpts{Query: args[0], Tree: !flat})
 			if err != nil {
 				return err
 			}
+			emitStderrNotes(cmd.ErrOrStderr(), res.StderrNotes)
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}

@@ -17,11 +17,16 @@ import (
 // template/editor value in place rather than clearing it.
 type CreateOpts struct {
 	Type     string // item.TypeTicket or item.TypeEpic, fixed by the subcommand
+	Subtype  string
 	Title    string
+	Priority string
+	Rank     string
 	Owner    string
 	Reporter string
 	Labels   []string
 	Parent   string // epic reference (ULID or number), resolved to a ULID
+	Sprint   string
+	Due      string
 	Estimate *float64
 	NoEdit   bool
 	FromFile string // path, or "-" for stdin
@@ -156,14 +161,18 @@ func itemFromDraft(d draft, sys systemFields) *item.Item {
 		Number:    sys.number,
 		Aliases:   []string{},
 		Type:      sys.typ,
+		Subtype:   nonEmptyPtr(d.Subtype),
 		Title:     d.Title,
 		State:     sys.state,
-		Priority:  d.Priority,
-		Owner:     d.Owner,
-		Reporter:  d.Reporter,
+		Priority:  nonEmptyPtr(d.Priority),
+		Rank:      nonEmptyPtr(d.Rank),
+		Owner:     nonEmptyPtr(d.Owner),
+		Reporter:  nonEmptyPtr(d.Reporter),
 		Labels:    nonNil(d.Labels),
 		Epic:      nonEmptyPtr(d.Epic),
 		BlockedBy: []string{},
+		Sprint:    nonEmptyPtr(d.Sprint),
+		Due:       nonEmptyPtr(d.Due),
 		Estimate:  d.Estimate,
 		Created:   sys.created,
 		Updated:   sys.created,
@@ -200,6 +209,15 @@ func applyFlags(d draft, opts CreateOpts) draft {
 	if opts.Title != "" {
 		d.Title = opts.Title
 	}
+	if opts.Subtype != "" {
+		d.Subtype = &opts.Subtype
+	}
+	if opts.Priority != "" {
+		d.Priority = &opts.Priority
+	}
+	if opts.Rank != "" {
+		d.Rank = &opts.Rank
+	}
 	if opts.Owner != "" {
 		d.Owner = &opts.Owner
 	}
@@ -211,6 +229,12 @@ func applyFlags(d draft, opts CreateOpts) draft {
 	}
 	if opts.Parent != "" {
 		d.Epic = &opts.Parent
+	}
+	if opts.Sprint != "" {
+		d.Sprint = &opts.Sprint
+	}
+	if opts.Due != "" {
+		d.Due = &opts.Due
 	}
 	if opts.Estimate != nil {
 		d.Estimate = opts.Estimate
@@ -241,8 +265,9 @@ func readSource(src string) (string, error) {
 	return string(data), nil
 }
 
-// nonEmptyPtr returns p unless it points to an empty string, in which case nil
-// (an empty epic value means "no parent").
+// nonEmptyPtr returns p unless it points to an empty string, in which case nil:
+// an empty draft value (`owner: ""`) means "unset", and the canonical file form
+// for an unset optional is an absent key, never an empty scalar.
 func nonEmptyPtr(p *string) *string {
 	if p == nil || *p == "" {
 		return nil

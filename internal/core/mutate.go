@@ -20,23 +20,26 @@ type MutationResult struct {
 
 // applyFn mutates a clone of the resolved item in place, returning hard errors
 // (which block the write) and warnings (surfaced, non-blocking). resolver is
-// passed for mutations that resolve a reference argument (link).
-type applyFn func(it *item.Item, resolver *id.Resolver) (hard, warns []error)
+// passed for mutations that resolve a reference argument (link); items is the
+// full scan the resolution came from, for mutations that need a store-wide
+// census (move's WIP check).
+type applyFn func(it *item.Item, resolver *id.Resolver, items []*item.Item) (hard, warns []error)
 
-// lockAndResolve takes the store lock and resolves ref to its item and the
-// resolver built from the same scan — the shared opening of every single-item
-// mutation (mutate, edit, comment). The caller must defer the returned release.
-func (s *Store) lockAndResolve(cfg *config.Config, ref string) (func(), *item.Item, *id.Resolver, error) {
+// lockAndResolve takes the store lock and resolves ref to its item, plus the
+// full scan and the resolver built from it — the shared opening of every
+// single-item mutation (mutate, edit, comment). The caller must defer the
+// returned release.
+func (s *Store) lockAndResolve(cfg *config.Config, ref string) (func(), *item.Item, []*item.Item, *id.Resolver, error) {
 	release, err := s.lock()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
-	orig, resolver, err := s.resolveRef(cfg, ref)
+	orig, items, resolver, err := s.resolveRef(cfg, ref)
 	if err != nil {
 		release()
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
-	return release, orig, resolver, nil
+	return release, orig, items, resolver, nil
 }
 
 // mutate is the shared single-item mutation pipeline (KIRA-1): lock, resolve
@@ -47,14 +50,14 @@ func (s *Store) lockAndResolve(cfg *config.Config, ref string) (func(), *item.It
 // this — it is a pure byte-suffix append that must not reserialize frontmatter
 // (docs/design/02-data-model.md §4).
 func (s *Store) mutate(cfg *config.Config, ref string, force bool, apply applyFn, subjectOf func(orig *item.Item) string) (*item.Item, []string, error) {
-	release, orig, resolver, err := s.lockAndResolve(cfg, ref)
+	release, orig, items, resolver, err := s.lockAndResolve(cfg, ref)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer release()
 
 	updated := cloneItem(orig)
-	hard, warns := apply(updated, resolver)
+	hard, warns := apply(updated, resolver, items)
 	if len(hard) > 0 {
 		return nil, nil, invalidErr(hard)
 	}

@@ -137,21 +137,44 @@ func kiraRepo(t *testing.T) string {
 }
 
 // seededRepo is the canonical read fixture: an epic (KIRA-1), a fully populated
-// ticket under it (KIRA-2) with owner/labels/estimate/priority/reporter, a
+// ticket under it (KIRA-2) with owner/labels/estimate/priority/reporter plus
+// the M1.5 parity fields (subtype/rank/sprint/due and a relates link), a
 // blocked-by edge, a comment, and an IN_PROGRESS state, plus a plain blocker
 // ticket (KIRA-3). It exercises every field the read shapes carry.
 func seededRepo(t *testing.T) string {
 	t.Helper()
 	dir := kiraRepo(t)
+	addSprint(t, dir)
 	mustKira(t, dir, "create", "epic", "--title", "Epic one", "--no-edit")
 	mustKira(t, dir, "create", "ticket", "--title", "Rich ticket", "--no-edit",
 		"--owner", "shivam", "--label", "bug", "--label", "perf", "--estimate", "3", "--parent", "KIRA-1")
 	mustKira(t, dir, "create", "ticket", "--title", "Blocker", "--no-edit")
-	mustKira(t, dir, "edit", "KIRA-2", "--field", "priority=P1", "--field", "reporter=alice")
+	mustKira(t, dir, "edit", "KIRA-2", "--field", "priority=P1", "--field", "reporter=alice",
+		"--subtype", "bug", "--rank", "0|hzzzzz:", "--sprint", "2026-S14", "--due", "2026-07-20")
 	mustKira(t, dir, "link", "KIRA-2", "--blocked-by", "KIRA-3")
+	mustKira(t, dir, "link", "KIRA-2", "--relates", "KIRA-3")
 	mustKira(t, dir, "comment", "KIRA-2", "-m", "first comment")
 	mustKira(t, dir, "move", "KIRA-2", "IN_PROGRESS")
 	return dir
+}
+
+// addSprint swaps the scaffolded empty sprints list for one sprint, so the
+// fixture can exercise the sprint field (a sprint key must exist in config).
+func addSprint(t *testing.T, dir string) {
+	t.Helper()
+	path := filepath.Join(dir, ".kira", "config.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	patched := strings.Replace(string(data), "sprints: []",
+		"sprints: [{ key: 2026-S14, name: Sprint 14, start: 2026-07-13, end: 2026-07-26 }]", 1)
+	if patched == string(data) {
+		t.Fatal("config template no longer has an empty sprints list to patch")
+	}
+	if err := os.WriteFile(path, []byte(patched), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
 }
 
 // oneTicket is the minimal write fixture: a single fresh ticket, KIRA-1.
@@ -159,6 +182,32 @@ func oneTicket(t *testing.T) string {
 	t.Helper()
 	dir := kiraRepo(t)
 	mustKira(t, dir, "create", "ticket", "--title", "A ticket", "--no-edit")
+	return dir
+}
+
+// reviewTicket is a ticket advanced to REVIEW, in front of the default config's
+// guarded REVIEW -> DONE transition (require: [resolution]).
+func reviewTicket(t *testing.T) string {
+	t.Helper()
+	dir := oneTicket(t)
+	mustKira(t, dir, "move", "KIRA-1", "IN_PROGRESS")
+	mustKira(t, dir, "move", "KIRA-1", "REVIEW")
+	return dir
+}
+
+// wipLoaded fills REVIEW to its default wip: 2 limit with KIRA-1/KIRA-2 and
+// stages KIRA-3 in IN_PROGRESS, so moving KIRA-3 to REVIEW breaches the limit.
+func wipLoaded(t *testing.T) string {
+	t.Helper()
+	dir := kiraRepo(t)
+	for _, title := range []string{"W1", "W2", "W3"} {
+		mustKira(t, dir, "create", "ticket", "--title", title, "--no-edit")
+	}
+	for _, num := range []string{"KIRA-1", "KIRA-2"} {
+		mustKira(t, dir, "move", num, "IN_PROGRESS")
+		mustKira(t, dir, "move", num, "REVIEW")
+	}
+	mustKira(t, dir, "move", "KIRA-3", "IN_PROGRESS")
 	return dir
 }
 
@@ -176,9 +225,13 @@ func TestJSONContract(t *testing.T) {
 		{"create-epic", kiraRepo, []string{"create", "epic", "--title", "New epic", "--no-edit"}, false},
 		{"print-template", kiraRepo, []string{"create", "ticket", "--print-template"}, true},
 		{"move", oneTicket, []string{"move", "KIRA-1", "IN_PROGRESS"}, false},
+		{"move-resolution", oneTicket, []string{"move", "KIRA-1", "WONT_DO", "--resolution", "dropped"}, false},
+		{"move-wip-warn", wipLoaded, []string{"move", "KIRA-3", "REVIEW"}, false},
 		{"assign", oneTicket, []string{"assign", "KIRA-1", "shivam"}, false},
 		{"link", seededRepo, []string{"link", "KIRA-2", "--blocked-by", "KIRA-1"}, false},
+		{"link-relates", seededRepo, []string{"link", "KIRA-2", "--relates", "KIRA-1"}, false},
 		{"edit", oneTicket, []string{"edit", "KIRA-1", "--field", "title=Renamed"}, false},
+		{"edit-parity", oneTicket, []string{"edit", "KIRA-1", "--subtype", "task", "--priority", "P2", "--rank", "0|m:", "--due", "2026-08-01"}, false},
 		{"comment", oneTicket, []string{"comment", "KIRA-1", "-m", "hello"}, false},
 		{"show", seededRepo, []string{"show", "KIRA-2"}, true},
 		{"list", seededRepo, []string{"list"}, true},
@@ -188,6 +241,10 @@ func TestJSONContract(t *testing.T) {
 		{"tree", seededRepo, []string{"tree"}, true},
 		{"tree-epic", seededRepo, []string{"tree", "KIRA-1"}, true},
 		{"find", seededRepo, []string{"find", "Blocker"}, true},
+		{"sprint-create", kiraRepo, []string{"sprint", "create", "--key", "2026-S15", "--name", "Sprint 15", "--start", "2026-07-27", "--end", "2026-08-09"}, false},
+		{"sprint-list", seededRepo, []string{"sprint", "list"}, true},
+		{"sprint-activate", seededRepo, []string{"sprint", "activate", "2026-S14"}, false},
+		{"sprint-close", seededRepo, []string{"sprint", "close", "2026-S14"}, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -220,7 +277,9 @@ func TestJSONErrors(t *testing.T) {
 	}{
 		{"err-unknown-id", seededRepo, []string{"show", "KIRA-999"}, 1},
 		{"err-bad-transition", oneTicket, []string{"move", "KIRA-1", "DONE"}, 1},
+		{"err-require-guard", reviewTicket, []string{"move", "KIRA-1", "DONE"}, 1},
 		{"err-bad-field", oneTicket, []string{"edit", "KIRA-1", "--field", "nope=x"}, 1},
+		{"err-unknown-sprint", oneTicket, []string{"edit", "KIRA-1", "--sprint", "2099-S1"}, 1},
 		{"err-init-exists", kiraRepo, []string{"init", "--key", "KIRA"}, 1},
 		{"err-no-store", gitRepo, []string{"show", "KIRA-1"}, 3},
 	}

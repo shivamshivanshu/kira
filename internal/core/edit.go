@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -31,7 +32,7 @@ type EditOpts struct {
 // system fields, normalizes cross-references, bumps updated, and commits only
 // the fields that actually changed. A no-op edit neither writes nor commits.
 func (s *Store) Edit(cfg *config.Config, ref string, opts EditOpts) (*MutationResult, error) {
-	release, orig, resolver, err := s.lockAndResolve(cfg, ref)
+	release, orig, _, resolver, err := s.lockAndResolve(cfg, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -142,8 +143,18 @@ func applyFieldEdit(it *item.Item, key, value string) error {
 		it.Title = value
 	case "state":
 		it.State = value
+	case "subtype":
+		it.Subtype = ptrOrNil(value)
+	case "resolution":
+		it.Resolution = ptrOrNil(value)
 	case "priority":
 		it.Priority = ptrOrNil(value)
+	case "rank":
+		it.Rank = ptrOrNil(value)
+	case "sprint":
+		it.Sprint = ptrOrNil(value)
+	case "due":
+		it.Due = ptrOrNil(value)
 	case "owner":
 		it.Owner = ptrOrNil(value)
 	case "reporter":
@@ -195,6 +206,12 @@ func cloneItem(src *item.Item) *item.Item {
 	dst.Aliases = slices.Clone(src.Aliases)
 	dst.Labels = slices.Clone(src.Labels)
 	dst.BlockedBy = slices.Clone(src.BlockedBy)
+	if src.Links != nil {
+		dst.Links = make(map[string][]string, len(src.Links))
+		for typ, targets := range src.Links {
+			dst.Links[typ] = slices.Clone(targets)
+		}
+	}
 	return &dst
 }
 
@@ -207,14 +224,22 @@ func changedFields(orig, updated *item.Item) []string {
 			changed = append(changed, name)
 		}
 	}
+	add(!equalPtr(orig.Subtype, updated.Subtype), "subtype")
 	add(orig.Title != updated.Title, "title")
 	add(orig.State != updated.State, "state")
+	add(!equalPtr(orig.Resolution, updated.Resolution), "resolution")
 	add(!equalPtr(orig.Priority, updated.Priority), "priority")
+	add(!equalPtr(orig.Rank, updated.Rank), "rank")
 	add(!equalPtr(orig.Owner, updated.Owner), "owner")
 	add(!equalPtr(orig.Reporter, updated.Reporter), "reporter")
 	add(!slices.Equal(orig.Labels, updated.Labels), "labels")
 	add(!equalPtr(orig.Epic, updated.Epic), "epic")
 	add(!slices.Equal(orig.BlockedBy, updated.BlockedBy), "blocked_by")
+	// maps.EqualFunc treats nil and empty as equal — both mean "no links", and
+	// the canonical form is nil.
+	add(!maps.EqualFunc(orig.Links, updated.Links, slices.Equal[[]string]), "links")
+	add(!equalPtr(orig.Sprint, updated.Sprint), "sprint")
+	add(!equalPtr(orig.Due, updated.Due), "due")
 	add(!equalPtr(orig.Estimate, updated.Estimate), "estimate")
 	add(orig.Body != updated.Body, "body")
 	return changed

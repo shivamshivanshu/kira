@@ -11,15 +11,17 @@ workflows:
   ticket:
     states:
       - { key: TODO,        category: todo }
-      - { key: IN_PROGRESS, category: doing }
-      - { key: REVIEW,      category: doing }
+      - { key: IN_PROGRESS, category: doing, wip: 3 }   # advisory column cap (0/absent = unlimited)
+      - { key: REVIEW,      category: doing, wip: 2 }
       - { key: DONE,        category: done }
       - { key: WONT_DO,     category: done, resolution: dropped }
     initial: TODO
     transitions:
       TODO:        [IN_PROGRESS, WONT_DO]
       IN_PROGRESS: [REVIEW, TODO, WONT_DO]
-      REVIEW:      [DONE, IN_PROGRESS]
+      REVIEW:                                            # bare strings and guard maps may mix
+        - { to: DONE, require: [resolution], set: { resolution: done } }
+        - IN_PROGRESS
       DONE:        []
       WONT_DO:     []
     enforce_transitions: true
@@ -41,6 +43,20 @@ labels:
 people:
   known: [shivam, alice]
   strict: false
+
+priorities: [P0, P1, P2, P3]  # ordered high→low: validates `priority`, defines ranked sort
+                              # and >/< query compare. Empty [] = free-form legacy (equality-only).
+subtypes:    [bug, story, task, spike]   # validates `subtype`; [] = free-form
+resolutions: [done, dropped, duplicate, cannot-reproduce]  # validates `resolution`; [] = free-form
+
+filters:                      # named saved queries → `kira list --filter <name>`, board chips
+  mine-active: "owner=shivam AND category=doing"
+  blocked:     "blocked_by IS NOT EMPTY"
+  overdue:     "due<2026-07-12 AND NOT category=done"
+
+sprints:                      # scrum sprint entities; `sprint` frontmatter is a key into this list
+  - { key: 2026-S13, name: "Sprint 13", start: 2026-06-29, end: 2026-07-12 }
+  - { key: 2026-S14, name: "Sprint 14", start: 2026-07-13, end: 2026-07-26 }
 
 commit:
   mode: auto                  # auto | manual | prompt

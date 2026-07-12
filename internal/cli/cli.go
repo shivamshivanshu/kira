@@ -66,10 +66,13 @@ func newRootCmd() *cobra.Command {
 		newCommentCmd(g),
 		newListCmd(g),
 		newQueryCmd(g),
+		newFilterCmd(g),
 		newTreeCmd(g),
 		newFindCmd(g),
 		newDiscoverCmd(g),
 		newHooksCmd(g),
+		newSprintCmd(g),
+		newStatsCmd(g),
 	)
 	return root
 }

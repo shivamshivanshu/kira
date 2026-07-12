@@ -22,7 +22,20 @@ func TestParseExample(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
-	if want := Default(); !reflect.DeepEqual(got, want) {
+	// The example config matches Default() except filters and sprints: the doc
+	// example carries illustrative entries there, while the defaults are
+	// deliberately empty (a project authors its own).
+	want := Default()
+	want.Filters = map[string]string{
+		"mine-active": "owner=shivam AND category=doing",
+		"blocked":     "blocked_by IS NOT EMPTY",
+		"overdue":     "due<2026-07-12 AND NOT category=done",
+	}
+	want.Sprints = []Sprint{
+		{Key: "2026-S13", Name: "Sprint 13", Start: "2026-06-29", End: "2026-07-12"},
+		{Key: "2026-S14", Name: "Sprint 14", Start: "2026-07-13", End: "2026-07-26"},
+	}
+	if !reflect.DeepEqual(got, want) {
 		t.Errorf("parsed example does not match documented defaults\n got: %#v\nwant: %#v", got, want)
 	}
 }
@@ -66,6 +79,30 @@ func TestLoadReadsFromKiraDir(t *testing.T) {
 	}
 	if _, err := Load(t.TempDir()); err == nil {
 		t.Error("Load on a repo with no config.yaml should error")
+	}
+}
+
+// TestFilterSprintOverrides pins that filters and sprints come solely from the
+// user's config — the defaults are empty, so nothing merges in beside them.
+func TestFilterSprintOverrides(t *testing.T) {
+	got, err := Parse([]byte("version: 1\nfilters:\n  only: \"state=TODO\"\nsprints:\n  - {key: S1, name: a, start: 2026-01-01, end: 2026-01-14}\n"))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if want := map[string]string{"only": "state=TODO"}; !reflect.DeepEqual(got.Filters, want) {
+		t.Errorf("filters = %v, want %v", got.Filters, want)
+	}
+	if len(got.Sprints) != 1 || got.Sprints[0].Key != "S1" || !got.HasSprint("S1") || got.HasSprint("S2") {
+		t.Errorf("sprints = %v, want the single configured S1", got.Sprints)
+	}
+}
+
+// TestEmptyVocabIsFreeForm pins that emptied enum lists lift the set-value
+// vocabulary check ([] = free-form).
+func TestEmptyVocabIsFreeForm(t *testing.T) {
+	yaml := "version: 1\nresolutions: []\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: A\n    transitions:\n      A: [{to: A, set: {resolution: bogus}}]\n"
+	if _, err := Parse([]byte(yaml)); err != nil {
+		t.Errorf("set with empty resolutions vocabulary must be free-form, got %v", err)
 	}
 }
 
@@ -144,6 +181,61 @@ func TestValidationRejections(t *testing.T) {
 			name:    "transition to unknown target",
 			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: A\n    transitions:\n      A: [B]\n",
 			wantKey: "workflows.bad.transitions.A",
+		},
+		{
+			name:    "negative wip",
+			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo, wip: -1}\n    initial: A\n    transitions:\n      A: []\n",
+			wantKey: "workflows.bad.states[A].wip",
+		},
+		{
+			name:    "guard map without target",
+			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: A\n    transitions:\n      A: [{require: [resolution]}]\n",
+			wantKey: "workflows.bad.transitions.A",
+		},
+		{
+			name:    "require names unknown field",
+			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: A\n    transitions:\n      A: [{to: A, require: [wibble]}]\n",
+			wantKey: "workflows.bad.transitions.A",
+		},
+		{
+			name:    "set names unknown field",
+			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: A\n    transitions:\n      A: [{to: A, set: {wibble: x}}]\n",
+			wantKey: "workflows.bad.transitions.A",
+		},
+		{
+			name:    "set resolution outside vocabulary",
+			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: A\n    transitions:\n      A: [{to: A, set: {resolution: bogus}}]\n",
+			wantKey: "set.resolution",
+		},
+		{
+			name:    "empty priorities entry",
+			yaml:    "version: 1\npriorities: [P0, \"\"]\n",
+			wantKey: "priorities",
+		},
+		{
+			name:    "duplicate subtypes entry",
+			yaml:    "version: 1\nsubtypes: [bug, bug]\n",
+			wantKey: "subtypes",
+		},
+		{
+			name:    "empty filter query",
+			yaml:    "version: 1\nfilters:\n  blank: \"  \"\n",
+			wantKey: "filters.blank",
+		},
+		{
+			name:    "duplicate sprint key",
+			yaml:    "version: 1\nsprints:\n  - {key: S1, name: a, start: 2026-01-01, end: 2026-01-14}\n  - {key: S1, name: b, start: 2026-01-15, end: 2026-01-28}\n",
+			wantKey: "sprints",
+		},
+		{
+			name:    "invalid sprint date",
+			yaml:    "version: 1\nsprints:\n  - {key: S1, name: a, start: someday, end: 2026-01-14}\n",
+			wantKey: "sprints[S1].start",
+		},
+		{
+			name:    "sprint start not before end",
+			yaml:    "version: 1\nsprints:\n  - {key: S1, name: a, start: 2026-01-14, end: 2026-01-14}\n",
+			wantKey: "sprints[S1]",
 		},
 	}
 

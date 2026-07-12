@@ -25,6 +25,7 @@ func newListCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			emitStderrNotes(cmd.ErrOrStderr(), res.StderrNotes)
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
@@ -39,9 +40,18 @@ func newListCmd(g *globalFlags) *cobra.Command {
 	f.StringVar(&opts.Owner, "owner", "", "filter by owner")
 	f.StringVar(&opts.Label, "label", "", "filter by label")
 	f.StringVar(&opts.Epic, "epic", "", "filter by parent epic")
+	f.StringVar(&opts.Priority, "priority", "", "filter by priority")
+	f.StringVar(&opts.Sprint, "sprint", "", "filter by sprint key ('active' resolves the active sprint)")
+	f.StringVar(&opts.Filter, "filter", "", "apply a named saved query from config filters:")
 	f.StringVar(&opts.Query, "query", "", "filter by a query expression (ANDed with the flags)")
 	f.BoolVar(&opts.Tree, "tree", false, "group results by epic")
 	return cmd
+}
+
+func emitStderrNotes(w io.Writer, notes []string) {
+	for _, n := range notes {
+		fmt.Fprintln(w, "kira:", n)
+	}
 }
 
 func renderListResult(w io.Writer, res *core.ListResult) {
@@ -64,8 +74,6 @@ func renderList(w io.Writer, res *core.ListResult) {
 	tw.Flush()
 }
 
-// formatItemRow renders one item as tab-separated columns (number, state, type,
-// title), shared by the flat list and the epic-grouped tree renders.
 func formatItemRow(it core.ListItem) string {
 	return fmt.Sprintf("%s\t%s\t%s\t%s", it.Number, it.State, it.Type, it.Title)
 }

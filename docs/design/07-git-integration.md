@@ -1,6 +1,6 @@
 # Git Integration
 
-**Scope:** commit-trailer linking, incremental commit scanning, installed hooks, ID collision repair, the remote/collaboration model (`kira sync`), and rewrite/squash caveats.
+**Scope:** commit-trailer linking, incremental commit scanning, installed hooks, ID collision repair, the remote/collaboration model (`kira sync`), rewrite/squash caveats, the `Kira-Closes` auto-transition trailer, the cross-repo model, and the Jira-import fidelity ceiling.
 Part of the kira design set — see [DESIGN.md](../../DESIGN.md) for decisions and rationale.
 
 ## 1. Commit-linking convention
@@ -50,7 +50,7 @@ Hooks in v1:
 | Hook | Action |
 |---|---|
 | `post-merge` | Runs `kira doctor --fix` — ID collision repair, see [§4](#4-id-collision-repair-flow). |
-| `prepare-commit-msg` | Auto-appends the `Kira-Ticket` trailer, sourced from (a) the **active-ticket pointer** at `.kira/.cache/active` (set by `kira move X <state> --activate`), or (b) the current branch name matching a configurable pattern like `kira/KIRA-142-*` `(proposed)`. |
+| `prepare-commit-msg` | Auto-appends the `Kira-Ticket` trailer, sourced from (a) the **active-ticket pointer** at `.kira/.cache/active` — a `{ticket, branch}` pair (set by `kira move X <state> --activate` or `kira workon`), honored **only when HEAD's current branch matches the recorded branch**; on mismatch it falls through — a stale pointer after a manual `git checkout` must never mis-trailer the new branch's commits — to (b) the current branch name matching a configurable pattern `(proposed)`. The pattern's casing comes from the **same config key** `workon`'s slug helper uses (one casing source — e.g. `kira/kira-142-*` — or the branch-name fallback never fires), and pattern-matched numbers resolve **through the alias table** ([02-data-model.md §7](02-data-model.md#7-id-scheme)): post-renumber branch names carry retired numbers and must keep resolving ([§4](#4-id-collision-repair-flow)). |
 | `pre-commit` (opt-in, installed by `hooks install --with-pre-commit` `(proposed)`) | Runs `kira validate` on staged `.kira/` paths; blocks the commit if any staged file fails a reject-class rule ([02-data-model.md §10](02-data-model.md#10-validation-rules)). |
 
 `kira hooks install` also registers the `auto`-policy merge driver, so plain `git merge`/`git pull` outside `kira sync` gets identical conflict-free behavior:
@@ -120,8 +120,59 @@ Revisit if merge-cadence propagation (the tradeoff above) proves painful in prac
 - **Frontmatter timestamps survive squashes** — `created`/`updated` are literal file content, not git metadata, so lead-time stats (`created` → done-transition) remain accurate even when the commit-level audit trail collapses. Cycle-time granularity (time in each intermediate state) is what's lost.
 - Guidance: if your team squash-merges by convention, prefer `commit.mode: manual` with fewer, more semantic kira commits over `auto`'s one-commit-per-mutation — there's less fine-grained history to lose in the first place. This trade surfaces in [DESIGN.md](../../DESIGN.md)'s open questions.
 
-## 7. Deferred v2
+## 7. `Kira-Closes` auto-transition
 
-- **`Kira-Closes` auto-transition trailer** — GitHub-style "Closes #123," config key `commit.close_trailer`. Deferred because the semantics are genuinely unresolved: which ref counts as "landed" (merge to `main`? a tag? any push?) needs a real answer before this can transition an item automatically without surprising someone.
+A commit can drive a workflow transition — GitHub's "Closes #123", made git-native — via a second trailer:
+
+```
+Kira-Closes: KIRA-142
+```
+
+- Repeatable, like `Kira-Ticket`. Trailer key configurable (`commit.close_trailer`, default `Kira-Closes`).
+- **Fires the transition only when the commit is detected reaching the configured landed ref** — config `git.landed_ref`, default the remote's default branch (e.g. `origin/HEAD` → `main`). Detection happens in the *same scan* that already processes `Kira-Ticket` trailers ([§2](#2-incremental-scan)): the per-ref watermark walk over the landed ref, run by `kira sync` and the `post-merge` hook. No new machinery — a `Kira-Closes` value seen on a newly-landed commit is resolved to its ULID and the item is transitioned.
+- **Target state:** the workflow's first `done`-category state, or a per-workflow configured `close_target` when set ([02-data-model.md §10](02-data-model.md#10-validation-rules)).
+
+**Why the landed ref, and not commit-time or push-time:**
+
+- **Not on commit** — a commit exists the moment it's authored, on any branch, including throwaway work. "I wrote a commit mentioning KIRA-142" is not "KIRA-142 is done"; branch work isn't done work.
+- **Not on branch push** — pushing a feature branch publishes work in progress, not completion. Only arrival at the landed ref (the branch that represents shipped state) means the change is actually in.
+- **Squash/rebase-safe by construction** — because detection keys on the commit *reaching the landed ref*, not on the original commit object, it survives squash-merge and rebase: the merge commit (or the squashed commit) that lands on the ref carries the trailer, and the watermark walk sees it there. **Squash caveat:** a `Kira-Closes` trailer that lives only in a dropped intermediate commit is lost — squash keeps trailers from the *final* commit message. Put `Kira-Closes` in the PR/merge commit message (or the commit that will survive the squash), same discipline as [§6](#6-rewritesquash-caveats).
+
+**Failure modes:**
+
+- Unknown ticket (trailer value resolves to no item) → recorded, surfaced as a `kira doctor` warning; never a hard failure of the scan.
+- Item already in a `done`-category state → no-op (idempotent; re-landing or a rescan won't re-fire).
+
+**Implementation slot:** extends WP-2.2 (M2) — it rides the watermarked trailer scan that WP-2.2 already builds, adding only trailer-key config, landed-ref resolution, and the transition call. (Previously deferred to v2; the open question that blocked it — "which ref counts as landed" — is now answered by `git.landed_ref`.)
+
+## 8. Cross-repo model
+
+**Monorepo (supported today):** one `.kira/` at the repo root; subprojects are distinguished by `labels` or `subtype`, not by separate ticket stores. No special mechanism — it falls out of file-per-item plus the existing query grammar.
+
+**Polyrepo federation (v2 stance):** config lists sibling repo paths; foreign ULIDs are resolved **read-only** when the sibling repo is present locally, and left as opaque IDs when it is not. Links stay ULID-based, so a cross-repo link degrades gracefully to an unresolved identifier rather than breaking — the link is never rewritten, only its resolution is best-effort.
+
+```yaml
+# v2 — cross-repo federation (not implemented in v1)
+federation:
+  siblings:
+    - ../platform-core      # path to a sibling kira repo
+    - ../shared-libs
+  resolve: read-only        # foreign ULIDs resolve when present, opaque when absent
+```
+
+## 9. Jira-import fidelity ceiling
+
+kira history is **derived** from `git log` ([03-storage-and-git.md §5](03-storage-and-git.md#5-history)), so there is no place to replay a foreign changelog into — a Jira issue's per-field change history cannot be reconstructed as kira events. The import contract is therefore lossy by design:
+
+- **Current-state frontmatter** — status, assignee, priority, labels, etc. mapped to kira fields as of import time.
+- **Comments** — brought over as append blocks ([02-data-model.md](02-data-model.md)), preserving author and timestamp in the block text.
+- **One synthetic comment** carrying the *flattened* Jira changelog (a human-readable transcript of transitions/edits), since it can't become real kira history.
+- **Attachments** — require the attachments pattern (`.kira/attachments/<ulid>/`, see [DESIGN.md §3](../../DESIGN.md#3-constraints-and-non-goals)); without it they are dropped and listed in an import manifest rather than silently lost.
+
+This is the **M6 import contract**, stated up front so the ceiling is a documented decision, not a surprise at implementation time.
+
+## 10. Deferred v2
 
 Superseded, no longer deferred: the list-field set-union merge driver is now the v1 `auto` merge policy ([03-storage-and-git.md §7](03-storage-and-git.md#7-merge-strategy)) — the founder's JIRA-simplicity requirement (no raw conflict markers on kira files) means auto-resolution can't wait for v2. The original deferral reasons (per-clone `.gitattributes` registration burden, opaque mid-merge rewriting) no longer hold: `kira hooks install` is already the per-clone step everything else in this doc rides on, and the "opaque rewriting" concern is now the explicit goal (invisible-to-the-user resolution), not a downside.
+
+Also no longer deferred: the `Kira-Closes` auto-transition trailer, now specced for M2 in [§7](#7-kira-closes-auto-transition) — its blocking open question (which ref counts as "landed") is resolved by the `git.landed_ref` config.

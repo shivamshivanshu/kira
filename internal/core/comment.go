@@ -33,7 +33,7 @@ type CommentResult struct {
 // stay disjoint appended regions and merge cleanly by construction. This is the
 // documented exception to §1's "updated on every mutation" rule.
 func (s *Store) Comment(cfg *config.Config, ref string, opts CommentOpts) (*CommentResult, error) {
-	release, orig, _, err := s.lockAndResolve(cfg, ref)
+	release, orig, _, _, err := s.lockAndResolve(cfg, ref)
 	if err != nil {
 		return nil, err
 	}

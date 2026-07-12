@@ -1,0 +1,64 @@
+# M1.5 JIRA-parity fields: create/edit flags, typed links, move --resolution,
+# and the sprint/vocab validation paths (docs/design/02-data-model.md §1, §10).
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+# the scaffold has no sprints; install a config that defines one
+cp config-sprints.yaml .kira/config.yaml
+
+# create with the parity flags; show reports them all
+exec kira create ticket --title 'Parity' --no-edit --subtype bug --priority P1 --rank '0|m:' --sprint 2026-S14 --due 2026-07-20 --json
+stdout '"number": "KIRA-1"'
+exec kira show KIRA-1 --json
+stdout '"subtype": "bug"'
+stdout '"priority": "P1"'
+stdout '"rank": "0\|m:"'
+stdout '"sprint": "2026-S14"'
+stdout '"due": "2026-07-20"'
+stdout '"resolution": null'
+
+# --type is a silent alias for --subtype
+exec kira create ticket --title 'Aliased' --no-edit --type story
+exec kira show KIRA-2 --json
+stdout '"subtype": "story"'
+
+# unknown sprint key is rejected; unknown subtype only warns (lenient vocab)
+! exec kira edit KIRA-1 --sprint 2099-S1
+stderr 'not a key in the configured sprints'
+exec kira edit KIRA-1 --subtype saga
+stderr 'not in the known subtype vocabulary'
+
+# typed links: stored one-sided on the source, removed back to canonical form
+exec kira link KIRA-1 --relates KIRA-2
+exec kira show KIRA-1 --json
+stdout '"relates": \['
+exec kira show KIRA-2 --json
+stdout '"relates": \[\]'
+! exec kira link KIRA-1 --relates KIRA-1
+stderr 'cannot link to itself'
+exec kira link KIRA-1 --relates KIRA-2 --remove
+exec kira show KIRA-1 --json
+stdout '"relates": \[\]'
+exec kira link KIRA-1 --duplicate-of KIRA-2
+exec git log --oneline
+stdout 'kira: KIRA-1 link duplicate-of KIRA-2'
+
+# move records --resolution alongside the state write
+exec kira move KIRA-1 WONT_DO --resolution dropped
+exec kira show KIRA-1 --json
+stdout '"state": "WONT_DO"'
+stdout '"resolution": "dropped"'
+
+# clearing a typed field via the empty-valued flag
+exec kira edit KIRA-1 --due ''
+exec kira show KIRA-1 --json
+stdout '"due": null'
+
+-- config-sprints.yaml --
+version: 1
+sprints:
+  - { key: 2026-S14, name: "Sprint 14", start: 2026-07-13, end: 2026-07-26 }

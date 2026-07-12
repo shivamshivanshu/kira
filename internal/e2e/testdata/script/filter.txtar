@@ -1,0 +1,69 @@
+# Saved filters: config filters: feed `kira list --filter` and `kira filter list`.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# no filters configured yet
+exec kira filter list
+stdout 'no filters configured'
+! exec kira list --filter mine
+stderr 'unknown filter "mine" \(no filters configured\)'
+
+# configure filters and a sprint (omitted keys inherit the defaults)
+cp config-filters.yaml .kira/config.yaml
+
+exec kira create ticket --title alpha --owner shivam --no-edit
+exec kira create ticket --title beta --owner alice --sprint 2026-S14 --no-edit
+exec kira create ticket --title gamma --owner shivam --no-edit
+
+# filter list enumerates the configured names, sorted
+exec kira filter list
+stdout 'blocked\s+blocked_by IS NOT EMPTY'
+stdout 'mine\s+owner=shivam'
+exec kira filter list --json
+stdout '"name": "blocked"'
+stdout '"query": "owner=shivam"'
+
+# a named filter expands to its stored query
+exec kira list --filter mine --json
+stdout '"count": 2'
+
+# extra flags AND onto the expanded filter
+exec kira list --filter mine --owner alice --json
+stdout '"count": 0'
+
+# unknown name is exit 1 listing the configured names
+! exec kira list --filter nope
+stderr 'unknown filter "nope" \(available: blocked, mine\)'
+
+# --sprint takes a literal key, or 'active' via the active-sprint pointer
+exec kira list --sprint 2026-S14 --json
+stdout '"count": 1'
+exec kira list --sprint active --json
+stdout '"count": 0'
+stderr 'no active sprint set'
+mkdir .kira/.cache
+cp active-ptr .kira/.cache/active-sprint
+exec kira list --sprint active --json
+stdout '"count": 1'
+stdout '"number": "KIRA-2"'
+
+-- config-filters.yaml --
+version: 1
+
+project:
+  key: KIRA
+  name: kira
+
+filters:
+  mine: "owner=shivam"
+  blocked: "blocked_by IS NOT EMPTY"
+
+sprints:
+  - { key: 2026-S14, name: "Sprint 14", start: 2026-07-13, end: 2026-07-26 }
+-- active-ptr --
+2026-S14

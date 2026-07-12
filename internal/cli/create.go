@@ -23,7 +23,7 @@ func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {
 		opts          core.CreateOpts
 		estimate      float64
 		printTemplate bool
-		reservedType  string
+		aliasType     string
 	)
 	cmd := &cobra.Command{
 		Use:   typ,
@@ -31,6 +31,9 @@ func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Type = typ
+			if opts.Subtype == "" {
+				opts.Subtype = aliasType // --type: silent alias, one release (docs/design/04-cli.md create)
+			}
 			if cmd.Flags().Changed("estimate") {
 				opts.Estimate = &estimate
 			}
@@ -62,11 +65,17 @@ func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.StringVar(&opts.Title, "title", "", "item title")
-	f.StringVar(&reservedType, "type", "", "reserved item subtype (accepted, unused in v1)")
+	f.StringVar(&opts.Subtype, "subtype", "", "item subtype (e.g. bug/story), validated against config subtypes")
+	f.StringVar(&aliasType, "type", "", "alias for --subtype (deprecated)")
+	_ = f.MarkHidden("type")
 	f.StringVar(&opts.Parent, "parent", "", "epic to set as this item's parent")
 	f.StringVar(&opts.Owner, "owner", "", "owner")
 	f.StringVar(&opts.Reporter, "reporter", "", "reporter")
 	f.StringArrayVar(&opts.Labels, "label", nil, "label (repeatable)")
+	f.StringVar(&opts.Priority, "priority", "", "priority, validated against config priorities")
+	f.StringVar(&opts.Rank, "rank", "", "lexicographic grooming key")
+	f.StringVar(&opts.Sprint, "sprint", "", "sprint key from config sprints")
+	f.StringVar(&opts.Due, "due", "", "target completion date (RFC3339 date)")
 	f.Float64Var(&estimate, "estimate", 0, "estimate, in the configured unit")
 	f.BoolVar(&opts.NoEdit, "no-edit", false, "create from flags only, no $EDITOR")
 	f.StringVar(&opts.FromFile, "from-file", "", "read a complete item from a file (or - for stdin)")

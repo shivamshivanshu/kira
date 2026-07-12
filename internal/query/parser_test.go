@@ -2,8 +2,6 @@ package query
 
 import "testing"
 
-// TestParseCanonical pins the AST shape (prefix, fully parenthesized) for each
-// grammar production, and thereby precedence and associativity.
 func TestParseCanonical(t *testing.T) {
 	tests := []struct {
 		in   string
@@ -16,13 +14,46 @@ func TestParseCanonical(t *testing.T) {
 		{"created >= 2026-07-01", "(created >= 2026-07-01)"},
 		{"updated<2026-07-01", "(updated < 2026-07-01)"},
 		{"updated<=2026-07-01", "(updated <= 2026-07-01)"},
+		// M1.5 fields compare
+		{"due<2026-07-20", "(due < 2026-07-20)"},
+		{"estimate>=3.5", "(estimate >= 3.5)"},
+		{"priority<=P1", "(priority <= P1)"}, // ranked legality checked at compile
+		{"rank=aam", "(rank = aam)"},
+		{"sprint=active", "(sprint = active)"},
+		{"subtype=bug", "(subtype = bug)"},
+		{"resolution=done", "(resolution = done)"},
+		{"reporter=alice", "(reporter = alice)"},
+		{"blocked_by=KIRA-2", "(blocked_by = KIRA-2)"},
+		{"links=KIRA-3", "(links = KIRA-3)"},
+		// IN membership
+		{"priority IN (P0,P1)", "(in priority P0 P1)"},
+		{"priority IN (P0, P1, P2)", "(in priority P0 P1 P2)"},
+		{"owner in (alice)", "(in owner alice)"},
+		{`owner IN ("alice smith", bob)`, "(in owner alice smith bob)"},
+		{"sprint IN (active, 2026-S13)", "(in sprint active 2026-S13)"},
+		// IS [NOT] EMPTY
+		{"owner IS EMPTY", "(is-empty owner)"},
+		{"blocked_by IS NOT EMPTY", "(is-not-empty blocked_by)"},
+		{"links is empty", "(is-empty links)"},
+		{"due IS EMPTY", "(is-empty due)"},
+		// ORDER BY: trailing, optional direction, case-insensitive
+		{"category=doing ORDER BY rank", "(category = doing) (order-by rank asc)"},
+		{"category=doing ORDER BY rank asc", "(category = doing) (order-by rank asc)"},
+		{"a ORDER BY due desc", "(term a) (order-by due desc)"},
+		{"a order by priority DESC", "(term a) (order-by priority desc)"},
+		{"blocked_by IS NOT EMPTY ORDER BY priority", "(is-not-empty blocked_by) (order-by priority asc)"},
+		{"a OR b ORDER BY created", "(or (term a) (term b)) (order-by created asc)"},
 		// term fall-through
 		{"race", "(term race)"},
 		{`"two words"`, "(term two words)"},
 		// a field name not followed by a comparison is a title term
 		{"state", "(term state)"},
+		// a lone `order` (no BY) is a title term, as is `in` without '('
+		{"order", "(term order)"},
+		{"state in flux", "(and (and (term state) (term in)) (term flux))"},
 		// not
 		{"NOT owner=alice", "(not (owner = alice))"},
+		{"NOT owner IS EMPTY", "(not (is-empty owner))"},
 		// explicit and, or
 		{"state=TODO AND owner=shivam", "(and (state = TODO) (owner = shivam))"},
 		{"label=bug OR label=perf", "(or (label = bug) (label = perf))"},
@@ -43,17 +74,16 @@ func TestParseCanonical(t *testing.T) {
 		{"not a", "(not (term a))"},
 	}
 	for _, tc := range tests {
-		e, err := Parse(tc.in)
+		q, err := Parse(tc.in)
 		if err != nil {
 			t.Fatalf("Parse(%q): %v", tc.in, err)
 		}
-		if got := e.String(); got != tc.want {
+		if got := q.String(); got != tc.want {
 			t.Errorf("Parse(%q) = %s, want %s", tc.in, got, tc.want)
 		}
 	}
 }
 
-// TestParseErrors checks each error class reports at the right source position.
 func TestParseErrors(t *testing.T) {
 	tests := []struct {
 		in  string
@@ -61,13 +91,34 @@ func TestParseErrors(t *testing.T) {
 	}{
 		{"", 0},                 // empty query
 		{"state=", 6},           // missing value
-		{"owner>alice", 5},      // ordering op on a non-date field
+		{"owner>alice", 5},      // ordering op on a non-comparable field
+		{"rank>aa", 4},          // rank is equality-only
 		{"created>notadate", 8}, // unparseable date
+		{"due>notadate", 4},     // unparseable date on due
+		{"estimate>abc", 9},     // unparseable number
 		{"(a", 2},               // unclosed paren
 		{"= a", 0},              // operator with no left operand
 		{"AND x", 0},            // leading keyword
 		{"a OR", 4},             // trailing operator, no right operand
 		{"a )", 2},              // trailing garbage
+		// IN
+		{"priority IN ()", 13},      // empty value list
+		{"priority IN (P0 P1)", 16}, // missing comma
+		{"priority IN (P0,", 16},    // unclosed list
+		{"due IN (2026-07-99)", 8},  // bad date inside IN
+		{"estimate IN (x)", 13},     // bad number inside IN
+		// IS EMPTY
+		{"owner IS full", 9},    // IS without EMPTY
+		{"state IS EMPTY", 6},   // state is never empty
+		{"created IS EMPTY", 8}, // created is never empty
+		// ORDER BY
+		{"ORDER BY rank", 0},                 // no expression before the clause
+		{"NOT ORDER BY rank", 4},             // operand position
+		{"a ORDER BY", 10},                   // missing field
+		{"a ORDER BY notafield", 11},         // unknown field
+		{"a ORDER BY label", 11},             // list field
+		{"a ORDER BY rank desc x", 21},       // trailing garbage after the clause
+		{"a ORDER BY rank ORDER BY due", 16}, // only one clause, trailing
 	}
 	for _, tc := range tests {
 		_, err := Parse(tc.in)
@@ -81,11 +132,18 @@ func TestParseErrors(t *testing.T) {
 	}
 }
 
-// TestParseDateFieldAllOps confirms every comparison is legal on a date field.
-func TestParseDateFieldAllOps(t *testing.T) {
+func TestParseOrderedFieldAllOps(t *testing.T) {
 	for _, op := range []string{"=", "!=", ">", ">=", "<", "<="} {
-		if _, err := Parse("created" + op + "2026-07-01"); err != nil {
-			t.Errorf("created%s2026-07-01: %v", op, err)
+		for _, in := range []string{
+			"created" + op + "2026-07-01",
+			"updated" + op + "2026-07-01",
+			"due" + op + "2026-07-01",
+			"estimate" + op + "3",
+			"priority" + op + "P1",
+		} {
+			if _, err := Parse(in); err != nil {
+				t.Errorf("%s: %v", in, err)
+			}
 		}
 	}
 }

@@ -22,7 +22,17 @@ Ticketing for solo/small-team repo work today means either a heavyweight hosted 
 
 Constraints: single static binary; `<~10ms` cold start (invoked per-keystroke from nvim); only hard external dependency is `git`; Linux + macOS CI'd (Windows untested, not deliberately broken); nvim ≥ 0.10.
 
-Non-goals (v1): web UI · real-time sync/notifications/webhooks · hosted service or required daemon · permissions beyond git's own · first-class sprints (field reserved) · custom field schemas · attachments · cross-repo linking · auto-transition-on-merge · Jira import/export · non-git backends · AI ticket authoring.
+Non-goals (v1, hard out of scope): web UI · real-time sync / webhooks · hosted service or required daemon · custom field schemas · non-git backends · AI ticket authoring · capacity planning / SLAs / service-desk.
+
+**Conscious exclusions** — stance recorded, not silently dropped:
+
+- **Permissions** — no kira ACL layer; access *is* git access. Protected branches + PR review are the transition gates (a state change lands only when its commit lands). See [07 §5](docs/design/07-git-integration.md#5-remote--collaboration-model).
+- **Notifications** — no server, ever. In-idiom substitute: an on-sync digest (`kira inbox`, stretch) + a `notify.exec` hook teams wire to their own channel.
+- **Attachments** — documented convention, not a feature: repo-path pattern `.kira/attachments/<ulid>/`, git-LFS for large blobs (stretch). Needed for Jira-import fidelity ([07 §9](docs/design/07-git-integration.md#9-jira-import-fidelity-ceiling)).
+- **Disaster recovery** — every clone is a full replica; `git bundle` gives a single-file cold backup. No separate DR story needed.
+- **Web / PM persona** — no server; a read-only HTML export from `--json` (`kira export --html`, stretch) serves the non-terminal reader.
+
+Now in scope (were non-goals, promoted by the JIRA-parity pass): cross-repo model ([07 §8](docs/design/07-git-integration.md#8-cross-repo-model)), auto-transition-on-land ([07 §7](docs/design/07-git-integration.md#7-kira-closes-auto-transition)), Jira import (M6 contract, [07 §9](docs/design/07-git-integration.md#9-jira-import-fidelity-ceiling)), sprints (M6 stretch). Full parity field/query set in [§5](#5-decision-summary).
 
 ## 4. Options considered
 
@@ -85,6 +95,8 @@ Stated up front: (a) JIRA-style last-writer-wins auto-resolution (the default `m
 | Commit linking | `Kira-Ticket:` git trailer + `git interpret-trailers`; watermarked incremental scan; opt-in hooks for zero-friction linking | [07-git-integration](docs/design/07-git-integration.md) |
 | Telemetry | on-demand from index + derived events: completion, cycle/lead time p50/p90, throughput | [08-telemetry](docs/design/08-telemetry.md) |
 | Testing | byte-stability goldens, `--json` contract goldens, testscript e2e incl. merge regression matrix, ID fuzz | [09-testing](docs/design/09-testing.md) |
+| JIRA parity (rank, priority enum, due, links, resolution, subtype, sprints, validators, filters) | additive optional fields + config: `rank` (lexo string) + ordered `priority` enum, `due`, typed `links`, `resolution` (set on done-transition), `subtype`, sprints; per-transition `require:`/`set:` validators; saved `filters:`; query `ORDER BY`/`IN`/`IS EMPTY` | data model [02](docs/design/02-data-model.md) · CLI [04](docs/design/04-cli.md) · telemetry [08](docs/design/08-telemetry.md) |
+| Auto-transition-on-land | `Kira-Closes:` trailer transitions an item when its commit reaches `git.landed_ref` (default remote default branch); rides the M2 watermark scan | [07-git-integration §7](docs/design/07-git-integration.md#7-kira-closes-auto-transition) |
 
 ## 6. Verification
 
@@ -111,6 +123,10 @@ Defaults below are chosen and specced; each is cheap to flip now, expensive late
 12. **Propagation cadence** — tickets ride code branches, so ticket changes made on a feature branch reach teammates at merge cadence; instant JIRA-like propagation means mutating tickets on trunk + `kira sync --push`. A git-bug-style dedicated ticket ref that decouples ticket sync from code review is evaluated-and-deferred to v2 ([07](docs/design/07-git-integration.md)) — acceptable?
 13. **`enforce_transitions` default** — the [02](docs/design/02-data-model.md) example sets ticket `true` / epic `false` but no default is documented for workflows that omit the key; YAML map decoding makes omission parse as `false`. Chosen: omission = `false` (mirror the example). Enforcement-on-by-default would need a documented default + tri-state parsing.
 14. **`kira init` seed values** — the documented example config carries project-specific values (labels `orderbook`, people `shivam`/`alice`). Chosen: `init` prompts for `project.key` and seeds empty `labels.known`/`people.known`; the doc example stays illustrative, not the literal default.
+15. **Rank scheme** — lexicographic ordering strings (insert-between via mid-string) vs float keys (rebalance on exhaustion). Chosen: lexo strings (no periodic rebalance, LWW-mergeable scalar).
+16. **Priority enum default contents** — the ordered `priorities:` list ships with some default (e.g. `blocker/high/medium/low/trivial`?) or empty until configured? To ratify.
+17. **Sprint close semantics** — auto-move unfinished items to the next sprint vs report-only. Chosen: report at close + optional `--move-to <sprint>`.
+18. **`Kira-Closes` landed-ref default** — which ref means "landed" for auto-transition. Chosen: `git.landed_ref` defaults to the remote's default branch ([07 §7](docs/design/07-git-integration.md#7-kira-closes-auto-transition)).
 
 ## 8. Glossary
 

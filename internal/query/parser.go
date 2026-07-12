@@ -1,13 +1,11 @@
 package query
 
 import (
+	"strconv"
 	"strings"
 	"time"
 )
 
-// Expr is a query AST node. String renders a fully-parenthesized canonical
-// form (prefix notation) so precedence and associativity are testable as exact
-// strings, independent of the source spacing.
 type Expr interface {
 	String() string
 }
@@ -16,53 +14,117 @@ type orExpr struct{ left, right Expr }
 type andExpr struct{ left, right Expr }
 type notExpr struct{ x Expr }
 
-// predExpr is a `field cmp value` comparison. For a date field (created,
-// updated) date holds the parsed value; valuePos is the value token's offset,
-// used when epic resolution fails at compile time.
 type predExpr struct {
 	field    string
 	op       token
 	value    string
-	date     time.Time // parsed value, valid only for a date field
+	date     time.Time
+	num      float64
 	valuePos int
 }
 
-// termExpr is a bare word or quoted string that falls through to a
-// case-insensitive title substring match.
+type inExpr struct {
+	field    string
+	values   []string
+	valuePos []int
+	fieldPos int
+}
+
+type emptyExpr struct {
+	field    string
+	notEmpty bool
+}
+
 type termExpr struct{ text string }
 
 func (e *orExpr) String() string   { return "(or " + e.left.String() + " " + e.right.String() + ")" }
 func (e *andExpr) String() string  { return "(and " + e.left.String() + " " + e.right.String() + ")" }
 func (e *notExpr) String() string  { return "(not " + e.x.String() + ")" }
 func (e *predExpr) String() string { return "(" + e.field + " " + e.op.cmpText() + " " + e.value + ")" }
+func (e *inExpr) String() string {
+	return "(in " + e.field + " " + strings.Join(e.values, " ") + ")"
+}
+func (e *emptyExpr) String() string {
+	if e.notEmpty {
+		return "(is-not-empty " + e.field + ")"
+	}
+	return "(is-empty " + e.field + ")"
+}
 func (e *termExpr) String() string { return "(term " + e.text + ")" }
 
-// The fields the grammar recognizes on the left of a comparison
-// (docs/design/04-cli.md §4).
+type Order struct {
+	Field string
+	Desc  bool
+	pos   int
+}
+
+func (o *Order) String() string {
+	dir := "asc"
+	if o.Desc {
+		dir = "desc"
+	}
+	return "(order-by " + o.Field + " " + dir + ")"
+}
+
+type Parsed struct {
+	Expr  Expr
+	Order *Order
+}
+
+func (q *Parsed) String() string {
+	if q.Order == nil {
+		return q.Expr.String()
+	}
+	return q.Expr.String() + " " + q.Order.String()
+}
+
 const (
-	fieldState    = "state"
-	fieldCategory = "category"
-	fieldOwner    = "owner"
-	fieldLabel    = "label"
-	fieldType     = "type"
-	fieldEpic     = "epic"
-	fieldPriority = "priority"
-	fieldCreated  = "created"
-	fieldUpdated  = "updated"
+	fieldState      = "state"
+	fieldCategory   = "category"
+	fieldOwner      = "owner"
+	fieldReporter   = "reporter"
+	fieldLabel      = "label"
+	fieldType       = "type"
+	fieldSubtype    = "subtype"
+	fieldEpic       = "epic"
+	fieldPriority   = "priority"
+	fieldRank       = "rank"
+	fieldSprint     = "sprint"
+	fieldDue        = "due"
+	fieldEstimate   = "estimate"
+	fieldBlockedBy  = "blocked_by"
+	fieldLinks      = "links"
+	fieldResolution = "resolution"
+	fieldCreated    = "created"
+	fieldUpdated    = "updated"
 )
 
 var fields = map[string]bool{
-	fieldState: true, fieldCategory: true, fieldOwner: true, fieldLabel: true,
-	fieldType: true, fieldEpic: true, fieldPriority: true, fieldCreated: true, fieldUpdated: true,
+	fieldState: true, fieldCategory: true, fieldOwner: true, fieldReporter: true,
+	fieldLabel: true, fieldType: true, fieldSubtype: true, fieldEpic: true,
+	fieldPriority: true, fieldRank: true, fieldSprint: true, fieldDue: true,
+	fieldEstimate: true, fieldBlockedBy: true, fieldLinks: true,
+	fieldResolution: true, fieldCreated: true, fieldUpdated: true,
 }
 
-// isDateField reports whether f compares as a date and thus admits the ordering
-// operators; every other field admits only = and !=.
-func isDateField(f string) bool { return f == fieldCreated || f == fieldUpdated }
+func isDateField(f string) bool { return f == fieldCreated || f == fieldUpdated || f == fieldDue }
 
-// keyword reports whether an unquoted word is the given logical keyword,
-// case-insensitively. A quoted string is never a keyword, so a title term of
-// "and"/"or"/"not" is written with quotes.
+func isListField(f string) bool {
+	return f == fieldLabel || f == fieldBlockedBy || f == fieldLinks
+}
+
+func allowsOrderedCmp(f string) bool {
+	return isDateField(f) || f == fieldEstimate || f == fieldPriority
+}
+
+func isAlwaysPresent(f string) bool {
+	switch f {
+	case fieldState, fieldType, fieldCategory, fieldCreated, fieldUpdated:
+		return true
+	}
+	return false
+}
+
 func isKeyword(t token, kw string) bool {
 	return t.kind == tokWord && strings.EqualFold(t.text, kw)
 }
@@ -71,10 +133,7 @@ func anyKeyword(t token) bool {
 	return isKeyword(t, "AND") || isKeyword(t, "OR") || isKeyword(t, "NOT")
 }
 
-// Parse lexes and parses input into an AST, validating field/operator legality
-// and date literals. It does not resolve epic references (that needs the item
-// set) — see Compile. Errors are *Error with a source position.
-func Parse(input string) (Expr, error) {
+func Parse(input string) (*Parsed, error) {
 	toks, err := lex(input)
 	if err != nil {
 		return nil, err
@@ -87,10 +146,17 @@ func Parse(input string) (Expr, error) {
 	if err != nil {
 		return nil, err
 	}
+	ord, err := p.parseOrder()
+	if err != nil {
+		return nil, err
+	}
 	if t := p.peek(); t.kind != tokEOF {
+		if ord != nil {
+			return nil, &Error{Pos: t.pos, Msg: "ORDER BY must be the trailing clause"}
+		}
 		return nil, &Error{Pos: t.pos, Msg: "unexpected " + describe(t)}
 	}
-	return e, nil
+	return &Parsed{Expr: e, Order: ord}, nil
 }
 
 type parser struct {
@@ -98,8 +164,35 @@ type parser struct {
 	i    int
 }
 
-func (p *parser) peek() token { return p.toks[p.i] }
-func (p *parser) next() token { t := p.toks[p.i]; p.i++; return t }
+func (p *parser) peek() token  { return p.toks[p.i] }
+func (p *parser) peek2() token { return p.toks[p.i+1] }
+func (p *parser) next() token  { t := p.toks[p.i]; p.i++; return t }
+
+func (p *parser) atOrderBy() bool {
+	return isKeyword(p.peek(), "ORDER") && isKeyword(p.peek2(), "BY")
+}
+
+func (p *parser) parseOrder() (*Order, error) {
+	if !p.atOrderBy() {
+		return nil, nil
+	}
+	p.next()
+	p.next()
+	f := p.peek()
+	if f.kind != tokWord || !fields[f.text] {
+		return nil, &Error{Pos: f.pos, Msg: "expected a field after ORDER BY"}
+	}
+	if isListField(f.text) {
+		return nil, &Error{Pos: f.pos, Msg: "cannot order by list field " + f.text}
+	}
+	p.next()
+	ord := &Order{Field: f.text, pos: f.pos}
+	if d := p.peek(); isKeyword(d, "asc") || isKeyword(d, "desc") {
+		ord.Desc = strings.EqualFold(d.text, "desc")
+		p.next()
+	}
+	return ord, nil
+}
 
 func (p *parser) parseOr() (Expr, error) {
 	left, err := p.parseAnd()
@@ -125,9 +218,9 @@ func (p *parser) parseAnd() (Expr, error) {
 	for {
 		t := p.peek()
 		if isKeyword(t, "AND") {
-			p.next() // explicit AND
+			p.next()
 		} else if !p.startsOperand(t) {
-			return left, nil // adjacency: another operand follows, or we stop
+			return left, nil
 		}
 		right, err := p.parseNot()
 		if err != nil {
@@ -137,15 +230,12 @@ func (p *parser) parseAnd() (Expr, error) {
 	}
 }
 
-// startsOperand reports whether t can begin another and-operand: a '(', a
-// string, or a word other than the OR/AND keywords (AND is consumed explicitly
-// by the caller; NOT legitimately begins a not_expr).
 func (p *parser) startsOperand(t token) bool {
 	switch t.kind {
 	case tokLParen, tokString:
 		return true
 	case tokWord:
-		return !isKeyword(t, "OR") && !isKeyword(t, "AND")
+		return !isKeyword(t, "OR") && !isKeyword(t, "AND") && !p.atOrderBy()
 	default:
 		return false
 	}
@@ -181,8 +271,18 @@ func (p *parser) parsePrimary() (Expr, error) {
 		if anyKeyword(t) {
 			return nil, &Error{Pos: t.pos, Msg: "unexpected keyword " + strings.ToUpper(t.text)}
 		}
-		if fields[t.text] && p.toks[p.i+1].isCmp() {
-			return p.parsePredicate()
+		if p.atOrderBy() {
+			return nil, &Error{Pos: t.pos, Msg: "expected an expression before ORDER BY"}
+		}
+		if fields[t.text] {
+			switch {
+			case p.peek2().isCmp():
+				return p.parsePredicate()
+			case isKeyword(p.peek2(), "IN") && p.toks[p.i+2].kind == tokLParen:
+				return p.parseIn()
+			case isKeyword(p.peek2(), "IS"):
+				return p.parseIsEmpty()
+			}
 		}
 		p.next()
 		return &termExpr{t.text}, nil
@@ -197,8 +297,9 @@ func (p *parser) parsePrimary() (Expr, error) {
 func (p *parser) parsePredicate() (Expr, error) {
 	field := p.next()
 	op := p.next()
-	if !isDateField(field.text) && op.kind != tokEq && op.kind != tokNe {
-		return nil, &Error{Pos: op.pos, Msg: "operator " + op.cmpText() + " is only valid on created/updated"}
+	if !allowsOrderedCmp(field.text) && op.kind != tokEq && op.kind != tokNe {
+		return nil, &Error{Pos: op.pos, Msg: "operator " + op.cmpText() + " is only valid on " +
+			"created/updated/due, estimate, and priority"}
 	}
 	val := p.peek()
 	if val.kind != tokWord && val.kind != tokString {
@@ -206,23 +307,83 @@ func (p *parser) parsePredicate() (Expr, error) {
 	}
 	p.next()
 	pred := &predExpr{field: field.text, op: op, value: val.text, valuePos: val.pos}
-	if isDateField(field.text) {
-		d, err := parseDate(val.text)
-		if err != nil {
-			return nil, &Error{Pos: val.pos, Msg: "invalid date " + quote(val.text)}
-		}
-		pred.date = d
+	if err := typeCheckValue(field.text, val, &pred.date, &pred.num); err != nil {
+		return nil, err
 	}
 	return pred, nil
 }
 
-// parseDate accepts a full RFC3339 timestamp or a bare YYYY-MM-DD date (taken
-// as midnight UTC). Comparisons operate on the resulting instant.
+func typeCheckValue(field string, val token, date *time.Time, num *float64) error {
+	if isDateField(field) {
+		d, err := parseDate(val.text)
+		if err != nil {
+			return &Error{Pos: val.pos, Msg: "invalid date " + quote(val.text)}
+		}
+		*date = d
+	}
+	if field == fieldEstimate {
+		n, err := strconv.ParseFloat(val.text, 64)
+		if err != nil {
+			return &Error{Pos: val.pos, Msg: "invalid number " + quote(val.text)}
+		}
+		*num = n
+	}
+	return nil
+}
+
+func (p *parser) parseIn() (Expr, error) {
+	field := p.next()
+	p.next()
+	p.next()
+	e := &inExpr{field: field.text, fieldPos: field.pos}
+	for {
+		val := p.peek()
+		if val.kind != tokWord && val.kind != tokString {
+			return nil, &Error{Pos: val.pos, Msg: "expected a value in IN (…)"}
+		}
+		p.next()
+		var date time.Time
+		var num float64
+		if err := typeCheckValue(field.text, val, &date, &num); err != nil {
+			return nil, err
+		}
+		e.values = append(e.values, val.text)
+		e.valuePos = append(e.valuePos, val.pos)
+		switch p.peek().kind {
+		case tokComma:
+			p.next()
+		case tokRParen:
+			p.next()
+			return e, nil
+		default:
+			return nil, &Error{Pos: p.peek().pos, Msg: "expected ',' or ')' in IN (…)"}
+		}
+	}
+}
+
+func (p *parser) parseIsEmpty() (Expr, error) {
+	field := p.next()
+	is := p.next()
+	e := &emptyExpr{field: field.text}
+	if isKeyword(p.peek(), "NOT") {
+		e.notEmpty = true
+		p.next()
+	}
+	if !isKeyword(p.peek(), "EMPTY") {
+		return nil, &Error{Pos: p.peek().pos, Msg: "expected EMPTY after IS"}
+	}
+	p.next()
+	if isAlwaysPresent(field.text) {
+		return nil, &Error{Pos: is.pos, Msg: "field " + field.text + " is never empty"}
+	}
+	return e, nil
+}
+
 func parseDate(s string) (time.Time, error) {
 	if t, err := time.Parse(time.RFC3339, s); err == nil {
 		return t, nil
 	}
-	return time.Parse("2006-01-02", s)
+	return time.Parse(time.DateOnly, s)
 }
 
 func describe(t token) string {
@@ -231,7 +392,7 @@ func describe(t token) string {
 		return "end of input"
 	case tokString:
 		return "string " + quote(t.text)
-	case tokLParen, tokRParen:
+	case tokLParen, tokRParen, tokComma:
 		return quote(t.text)
 	default:
 		if t.isCmp() {

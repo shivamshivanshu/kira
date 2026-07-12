@@ -1,0 +1,62 @@
+# Workflow enforcement (KIRA-6): require:/set: transition guards, the
+# resolution done-entry/exit lifecycle, and advisory WIP warnings
+# (docs/design/02-data-model.md §6; docs/design/04-cli.md move).
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'G' --no-edit
+exec kira move KIRA-1 IN_PROGRESS
+exec kira move KIRA-1 REVIEW
+
+# REVIEW -> DONE carries require: [resolution] in the default config
+! exec kira move KIRA-1 DONE
+stderr 'requires resolution'
+exec kira show KIRA-1 --json
+stdout '"state": "REVIEW"'
+
+# --resolution satisfies the guard and outranks the transition's set:
+exec kira move KIRA-1 DONE --resolution duplicate
+exec kira show KIRA-1 --json
+stdout '"resolution": "duplicate"'
+
+# leaving done-category clears resolution (forced reopen)
+exec kira move KIRA-1 TODO --force
+exec kira show KIRA-1 --json
+stdout '"resolution": null'
+
+# a tagged done state defaults the field when nothing else sets it
+exec kira move KIRA-1 WONT_DO
+exec kira show KIRA-1 --json
+stdout '"resolution": "dropped"'
+
+# --force bypasses the require guard with a warning; set: still stamps
+exec kira create ticket --title 'F' --no-edit
+exec kira move KIRA-2 IN_PROGRESS
+exec kira move KIRA-2 REVIEW
+exec kira move KIRA-2 DONE --force
+stderr 'forced past require guard: resolution not set'
+exec kira show KIRA-2 --json
+stdout '"resolution": "done"'
+
+# WIP is advisory: REVIEW has wip: 2 in the default config. At the limit the
+# move is silent; over it, the warning hits stderr and the additive --json
+# warnings array, and the move still proceeds.
+exec kira create ticket --title 'W1' --no-edit
+exec kira create ticket --title 'W2' --no-edit
+exec kira create ticket --title 'W3' --no-edit
+exec kira move KIRA-3 IN_PROGRESS
+exec kira move KIRA-3 REVIEW
+exec kira move KIRA-4 IN_PROGRESS
+exec kira move KIRA-4 REVIEW --json
+! stdout 'warnings'
+exec kira move KIRA-5 IN_PROGRESS
+exec kira move KIRA-5 REVIEW --json
+stderr 'REVIEW is over its WIP limit \(3 > 2\)'
+stdout '"warnings": \['
+stdout '"REVIEW is over its WIP limit \(3 > 2\)"'
+exec kira show KIRA-5 --json
+stdout '"state": "REVIEW"'

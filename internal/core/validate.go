@@ -9,10 +9,34 @@ import (
 	"github.com/shivamshivanshu/kira/internal/item"
 )
 
-// stateInWorkflow reports whether key names a state in wf. It is the one home of
-// the state-existence rule, shared by validateItem and the move adjacency check.
-func stateInWorkflow(wf config.Workflow, key string) bool {
-	return slices.ContainsFunc(wf.States, func(s config.State) bool { return s.Key == key })
+// stateIn returns the definition of state key within wf — the one home of the
+// state-existence rule, shared by validateItem and move (which reads the
+// state's Category, Wip, and Resolution tag).
+func stateIn(wf config.Workflow, key string) (config.State, bool) {
+	for _, st := range wf.States {
+		if st.Key == key {
+			return st, true
+		}
+	}
+	return config.State{}, false
+}
+
+// matchedTransition returns the configured from -> to edge, or nil when the
+// move is off-graph — the one home of the adjacency rule over both transition
+// forms (bare target and guard map). The returned edge carries the require:/set:
+// guards move enforces (docs/design/02-data-model.md §6).
+func matchedTransition(wf config.Workflow, from, to string) *config.Transition {
+	for i, t := range wf.Transitions[from] {
+		if t.To == to {
+			return &wf.Transitions[from][i]
+		}
+	}
+	return nil
+}
+
+// transitionAllowed reports whether to is reachable from from in one move.
+func transitionAllowed(wf config.Workflow, from, to string) bool {
+	return matchedTransition(wf, from, to) != nil
 }
 
 // categoryOf returns the configured category of a state within an item type's
@@ -23,12 +47,45 @@ func categoryOf(cfg *config.Config, typ, state string) (config.Category, bool) {
 	if !ok {
 		return "", false
 	}
-	for _, st := range wf.States {
-		if st.Key == state {
-			return st.Category, true
-		}
+	st, ok := stateIn(wf, state)
+	return st.Category, ok
+}
+
+// fieldPresent reports whether a require:-guarded frontmatter field is set on
+// the candidate item: non-nil and non-empty for scalars, non-empty for lists
+// (docs/design/02-data-model.md §6). The field name is one of
+// item.MutableFields — config validation guarantees a guard can name nothing
+// else — so the default arm is unreachable.
+func fieldPresent(it *item.Item, field string) bool {
+	set := func(p *string) bool { return p != nil && *p != "" }
+	switch field {
+	case "title":
+		return it.Title != ""
+	case "subtype":
+		return set(it.Subtype)
+	case "resolution":
+		return set(it.Resolution)
+	case "priority":
+		return set(it.Priority)
+	case "rank":
+		return set(it.Rank)
+	case "owner":
+		return set(it.Owner)
+	case "reporter":
+		return set(it.Reporter)
+	case "labels":
+		return len(it.Labels) > 0
+	case "epic":
+		return set(it.Epic)
+	case "sprint":
+		return set(it.Sprint)
+	case "due":
+		return set(it.Due)
+	case "estimate":
+		return it.Estimate != nil
+	default:
+		return false
 	}
-	return "", false
 }
 
 // validateItem checks a fully-assembled item against config: type, state, epic
@@ -45,7 +102,7 @@ func validateItem(cfg *config.Config, it *item.Item, force bool) (errs, warns []
 	}
 
 	if wf, ok := cfg.Workflows[it.Type]; ok {
-		if !stateInWorkflow(wf, it.State) {
+		if _, defined := stateIn(wf, it.State); !defined {
 			errs = append(errs, fmt.Errorf("field %q: %q is not a state in the %s workflow", "state", it.State, it.Type))
 		}
 	}
@@ -70,6 +127,29 @@ func validateItem(cfg *config.Config, it *item.Item, force bool) (errs, warns []
 	for _, l := range it.Labels {
 		vocabCheck("label", l, cfg.Labels)
 	}
+
+	// The enum-ish scalars validate against their config list (VocabFor is the
+	// one home of the field→list mapping) only when the list is non-empty
+	// (empty = free-form), mirroring the labels strict/warn convention —
+	// labels.strict governs (docs/design/02-data-model.md §10).
+	enumCheck := func(field string, value *string) {
+		if known, _ := cfg.VocabFor(field); value != nil && len(known) > 0 {
+			vocabCheck(field, *value, config.Vocab{Known: known, Strict: cfg.Labels.Strict})
+		}
+	}
+	enumCheck("priority", it.Priority)
+	enumCheck("subtype", it.Subtype)
+	enumCheck("resolution", it.Resolution)
+
+	if it.Rank != nil && *it.Rank == "" {
+		errs = append(errs, fmt.Errorf("field %q: must be a non-empty string when present", "rank"))
+	}
+	if it.Sprint != nil && !cfg.HasSprint(*it.Sprint) {
+		errs = append(errs, fmt.Errorf("field %q: %q is not a key in the configured sprints", "sprint", *it.Sprint))
+	}
+	if it.Due != nil && !item.ValidDate(*it.Due) {
+		errs = append(errs, fmt.Errorf("field %q: invalid RFC3339 date %q", "due", *it.Due))
+	}
 	return errs, warns
 }
 
@@ -82,24 +162,45 @@ func validateAssembled(cfg *config.Config, it *item.Item, resolver *id.Resolver,
 	return append(hard, v...), w
 }
 
-// normalizeRefs rewrites the epic and blocked_by cross-references to canonical
-// ULIDs (a hand-typed KIRA-n is resolved to the underlying ULID), so
+// normalizeRefs rewrites the epic, blocked_by, and links cross-references to
+// canonical ULIDs (a hand-typed KIRA-n is resolved to the underlying ULID), so
 // cross-references never persist as display numbers
-// (docs/design/02-data-model.md §7). An unresolvable reference is a hard error.
+// (docs/design/02-data-model.md §7). An unresolvable reference is a hard error,
+// as is any reference pointing back at the item itself — checked here, the one
+// gate every write path (link, edit --from-file, $EDITOR) funnels through,
+// rather than in kira link alone.
 func normalizeRefs(it *item.Item, resolver *id.Resolver) []error {
 	var errs []error
+	// resolve maps one reference to its canonical ULID, rejecting a self-link;
+	// label names the field (and link type) in errors.
+	resolve := func(label, ref string) (string, bool) {
+		ulid, err := resolver.Resolve(ref)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %v", label, err))
+			return "", false
+		}
+		if ulid == it.ID {
+			errs = append(errs, fmt.Errorf("%s: an item cannot link to itself", label))
+			return "", false
+		}
+		return ulid, true
+	}
+
 	if it.Epic != nil {
-		if ulid, err := resolver.Resolve(*it.Epic); err == nil {
+		if ulid, ok := resolve(`field "epic"`, *it.Epic); ok {
 			it.Epic = &ulid
-		} else {
-			errs = append(errs, fmt.Errorf("field %q: %v", "epic", err))
 		}
 	}
 	for i, b := range it.BlockedBy {
-		if ulid, err := resolver.Resolve(b); err == nil {
+		if ulid, ok := resolve(`field "blocked_by"`, b); ok {
 			it.BlockedBy[i] = ulid
-		} else {
-			errs = append(errs, fmt.Errorf("field %q: %v", "blocked_by", err))
+		}
+	}
+	for typ, targets := range it.Links {
+		for i, ref := range targets {
+			if ulid, ok := resolve(fmt.Sprintf("field %q: %s", "links", typ), ref); ok {
+				targets[i] = ulid
+			}
 		}
 	}
 	return errs

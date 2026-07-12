@@ -1,0 +1,10 @@
+{
+  "id": "<ULID-1>",
+  "number": "KIRA-3",
+  "from": "IN_PROGRESS",
+  "to": "REVIEW",
+  "activated": false,
+  "warnings": [
+    "REVIEW is over its WIP limit (3 > 2)"
+  ]
+}

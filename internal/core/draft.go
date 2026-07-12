@@ -18,11 +18,15 @@ import (
 type draft struct {
 	Title    string   `yaml:"title"`
 	Type     string   `yaml:"type"`
+	Subtype  *string  `yaml:"subtype"`
 	Priority *string  `yaml:"priority"`
+	Rank     *string  `yaml:"rank"`
 	Owner    *string  `yaml:"owner"`
 	Reporter *string  `yaml:"reporter"`
 	Labels   []string `yaml:"labels"`
 	Epic     *string  `yaml:"epic"`
+	Sprint   *string  `yaml:"sprint"`
+	Due      *string  `yaml:"due"`
 	Estimate *float64 `yaml:"estimate"`
 
 	Body string `yaml:"-"`
@@ -50,11 +54,15 @@ func serializeDraft(d draft) string {
 	b.WriteString(item.FenceLine)
 	b.WriteString("title: " + draftScalar(d.Title) + "\n")
 	b.WriteString("type: " + draftScalar(d.Type) + "\n")
+	b.WriteString("subtype: " + draftScalarPtr(d.Subtype) + "\n")
 	b.WriteString("priority: " + draftScalarPtr(d.Priority) + "\n")
+	b.WriteString("rank: " + draftScalarPtr(d.Rank) + "\n")
 	b.WriteString("owner: " + draftScalarPtr(d.Owner) + "\n")
 	b.WriteString("reporter: " + draftScalarPtr(d.Reporter) + "\n")
 	b.WriteString("labels: " + item.EmitList(d.Labels) + "\n")
 	b.WriteString("epic: " + draftScalarPtr(d.Epic) + "\n")
+	b.WriteString("sprint: " + draftScalarPtr(d.Sprint) + "\n")
+	b.WriteString("due: " + draftScalarPtr(d.Due) + "\n")
 	estimate := ""
 	if d.Estimate != nil {
 		estimate = item.EmitFloat(*d.Estimate)

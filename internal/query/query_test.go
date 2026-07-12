@@ -10,12 +10,14 @@ import (
 	"github.com/shivamshivanshu/kira/internal/item"
 )
 
-func strp(s string) *string { return &s }
+func strp(s string) *string   { return &s }
+func f64p(f float64) *float64 { return &f }
 
-// fixture builds a small item set plus a resolver over it. The epic KIRA-100 is
-// the parent of KIRA-1. ULIDs are minted so the resolver's number/prefix rules
-// are exercised realistically.
-func fixture() (items []*item.Item, resolver *id.Resolver, cfg *config.Config) {
+// fixture builds a small item set plus compile options over it. The epic
+// KIRA-100 is the parent of KIRA-1. ULIDs are minted so the resolver's
+// number/prefix rules are exercised realistically. KIRA-1 carries every M1.5
+// field; KIRA-2 and KIRA-3 cover the partial and legacy shapes.
+func fixture() (items []*item.Item, opts Options, cfg *config.Config) {
 	cfg = config.Default()
 	epicID := id.Mint().String()
 	it1ID := id.Mint().String()
@@ -30,17 +32,23 @@ func fixture() (items []*item.Item, resolver *id.Resolver, cfg *config.Config) {
 		ID: it1ID, Number: "KIRA-1", Type: item.TypeTicket, Title: "Fix race in snapshot",
 		State: "IN_PROGRESS", Owner: strp("shivam"), Priority: strp("P1"),
 		Labels: []string{"bug"}, Epic: strp(epicID),
+		Subtype: strp("bug"), Rank: strp("aam"), Sprint: strp("2026-S14"),
+		Due: strp("2026-07-20"), Estimate: f64p(3),
+		BlockedBy: []string{it2ID}, Links: map[string][]string{item.LinkRelates: {it3ID}},
 		Created: "2026-07-05T00:00:00Z", Updated: "2026-07-06T00:00:00Z",
 	}
 	it2 := &item.Item{
 		ID: it2ID, Number: "KIRA-2", Type: item.TypeTicket, Title: "Perf tuning",
 		State: "TODO", Owner: strp("alice"), Labels: []string{"perf"},
-		Created: "2026-07-10T00:00:00Z", Updated: "2026-07-10T00:00:00Z",
+		Priority: strp("P0"), Due: strp("2026-07-01"), Estimate: f64p(5),
+		Reporter: strp("shivam"),
+		Created:  "2026-07-10T00:00:00Z", Updated: "2026-07-10T00:00:00Z",
 	}
 	it3 := &item.Item{
 		ID: it3ID, Number: "KIRA-3", Type: item.TypeTicket, Title: "Done thing",
 		State: "DONE", Owner: strp("shivam"), Labels: []string{"bug", "perf"},
-		Created: "2026-06-01T00:00:00Z", Updated: "2026-06-02T00:00:00Z",
+		Resolution: strp("done"),
+		Created:    "2026-06-01T00:00:00Z", Updated: "2026-06-02T00:00:00Z",
 	}
 	items = []*item.Item{epic, it1, it2, it3}
 
@@ -48,19 +56,19 @@ func fixture() (items []*item.Item, resolver *id.Resolver, cfg *config.Config) {
 	for _, it := range items {
 		snap.Items = append(snap.Items, id.Item{ULID: it.ID, Number: it.Number, Aliases: it.Aliases})
 	}
-	return items, id.NewResolver(snap), cfg
+	opts = Options{Resolver: id.NewResolver(snap), Priorities: cfg.Priorities}
+	return items, opts, cfg
 }
 
-// matchNums compiles expr and returns the display numbers it matches, sorted.
-func matchNums(t *testing.T, expr string, items []*item.Item, r *id.Resolver, cfg *config.Config) []string {
+func matchNums(t *testing.T, expr string, items []*item.Item, opts Options, cfg *config.Config) []string {
 	t.Helper()
-	pred, err := Compile(expr, r)
+	c, err := Compile(expr, opts)
 	if err != nil {
 		t.Fatalf("Compile(%q): %v", expr, err)
 	}
 	var out []string
 	for _, it := range items {
-		if pred(it, cfg) {
+		if c.Pred(it, cfg) {
 			out = append(out, it.Number)
 		}
 	}
@@ -69,7 +77,7 @@ func matchNums(t *testing.T, expr string, items []*item.Item, r *id.Resolver, cf
 }
 
 func TestEval(t *testing.T) {
-	items, r, cfg := fixture()
+	items, opts, cfg := fixture()
 	tests := []struct {
 		expr string
 		want []string
@@ -78,6 +86,7 @@ func TestEval(t *testing.T) {
 		{"state!=IN_PROGRESS", []string{"KIRA-100", "KIRA-2", "KIRA-3"}},
 		{"owner=shivam", []string{"KIRA-1", "KIRA-3"}},
 		{"owner!=shivam", []string{"KIRA-100", "KIRA-2"}}, // epic owner is nil -> ""
+		{"reporter=shivam", []string{"KIRA-2"}},
 		{"label=bug", []string{"KIRA-1", "KIRA-3"}},
 		{"label=perf", []string{"KIRA-2", "KIRA-3"}},
 		{"label=bug AND label=perf", []string{"KIRA-3"}},
@@ -86,13 +95,56 @@ func TestEval(t *testing.T) {
 		{"category=done", []string{"KIRA-3"}},
 		{"type=epic", []string{"KIRA-100"}},
 		{"type=ticket", []string{"KIRA-1", "KIRA-2", "KIRA-3"}},
+		{"subtype=bug", []string{"KIRA-1"}},
+		{"resolution=done", []string{"KIRA-3"}},
 		{"priority=P1", []string{"KIRA-1"}},
+		{"rank=aam", []string{"KIRA-1"}},
+		{"sprint=2026-S14", []string{"KIRA-1"}},
 		{"epic=KIRA-100", []string{"KIRA-1"}},
 		{"NOT epic=KIRA-100", []string{"KIRA-100", "KIRA-2", "KIRA-3"}},
 		{"created>2026-06-15", []string{"KIRA-1", "KIRA-100", "KIRA-2"}},
 		{"created<2026-07-01", []string{"KIRA-3"}},
 		{"created>=2026-07-01", []string{"KIRA-1", "KIRA-100", "KIRA-2"}},
 		{"updated<=2026-07-01", []string{"KIRA-100", "KIRA-3"}},
+		// due: date compare over a nullable field; absent never matches
+		{"due<2026-07-10", []string{"KIRA-2"}},
+		{"due>=2026-07-20", []string{"KIRA-1"}},
+		{"due=2026-07-01", []string{"KIRA-2"}},
+		{"due!=2026-07-01", []string{"KIRA-1"}},
+		// estimate: numeric compare; absent never matches
+		{"estimate>3", []string{"KIRA-2"}},
+		{"estimate<=3", []string{"KIRA-1"}},
+		{"estimate=5", []string{"KIRA-2"}},
+		// ranked priority compare (config P0>P1>P2>P3): <= means
+		// higher-or-equal urgency; unprioritized items never match
+		{"priority<=P1", []string{"KIRA-1", "KIRA-2"}},
+		{"priority<P1", []string{"KIRA-2"}},
+		{"priority>=P1", []string{"KIRA-1"}},
+		{"priority>P0", []string{"KIRA-1"}},
+		{"priority>P1", nil},
+		// IN membership: scalar OR-chain, list contains-any, refs resolved
+		{"priority IN (P0,P1)", []string{"KIRA-1", "KIRA-2"}},
+		{"owner IN (alice, bob)", []string{"KIRA-2"}},
+		{"label IN (perf, missing)", []string{"KIRA-2", "KIRA-3"}},
+		{"epic IN (KIRA-100)", []string{"KIRA-1"}},
+		{"NOT priority IN (P0,P1)", []string{"KIRA-100", "KIRA-3"}},
+		// IS EMPTY / IS NOT EMPTY: null scalars and zero-length collections
+		{"owner IS EMPTY", []string{"KIRA-100"}},
+		{"owner IS NOT EMPTY", []string{"KIRA-1", "KIRA-2", "KIRA-3"}},
+		{"rank IS EMPTY", []string{"KIRA-100", "KIRA-2", "KIRA-3"}},
+		{"rank IS NOT EMPTY", []string{"KIRA-1"}},
+		{"resolution IS NOT EMPTY", []string{"KIRA-3"}},
+		{"sprint IS EMPTY", []string{"KIRA-100", "KIRA-2", "KIRA-3"}},
+		{"due IS EMPTY", []string{"KIRA-100", "KIRA-3"}},
+		{"estimate IS EMPTY", []string{"KIRA-100", "KIRA-3"}},
+		{"epic IS EMPTY", []string{"KIRA-100", "KIRA-2", "KIRA-3"}},
+		{"label IS EMPTY", []string{"KIRA-100"}},
+		{"blocked_by IS NOT EMPTY", []string{"KIRA-1"}},
+		{"links IS EMPTY", []string{"KIRA-100", "KIRA-2", "KIRA-3"}},
+		{"links IS NOT EMPTY", []string{"KIRA-1"}},
+		// cross-reference equality resolves refs like epic does
+		{"blocked_by=KIRA-2", []string{"KIRA-1"}},
+		{"links=KIRA-3", []string{"KIRA-1"}},
 		{"race", []string{"KIRA-1"}},       // title substring
 		{"RACE", []string{"KIRA-1"}},       // case-insensitive term
 		{`"fix race"`, []string{"KIRA-1"}}, // quoted multi-word term
@@ -100,33 +152,86 @@ func TestEval(t *testing.T) {
 		{"owner=alice OR label=bug", []string{"KIRA-1", "KIRA-2", "KIRA-3"}},
 		{"category=doing AND NOT owner=alice", []string{"KIRA-1", "KIRA-100"}},
 		{"epic=KIRA-100 AND created>2026-07-01", []string{"KIRA-1"}},
+		{"priority IN (P0,P1) AND label=bug", []string{"KIRA-1"}},
 	}
 	for _, tc := range tests {
-		got := matchNums(t, tc.expr, items, r, cfg)
+		got := matchNums(t, tc.expr, items, opts, cfg)
 		if strings.Join(got, ",") != strings.Join(tc.want, ",") {
 			t.Errorf("%q matched %v, want %v", tc.expr, got, tc.want)
 		}
 	}
 }
 
-// TestCompileEpicUnresolved reports a positioned error when an epic value
-// resolves to no item.
-func TestCompileEpicUnresolved(t *testing.T) {
-	_, r, _ := fixture()
-	_, err := Compile("epic=KIRA-999", r)
-	qe, ok := err.(*Error)
-	if !ok {
-		t.Fatalf("err = %v, want *Error", err)
+func TestEvalSprintActive(t *testing.T) {
+	items, opts, cfg := fixture()
+
+	opts.ActiveSprint = "2026-S14"
+	for _, expr := range []string{"sprint=active", "sprint IN (active, 2026-S99)"} {
+		if got := matchNums(t, expr, items, opts, cfg); strings.Join(got, ",") != "KIRA-1" {
+			t.Errorf("%q with active sprint matched %v, want [KIRA-1]", expr, got)
+		}
 	}
-	if qe.Pos != len("epic=") {
-		t.Errorf("pos = %d, want %d", qe.Pos, len("epic="))
+	c, err := Compile("sprint=active", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Notes) != 0 {
+		t.Errorf("notes with an active sprint = %v, want none", c.Notes)
+	}
+
+	opts.ActiveSprint = ""
+	if got := matchNums(t, "sprint=active", items, opts, cfg); got != nil {
+		t.Errorf("sprint=active with no active sprint matched %v, want none", got)
+	}
+	// != of a nonexistent sprint matches everything.
+	if got := matchNums(t, "sprint!=active", items, opts, cfg); len(got) != len(items) {
+		t.Errorf("sprint!=active with no active sprint matched %v, want all", got)
+	}
+	c, err = Compile("sprint=active", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Notes) != 1 || c.Notes[0] != NoActiveSprintNote {
+		t.Errorf("notes = %v, want the no-active-sprint note once", c.Notes)
 	}
 }
 
-// TestMatch builds single-field predicates the way the flat CLI filters do.
+func TestCompileErrors(t *testing.T) {
+	_, opts, _ := fixture()
+	noPrio := opts
+	noPrio.Priorities = nil
+	tests := []struct {
+		name string
+		expr string
+		opts Options
+		pos  int
+	}{
+		{"unresolved epic", "epic=KIRA-999", opts, 5},
+		{"unresolved blocked_by", "blocked_by=KIRA-999", opts, 11},
+		{"unresolved links in IN", "links IN (KIRA-999)", opts, 10},
+		{"ranked compare needs priorities", "priority<=P1", noPrio, 8},
+		{"unknown priority literal", "priority<=P9", opts, 10},
+		{"order by priority needs priorities", "a ORDER BY priority", noPrio, 11},
+	}
+	for _, tc := range tests {
+		_, err := Compile(tc.expr, tc.opts)
+		qe, ok := err.(*Error)
+		if !ok {
+			t.Fatalf("%s: Compile(%q) err = %v, want *Error", tc.name, tc.expr, err)
+		}
+		if qe.Pos != tc.pos {
+			t.Errorf("%s: pos = %d, want %d (%s)", tc.name, qe.Pos, tc.pos, qe.Msg)
+		}
+	}
+	// Equality on priority stays legal without a vocabulary.
+	if _, err := Compile("priority=P1", noPrio); err != nil {
+		t.Errorf("priority=P1 without priorities: %v", err)
+	}
+}
+
 func TestMatch(t *testing.T) {
-	items, r, cfg := fixture()
-	pred, err := Match("owner", "shivam", r)
+	items, opts, cfg := fixture()
+	pred, err := Match("owner", "shivam", opts)
 	if err != nil {
 		t.Fatalf("Match: %v", err)
 	}
@@ -139,12 +244,25 @@ func TestMatch(t *testing.T) {
 	if n != 2 {
 		t.Errorf("Match owner=shivam matched %d, want 2", n)
 	}
-	// epic value is resolved through the same engine.
-	if _, err := Match("epic", "KIRA-100", r); err != nil {
+	if _, err := Match("epic", "KIRA-100", opts); err != nil {
 		t.Errorf("Match epic=KIRA-100: %v", err)
 	}
-	// date fields are ordering-only, not equality filters.
-	if _, err := Match("created", "2026-01-01", r); err == nil {
+	active := opts
+	active.ActiveSprint = "2026-S14"
+	pred, err = Match("sprint", "active", active)
+	if err != nil {
+		t.Fatalf("Match sprint=active: %v", err)
+	}
+	n = 0
+	for _, it := range items {
+		if pred(it, cfg) {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("Match sprint=active matched %d, want 1", n)
+	}
+	if _, err := Match("created", "2026-01-01", opts); err == nil {
 		t.Errorf("Match on a date field should be rejected")
 	}
 }

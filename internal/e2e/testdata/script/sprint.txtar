@@ -1,0 +1,148 @@
+# sprint create appends to config comment-preservingly and commits; list marks
+# the active sprint and counts items; activate writes the git-ignored pointer;
+# close reports spillover and --move-to reassigns it one commit per item
+# (docs/design/04-cli.md `kira sprint`).
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+mkdir proj
+cd proj
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# create appends to the scaffolded empty list; the whole config, comments
+# included, must match the golden byte for byte
+exec kira sprint create --key 2026-S14 --name 'Sprint 14' --start 2026-07-13 --end 2026-07-26 --json
+stdout '"created": true'
+stdout '"key": "2026-S14"'
+exec kira sprint create --key 2026-S15 --name 'Sprint 15' --start 2026-07-27 --end 2026-08-09
+cmp .kira/config.yaml ../expected-config.yaml
+exec git log --oneline
+stdout 'kira: sprint create 2026-S15'
+stdout 'kira: sprint create 2026-S14'
+
+# duplicate keys and inverted windows are rejected
+! exec kira sprint create --key 2026-S14 --name X --start 2026-01-01 --end 2026-01-02
+stderr 'duplicate key'
+! exec kira sprint create --key 2026-S16 --name X --start 2026-02-01 --end 2026-01-02
+stderr 'not before end'
+
+# list counts assigned items per sprint
+exec kira create ticket --title 'T1' --no-edit --sprint 2026-S14 --estimate 3
+exec kira create ticket --title 'T2' --no-edit --sprint 2026-S14 --estimate 5
+exec kira sprint list --json
+stdout '"key": "2026-S14"'
+stdout '"total": 2'
+stdout '"active": false'
+
+# activate writes the git-ignored local pointer and reports the previous one
+exec kira sprint activate 2026-S14 --json
+stdout '"activated": "2026-S14"'
+exists .kira/.cache/active-sprint
+grep '2026-S14' .kira/.cache/active-sprint
+exec kira sprint activate 2026-S15 --json
+stdout '"previous": "2026-S14"'
+exec kira sprint activate 2026-S14
+! exec kira sprint activate 2099-S1
+stderr 'not a key in the configured sprints'
+
+# a done-category item is finished; the rest is spillover
+exec kira move KIRA-1 WONT_DO --resolution dropped
+exec kira sprint close 2026-S14 --json
+stdout '"closed": "2026-S14"'
+stdout '"KIRA-2"'
+stdout '"was_active": true'
+! stdout 'KIRA-1'
+! stdout '"moved_to"'
+! exists .kira/.cache/active-sprint
+
+# --move-to reassigns each unfinished item through the audited edit pipeline
+exec kira sprint activate 2026-S14
+exec kira sprint close 2026-S14 --move-to 2026-S15 --json
+stdout '"moved_to": "2026-S15"'
+stdout '"was_active": true'
+exec kira show KIRA-2 --json
+stdout '"sprint": "2026-S15"'
+exec git log --oneline
+stdout 'kira: KIRA-2 sprint 2026-S14 -> 2026-S15'
+! exists .kira/.cache/active-sprint
+
+# after the move nothing is left in the closed sprint
+exec kira sprint list --json
+stdout '"total": 1'
+
+-- expected-config.yaml --
+version: 1
+
+project:
+  key: KIRA
+  name: proj
+
+id:
+  style: sequential          # sequential (default, reconciled post-merge) | hash (ULID-derived, zero reconciliation)
+
+workflows:
+  ticket:
+    states:
+      - { key: TODO,        category: todo }
+      - { key: IN_PROGRESS, category: doing, wip: 3 }   # advisory column cap (0/absent = unlimited)
+      - { key: REVIEW,      category: doing, wip: 2 }
+      - { key: DONE,        category: done }
+      - { key: WONT_DO,     category: done, resolution: dropped }
+    initial: TODO
+    transitions:
+      TODO:        [IN_PROGRESS, WONT_DO]
+      IN_PROGRESS: [REVIEW, TODO, WONT_DO]
+      REVIEW:                                            # bare strings and guard maps may mix
+        - { to: DONE, require: [resolution], set: { resolution: done } }
+        - IN_PROGRESS
+      DONE:        []
+      WONT_DO:     []
+    enforce_transitions: true
+  epic:
+    states:
+      - { key: PLANNED, category: todo }
+      - { key: ACTIVE,  category: doing }
+      - { key: DONE,    category: done }
+    initial: PLANNED
+    transitions:
+      PLANNED: [ACTIVE]
+      ACTIVE:  [DONE]
+      DONE:    []
+
+labels:
+  known: []                   # add project labels; strict rejects unknown ones (--force overrides)
+  strict: false
+
+people:
+  known: []
+  strict: false
+
+priorities: [P0, P1, P2, P3]  # ordered high→low: validates priority, defines ranked sort
+                              # and >/< query compare; [] = free-form (equality-only)
+subtypes:    [bug, story, task, spike]   # validates subtype; [] = free-form
+resolutions: [done, dropped, duplicate, cannot-reproduce]  # validates resolution; [] = free-form
+
+filters: {}                   # named saved queries -> kira list --filter <name>
+
+sprints:                    # sprint entities (kira sprint create); item sprint keys into this
+  - { key: 2026-S14, name: Sprint 14, start: "2026-07-13", end: "2026-07-26" }
+  - { key: 2026-S15, name: Sprint 15, start: "2026-07-27", end: "2026-08-09" }
+
+commit:
+  mode: auto                  # auto | manual | prompt
+  trailer: Kira-Ticket
+
+merge:
+  policy: auto                # auto | manual
+
+sync:
+  push: false
+
+ui:
+  icons: auto                 # auto | always | never
+
+estimate:
+  unit: points                # points | hours

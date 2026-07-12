@@ -47,14 +47,20 @@ func Parse(content string) (*Item, error) {
 	if it.Type != "" && !ValidType(it.Type) {
 		add("field %q: must be %s or %s, got %q", keyType, TypeTicket, TypeEpic, it.Type)
 	}
+	it.Subtype = optScalar(nodes, keySubtype, add)
 	it.Title = reqScalar(nodes, keyTitle, add)
 	it.State = reqScalar(nodes, keyState, add)
+	it.Resolution = optScalar(nodes, keyResolution, add)
 	it.Priority = optScalar(nodes, keyPriority, add)
+	it.Rank = optScalar(nodes, keyRank, add)
 	it.Owner = optScalar(nodes, keyOwner, add)
 	it.Reporter = optScalar(nodes, keyReporter, add)
 	it.Labels = reqList(nodes, keyLabels, add)
 	it.Epic = nullableScalar(nodes, keyEpic, add)
 	it.BlockedBy = reqList(nodes, keyBlockedBy, add)
+	it.Links = optLinks(nodes, keyLinks, add)
+	it.Sprint = optScalar(nodes, keySprint, add)
+	it.Due = optScalar(nodes, keyDue, add) // shape-only; the date format is a §10 write-time check
 	it.Estimate = optFloat(nodes, keyEstimate, add)
 	it.Created = reqTimestamp(nodes, keyCreated, add)
 	it.Updated = reqTimestamp(nodes, keyUpdated, add)
@@ -181,15 +187,61 @@ func reqList(nodes map[string]*yaml.Node, key string, add addFunc) []string {
 		add("field %q: expected a list", key)
 		return []string{}
 	}
+	return scalarSeq(n, fmt.Sprintf("field %q", key), add)
+}
+
+// scalarSeq reads a sequence node's scalar elements, reporting non-scalar
+// entries under label. Shared by the plain list fields and the per-type link
+// lists.
+func scalarSeq(n *yaml.Node, label string, add addFunc) []string {
 	out := make([]string, 0, len(n.Content))
 	for _, c := range n.Content {
 		if c.Kind != yaml.ScalarNode {
-			add("field %q: list elements must be scalars", key)
+			add("%s: list elements must be scalars", label)
 			continue
 		}
 		out = append(out, c.Value)
 	}
 	return out
+}
+
+// optLinks reads the typed-links map: link type → target list. Only known v1
+// link types are accepted; empty lists are dropped (canonically identical to an
+// absent type), and a map left with no entries yields nil, matching the writer,
+// which omits the key entirely.
+func optLinks(nodes map[string]*yaml.Node, key string, add addFunc) map[string][]string {
+	n, ok := nodes[key]
+	if !ok || isNull(n) {
+		return nil
+	}
+	if n.Kind != yaml.MappingNode {
+		add("field %q: expected a map of link type to id list", key)
+		return nil
+	}
+	var links map[string][]string
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		typ, val := n.Content[i].Value, n.Content[i+1]
+		if !ValidLinkType(typ) {
+			add("field %q: unknown link type %q (want one of %v)", key, typ, LinkTypes)
+			continue
+		}
+		if isNull(val) {
+			continue
+		}
+		if val.Kind != yaml.SequenceNode {
+			add("field %q: %s: expected a list", key, typ)
+			continue
+		}
+		targets := scalarSeq(val, fmt.Sprintf("field %q: %s", key, typ), add)
+		if len(targets) == 0 {
+			continue
+		}
+		if links == nil {
+			links = make(map[string][]string, len(LinkTypes))
+		}
+		links[typ] = targets
+	}
+	return links
 }
 
 func optFloat(nodes map[string]*yaml.Node, key string, add addFunc) *float64 {

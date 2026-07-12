@@ -2,6 +2,7 @@ package core
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/id"
@@ -9,114 +10,194 @@ import (
 	"github.com/shivamshivanshu/kira/internal/query"
 )
 
-// ListOpts are the list/query filters (docs/design/04-cli.md list, query). The
-// flat filters (empty = inactive) and Query are ANDed together. Tree requests
-// the epic grouping (list --tree / query's default render).
 type ListOpts struct {
 	Type     string
 	State    string
 	Category string
 	Owner    string
 	Label    string
-	Epic     string // ULID or number, resolved via the query engine
-	Query    string // query-grammar expression, ANDed with the flat filters
-	Tree     bool   // group results by epic
+	Epic     string
+	Priority string
+	Sprint   string
+	Filter   string
+	Query    string
+	Tree     bool
 }
 
-// List scans every ticket file, applies the flat filters and any query
-// expression (ANDed), and returns rows sorted by display number ascending, ties
-// broken by ULID (docs/design/04-cli.md §7). When opts.Tree is set the result
-// also carries the epic grouping.
 func (s *Store) List(cfg *config.Config, opts ListOpts) (*ListResult, error) {
 	items, _, resolver, err := s.load(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	pred, err := opts.predicate(resolver)
+	qopts := query.Options{
+		Resolver:     resolver,
+		Priorities:   cfg.Priorities,
+		ActiveSprint: s.ActiveSprintKey(),
+	}
+	pred, order, notes, err := opts.compile(cfg, qopts)
 	if err != nil {
 		return nil, userErr("%v", err)
 	}
 
-	rows := make([]ListItem, 0, len(items))
+	matched := make([]*item.Item, 0, len(items))
 	for _, it := range items {
 		if pred != nil && !pred(it, cfg) {
 			continue
 		}
-		rows = append(rows, listItemOf(cfg, it))
+		matched = append(matched, it)
 	}
-	sortRows(rows)
+	sortMatched(cfg, matched, order)
 
-	res := &ListResult{Items: rows, Count: len(rows)}
+	rows := make([]ListItem, len(matched))
+	for i, it := range matched {
+		rows[i] = listItemOf(cfg, it)
+	}
+	res := &ListResult{Items: rows, Count: len(rows), StderrNotes: notes}
 	if opts.Tree {
 		res.Tree = groupByEpic(rows, items)
 	}
 	return res, nil
 }
 
-// predicate lowers every active filter — the flat flags and the query
-// expression alike — into one conjoined query.Predicate, so list and query
-// share a single comparison and epic-resolution engine rather than a hand-
-// written second one. It returns nil when no filter is active (match all).
-func (opts ListOpts) predicate(resolver *id.Resolver) (query.Predicate, error) {
+func sortMatched(cfg *config.Config, matched []*item.Item, order *query.Order) {
+	if order == nil {
+		sortByPrecedence(cfg, matched)
+		return
+	}
+	keyOf := order.Keyer(cfg)
+	priorityIndex := query.PriorityIndex(cfg.Priorities)
+	sortByKey(matched, func(it *item.Item) orderedKey {
+		return orderedKey{order: order, key: keyOf(it), tie: precedenceKeyOf(priorityIndex, it)}
+	})
+}
+
+type orderedKey struct {
+	order *query.Order
+	key   query.OrderKey
+	tie   precedenceKey
+}
+
+func (a orderedKey) Less(b orderedKey) bool {
+	if a.order.Less(a.key, b.key) {
+		return true
+	}
+	if a.order.Less(b.key, a.key) {
+		return false
+	}
+	return a.tie.Less(b.tie)
+}
+
+func (opts ListOpts) compile(cfg *config.Config, qopts query.Options) (query.Predicate, *query.Order, []string, error) {
 	var preds []query.Predicate
+	var order *query.Order
+	var notes []string
 	flat := []struct{ field, value string }{
 		{"type", opts.Type}, {"state", opts.State}, {"category", opts.Category},
 		{"owner", opts.Owner}, {"label", opts.Label}, {"epic", opts.Epic},
+		{"priority", opts.Priority}, {"sprint", opts.Sprint},
 	}
 	for _, f := range flat {
 		if f.value == "" {
 			continue
 		}
-		p, err := query.Match(f.field, f.value, resolver)
+		p, err := query.Match(f.field, f.value, qopts)
 		if err != nil {
-			return nil, err
+			return nil, nil, nil, err
 		}
 		preds = append(preds, p)
+	}
+	if opts.Sprint == "active" && qopts.ActiveSprint == "" {
+		notes = append(notes, query.NoActiveSprintNote)
+	}
+
+	exprs := make([]string, 0, 2)
+	if opts.Filter != "" {
+		expr, ok := cfg.Filters[opts.Filter]
+		if !ok {
+			return nil, nil, nil, unknownFilterErr(cfg, opts.Filter)
+		}
+		exprs = append(exprs, expr)
 	}
 	if opts.Query != "" {
-		p, err := query.Compile(opts.Query, resolver)
+		exprs = append(exprs, opts.Query)
+	}
+	for _, expr := range exprs {
+		c, err := query.Compile(expr, qopts)
 		if err != nil {
-			return nil, err
+			return nil, nil, nil, err
 		}
-		preds = append(preds, p)
+		if c.Order != nil {
+			if order != nil {
+				return nil, nil, nil, userErr("only one ORDER BY clause is allowed across --filter and the query")
+			}
+			order = c.Order
+		}
+		preds = append(preds, c.Pred)
+		notes = append(notes, c.Notes...)
 	}
+
 	if len(preds) == 0 {
-		return nil, nil
+		return nil, order, notes, nil
 	}
-	return func(it *item.Item, cfg *config.Config) bool {
+	pred := func(it *item.Item, cfg *config.Config) bool {
 		for _, p := range preds {
 			if !p(it, cfg) {
 				return false
 			}
 		}
 		return true
-	}, nil
+	}
+	return pred, order, notes, nil
 }
 
-// groupByEpic buckets the result rows by parent epic for tree rendering. The
-// grouping is deliberately flat (one level: epic -> member ULIDs, plus an
-// orphan bucket), which is the shape docs/design/04-cli.md query specs for the
-// tree key; the recursive multi-level hierarchy is kira tree's job, not this.
-// A non-epic row joins its parent epic's group (or the orphan bucket when it
-// has no epic); an epic row heads its own group and is never itself a member,
-// so it is not double-listed as an orphan. A group is created for any epic referenced
-// by a child even if that epic is filtered out of the results, so children
-// never appear detached. Groups are ordered by the epic's display number
-// ascending, orphan bucket last; epic_number is filled from the loaded item set
-// (null for a dangling pointer).
+func unknownFilterErr(cfg *config.Config, name string) error {
+	if len(cfg.Filters) == 0 {
+		return userErr("unknown filter %q (no filters configured)", name)
+	}
+	return userErr("unknown filter %q (available: %s)", name, strings.Join(filterNames(cfg), ", "))
+}
+
+func filterNames(cfg *config.Config) []string {
+	names := make([]string, 0, len(cfg.Filters))
+	for name := range cfg.Filters {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+type FilterView struct {
+	Name  string `json:"name"`
+	Query string `json:"query"`
+}
+
+type FilterListResult struct {
+	Filters []FilterView `json:"filters"`
+}
+
+func Filters(cfg *config.Config) *FilterListResult {
+	views := make([]FilterView, 0, len(cfg.Filters))
+	for _, name := range filterNames(cfg) {
+		views = append(views, FilterView{Name: name, Query: cfg.Filters[name]})
+	}
+	return &FilterListResult{Filters: views}
+}
+
+// One flat level (epic -> member ULIDs, orphan bucket last) — the shape the
+// query tree key specs; recursive hierarchy is kira tree's job. An epic heads
+// its own group and is never a member; a group is created even for an epic
+// filtered out of the results, so children never appear detached.
 func groupByEpic(rows []ListItem, items []*item.Item) []TreeGroup {
-	// Only epics are ever looked up here (every bucket key is an epic ULID), so
-	// index just those.
 	numOf := map[string]string{}
 	for _, it := range items {
 		if it.Type == item.TypeEpic {
 			numOf[it.ID] = it.Number
 		}
 	}
-	order := make([]string, 0)       // epic ULIDs in first-seen order; "" = orphan
-	buckets := map[string][]string{} // epic ULID -> member ULIDs
-	ensure := func(key string) {
+	order := make([]string, 0)
+	buckets := map[string][]string{}
+	ensureGroup := func(key string) {
 		if _, seen := buckets[key]; !seen {
 			buckets[key] = []string{}
 			order = append(order, key)
@@ -124,18 +205,16 @@ func groupByEpic(rows []ListItem, items []*item.Item) []TreeGroup {
 	}
 	for _, r := range rows {
 		if r.Type == item.TypeEpic {
-			ensure(r.ID) // an epic heads its own group; not a member
+			ensureGroup(r.ID)
 			continue
 		}
 		key := ""
 		if r.Epic != nil {
 			key = *r.Epic
 		}
-		ensure(key)
+		ensureGroup(key)
 		buckets[key] = append(buckets[key], r.ID)
 	}
-	// Decorate each bucket key with its sort key; the orphan bucket ("") sorts
-	// last, every epic bucket by its display number.
 	type dec struct {
 		key    string
 		k      id.SortKey
@@ -151,7 +230,7 @@ func groupByEpic(rows []ListItem, items []*item.Item) []TreeGroup {
 	}
 	sort.SliceStable(ds, func(i, j int) bool {
 		if ds[i].orphan || ds[j].orphan {
-			return !ds[i].orphan // orphan bucket last
+			return !ds[i].orphan
 		}
 		return ds[i].k.Less(ds[j].k)
 	})
@@ -169,9 +248,4 @@ func groupByEpic(rows []ListItem, items []*item.Item) []TreeGroup {
 		groups = append(groups, g)
 	}
 	return groups
-}
-
-// sortRows orders rows by the shared display-number key (docs/design/04-cli.md §7).
-func sortRows(rows []ListItem) {
-	sortByKey(rows, func(r ListItem) id.SortKey { return id.NewSortKey(r.Number, r.ID) })
 }

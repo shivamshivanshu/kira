@@ -38,6 +38,8 @@ type ListResult struct {
 	Items []ListItem  `json:"items"`
 	Count int         `json:"count"`
 	Tree  []TreeGroup `json:"tree,omitempty"`
+
+	StderrNotes []string `json:"-"`
 }
 
 // TreeGroup is one epic's bucket in the tree grouping: the epic's ULID and
@@ -77,27 +79,33 @@ type CommentView struct {
 // are index-derived (docs/design/01-architecture.md §4) and stay empty until
 // the index lands in M2; they are always present so the shape never changes.
 type ShowResult struct {
-	ID            string        `json:"id"`
-	Number        string        `json:"number"`
-	Aliases       []string      `json:"aliases"`
-	Type          string        `json:"type"`
-	Title         string        `json:"title"`
-	State         string        `json:"state"`
-	Category      string        `json:"category"`
-	Priority      *string       `json:"priority"`
-	Owner         *string       `json:"owner"`
-	Reporter      *string       `json:"reporter"`
-	Labels        []string      `json:"labels"`
-	Epic          *string       `json:"epic"`
-	BlockedBy     []string      `json:"blocked_by"`
-	Blocks        []string      `json:"blocks"`
-	Estimate      *float64      `json:"estimate"`
-	Created       string        `json:"created"`
-	Updated       string        `json:"updated"`
-	Body          string        `json:"body"`
-	Comments      []CommentView `json:"comments"`
-	LinkedCommits []any         `json:"linked_commits"`
-	HistoryTail   []any         `json:"history_tail"`
+	ID            string              `json:"id"`
+	Number        string              `json:"number"`
+	Aliases       []string            `json:"aliases"`
+	Type          string              `json:"type"`
+	Subtype       *string             `json:"subtype"`
+	Title         string              `json:"title"`
+	State         string              `json:"state"`
+	Category      string              `json:"category"`
+	Resolution    *string             `json:"resolution"`
+	Priority      *string             `json:"priority"`
+	Rank          *string             `json:"rank"`
+	Sprint        *string             `json:"sprint"`
+	Due           *string             `json:"due"`
+	Owner         *string             `json:"owner"`
+	Reporter      *string             `json:"reporter"`
+	Labels        []string            `json:"labels"`
+	Epic          *string             `json:"epic"`
+	BlockedBy     []string            `json:"blocked_by"`
+	Links         map[string][]string `json:"links"`
+	Blocks        []string            `json:"blocks"`
+	Estimate      *float64            `json:"estimate"`
+	Created       string              `json:"created"`
+	Updated       string              `json:"updated"`
+	Body          string              `json:"body"`
+	Comments      []CommentView       `json:"comments"`
+	LinkedCommits []any               `json:"linked_commits"`
+	HistoryTail   []any               `json:"history_tail"`
 }
 
 func categoryString(cfg *config.Config, typ, state string) string {
@@ -132,15 +140,21 @@ func showResultOf(cfg *config.Config, it *item.Item) ShowResult {
 		Number:        it.Number,
 		Aliases:       nonNil(it.Aliases),
 		Type:          it.Type,
+		Subtype:       it.Subtype,
 		Title:         it.Title,
 		State:         it.State,
 		Category:      categoryString(cfg, it.Type, it.State),
+		Resolution:    it.Resolution,
 		Priority:      it.Priority,
+		Rank:          it.Rank,
+		Sprint:        it.Sprint,
+		Due:           it.Due,
 		Owner:         it.Owner,
 		Reporter:      it.Reporter,
 		Labels:        nonNil(it.Labels),
 		Epic:          it.Epic,
 		BlockedBy:     nonNil(it.BlockedBy),
+		Links:         linksView(it.Links),
 		Blocks:        []string{},
 		Estimate:      it.Estimate,
 		Created:       it.Created,
@@ -150,6 +164,17 @@ func showResultOf(cfg *config.Config, it *item.Item) ShowResult {
 		LinkedCommits: []any{},
 		HistoryTail:   []any{},
 	}
+}
+
+// linksView renders the links map for JSON with every known link type present
+// (empty list, never null, for an absent type), so the shape is fixed across
+// items — the documented show shape (docs/design/04-cli.md show).
+func linksView(links map[string][]string) map[string][]string {
+	view := make(map[string][]string, len(item.LinkTypes))
+	for _, typ := range item.LinkTypes {
+		view[typ] = nonNil(links[typ])
+	}
+	return view
 }
 
 // nonNil normalizes a nil slice to a non-nil empty slice so JSON renders `[]`,

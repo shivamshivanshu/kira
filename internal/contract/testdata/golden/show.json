@@ -3,10 +3,15 @@
   "number": "KIRA-2",
   "aliases": [],
   "type": "ticket",
+  "subtype": "bug",
   "title": "Rich ticket",
   "state": "IN_PROGRESS",
   "category": "doing",
+  "resolution": null,
   "priority": "P1",
+  "rank": "0|hzzzzz:",
+  "sprint": "2026-S14",
+  "due": "2026-07-20",
   "owner": "shivam",
   "reporter": "alice",
   "labels": [
@@ -17,6 +22,12 @@
   "blocked_by": [
     "<ULID-3>"
   ],
+  "links": {
+    "duplicate_of": [],
+    "relates": [
+      "<ULID-3>"
+    ]
+  },
   "blocks": [],
   "estimate": 3,
   "created": "<TS>",

@@ -1,0 +1,15 @@
+{
+  "sprints": [
+    {
+      "key": "2026-S14",
+      "name": "Sprint 14",
+      "start": "2026-07-13",
+      "end": "2026-07-26",
+      "active": false,
+      "items": {
+        "total": 1,
+        "done": 0
+      }
+    }
+  ]
+}

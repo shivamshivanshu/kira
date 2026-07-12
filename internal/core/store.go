@@ -139,22 +139,23 @@ func (s *Store) load(cfg *config.Config) ([]*item.Item, id.Snapshot, *id.Resolve
 }
 
 // resolveRef loads the store, resolves ref (ULID | prefix | number | alias) to
-// its item, and returns the resolver built from the same scan. The resolver is
-// returned so a mutating caller (edit) can normalize the resolved item's
-// cross-references without a second scan; read-only callers ignore it.
-func (s *Store) resolveRef(cfg *config.Config, ref string) (*item.Item, *id.Resolver, error) {
+// its item, and returns the full scan and the resolver built from it. Both are
+// returned so a mutating caller can normalize cross-references (edit) or take a
+// store-wide census (move's WIP check) without a second scan; read-only callers
+// ignore them.
+func (s *Store) resolveRef(cfg *config.Config, ref string) (*item.Item, []*item.Item, *id.Resolver, error) {
 	items, _, resolver, err := s.load(cfg)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	ulid, err := resolver.Resolve(ref)
 	if err != nil {
-		return nil, nil, userErr("%v", err)
+		return nil, nil, nil, userErr("%v", err)
 	}
 	if it := findByULID(items, ulid); it != nil {
-		return it, resolver, nil
+		return it, items, resolver, nil
 	}
-	return nil, nil, userErr("resolved %s to %s, which has no file", ref, ulid)
+	return nil, nil, nil, userErr("resolved %s to %s, which has no file", ref, ulid)
 }
 
 // findByULID returns the loaded item with the given canonical ULID, or nil.

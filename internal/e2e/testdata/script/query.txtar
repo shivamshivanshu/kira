@@ -43,3 +43,52 @@ stderr 'cannot use --tree and --flat'
 # a malformed expression is a user error with a positioned message
 ! exec kira query 'owner>alice'
 stderr 'query:.*position'
+
+# M1.5 grammar: grooming fields for IN / IS EMPTY / ranked compare / ORDER BY
+exec kira create ticket --title 'ranked one' --priority P1 --rank mm --due 2026-07-20 --no-edit
+exec kira create ticket --title 'ranked two' --priority P0 --estimate 5 --no-edit
+
+# IN is contains-any membership
+exec kira query 'priority IN (P0,P1)' --flat --json
+stdout '"count": 2'
+
+# IS EMPTY / IS NOT EMPTY test null scalars and empty collections
+exec kira query 'rank IS NOT EMPTY' --flat --json
+stdout '"count": 1'
+stdout '"number": "KIRA-4"'
+exec kira query 'blocked_by IS EMPTY' --flat --json
+stdout '"count": 5'
+
+# ranked priority compare uses config priorities order, not string order
+exec kira query 'priority<P1' --flat --json
+stdout '"count": 1'
+stdout '"number": "KIRA-5"'
+
+# date compare on due; absent due never matches
+exec kira query 'due<=2026-07-20' --flat --json
+stdout '"count": 1'
+stdout '"number": "KIRA-4"'
+
+# numeric compare on estimate
+exec kira query 'estimate>=5' --flat --json
+stdout '"count": 1'
+stdout '"number": "KIRA-5"'
+
+# ORDER BY priority sorts by config rank; unprioritized items last
+exec kira query 'type=ticket ORDER BY priority' --flat --json
+stdout '(?s)KIRA-5.*KIRA-4.*KIRA-2'
+exec kira query 'type=ticket ORDER BY priority desc' --flat --json
+stdout '(?s)KIRA-4.*KIRA-5'
+
+# default precedence: rank first, then priority, then number
+exec kira list --json
+stdout '(?s)KIRA-4.*KIRA-5.*KIRA-1.*KIRA-2.*KIRA-3'
+
+# sprint=active with no active sprint set: empty result, stderr note
+exec kira query 'sprint=active' --flat --json
+stdout '"count": 0'
+stderr 'no active sprint set'
+
+# ORDER BY must trail an expression
+! exec kira query 'ORDER BY rank'
+stderr 'query:.*position'

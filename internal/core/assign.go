@@ -20,7 +20,7 @@ func (s *Store) Assign(cfg *config.Config, ref, user string, opts AssignOpts) (*
 	if opts.Reporter {
 		field = "reporter"
 	}
-	apply := func(it *item.Item, _ *id.Resolver) (hard, warns []error) {
+	apply := func(it *item.Item, _ *id.Resolver, _ []*item.Item) (hard, warns []error) {
 		target := &it.Owner
 		if opts.Reporter {
 			target = &it.Reporter

@@ -34,7 +34,8 @@ func newMoveCmd(g *globalFlags) *cobra.Command {
 		},
 	}
 	f := cmd.Flags()
-	f.BoolVar(&opts.Force, "force", false, "bypass the transition adjacency check")
+	f.StringVar(&opts.Resolution, "resolution", "", "resolution to record, validated against config resolutions")
+	f.BoolVar(&opts.Force, "force", false, "bypass the transition adjacency check and require: guards")
 	f.BoolVar(&opts.Activate, "activate", false, "set this item as the active ticket")
 	return cmd
 }

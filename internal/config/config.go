@@ -2,7 +2,8 @@
 // of workflow, vocabulary, commit-mode, and merge-policy truth (see
 // docs/design/02-data-model.md §9). It parses and validates that file, fills
 // documented defaults for omitted fields, and exposes Default() for `kira init`.
-// The package stands alone: it depends on no other internal package.
+// Its only internal dependency is the item codec, for the shared field formats
+// (date layout) config values must match.
 package config
 
 import (
@@ -87,19 +88,24 @@ var categories = []Category{CategoryTodo, CategoryDoing, CategoryDone}
 
 // Config is the parsed, defaulted, validated `.kira/config.yaml`.
 type Config struct {
-	Version   int                 `yaml:"version"`
-	Project   Project             `yaml:"project"`
-	ID        ID                  `yaml:"id"`
-	Workflows map[string]Workflow `yaml:"workflows"`
-	Labels    Vocab               `yaml:"labels"`
-	People    Vocab               `yaml:"people"`
-	Commit    Commit              `yaml:"commit"`
-	Merge     Merge               `yaml:"merge"`
-	Sync      Sync                `yaml:"sync"`
-	UI        UI                  `yaml:"ui"`
-	Git       Git                 `yaml:"git"`
-	Estimate  Estimate            `yaml:"estimate"`
-	Fields    map[string]any      `yaml:"fields"`
+	Version     int                 `yaml:"version"`
+	Project     Project             `yaml:"project"`
+	ID          ID                  `yaml:"id"`
+	Workflows   map[string]Workflow `yaml:"workflows"`
+	Labels      Vocab               `yaml:"labels"`
+	People      Vocab               `yaml:"people"`
+	Priorities  []string            `yaml:"priorities"`
+	Subtypes    []string            `yaml:"subtypes"`
+	Resolutions []string            `yaml:"resolutions"`
+	Filters     map[string]string   `yaml:"filters"`
+	Sprints     []Sprint            `yaml:"sprints"`
+	Commit      Commit              `yaml:"commit"`
+	Merge       Merge               `yaml:"merge"`
+	Sync        Sync                `yaml:"sync"`
+	UI          UI                  `yaml:"ui"`
+	Git         Git                 `yaml:"git"`
+	Estimate    Estimate            `yaml:"estimate"`
+	Fields      map[string]any      `yaml:"fields"`
 }
 
 // Project identifies the tracker: Key prefixes sequential numbers, Name is display-only.
@@ -115,20 +121,63 @@ type ID struct {
 
 // State is one node in a workflow. Resolution is optional and only meaningful on
 // a done-category state that is not a real completion (e.g. WONT_DO -> dropped).
+// Wip is an advisory per-state item cap; 0 means unlimited.
 type State struct {
 	Key        string   `yaml:"key"`
 	Category   Category `yaml:"category"`
+	Wip        int      `yaml:"wip,omitempty"`
 	Resolution string   `yaml:"resolution,omitempty"`
 }
 
 // Workflow is the state machine for one item type. Transitions is an adjacency map
-// from state key to the states reachable in one move; EnforceTransitions makes
-// off-graph moves fail unless forced.
+// from state key to the transitions reachable in one move; EnforceTransitions
+// makes off-graph moves fail unless forced.
 type Workflow struct {
-	States             []State             `yaml:"states"`
-	Initial            string              `yaml:"initial"`
-	Transitions        map[string][]string `yaml:"transitions"`
-	EnforceTransitions bool                `yaml:"enforce_transitions"`
+	States             []State                 `yaml:"states"`
+	Initial            string                  `yaml:"initial"`
+	Transitions        map[string][]Transition `yaml:"transitions"`
+	EnforceTransitions bool                    `yaml:"enforce_transitions"`
+}
+
+// Transition is one edge of a workflow's adjacency map. A bare state key in the
+// YAML (`REVIEW: [DONE]`) decodes to just To; the guard-map form
+// (`{ to: DONE, require: [resolution], set: { resolution: done } }`) adds
+// Require (fields that must be non-null before the move) and Set (field
+// assignments applied on the move) — docs/design/02-data-model.md §6.
+type Transition struct {
+	To      string            `yaml:"to"`
+	Require []string          `yaml:"require,omitempty"`
+	Set     map[string]string `yaml:"set,omitempty"`
+}
+
+// UnmarshalYAML accepts both documented transition forms: a bare target state
+// string, or the guard map.
+func (t *Transition) UnmarshalYAML(n *yaml.Node) error {
+	if n.Kind == yaml.ScalarNode {
+		t.To = n.Value
+		return nil
+	}
+	type raw Transition // shed the method to avoid recursion
+	return n.Decode((*raw)(t))
+}
+
+// TransitionsTo builds a bare (guard-free) transition list from state keys —
+// the shape Default() and tests use.
+func TransitionsTo(states ...string) []Transition {
+	ts := make([]Transition, len(states))
+	for i, s := range states {
+		ts[i] = Transition{To: s}
+	}
+	return ts
+}
+
+// Sprint is one scrum sprint entity; the item `sprint` field keys into this
+// list. Start/End are RFC3339 dates.
+type Sprint struct {
+	Key   string `yaml:"key"`
+	Name  string `yaml:"name"`
+	Start string `yaml:"start"`
+	End   string `yaml:"end"`
 }
 
 // Vocab is a controlled vocabulary. When Strict, unknown values are rejected
@@ -179,6 +228,7 @@ const SchemaVersion = 1
 
 // Default returns the documented default configuration (docs/design/02-data-model.md §9),
 // used both as the baseline for filling omitted fields and as the config `kira init` writes.
+// Filters and Sprints deviate from the §9 example deliberately — see the inline note.
 func Default() *Config {
 	return &Config{
 		Version: SchemaVersion,
@@ -188,18 +238,21 @@ func Default() *Config {
 			"ticket": {
 				States: []State{
 					{Key: "TODO", Category: CategoryTodo},
-					{Key: "IN_PROGRESS", Category: CategoryDoing},
-					{Key: "REVIEW", Category: CategoryDoing},
+					{Key: "IN_PROGRESS", Category: CategoryDoing, Wip: 3},
+					{Key: "REVIEW", Category: CategoryDoing, Wip: 2},
 					{Key: "DONE", Category: CategoryDone},
 					{Key: "WONT_DO", Category: CategoryDone, Resolution: "dropped"},
 				},
 				Initial: "TODO",
-				Transitions: map[string][]string{
-					"TODO":        {"IN_PROGRESS", "WONT_DO"},
-					"IN_PROGRESS": {"REVIEW", "TODO", "WONT_DO"},
-					"REVIEW":      {"DONE", "IN_PROGRESS"},
-					"DONE":        {},
-					"WONT_DO":     {},
+				Transitions: map[string][]Transition{
+					"TODO":        TransitionsTo("IN_PROGRESS", "WONT_DO"),
+					"IN_PROGRESS": TransitionsTo("REVIEW", "TODO", "WONT_DO"),
+					"REVIEW": {
+						{To: "DONE", Require: []string{"resolution"}, Set: map[string]string{"resolution": "done"}},
+						{To: "IN_PROGRESS"},
+					},
+					"DONE":    {},
+					"WONT_DO": {},
 				},
 				EnforceTransitions: true,
 			},
@@ -210,20 +263,28 @@ func Default() *Config {
 					{Key: "DONE", Category: CategoryDone},
 				},
 				Initial: "PLANNED",
-				Transitions: map[string][]string{
-					"PLANNED": {"ACTIVE"},
-					"ACTIVE":  {"DONE"},
+				Transitions: map[string][]Transition{
+					"PLANNED": TransitionsTo("ACTIVE"),
+					"ACTIVE":  TransitionsTo("DONE"),
 					"DONE":    {},
 				},
 			},
 		},
-		Labels: Vocab{Known: []string{"bug", "feature", "perf", "tech-debt", "orderbook", "infra", "p0", "p1", "p2"}},
-		People: Vocab{Known: []string{"shivam", "alice"}},
-		Commit: Commit{Mode: CommitAuto, Trailer: "Kira-Ticket"},
-		Merge:  Merge{Policy: MergeAuto},
-		Sync:   Sync{Push: false},
-		UI:     UI{Icons: IconAuto},
-		Git:    Git{},
+		Labels:      Vocab{Known: []string{"bug", "feature", "perf", "tech-debt", "orderbook", "infra", "p0", "p1", "p2"}},
+		People:      Vocab{Known: []string{"shivam", "alice"}},
+		Priorities:  []string{"P0", "P1", "P2", "P3"},
+		Subtypes:    []string{"bug", "story", "task", "spike"},
+		Resolutions: []string{"done", "dropped", "duplicate", "cannot-reproduce"},
+		// Filters and Sprints default empty: the doc example's entries are
+		// illustrations (dated queries, sample sprints), not defaults — a
+		// project authors filters in config and sprints via `kira sprint`.
+		Filters: map[string]string{},
+		Sprints: nil,
+		Commit:  Commit{Mode: CommitAuto, Trailer: "Kira-Ticket"},
+		Merge:   Merge{Policy: MergeAuto},
+		Sync:    Sync{Push: false},
+		UI:      UI{Icons: IconAuto},
+		Git:     Git{},
 		Estimate: Estimate{
 			Unit:        EstimatePoints,
 			HoursPerDay: 8,

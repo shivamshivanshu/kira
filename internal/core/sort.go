@@ -3,17 +3,17 @@ package core
 import (
 	"sort"
 
+	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/item"
+	"github.com/shivamshivanshu/kira/internal/query"
 )
 
-// sortByKey stably sorts xs by the id.SortKey each element maps to. It decorates
-// every element with its key in one O(n) pass and sorts the decorated slice, so
-// the key is computed once per element — unlike slices.SortStableFunc, which
-// would recompute it on every comparison (and re-hit id.ParseNumber's error
-// path for hash-style numbers).
-func sortByKey[T any](xs []T, key func(T) id.SortKey) {
+// Decorates each element with its key once so the sort never recomputes keys
+// per comparison (unlike slices.SortStableFunc).
+func sortByKey[T any, K interface{ Less(K) bool }](xs []T, key func(T) K) {
 	type dec struct {
-		k id.SortKey
+		k K
 		v T
 	}
 	ds := make([]dec, len(xs))
@@ -24,4 +24,41 @@ func sortByKey[T any](xs []T, key func(T) id.SortKey) {
 	for i := range ds {
 		xs[i] = ds[i].v
 	}
+}
+
+type precedenceKey struct {
+	rank          string
+	priorityIndex int
+	number        id.SortKey
+}
+
+func (k precedenceKey) Less(o precedenceKey) bool {
+	if (k.rank == "") != (o.rank == "") {
+		return k.rank != ""
+	}
+	if k.rank != o.rank {
+		return k.rank < o.rank
+	}
+	if k.priorityIndex != o.priorityIndex {
+		return k.priorityIndex < o.priorityIndex
+	}
+	return k.number.Less(o.number)
+}
+
+func precedenceKeyOf(priorityIndex map[string]int, it *item.Item) precedenceKey {
+	k := precedenceKey{priorityIndex: len(priorityIndex), number: id.NewSortKey(it.Number, it.ID)}
+	if it.Rank != nil {
+		k.rank = *it.Rank
+	}
+	if it.Priority != nil {
+		if i, ok := priorityIndex[*it.Priority]; ok {
+			k.priorityIndex = i
+		}
+	}
+	return k
+}
+
+func sortByPrecedence(cfg *config.Config, items []*item.Item) {
+	priorityIndex := query.PriorityIndex(cfg.Priorities)
+	sortByKey(items, func(it *item.Item) precedenceKey { return precedenceKeyOf(priorityIndex, it) })
 }

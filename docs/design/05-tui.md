@@ -75,7 +75,7 @@ Collapsible epic→ticket tree pane on the left; live detail pane on the right (
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Columns are the item type's configured `workflows.<type>.states` in declared order ([02-data-model.md §6](02-data-model.md#6-state-machine)). Same board implementation as `kira board --plain` ([04-cli.md `kira board`](04-cli.md#kira-board)).
+Columns are the item type's configured `workflows.<type>.states` in declared order ([02-data-model.md §6](02-data-model.md#6-state-machine)). Same board implementation as `kira board --plain` ([04-cli.md `kira board`](04-cli.md#kira-board)). Column headers render WIP-limit tinting per [02-data-model.md §6](02-data-model.md#6-state-machine) — `n/wip` whenever `wip:` is configured, where `n` is the global per-state count from the index, never the rendered subset (an epic-scoped board or active `/` filter must not understate real column pressure).
 
 | Key | Action |
 |---|---|
@@ -143,7 +143,7 @@ Completion / cycle time / lead time / throughput, per [08-telemetry.md](08-telem
 
 - **`/` fuzzy filter** — in-process, filters the currently visible tree/board/list without a subprocess call; clears on `Esc`.
 - **`:` ex-command bar** — reuses the **exact CLI argv grammar** as its command language: `:move REVIEW`, `:assign alice`, `:link --blocked-by KIRA-99`. Parsed and dispatched to the same `internal/core` call the CLI's cobra tree would invoke, scoped to the currently-focused item. This is the one command language shared across CLI, TUI, and nvim's `:KiraCreate`/`:KiraEdit` — see [06-nvim-plugin.md](06-nvim-plugin.md).
-- **`?` help overlay** — rendered from the same keymap table that defines each view's bindings in code and drives the hint bar (§2): one `[]KeyBinding{key, description}` slice per view, three consumers (hint bar, `?` overlay, this doc's tables).
+- **`?` help overlay** — rendered from the same keymap table that defines each view's bindings in code and drives the hint bar (§2): one `[]KeyBinding{key, description}` slice per view, three consumers (hint bar, `?` overlay, this doc's tables). When the action palette lands ([STRETCH_GOALS.md](../../STRETCH_GOALS.md)), rows gain an action-msg field; hint bar and `?` ignore it.
 - **`r` refresh, no fs watcher.** Refresh re-runs the staleness check ([01-architecture.md §4](01-architecture.md#4-index-design)) on demand only. No background watcher: the workload is ms-scale, so "stale until you press r" is simpler and cheaper than a watcher thread with its own lifecycle and race conditions, consistent with the no-daemon stance in [01-architecture.md §3](01-architecture.md#3-process-model-stateless-cli-no-daemon).
 
 ## 8. Icons & visual language
@@ -172,6 +172,9 @@ One icon-set table, shared by Tree/Board/Detail — no per-view glyph literals. 
 - Tested target: plain terminals (kitty, alacritty) **and** nvim's `:terminal` (used by `:KiraBoard`, [06-nvim-plugin.md](06-nvim-plugin.md)) — no assumptions that break inside a nested terminal emulator (true-color detection, cursor reporting).
 - `kira board --plain` / non-tty stdout: static lipgloss table render, no bubbletea event loop — for pipes, CI, and scripting.
 - No mouse required for any operation; mouse support optional `(proposed)` — click-to-select on tree/board, no drag.
+- `Ctrl-i` is byte-identical to `Tab` (0x09) on legacy terminal encodings (incl. nvim `:terminal`) — never bind it distinctly; forward-jump uses `Ctrl-]`, with `Ctrl-i` as an alias only under negotiated kitty keyboard protocol.
+- Test determinism: teatest pins the termenv color profile and background; all time-dependent rendering goes through a clock injected at refresh — goldens are pure functions of fixture + key sequence.
+- One shared min-width constant gates Board's detail-peek auto-collapse, the medium layout tier (Tree's detail pane hidden, `Enter` overlays it), and the epic progress-bar collapse — three features, one number.
 
 ## 10. Testing hook
 
