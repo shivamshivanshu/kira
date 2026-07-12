@@ -1,0 +1,8 @@
+{
+  "id": "<ULID-1>",
+  "number": "KIRA-1",
+  "type": "ticket",
+  "title": "New ticket",
+  "state": "TODO",
+  "path": ".kira/tickets/<ULID-1>.md"
+}

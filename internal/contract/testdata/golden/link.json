@@ -1,0 +1,7 @@
+{
+  "id": "<ULID-1>",
+  "number": "KIRA-2",
+  "changed": [
+    "blocked_by"
+  ]
+}

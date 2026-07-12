@@ -1,0 +1,46 @@
+{
+  "items": [
+    {
+      "id": "<ULID-1>",
+      "number": "KIRA-2",
+      "title": "Rich ticket",
+      "type": "ticket",
+      "state": "IN_PROGRESS",
+      "category": "doing",
+      "owner": "shivam",
+      "labels": [
+        "bug",
+        "perf"
+      ],
+      "epic": "<ULID-2>"
+    },
+    {
+      "id": "<ULID-3>",
+      "number": "KIRA-3",
+      "title": "Blocker",
+      "type": "ticket",
+      "state": "TODO",
+      "category": "todo",
+      "owner": null,
+      "labels": [],
+      "epic": null
+    }
+  ],
+  "count": 2,
+  "tree": [
+    {
+      "epic": "<ULID-2>",
+      "epic_number": "KIRA-1",
+      "items": [
+        "<ULID-1>"
+      ]
+    },
+    {
+      "epic": null,
+      "epic_number": null,
+      "items": [
+        "<ULID-3>"
+      ]
+    }
+  ]
+}

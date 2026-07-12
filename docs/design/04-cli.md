@@ -495,3 +495,24 @@ Default render is the epic-grouped tree (`kira tree`'s renderer); `--flat` gives
 - **JSON schema stability**: additive-only within a major version — new keys may appear, existing keys never change type or disappear, until a major version bump. This is the guarantee the nvim plugin and CI scripts build against.
 - All JSON goes to **stdout only**; all diagnostics, progress, and human-readable errors go to **stderr**, even in `--json` mode (a script piping stdout to `jq` never sees a diagnostic corrupt the JSON).
 - **Deterministic ordering** *(proposed)*: list-shaped results sort by display number ascending, ties broken by ULID — stable across repeated invocations with no intervening writes, which is what golden-file tests in [09-testing.md](09-testing.md) depend on.
+
+### Write-command result shapes
+
+The write commands document their behavior above but not their `--json` shape; these are the shipped shapes, frozen here. `assign`, `link`, and `edit` share one mutation-result shape (`changed` is the list of frontmatter fields the write actually touched, empty on a no-op):
+
+```json
+// move
+{"id": "01J8...", "number": "KIRA-142", "from": "TODO", "to": "IN_PROGRESS", "activated": false}
+// assign / link / edit
+{"id": "01J8...", "number": "KIRA-142", "changed": ["owner"]}
+// comment
+{"id": "01J8...", "number": "KIRA-142", "comment_id": "01J8XA1F..."}
+```
+
+`--json` is present on every write command including `comment` (the signatures above omit the global flag for brevity — it is inherited from §2).
+
+**Tree shape is intentionally two shapes, not one.** `list --tree` / `query`'s `tree` key is a *flat* grouping — `[{epic, epic_number, items:[ulid,...]}]`, one bucket per epic plus a null-epic orphan bucket, with `items` holding ULIDs that index into the sibling `items[]` array. `kira tree`'s `nodes` key is a *recursive* hierarchy — `[{id, number, type, title, children:[...]}]`. A consumer that renders an epic outline uses `tree` (grouping) or `nodes` (nesting) deliberately; they are not unified.
+
+### v1 contract freeze
+
+**The `--json` shapes above are FROZEN as of WP-1.6: additive-only within v1.** New keys may be added; no existing key is ever renamed, retyped, or removed until a major version bump. This is the guarantee the nvim plugin, TUI, and CI scripts build against; it is enforced by the golden contract suite ([09-testing.md §3](09-testing.md#3-golden-file---json-contract-tests)) — any shape drift fails CI until the golden is regenerated in the same change.

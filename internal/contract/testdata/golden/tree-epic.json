@@ -1,0 +1,20 @@
+{
+  "root": "<ULID-1>",
+  "nodes": [
+    {
+      "id": "<ULID-1>",
+      "number": "KIRA-1",
+      "type": "epic",
+      "title": "Epic one",
+      "children": [
+        {
+          "id": "<ULID-2>",
+          "number": "KIRA-2",
+          "type": "ticket",
+          "title": "Rich ticket",
+          "children": []
+        }
+      ]
+    }
+  ]
+}

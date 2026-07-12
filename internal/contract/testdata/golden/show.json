@@ -1,0 +1,35 @@
+{
+  "id": "<ULID-1>",
+  "number": "KIRA-2",
+  "aliases": [],
+  "type": "ticket",
+  "title": "Rich ticket",
+  "state": "IN_PROGRESS",
+  "category": "doing",
+  "priority": "P1",
+  "owner": "shivam",
+  "reporter": "alice",
+  "labels": [
+    "bug",
+    "perf"
+  ],
+  "epic": "<ULID-2>",
+  "blocked_by": [
+    "<ULID-3>"
+  ],
+  "blocks": [],
+  "estimate": 3,
+  "created": "<TS>",
+  "updated": "<TS>",
+  "body": "\n## Description\n\n## Acceptance criteria\n\n## Comments\n\n<!-- kira:comment id=<ULID-4> author=unknown ts=<TS> -->\nfirst comment\n<!-- /kira:comment -->\n",
+  "comments": [
+    {
+      "id": "<ULID-4>",
+      "author": "unknown",
+      "ts": "<TS>",
+      "text": "first comment"
+    }
+  ],
+  "linked_commits": [],
+  "history_tail": []
+}

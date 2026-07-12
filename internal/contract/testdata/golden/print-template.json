@@ -1,0 +1,3 @@
+{
+  "template": "---\ntitle: \ntype: ticket\npriority: \nowner: \nreporter: \nlabels: []\nepic: \nestimate: \n---\n\n## Description\n\n## Acceptance criteria\n\n## Comments\n"
+}

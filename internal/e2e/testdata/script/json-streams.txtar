@@ -1,0 +1,47 @@
+# Stream discipline for --json (docs/design/04-cli.md §7): all JSON on stdout,
+# all diagnostics/warnings/errors on stderr, and stdout stays empty on failure.
+# Exact exit codes per failure class are asserted in internal/contract.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+
+# environment failure (no .kira store anywhere above) keeps stdout clean,
+# error on stderr. Done first, from a dir with no .kira ancestor.
+cd $WORK/bare
+exec git init
+! exec kira list --json
+! stdout .
+stderr 'no .kira/'
+
+# the store lives in its own subdir so $WORK has no .kira ancestor.
+cd $WORK/repo
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'A' --no-edit
+
+# a clean write with --json: JSON on stdout, nothing on stderr
+exec kira move KIRA-1 IN_PROGRESS --json
+stdout '"to": "IN_PROGRESS"'
+! stderr .
+
+# a warning-producing op under non-strict vocab: JSON still clean on stdout,
+# the warning goes to stderr only (a jq consumer never sees it).
+exec kira assign KIRA-1 nobody --json
+stdout '"changed"'
+! stdout 'warning'
+stderr 'warning'
+
+# read command with --json: pure JSON on stdout
+exec kira show KIRA-1 --json
+stdout '"number": "KIRA-1"'
+! stderr .
+
+# failure under --json: stdout empty, error on stderr
+! exec kira show KIRA-999 --json
+! stdout .
+stderr 'resolves to no item'
+
+-- bare/.keep --
+-- repo/.keep --
