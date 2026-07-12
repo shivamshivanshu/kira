@@ -1,0 +1,12 @@
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - revive
+
+issues:
+  exclude-rules:
+    - path: internal/deps/deps.go
+      linters:
+        - revive

@@ -1,0 +1,3 @@
+# kira version prints a non-empty version string and exits 0
+exec kira version
+stdout .
