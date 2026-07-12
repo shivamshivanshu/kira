@@ -98,7 +98,7 @@ Stated up front: (a) JIRA-style last-writer-wins auto-resolution (the default `m
 Defaults below are chosen and specced; each is cheap to flip now, expensive later.
 
 1. **Commit mode default** — `auto` (every mutation = one semantic commit; protects history/telemetry) vs `manual` (state changes ride in your fix commits). Chosen: `auto`.
-2. **ID style default** — sequential `KIRA-n` + reconciliation machinery vs zero-machinery hash display (`KIRA-N6T4X2`). Chosen: sequential.
+2. **ID style default** — sequential `KIRA-n` + reconciliation machinery vs zero-machinery hash display (`KIRA-N6T4X2`). Chosen: sequential. Implementation note: hash derivation was underspecified; v1 implements trailing 6 Crockford chars of the ULID (~30 bits — collision-*unlikely*, not impossible, so `doctor` must still check). Pin before hash mode ships.
 3. **Label/people strictness** — warn (`strict: false`) vs reject unknown. Chosen: warn.
 4. **Comments** — in-body append blocks (greppable single file) vs file-per-comment (maximally conflict-proof). Chosen: in-body.
 5. **Filename = bare ULID** — rename-free and reconciliation-safe, but opaque in `ls`. Chosen: bare ULID (browsability comes from `discover`/TUI/nvim).
@@ -109,6 +109,8 @@ Defaults below are chosen and specced; each is cheap to flip now, expensive late
 10. **Auto-merge policy** — ratify the LWW rules (scalars by `updated` timestamp, tie → theirs; set-merge for lists; whole-body LWW fallback on textual body conflicts). Chosen per your "no merge conflicts, keep it simple" steer; `manual` mode preserved.
 11. **nvim plugin is a pure `--json` client** — your original doc had the plugin parsing `.kira`/datamodels directly; reversed so there is one parser/validator (Go), not two drifting (Go + Lua) — see [06](docs/design/06-nvim-plugin.md). Ratify?
 12. **Propagation cadence** — tickets ride code branches, so ticket changes made on a feature branch reach teammates at merge cadence; instant JIRA-like propagation means mutating tickets on trunk + `kira sync --push`. A git-bug-style dedicated ticket ref that decouples ticket sync from code review is evaluated-and-deferred to v2 ([07](docs/design/07-git-integration.md)) — acceptable?
+13. **`enforce_transitions` default** — the [02](docs/design/02-data-model.md) example sets ticket `true` / epic `false` but no default is documented for workflows that omit the key; YAML map decoding makes omission parse as `false`. Chosen: omission = `false` (mirror the example). Enforcement-on-by-default would need a documented default + tri-state parsing.
+14. **`kira init` seed values** — the documented example config carries project-specific values (labels `orderbook`, people `shivam`/`alice`). Chosen: `init` prompts for `project.key` and seeds empty `labels.known`/`people.known`; the doc example stays illustrative, not the literal default.
 
 ## 8. Glossary
 

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("---\nid: x\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: \"t\"\nstate: TODO\nlabels: []\nepic: null\nblocked_by: []\ncreated: !000000000\nupdated: 0000-01-01T00:00:00Z\n---\n00000")

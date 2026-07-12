@@ -1,0 +1,65 @@
+version: 1
+
+project:
+  key: KIRA
+  name: kira
+
+id:
+  style: sequential          # sequential (default, reconciled post-merge) | hash (ULID-derived, zero reconciliation)
+
+workflows:
+  ticket:
+    states:
+      - { key: TODO,        category: todo }
+      - { key: IN_PROGRESS, category: doing }
+      - { key: REVIEW,      category: doing }
+      - { key: DONE,        category: done }
+      - { key: WONT_DO,     category: done, resolution: dropped }
+    initial: TODO
+    transitions:
+      TODO:        [IN_PROGRESS, WONT_DO]
+      IN_PROGRESS: [REVIEW, TODO, WONT_DO]
+      REVIEW:      [DONE, IN_PROGRESS]
+      DONE:        []
+      WONT_DO:     []
+    enforce_transitions: true
+  epic:
+    states:
+      - { key: PLANNED, category: todo }
+      - { key: ACTIVE,  category: doing }
+      - { key: DONE,    category: done }
+    initial: PLANNED
+    transitions:
+      PLANNED: [ACTIVE]
+      ACTIVE:  [DONE]
+      DONE:    []
+
+labels:
+  known: [bug, feature, perf, tech-debt, orderbook, infra, p0, p1, p2]
+  strict: false               # true: reject unknown labels (--force overrides)
+
+people:
+  known: [shivam, alice]
+  strict: false
+
+commit:
+  mode: auto                  # auto | manual | prompt
+  trailer: Kira-Ticket
+  # close_trailer: Kira-Closes   # v2: auto-transition to done when landed
+
+merge:
+  policy: auto                # auto | manual
+
+sync:
+  push: false                 # true: `kira sync` (no flags) also pushes after a clean doctor pass
+
+ui:
+  icons: auto                 # auto | always | never
+
+# git:
+#   scan_since: ...            # (proposed) bound the first trailer scan on a large pre-existing history
+
+estimate:
+  unit: points                # points | hours
+
+fields: {}                    # reserved: per-type extra-field declarations (v2)
