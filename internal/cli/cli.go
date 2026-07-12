@@ -1,6 +1,4 @@
-// Package cli wires the kira cobra command tree. cmd/kira is a thin main that
-// delegates here; every command is a thin argv/flag adapter over internal/core,
-// which holds the one implementation of each verb (docs/design/01-architecture.md §6).
+// Package cli wires the kira cobra command tree; every command is a thin argv/flag adapter over internal/core.
 package cli
 
 import (
@@ -10,17 +8,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-// Main runs the root command and returns a process exit code, mapping a
-// core.Error to its exit code and any other failure to 1 (docs/design/04-cli.md §1).
-// Errors print on stderr, keeping stdout free for --json consumers.
 func Main() int {
 	if err := newRootCmd().Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "kira:", err)
-		var ce *core.Error
+		var ce *errx.Error
 		if errors.As(err, &ce) {
 			return ce.Code
 		}
@@ -29,10 +25,6 @@ func Main() int {
 	return 0
 }
 
-// globalFlags are the persistent flags shared by every subcommand
-// (docs/design/04-cli.md §2). noColor and quiet are accepted for forward
-// compatibility but unused in M0: human output carries no ANSI color yet, and
-// there are no suppressible nags until the index/staleness layer lands.
 type globalFlags struct {
 	json    bool
 	noColor bool
@@ -77,9 +69,7 @@ func newRootCmd() *cobra.Command {
 	return root
 }
 
-// openStore discovers the .kira/ store relative to the -C path (or cwd) and
-// loads its config, the common preamble of every command except init.
-func openStore(g *globalFlags) (*core.Store, *config.Config, error) {
+func openStore(g *globalFlags) (*core.Store, *datamodel.Config, error) {
 	s, err := core.Discover(g.chdir)
 	if err != nil {
 		return nil, nil, err

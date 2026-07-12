@@ -1,94 +1,80 @@
 package core
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/config"
-	"github.com/shivamshivanshu/kira/internal/item"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/termx"
 )
 
-// InitResult is the --json shape of a successful init.
-type InitResult struct {
-	Initialized bool   `json:"initialized"`
-	Path        string `json:"path"`
-	ProjectKey  string `json:"project_key"`
-}
-
-// Init scaffolds .kira/ under startDir (cwd when empty): config.yaml, tickets/,
-// templates/{ticket,epic}.md, and .gitignore (.cache/), then records the initial
-// `kira: init` commit. init always commits, regardless of commit.mode, so the
-// scaffold is never left uncommitted (docs/design/04-cli.md init). key empty
-// derives a default from the directory name (prompted first when interactive).
-func Init(startDir, key string, force bool) (*InitResult, error) {
+func Init(startDir, key string, force bool) (*datamodel.InitResult, error) {
 	root := startDir
 	if root == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return nil, envErr("cannot determine working directory: %v", err)
+			return nil, errx.Env("cannot determine working directory: %v", err)
 		}
 		root = cwd
 	}
 	abs, err := filepath.Abs(root)
 	if err != nil {
-		return nil, envErr("resolving %q: %v", root, err)
+		return nil, errx.Env("resolving %q: %v", root, err)
 	}
-	s := &Store{root: abs}
+	s := newStore(abs)
 	if err := s.requireRepo(); err != nil {
 		return nil, err
 	}
 
-	if fi, err := os.Stat(s.kiraDir()); err == nil && fi.IsDir() && !force {
-		return nil, userErr("%s already exists (use --force to reinitialize)", dirName)
+	fs := s.fs()
+	dirName := fs.RelToRoot(fs.KiraDir())
+	if fi, err := os.Stat(fs.KiraDir()); err == nil && fi.IsDir() && !force {
+		return nil, errx.User("%s already exists (use --force to reinitialize)", dirName)
 	}
 
 	name := filepath.Base(abs)
 	if key == "" {
 		def := deriveKey(name)
-		if isInteractive() {
-			key = promptKey(def)
+		if termx.IsInteractive() {
+			key = termx.ReadLineDefault(fmt.Sprintf("project key [%s]: ", def), def)
 		} else {
 			key = def
 		}
 	}
 
-	for _, dir := range []string{s.ticketsDir(), s.templateDir()} {
+	for _, dir := range []string{fs.TicketsDir(), fs.TemplateDir()} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return nil, userErr("creating %s: %v", dir, err)
+			return nil, errx.User("creating %s: %v", dir, err)
 		}
 	}
 
 	files := map[string]string{
-		s.configPath():                              initConfigYAML(key, name),
-		filepath.Join(s.kiraDir(), ".gitignore"):    ".cache/\n",
-		filepath.Join(s.templateDir(), "ticket.md"): defaultTemplate(item.TypeTicket),
-		filepath.Join(s.templateDir(), "epic.md"):   defaultTemplate(item.TypeEpic),
+		fs.ConfigPath(): initConfigYAML(key, name),
+		filepath.Join(fs.KiraDir(), ".gitignore"):    ".cache/\n",
+		filepath.Join(fs.TemplateDir(), "ticket.md"): defaultTemplate(datamodel.TypeTicket),
+		filepath.Join(fs.TemplateDir(), "epic.md"):   defaultTemplate(datamodel.TypeEpic),
 	}
 	for path, content := range files {
 		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-			return nil, userErr("writing %s: %v", s.relToRoot(path), err)
+			return nil, errx.User("writing %s: %v", fs.RelToRoot(path), err)
 		}
 	}
 
-	// Verify the scaffolded config parses and validates before committing it.
 	if _, err := config.Load(abs); err != nil {
-		return nil, userErr("scaffolded config is invalid: %v", err)
+		return nil, errx.User("scaffolded config is invalid: %v", err)
 	}
 
-	// init always commits, regardless of config commit.mode, so the scaffold is
-	// never left uncommitted; route it through the shared choke point with an
-	// explicit auto mode.
-	if err := s.finalize(config.CommitAuto, "", "kira: init", "", dirName); err != nil {
+	if err := s.finalize(datamodel.CommitAuto, "", "kira: init", "", dirName); err != nil {
 		return nil, err
 	}
 
-	return &InitResult{Initialized: true, Path: dirName, ProjectKey: key}, nil
+	return &datamodel.InitResult{Initialized: true, Path: dirName, ProjectKey: key}, nil
 }
 
-// deriveKey turns a directory name into a default project key: uppercased,
-// non-alphanumeric characters dropped. Falls back to KIRA when nothing usable
-// remains.
 func deriveKey(name string) string {
 	var b strings.Builder
 	for _, r := range strings.ToUpper(name) {

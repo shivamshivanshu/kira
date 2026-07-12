@@ -6,51 +6,47 @@ import (
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/config"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/id"
-	"github.com/shivamshivanshu/kira/internal/item"
 )
 
 func strp(s string) *string   { return &s }
 func f64p(f float64) *float64 { return &f }
 
-// fixture builds a small item set plus compile options over it. The epic
-// KIRA-100 is the parent of KIRA-1. ULIDs are minted so the resolver's
-// number/prefix rules are exercised realistically. KIRA-1 carries every M1.5
-// field; KIRA-2 and KIRA-3 cover the partial and legacy shapes.
-func fixture() (items []*item.Item, opts Options, cfg *config.Config) {
+func fixture() (items []*datamodel.Item, opts Options, cfg *datamodel.Config) {
 	cfg = config.Default()
 	epicID := id.Mint().String()
 	it1ID := id.Mint().String()
 	it2ID := id.Mint().String()
 	it3ID := id.Mint().String()
 
-	epic := &item.Item{
-		ID: epicID, Number: "KIRA-100", Type: item.TypeEpic, Title: "Big epic",
+	epic := &datamodel.Item{
+		ID: epicID, Number: "KIRA-100", Type: datamodel.TypeEpic, Title: "Big epic",
 		State: "ACTIVE", Created: "2026-07-01T00:00:00Z", Updated: "2026-07-01T00:00:00Z",
 	}
-	it1 := &item.Item{
-		ID: it1ID, Number: "KIRA-1", Type: item.TypeTicket, Title: "Fix race in snapshot",
+	it1 := &datamodel.Item{
+		ID: it1ID, Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "Fix race in snapshot",
 		State: "IN_PROGRESS", Owner: strp("shivam"), Priority: strp("P1"),
 		Labels: []string{"bug"}, Epic: strp(epicID),
 		Subtype: strp("bug"), Rank: strp("aam"), Sprint: strp("2026-S14"),
 		Due: strp("2026-07-20"), Estimate: f64p(3),
-		BlockedBy: []string{it2ID}, Links: map[string][]string{item.LinkRelates: {it3ID}},
+		BlockedBy: []string{it2ID}, Links: map[string][]string{datamodel.LinkRelates: {it3ID}},
 		Created: "2026-07-05T00:00:00Z", Updated: "2026-07-06T00:00:00Z",
 	}
-	it2 := &item.Item{
-		ID: it2ID, Number: "KIRA-2", Type: item.TypeTicket, Title: "Perf tuning",
+	it2 := &datamodel.Item{
+		ID: it2ID, Number: "KIRA-2", Type: datamodel.TypeTicket, Title: "Perf tuning",
 		State: "TODO", Owner: strp("alice"), Labels: []string{"perf"},
 		Priority: strp("P0"), Due: strp("2026-07-01"), Estimate: f64p(5),
 		Reporter: strp("shivam"),
 		Created:  "2026-07-10T00:00:00Z", Updated: "2026-07-10T00:00:00Z",
 	}
-	it3 := &item.Item{
-		ID: it3ID, Number: "KIRA-3", Type: item.TypeTicket, Title: "Done thing",
+	it3 := &datamodel.Item{
+		ID: it3ID, Number: "KIRA-3", Type: datamodel.TypeTicket, Title: "Done thing",
 		State: "DONE", Owner: strp("shivam"), Labels: []string{"bug", "perf"},
 		Resolution: strp("done"),
 		Created:    "2026-06-01T00:00:00Z", Updated: "2026-06-02T00:00:00Z",
 	}
-	items = []*item.Item{epic, it1, it2, it3}
+	items = []*datamodel.Item{epic, it1, it2, it3}
 
 	snap := id.Snapshot{Key: "KIRA"}
 	for _, it := range items {
@@ -60,7 +56,7 @@ func fixture() (items []*item.Item, opts Options, cfg *config.Config) {
 	return items, opts, cfg
 }
 
-func matchNums(t *testing.T, expr string, items []*item.Item, opts Options, cfg *config.Config) []string {
+func matchNums(t *testing.T, expr string, items []*datamodel.Item, opts Options, cfg *datamodel.Config) []string {
 	t.Helper()
 	c, err := Compile(expr, opts)
 	if err != nil {
@@ -85,13 +81,13 @@ func TestEval(t *testing.T) {
 		{"state=IN_PROGRESS", []string{"KIRA-1"}},
 		{"state!=IN_PROGRESS", []string{"KIRA-100", "KIRA-2", "KIRA-3"}},
 		{"owner=shivam", []string{"KIRA-1", "KIRA-3"}},
-		{"owner!=shivam", []string{"KIRA-100", "KIRA-2"}}, // epic owner is nil -> ""
+		{"owner!=shivam", []string{"KIRA-100", "KIRA-2"}},
 		{"reporter=shivam", []string{"KIRA-2"}},
 		{"label=bug", []string{"KIRA-1", "KIRA-3"}},
 		{"label=perf", []string{"KIRA-2", "KIRA-3"}},
 		{"label=bug AND label=perf", []string{"KIRA-3"}},
 		{"label!=bug", []string{"KIRA-100", "KIRA-2"}},
-		{"category=doing", []string{"KIRA-1", "KIRA-100"}}, // IN_PROGRESS and epic ACTIVE
+		{"category=doing", []string{"KIRA-1", "KIRA-100"}},
 		{"category=done", []string{"KIRA-3"}},
 		{"type=epic", []string{"KIRA-100"}},
 		{"type=ticket", []string{"KIRA-1", "KIRA-2", "KIRA-3"}},
@@ -106,29 +102,23 @@ func TestEval(t *testing.T) {
 		{"created<2026-07-01", []string{"KIRA-3"}},
 		{"created>=2026-07-01", []string{"KIRA-1", "KIRA-100", "KIRA-2"}},
 		{"updated<=2026-07-01", []string{"KIRA-100", "KIRA-3"}},
-		// due: date compare over a nullable field; absent never matches
 		{"due<2026-07-10", []string{"KIRA-2"}},
 		{"due>=2026-07-20", []string{"KIRA-1"}},
 		{"due=2026-07-01", []string{"KIRA-2"}},
 		{"due!=2026-07-01", []string{"KIRA-1"}},
-		// estimate: numeric compare; absent never matches
 		{"estimate>3", []string{"KIRA-2"}},
 		{"estimate<=3", []string{"KIRA-1"}},
 		{"estimate=5", []string{"KIRA-2"}},
-		// ranked priority compare (config P0>P1>P2>P3): <= means
-		// higher-or-equal urgency; unprioritized items never match
 		{"priority<=P1", []string{"KIRA-1", "KIRA-2"}},
 		{"priority<P1", []string{"KIRA-2"}},
 		{"priority>=P1", []string{"KIRA-1"}},
 		{"priority>P0", []string{"KIRA-1"}},
 		{"priority>P1", nil},
-		// IN membership: scalar OR-chain, list contains-any, refs resolved
 		{"priority IN (P0,P1)", []string{"KIRA-1", "KIRA-2"}},
 		{"owner IN (alice, bob)", []string{"KIRA-2"}},
 		{"label IN (perf, missing)", []string{"KIRA-2", "KIRA-3"}},
 		{"epic IN (KIRA-100)", []string{"KIRA-1"}},
 		{"NOT priority IN (P0,P1)", []string{"KIRA-100", "KIRA-3"}},
-		// IS EMPTY / IS NOT EMPTY: null scalars and zero-length collections
 		{"owner IS EMPTY", []string{"KIRA-100"}},
 		{"owner IS NOT EMPTY", []string{"KIRA-1", "KIRA-2", "KIRA-3"}},
 		{"rank IS EMPTY", []string{"KIRA-100", "KIRA-2", "KIRA-3"}},
@@ -142,12 +132,11 @@ func TestEval(t *testing.T) {
 		{"blocked_by IS NOT EMPTY", []string{"KIRA-1"}},
 		{"links IS EMPTY", []string{"KIRA-100", "KIRA-2", "KIRA-3"}},
 		{"links IS NOT EMPTY", []string{"KIRA-1"}},
-		// cross-reference equality resolves refs like epic does
 		{"blocked_by=KIRA-2", []string{"KIRA-1"}},
 		{"links=KIRA-3", []string{"KIRA-1"}},
-		{"race", []string{"KIRA-1"}},       // title substring
-		{"RACE", []string{"KIRA-1"}},       // case-insensitive term
-		{`"fix race"`, []string{"KIRA-1"}}, // quoted multi-word term
+		{"race", []string{"KIRA-1"}},
+		{"RACE", []string{"KIRA-1"}},
+		{`"fix race"`, []string{"KIRA-1"}},
 		{"owner=shivam AND label=perf", []string{"KIRA-3"}},
 		{"owner=alice OR label=bug", []string{"KIRA-1", "KIRA-2", "KIRA-3"}},
 		{"category=doing AND NOT owner=alice", []string{"KIRA-1", "KIRA-100"}},
@@ -183,7 +172,6 @@ func TestEvalSprintActive(t *testing.T) {
 	if got := matchNums(t, "sprint=active", items, opts, cfg); got != nil {
 		t.Errorf("sprint=active with no active sprint matched %v, want none", got)
 	}
-	// != of a nonexistent sprint matches everything.
 	if got := matchNums(t, "sprint!=active", items, opts, cfg); len(got) != len(items) {
 		t.Errorf("sprint!=active with no active sprint matched %v, want all", got)
 	}
@@ -223,9 +211,8 @@ func TestCompileErrors(t *testing.T) {
 			t.Errorf("%s: pos = %d, want %d (%s)", tc.name, qe.Pos, tc.pos, qe.Msg)
 		}
 	}
-	// Equality on priority stays legal without a vocabulary.
 	if _, err := Compile("priority=P1", noPrio); err != nil {
-		t.Errorf("priority=P1 without priorities: %v", err)
+		t.Errorf("priority=P1 must stay legal without a priority vocabulary: %v", err)
 	}
 }
 

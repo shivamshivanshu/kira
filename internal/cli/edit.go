@@ -39,8 +39,6 @@ func newEditCmd(g *globalFlags) *cobra.Command {
 				}
 				opts.Fields = append(opts.Fields, core.FieldEdit{Key: k, Value: v})
 			}
-			// Typed convenience flags are sugar for --field key=value; an empty
-			// value clears the field, so presence is keyed off Changed.
 			for _, tf := range typedFlags {
 				if cmd.Flags().Changed(tf.name) {
 					opts.Fields = append(opts.Fields, core.FieldEdit{Key: tf.name, Value: *tf.value})

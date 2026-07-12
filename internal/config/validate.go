@@ -5,28 +5,26 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/shivamshivanshu/kira/internal/item"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
-// Validate rejects a config that would break kira's invariants, returning an
-// error naming the offending key. It is the gate every loaded config passes.
-func (c *Config) Validate() error {
-	if c.Version != SchemaVersion {
-		return fmt.Errorf("config: version: unsupported version %d (only %d is known)", c.Version, SchemaVersion)
+func Validate(c *datamodel.Config) error {
+	if c.Version != datamodel.SchemaVersion {
+		return fmt.Errorf("config: version: unsupported version %d (only %d is known)", c.Version, datamodel.SchemaVersion)
 	}
-	if err := enum("id.style", c.ID.Style, idStyles...); err != nil {
+	if err := validateEnum("id.style", c.ID.Style, datamodel.IDStyles...); err != nil {
 		return err
 	}
-	if err := enum("commit.mode", c.Commit.Mode, commitModes...); err != nil {
+	if err := validateEnum("commit.mode", c.Commit.Mode, datamodel.CommitModes...); err != nil {
 		return err
 	}
-	if err := enum("merge.policy", c.Merge.Policy, mergePolicies...); err != nil {
+	if err := validateEnum("merge.policy", c.Merge.Policy, datamodel.MergePolicies...); err != nil {
 		return err
 	}
-	if err := enum("ui.icons", c.UI.Icons, iconModes...); err != nil {
+	if err := validateEnum("ui.icons", c.UI.Icons, datamodel.IconModes...); err != nil {
 		return err
 	}
-	if err := enum("estimate.unit", c.Estimate.Unit, estimateUnits...); err != nil {
+	if err := validateEnum("estimate.unit", c.Estimate.Unit, datamodel.EstimateUnits...); err != nil {
 		return err
 	}
 	if c.Estimate.HoursPerDay <= 0 {
@@ -36,7 +34,7 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("config: workflows: at least one workflow is required")
 	}
 	for name, wf := range c.Workflows {
-		if err := wf.validate(name, c); err != nil {
+		if err := validateWorkflow(name, wf, c); err != nil {
 			return err
 		}
 	}
@@ -49,31 +47,12 @@ func (c *Config) Validate() error {
 	if err := validateVocabList("resolutions", c.Resolutions); err != nil {
 		return err
 	}
-	if err := c.validateFilters(); err != nil {
+	if err := validateFilters(c); err != nil {
 		return err
 	}
-	return c.validateSprints()
+	return validateSprints(c)
 }
 
-// VocabFor returns the configured vocabulary list governing an enum-ish item
-// field (priority/subtype/resolution) and whether the field is vocab-governed
-// at all. It is the one home of the field→list mapping, shared with core's
-// item validation; an empty list means the field is free-form.
-func (c *Config) VocabFor(field string) ([]string, bool) {
-	switch field {
-	case "priority":
-		return c.Priorities, true
-	case "subtype":
-		return c.Subtypes, true
-	case "resolution":
-		return c.Resolutions, true
-	}
-	return nil, false
-}
-
-// validateVocabList rejects empty or duplicate entries in an ordered vocabulary
-// list (priorities/subtypes/resolutions) — duplicates would break the ranked
-// order priorities defines.
 func validateVocabList(key string, list []string) error {
 	seen := make(map[string]bool, len(list))
 	for _, v := range list {
@@ -88,7 +67,7 @@ func validateVocabList(key string, list []string) error {
 	return nil
 }
 
-func (c *Config) validateFilters() error {
+func validateFilters(c *datamodel.Config) error {
 	for name, query := range c.Filters {
 		if name == "" {
 			return fmt.Errorf("config: filters: empty filter name")
@@ -100,7 +79,7 @@ func (c *Config) validateFilters() error {
 	return nil
 }
 
-func (c *Config) validateSprints() error {
+func validateSprints(c *datamodel.Config) error {
 	keys := make(map[string]bool, len(c.Sprints))
 	for _, s := range c.Sprints {
 		if s.Key == "" {
@@ -113,10 +92,10 @@ func (c *Config) validateSprints() error {
 		if s.Name == "" {
 			return fmt.Errorf("config: sprints[%s]: empty name", s.Key)
 		}
-		if !item.ValidDate(s.Start) {
+		if !datamodel.ValidDate(s.Start) {
 			return fmt.Errorf("config: sprints[%s].start: invalid RFC3339 date %q", s.Key, s.Start)
 		}
-		if !item.ValidDate(s.End) {
+		if !datamodel.ValidDate(s.End) {
 			return fmt.Errorf("config: sprints[%s].end: invalid RFC3339 date %q", s.Key, s.End)
 		}
 		if s.Start >= s.End {
@@ -126,23 +105,7 @@ func (c *Config) validateSprints() error {
 	return nil
 }
 
-// Sprint returns the configured sprint named key.
-func (c *Config) Sprint(key string) (Sprint, bool) {
-	for _, s := range c.Sprints {
-		if s.Key == key {
-			return s, true
-		}
-	}
-	return Sprint{}, false
-}
-
-// HasSprint reports whether key names a configured sprint.
-func (c *Config) HasSprint(key string) bool {
-	_, ok := c.Sprint(key)
-	return ok
-}
-
-func (w Workflow) validate(name string, c *Config) error {
+func validateWorkflow(name string, w datamodel.Workflow, c *datamodel.Config) error {
 	if len(w.States) == 0 {
 		return fmt.Errorf("config: workflows.%s.states: workflow has no states", name)
 	}
@@ -155,8 +118,8 @@ func (w Workflow) validate(name string, c *Config) error {
 			return fmt.Errorf("config: workflows.%s.states: duplicate state %q", name, s.Key)
 		}
 		defined[s.Key] = true
-		if !slices.Contains(categories, s.Category) {
-			return fmt.Errorf("config: workflows.%s.states[%s].category: invalid value %q, want one of %v", name, s.Key, s.Category, categories)
+		if !slices.Contains(datamodel.Categories, s.Category) {
+			return fmt.Errorf("config: workflows.%s.states[%s].category: invalid value %q, want one of %v", name, s.Key, s.Category, datamodel.Categories)
 		}
 		if s.Wip < 0 {
 			return fmt.Errorf("config: workflows.%s.states[%s].wip: must be >= 0, got %d", name, s.Key, s.Wip)
@@ -179,7 +142,7 @@ func (w Workflow) validate(name string, c *Config) error {
 			if !defined[t.To] {
 				return fmt.Errorf("config: workflows.%s.transitions.%s: unknown target state %q", name, from, t.To)
 			}
-			if err := t.validateGuards(fmt.Sprintf("workflows.%s.transitions.%s", name, from), c); err != nil {
+			if err := validateGuards(t, fmt.Sprintf("workflows.%s.transitions.%s", name, from), c); err != nil {
 				return err
 			}
 		}
@@ -187,18 +150,14 @@ func (w Workflow) validate(name string, c *Config) error {
 	return nil
 }
 
-// validateGuards checks a transition's require:/set: guards name known item
-// fields (item.MutableFields — the schema's own list, so a new item field can
-// never drift out of guard reach) and that set: values satisfy the field's
-// configured vocabulary (docs/design/02-data-model.md §10).
-func (t Transition) validateGuards(where string, c *Config) error {
+func validateGuards(t datamodel.Transition, where string, c *datamodel.Config) error {
 	for _, f := range t.Require {
-		if !slices.Contains(item.MutableFields, f) {
+		if !slices.Contains(datamodel.MutableFields, f) {
 			return fmt.Errorf("config: %s: require names unknown field %q", where, f)
 		}
 	}
 	for f, v := range t.Set {
-		if !slices.Contains(item.MutableFields, f) {
+		if !slices.Contains(datamodel.MutableFields, f) {
 			return fmt.Errorf("config: %s: set names unknown field %q", where, f)
 		}
 		if vocab, ok := c.VocabFor(f); ok && len(vocab) > 0 && !slices.Contains(vocab, v) {
@@ -208,10 +167,7 @@ func (t Transition) validateGuards(where string, c *Config) error {
 	return nil
 }
 
-// enum returns an error naming key when val is not one of allowed. The string
-// type parameter keeps each call's val and allowed set the same enum type, so a
-// mismatched constant set is a compile error rather than a silent pass.
-func enum[T ~string](key string, val T, allowed ...T) error {
+func validateEnum[T ~string](key string, val T, allowed ...T) error {
 	if slices.Contains(allowed, val) {
 		return nil
 	}

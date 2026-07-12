@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
 func newListCmd(g *globalFlags) *cobra.Command {
@@ -54,7 +55,7 @@ func emitStderrNotes(w io.Writer, notes []string) {
 	}
 }
 
-func renderListResult(w io.Writer, res *core.ListResult) {
+func renderListResult(w io.Writer, res *datamodel.ListResult) {
 	if res.Tree != nil {
 		renderTreeGroups(w, res)
 		return
@@ -62,7 +63,7 @@ func renderListResult(w io.Writer, res *core.ListResult) {
 	renderList(w, res)
 }
 
-func renderList(w io.Writer, res *core.ListResult) {
+func renderList(w io.Writer, res *datamodel.ListResult) {
 	if res.Count == 0 {
 		fmt.Fprintln(w, "no items")
 		return
@@ -74,6 +75,6 @@ func renderList(w io.Writer, res *core.ListResult) {
 	tw.Flush()
 }
 
-func formatItemRow(it core.ListItem) string {
+func formatItemRow(it datamodel.ListItem) string {
 	return fmt.Sprintf("%s\t%s\t%s\t%s", it.Number, it.State, it.Type, it.Title)
 }

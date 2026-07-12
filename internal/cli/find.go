@@ -10,16 +10,10 @@ import (
 	"github.com/shivamshivanshu/kira/internal/core"
 )
 
-// knownGlobalFlags are the kira persistent flags to strip from find's rg
-// passthrough — they are kira's, not rg's. Kept in one place so it tracks the
-// flags registered in newRootCmd. The global `-C <path>` chdir is deliberately
-// omitted: inside `find`, `-C` means ripgrep's context (docs/design/04-cli.md find).
+// The global `-C <path>` chdir is deliberately absent: inside `find`, `-C`
+// means ripgrep's context flag and must pass through.
 var knownGlobalFlags = []string{"--json", "--no-color", "--quiet"}
 
-// newFindCmd builds `kira find`. Flag parsing is disabled so every rg flag
-// (`-i`, `-w`, `-C N`, and any other) forwards verbatim to ripgrep — including
-// `-C`, which would otherwise collide with the global `-C <path>` shorthand
-// (docs/design/04-cli.md find).
 func newFindCmd(g *globalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                "find <pattern> [rg-flags...]",
@@ -51,9 +45,6 @@ func newFindCmd(g *globalFlags) *cobra.Command {
 	return cmd
 }
 
-// renderFind prints the human view of find: one line per row, with the file
-// path already rewritten to the display number. Matches use rg's `number:line:`
-// form, context lines its `number-line-` form, separators pass through.
 func renderFind(w io.Writer, rows []core.FindRow) {
 	for _, r := range rows {
 		switch r.Kind {

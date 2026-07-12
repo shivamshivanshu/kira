@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
 func newTreeCmd(g *globalFlags) *cobra.Command {
@@ -38,8 +38,7 @@ func newTreeCmd(g *globalFlags) *cobra.Command {
 	}
 }
 
-// renderTree prints the hierarchy as an indented outline, two spaces per depth.
-func renderTree(w io.Writer, res *core.TreeResult) {
+func renderTree(w io.Writer, res *datamodel.TreeResult) {
 	if len(res.Nodes) == 0 {
 		fmt.Fprintln(w, "no items")
 		return
@@ -51,7 +50,7 @@ func renderTree(w io.Writer, res *core.TreeResult) {
 	tw.Flush()
 }
 
-func renderTreeNode(w io.Writer, n core.TreeNode, depth int) {
+func renderTreeNode(w io.Writer, n datamodel.TreeNode, depth int) {
 	indent := strings.Repeat("  ", depth)
 	fmt.Fprintf(w, "%s%s\t%s\t%s\n", indent, n.Number, n.Type, n.Title)
 	for _, c := range n.Children {
@@ -59,14 +58,12 @@ func renderTreeNode(w io.Writer, n core.TreeNode, depth int) {
 	}
 }
 
-// renderTreeGroups prints the epic-grouped list (list --tree / query default):
-// each epic as a header, its items indented beneath, orphans last.
-func renderTreeGroups(w io.Writer, res *core.ListResult) {
+func renderTreeGroups(w io.Writer, res *datamodel.ListResult) {
 	if res.Count == 0 {
 		fmt.Fprintln(w, "no items")
 		return
 	}
-	byID := make(map[string]core.ListItem, len(res.Items))
+	byID := make(map[string]datamodel.ListItem, len(res.Items))
 	for _, it := range res.Items {
 		byID[it.ID] = it
 	}
@@ -85,9 +82,7 @@ func renderTreeGroups(w io.Writer, res *core.ListResult) {
 	tw.Flush()
 }
 
-// epicLabel is a tree group's header text: its epic display number, else the
-// epic ULID, else "" for the orphan bucket.
-func epicLabel(grp core.TreeGroup) string {
+func epicLabel(grp datamodel.TreeGroup) string {
 	switch {
 	case grp.EpicNumber != nil:
 		return *grp.EpicNumber

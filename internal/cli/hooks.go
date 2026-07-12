@@ -6,9 +6,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newHooksCmd scaffolds the `hooks` command tree. In M0 `hooks install` exists
-// but is a stub: the tracked hook scripts and merge-driver registration land in
-// M3 (docs/design/07-git-integration.md §3).
 func newHooksCmd(g *globalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "hooks",

@@ -2,12 +2,33 @@ package core
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-// itemWithBody builds a valid ticket file with a custom body, for full-text
-// search tests (find scans the whole file, frontmatter included).
+func writeStore(t *testing.T, tickets map[string]string) string {
+	t.Helper()
+	root := t.TempDir()
+	kira := filepath.Join(root, ".kira")
+	if err := os.MkdirAll(filepath.Join(kira, "tickets"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(kira, "config.yaml"), []byte(initConfigYAML("KIRA", "kira")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for name, content := range tickets {
+		if err := os.WriteFile(filepath.Join(kira, "tickets", name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return root
+}
+
 func itemWithBody(ulid, number, title, body string) string {
 	return "---\n" +
 		"id: " + ulid + "\n" +
@@ -24,12 +45,10 @@ func itemWithBody(ulid, number, title, body string) string {
 		"---\n\n" + body
 }
 
-// fallbackFind runs the pure-Go path and projects it through the same JSON
-// builder the cli uses, so the tests assert on the frozen contract shape.
-func fallbackFind(t *testing.T, tickets map[string]string, args FindArgs) (*FindResult, error) {
+func fallbackFind(t *testing.T, tickets map[string]string, args FindArgs) (*datamodel.FindResult, error) {
 	t.Helper()
 	root := writeStore(t, tickets)
-	s := &Store{root: root}
+	s := newStore(root)
 	items, err := s.LoadAll()
 	if err != nil {
 		t.Fatalf("LoadAll: %v", err)
@@ -57,8 +76,8 @@ func TestFindFallbackMatch(t *testing.T) {
 	if m.Number != "KIRA-1" || m.ID != "01J8X7B1Q2W3E4R5T6Y7U8I9O0" {
 		t.Fatalf("match mapped to wrong item: %+v", m)
 	}
-	if m.Line != 15 { // 13 fence/frontmatter lines, blank line 14, body starts 15
-		t.Fatalf("line = %d, want 15", m.Line)
+	if m.Line != 15 {
+		t.Fatalf("line = %d, want 15 (first body line)", m.Line)
 	}
 }
 
@@ -81,8 +100,8 @@ func TestFindFallbackRegexErrorIsUserError(t *testing.T) {
 	_, err := fallbackFind(t, map[string]string{
 		"01J8X7B1Q2W3E4R5T6Y7U8I9O0.md": itemWithBody("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first", "x\n"),
 	}, FindArgs{Pattern: "["})
-	var ce *Error
-	if !errors.As(err, &ce) || ce.Code != ExitUser {
+	var ce *errx.Error
+	if !errors.As(err, &ce) || ce.Code != errx.ExitUser {
 		t.Fatalf("bad regex must be a user error (exit 1), got %v", err)
 	}
 }
@@ -91,7 +110,6 @@ func TestFindFallbackIgnoreCaseAndWord(t *testing.T) {
 	tickets := map[string]string{
 		"01J8X7B1Q2W3E4R5T6Y7U8I9O0.md": itemWithBody("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first", "Race in the orderbook.\nembraced the change\n"),
 	}
-	// case-sensitive: "race" (lowercase) matches only "embraced", not "Race".
 	res, err := fallbackFind(t, tickets, FindArgs{Pattern: "race"})
 	if err != nil {
 		t.Fatal(err)
@@ -99,7 +117,6 @@ func TestFindFallbackIgnoreCaseAndWord(t *testing.T) {
 	if len(res.Matches) != 1 || res.Matches[0].Line != 16 {
 		t.Fatalf("case-sensitive should match only 'embraced' line 16, got %+v", res.Matches)
 	}
-	// -i: matches both "Race" and "embraced".
 	res, err = fallbackFind(t, tickets, FindArgs{Pattern: "race", IgnoreCase: true})
 	if err != nil {
 		t.Fatal(err)
@@ -107,7 +124,6 @@ func TestFindFallbackIgnoreCaseAndWord(t *testing.T) {
 	if len(res.Matches) != 2 {
 		t.Fatalf("-i should match both lines, got %+v", res.Matches)
 	}
-	// -w with -i: word boundary excludes "embraced", keeps standalone "Race".
 	res, err = fallbackFind(t, tickets, FindArgs{Pattern: "race", IgnoreCase: true, Word: true})
 	if err != nil {
 		t.Fatal(err)
@@ -119,8 +135,8 @@ func TestFindFallbackIgnoreCaseAndWord(t *testing.T) {
 
 func TestFindFallbackEmptyPatternIsUserError(t *testing.T) {
 	_, err := fallbackFind(t, nil, FindArgs{Pattern: ""})
-	var ce *Error
-	if !errors.As(err, &ce) || ce.Code != ExitUser {
+	var ce *errx.Error
+	if !errors.As(err, &ce) || ce.Code != errx.ExitUser {
 		t.Fatalf("empty pattern must be a user error, got %v", err)
 	}
 }
@@ -155,30 +171,5 @@ func TestParseFindArgs(t *testing.T) {
 				t.Errorf("passthru = %v, want %v", fa.Passthru, c.wantPass)
 			}
 		})
-	}
-}
-
-func TestRgLineRegex(t *testing.T) {
-	cases := []struct {
-		line              string
-		wantPath, wantSep string
-		wantNum, wantText string
-		shouldMatch       bool
-	}{
-		{".kira/tickets/01J8.md:14:the snapshot merge", ".kira/tickets/01J8.md", ":", "14", "the snapshot merge", true},
-		{".kira/tickets/01J8.md-13-context line", ".kira/tickets/01J8.md", "-", "13", "context line", true},
-		{"--", "", "", "", "", false},
-	}
-	for _, c := range cases {
-		m := rgLineRE.FindStringSubmatch(c.line)
-		if c.shouldMatch != (m != nil) {
-			t.Fatalf("%q: match=%v want %v", c.line, m != nil, c.shouldMatch)
-		}
-		if m == nil {
-			continue
-		}
-		if m[1] != c.wantPath || m[2] != c.wantSep || m[3] != c.wantNum || m[4] != c.wantText {
-			t.Fatalf("%q: parsed %q %q %q %q", c.line, m[1], m[2], m[3], m[4])
-		}
 	}
 }

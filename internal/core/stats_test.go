@@ -5,9 +5,10 @@ import (
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/config"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
-var burnSprint = config.Sprint{Key: "S1", Name: "Sprint 1", Start: "2026-01-05", End: "2026-01-09"}
+var burnSprint = datamodel.Sprint{Key: "S1", Name: "Sprint 1", Start: "2026-01-05", End: "2026-01-09"}
 
 var burnItems = []burnItem{
 	{estimate: 3, estimated: true, doneDay: "2026-01-07"},
@@ -19,7 +20,7 @@ var burnItems = []burnItem{
 
 func TestComputeBurndownFullWindow(t *testing.T) {
 	b := computeBurndown(burnSprint, "points", burnItems, "2026-07-12")
-	want := []BurndownDay{
+	want := []datamodel.BurndownDay{
 		{Date: "2026-01-05", Remaining: 17, Ideal: 17},
 		{Date: "2026-01-06", Remaining: 10, Ideal: 12.8},
 		{Date: "2026-01-07", Remaining: 7, Ideal: 8.5},
@@ -71,7 +72,7 @@ func TestComputeBurndownCountsDegraded(t *testing.T) {
 }
 
 func TestComputeVelocity(t *testing.T) {
-	closed := []config.Sprint{
+	closed := []datamodel.Sprint{
 		{Key: "S1", Start: "2026-01-05", End: "2026-01-09"},
 		{Key: "S2", Start: "2026-01-12", End: "2026-01-16"},
 	}
@@ -86,7 +87,7 @@ func TestComputeVelocity(t *testing.T) {
 		"S2": {{estimate: 4, doneDay: "2026-01-16"}},
 	}
 	v := computeVelocity(closed, "points", bySprint)
-	want := []VelocitySprint{{Key: "S1", Completed: 8}, {Key: "S2", Completed: 4}}
+	want := []datamodel.VelocitySprint{{Key: "S1", Completed: 8}, {Key: "S2", Completed: 4}}
 	if !reflect.DeepEqual(v.Sprints, want) {
 		t.Errorf("sprints = %+v, want %+v", v.Sprints, want)
 	}
@@ -99,10 +100,10 @@ func TestComputeVelocity(t *testing.T) {
 }
 
 func TestComputeVelocityTrailingThreeOfFour(t *testing.T) {
-	var closed []config.Sprint
+	var closed []datamodel.Sprint
 	bySprint := map[string][]velocityItem{}
 	for i, key := range []string{"A", "B", "C", "D"} {
-		sp := config.Sprint{Key: key, Start: "2026-01-05", End: "2026-01-09"}
+		sp := datamodel.Sprint{Key: key, Start: "2026-01-05", End: "2026-01-09"}
 		closed = append(closed, sp)
 		bySprint[key] = []velocityItem{{estimate: float64(10 * (i + 1)), doneDay: "2026-01-06"}}
 	}
@@ -120,7 +121,7 @@ func TestComputeVelocityNoClosedSprints(t *testing.T) {
 }
 
 func TestComputeVelocityRoundsTrailing(t *testing.T) {
-	closed := []config.Sprint{
+	closed := []datamodel.Sprint{
 		{Key: "A", Start: "2026-01-05", End: "2026-01-09"},
 		{Key: "B", Start: "2026-01-12", End: "2026-01-16"},
 		{Key: "C", Start: "2026-01-19", End: "2026-01-23"},
@@ -137,7 +138,7 @@ func TestComputeVelocityRoundsTrailing(t *testing.T) {
 
 func TestClosedSprints(t *testing.T) {
 	cfg := config.Default()
-	cfg.Sprints = []config.Sprint{
+	cfg.Sprints = []datamodel.Sprint{
 		{Key: "future", Start: "2026-08-01", End: "2026-08-14"},
 		{Key: "later", Start: "2026-03-01", End: "2026-03-14"},
 		{Key: "earlier", Start: "2026-01-05", End: "2026-01-18"},

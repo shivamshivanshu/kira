@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
 func newShowCmd(g *globalFlags) *cobra.Command {
@@ -33,9 +33,7 @@ func newShowCmd(g *globalFlags) *cobra.Command {
 	}
 }
 
-// renderShow prints the human view of an item: a header line, the populated
-// frontmatter fields, then the body verbatim.
-func renderShow(w io.Writer, r *core.ShowResult) {
+func renderShow(w io.Writer, r *datamodel.ShowResult) {
 	fmt.Fprintf(w, "%s  %s  [%s]\n", r.Number, r.Title, r.State)
 	line := func(label, value string) {
 		if value != "" {

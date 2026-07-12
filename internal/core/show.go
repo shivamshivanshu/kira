@@ -1,13 +1,8 @@
 package core
 
-import (
-	"github.com/shivamshivanshu/kira/internal/config"
-)
+import "github.com/shivamshivanshu/kira/internal/datamodel"
 
-// Show resolves ref to an item and returns its full detail read directly from
-// the ticket file (docs/design/04-cli.md show). The index-derived fields
-// (blocks, linked_commits, history_tail) stay empty pre-M2.
-func (s *Store) Show(cfg *config.Config, ref string) (*ShowResult, error) {
+func (s *Store) Show(cfg *datamodel.Config, ref string) (*datamodel.ShowResult, error) {
 	it, _, _, err := s.resolveRef(cfg, ref)
 	if err != nil {
 		return nil, err

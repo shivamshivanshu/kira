@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/core"
-	"github.com/shivamshivanshu/kira/internal/item"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
 func newLinkCmd(g *globalFlags) *cobra.Command {
@@ -16,16 +16,14 @@ func newLinkCmd(g *globalFlags) *cobra.Command {
 		flag     string
 		usage    string
 		target   core.LinkTarget
-		linkType string // item link type when target is core.LinkTyped
+		linkType string
 		value    *string
 	}
 	edges := []edge{
 		{"epic", "epic parent to set (or clear with --remove)", core.LinkEpic, "", new(string)},
 		{"blocked-by", "blocking item to add (or remove with --remove)", core.LinkBlockedBy, "", new(string)},
 	}
-	// One flag per known link type, derived from the schema: a new entry in
-	// item.LinkTypes gets its CLI flag with no edit here.
-	for _, typ := range item.LinkTypes {
+	for _, typ := range datamodel.LinkTypes {
 		edges = append(edges, edge{
 			flag:     core.FlagForLinkType(typ),
 			usage:    fmt.Sprintf("item to add to links.%s (or remove with --remove)", typ),

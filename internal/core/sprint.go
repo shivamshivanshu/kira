@@ -8,103 +8,78 @@ import (
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/config"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
-	"github.com/shivamshivanshu/kira/internal/item"
 )
 
 const activeSprintFile = "active-sprint"
 
 func (s *Store) ActiveSprintKey() string {
-	b, err := os.ReadFile(filepath.Join(s.cacheDir(), activeSprintFile))
+	b, err := os.ReadFile(filepath.Join(s.fs().CacheDir(), activeSprintFile))
 	if err != nil {
 		return ""
 	}
 	return strings.TrimSpace(string(b))
 }
 
-type SprintJSON struct {
-	Key   string `json:"key"`
-	Name  string `json:"name"`
-	Start string `json:"start"`
-	End   string `json:"end"`
+func sprintJSON(sp datamodel.Sprint) datamodel.SprintJSON {
+	return datamodel.SprintJSON{Key: sp.Key, Name: sp.Name, Start: sp.Start, End: sp.End}
 }
 
-func sprintJSON(sp config.Sprint) SprintJSON {
-	return SprintJSON{Key: sp.Key, Name: sp.Name, Start: sp.Start, End: sp.End}
-}
-
-func (s *Store) ResolveSprintKey(cfg *config.Config, key string) (string, error) {
+func (s *Store) ResolveSprintKey(cfg *datamodel.Config, key string) (string, error) {
 	if key == "active" {
 		active := s.ActiveSprintKey()
 		if active == "" {
-			return "", userErr("no active sprint is set (run `kira sprint activate <key>`)")
+			return "", errx.User("no active sprint is set (run `kira sprint activate <key>`)")
 		}
 		key = active
 	}
 	if !cfg.HasSprint(key) {
-		return "", userErr("%q is not a key in the configured sprints", key)
+		return "", errx.User("%q is not a key in the configured sprints", key)
 	}
 	return key, nil
 }
 
-func inSprint(it *item.Item, key string) bool {
+func inSprint(it *datamodel.Item, key string) bool {
 	return it.Sprint != nil && *it.Sprint == key
 }
 
-type SprintCreateResult struct {
-	Created bool       `json:"created"`
-	Sprint  SprintJSON `json:"sprint"`
-}
-
-func (s *Store) SprintCreate(cfg *config.Config, sp config.Sprint) (*SprintCreateResult, error) {
-	release, err := s.lock()
+func (s *Store) SprintCreate(cfg *datamodel.Config, sp datamodel.Sprint) (*datamodel.SprintCreateResult, error) {
+	fs := s.fs()
+	release, err := fs.Lock()
 	if err != nil {
 		return nil, err
 	}
 	defer release()
 
-	data, err := os.ReadFile(s.configPath())
+	data, err := os.ReadFile(fs.ConfigPath())
 	if err != nil {
-		return nil, userErr("reading config: %v", err)
+		return nil, errx.User("reading config: %v", err)
 	}
 	out, err := config.AppendSprint(data, sp)
 	if err != nil {
-		return nil, userErr("%v", err)
+		return nil, errx.User("%v", err)
 	}
-	if err := os.WriteFile(s.configPath(), out, 0o644); err != nil {
-		return nil, userErr("writing config: %v", err)
+	if err := os.WriteFile(fs.ConfigPath(), out, 0o644); err != nil {
+		return nil, errx.User("writing config: %v", err)
 	}
 	subject := "kira: sprint create " + sp.Key
-	if err := s.finalize(cfg.Commit.Mode, cfg.Commit.Trailer, subject, "", s.relToRoot(s.configPath())); err != nil {
+	if err := s.finalize(cfg.Commit.Mode, cfg.Commit.Trailer, subject, "", fs.RelToRoot(fs.ConfigPath())); err != nil {
 		return nil, err
 	}
-	return &SprintCreateResult{Created: true, Sprint: sprintJSON(sp)}, nil
+	return &datamodel.SprintCreateResult{Created: true, Sprint: sprintJSON(sp)}, nil
 }
 
-type SprintItemCounts struct {
-	Total int `json:"total"`
-	Done  int `json:"done"`
-}
-
-type SprintListRow struct {
-	SprintJSON
-	Active bool             `json:"active"`
-	Items  SprintItemCounts `json:"items"`
-}
-
-type SprintListResult struct {
-	Sprints []SprintListRow `json:"sprints"`
-}
-
-func (s *Store) SprintList(cfg *config.Config) (*SprintListResult, error) {
+func (s *Store) SprintList(cfg *datamodel.Config) (*datamodel.SprintListResult, error) {
 	items, err := s.LoadAll()
 	if err != nil {
 		return nil, err
 	}
 	active := s.ActiveSprintKey()
-	rows := make([]SprintListRow, 0, len(cfg.Sprints))
+	rows := make([]datamodel.SprintListRow, 0, len(cfg.Sprints))
 	for _, sp := range cfg.Sprints {
-		counts := SprintItemCounts{}
+		counts := datamodel.SprintItemCounts{}
 		for _, it := range items {
 			if !inSprint(it, sp.Key) {
 				continue
@@ -114,55 +89,44 @@ func (s *Store) SprintList(cfg *config.Config) (*SprintListResult, error) {
 				counts.Done++
 			}
 		}
-		rows = append(rows, SprintListRow{SprintJSON: sprintJSON(sp), Active: sp.Key == active, Items: counts})
+		rows = append(rows, datamodel.SprintListRow{SprintJSON: sprintJSON(sp), Active: sp.Key == active, Items: counts})
 	}
-	return &SprintListResult{Sprints: rows}, nil
+	return &datamodel.SprintListResult{Sprints: rows}, nil
 }
 
-type SprintActivateResult struct {
-	Activated string `json:"activated"`
-	Previous  string `json:"previous,omitempty"`
-}
-
-func (s *Store) SprintActivate(cfg *config.Config, key string) (*SprintActivateResult, error) {
+func (s *Store) SprintActivate(cfg *datamodel.Config, key string) (*datamodel.SprintActivateResult, error) {
 	if !cfg.HasSprint(key) {
-		return nil, userErr("%q is not a key in the configured sprints", key)
+		return nil, errx.User("%q is not a key in the configured sprints", key)
 	}
 	prev := s.ActiveSprintKey()
-	if err := os.MkdirAll(s.cacheDir(), 0o755); err != nil {
-		return nil, userErr("creating cache dir: %v", err)
+	fs := s.fs()
+	if err := os.MkdirAll(fs.CacheDir(), 0o755); err != nil {
+		return nil, errx.User("creating cache dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(s.cacheDir(), activeSprintFile), []byte(key+"\n"), 0o644); err != nil {
-		return nil, userErr("writing active-sprint pointer: %v", err)
+	if err := os.WriteFile(filepath.Join(fs.CacheDir(), activeSprintFile), []byte(key+"\n"), 0o644); err != nil {
+		return nil, errx.User("writing active-sprint pointer: %v", err)
 	}
-	return &SprintActivateResult{Activated: key, Previous: prev}, nil
+	return &datamodel.SprintActivateResult{Activated: key, Previous: prev}, nil
 }
 
-type SprintCloseResult struct {
-	Closed     string   `json:"closed"`
-	WasActive  bool     `json:"was_active"`
-	Unfinished []string `json:"unfinished"`
-	MovedTo    string   `json:"moved_to,omitempty"`
-}
-
-func (s *Store) SprintClose(cfg *config.Config, key, moveTo string) (*SprintCloseResult, error) {
+func (s *Store) SprintClose(cfg *datamodel.Config, key, moveTo string) (*datamodel.SprintCloseResult, error) {
 	if !cfg.HasSprint(key) {
-		return nil, userErr("%q is not a key in the configured sprints", key)
+		return nil, errx.User("%q is not a key in the configured sprints", key)
 	}
 	if moveTo != "" {
 		if moveTo == key {
-			return nil, userErr("--move-to target %q is the sprint being closed", moveTo)
+			return nil, errx.User("--move-to target %q is the sprint being closed", moveTo)
 		}
 		if !cfg.HasSprint(moveTo) {
-			return nil, userErr("--move-to: %q is not a key in the configured sprints", moveTo)
+			return nil, errx.User("--move-to: %q is not a key in the configured sprints", moveTo)
 		}
 	}
 	items, err := s.LoadAll()
 	if err != nil {
 		return nil, err
 	}
-	var unfinished []*item.Item
-	res := &SprintCloseResult{Closed: key, Unfinished: []string{}}
+	var unfinished []*datamodel.Item
+	res := &datamodel.SprintCloseResult{Closed: key, Unfinished: []string{}}
 	for _, it := range items {
 		if inSprint(it, key) && !isDoneState(cfg, it.Type, it.State) {
 			unfinished = append(unfinished, it)
@@ -171,11 +135,11 @@ func (s *Store) SprintClose(cfg *config.Config, key, moveTo string) (*SprintClos
 	}
 
 	if moveTo != "" {
-		apply := func(u *item.Item, _ *id.Resolver, _ []*item.Item) (hard, warns []error) {
+		apply := func(u *datamodel.Item, _ *id.Resolver, _ []*datamodel.Item) (hard, warns []error) {
 			u.Sprint = &moveTo
 			return nil, nil
 		}
-		subjectOf := func(orig *item.Item) string {
+		subjectOf := func(orig *datamodel.Item) string {
 			return fmt.Sprintf("kira: %s sprint %s -> %s", orig.Number, key, moveTo)
 		}
 		for _, it := range unfinished {
@@ -188,8 +152,8 @@ func (s *Store) SprintClose(cfg *config.Config, key, moveTo string) (*SprintClos
 
 	if s.ActiveSprintKey() == key {
 		res.WasActive = true
-		if err := os.Remove(filepath.Join(s.cacheDir(), activeSprintFile)); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return nil, userErr("clearing active-sprint pointer: %v", err)
+		if err := os.Remove(filepath.Join(s.fs().CacheDir(), activeSprintFile)); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, errx.User("clearing active-sprint pointer: %v", err)
 		}
 	}
 	return res, nil

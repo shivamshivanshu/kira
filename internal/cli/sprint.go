@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/shivamshivanshu/kira/internal/config"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
 func newSprintCmd(g *globalFlags) *cobra.Command {
@@ -23,7 +23,7 @@ func newSprintCmd(g *globalFlags) *cobra.Command {
 }
 
 func newSprintCreateCmd(g *globalFlags) *cobra.Command {
-	var sp config.Sprint
+	var sp datamodel.Sprint
 	cmd := &cobra.Command{
 		Use:   "create --key KEY --name NAME --start DATE --end DATE",
 		Short: "Append a sprint to config sprints (committed like any config mutation)",

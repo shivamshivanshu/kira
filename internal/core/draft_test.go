@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 func TestDraftRoundTrip(t *testing.T) {
@@ -53,9 +55,6 @@ func TestDraftRoundTrip(t *testing.T) {
 	}
 }
 
-// TestItemFromDraftEmptyScalarsAreAbsent pins that an editor-entered empty
-// value (`owner: ""`) assembles as an absent field, so the written file keeps
-// the canonical no-line form for every unset optional.
 func TestItemFromDraftEmptyScalarsAreAbsent(t *testing.T) {
 	empty := ""
 	d := draft{
@@ -106,9 +105,6 @@ func TestStripErrorBanner(t *testing.T) {
 	}
 }
 
-// TestRunEditorRetryLoop drives runEditor with a fake editor that writes an
-// invalid buffer on the first call and a valid one on the second, proving the
-// parse-validate-retry loop reopens on failure and accepts the fix.
 func TestRunEditorRetryLoop(t *testing.T) {
 	dir := t.TempDir()
 	counter := filepath.Join(dir, "counter")
@@ -156,8 +152,8 @@ func TestRunEditorUnsetIsEnvError(t *testing.T) {
 	t.Setenv("EDITOR", "")
 	t.Setenv("VISUAL", "")
 	_, err := runEditor("x", func(string) []error { return nil })
-	var ce *Error
-	if !errors.As(err, &ce) || ce.Code != ExitEnv {
-		t.Fatalf("want ExitEnv, got %v", err)
+	var ce *errx.Error
+	if !errors.As(err, &ce) || ce.Code != errx.ExitEnv {
+		t.Fatalf("want errx.ExitEnv, got %v", err)
 	}
 }

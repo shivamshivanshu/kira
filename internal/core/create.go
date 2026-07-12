@@ -7,16 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shivamshivanshu/kira/internal/config"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
-	"github.com/shivamshivanshu/kira/internal/item"
 )
 
-// CreateOpts carries the create flags (docs/design/04-cli.md create). Empty
-// string fields and a nil Estimate mean "not supplied": they leave the
-// template/editor value in place rather than clearing it.
 type CreateOpts struct {
-	Type     string // item.TypeTicket or item.TypeEpic, fixed by the subcommand
+	Type     string
 	Subtype  string
 	Title    string
 	Priority string
@@ -24,18 +21,15 @@ type CreateOpts struct {
 	Owner    string
 	Reporter string
 	Labels   []string
-	Parent   string // epic reference (ULID or number), resolved to a ULID
+	Parent   string
 	Sprint   string
 	Due      string
 	Estimate *float64
 	NoEdit   bool
-	FromFile string // path, or "-" for stdin
+	FromFile string
 	Force    bool
 }
 
-// ResolveTemplate renders the template for opts.Type with the create flags
-// applied, without minting an ID, writing, or committing — the --print-template
-// path the nvim plugin prefills its scratch buffer from (docs/design/04-cli.md).
 func (s *Store) ResolveTemplate(opts CreateOpts) (string, error) {
 	base, err := s.templateDraft(opts.Type)
 	if err != nil {
@@ -44,17 +38,13 @@ func (s *Store) ResolveTemplate(opts CreateOpts) (string, error) {
 	return serializeDraft(applyFlags(base, opts)), nil
 }
 
-// Create mints an item of opts.Type, gathers its content (from --from-file,
-// --no-edit flags, or the $EDITOR validate-retry loop), assigns system fields
-// (ULID, number, initial state, timestamps), writes it, and commits per the
-// active commit mode.
-func (s *Store) Create(cfg *config.Config, opts CreateOpts) (*CreateResult, error) {
+func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.CreateResult, error) {
 	wf, ok := cfg.Workflows[opts.Type]
 	if !ok {
-		return nil, userErr("no workflow configured for type %q", opts.Type)
+		return nil, errx.User("no workflow configured for type %q", opts.Type)
 	}
 
-	release, err := s.lock()
+	release, err := s.fs().Lock()
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +64,7 @@ func (s *Store) Create(cfg *config.Config, opts CreateOpts) (*CreateResult, erro
 		created: time.Now().Format(time.RFC3339),
 	}
 
-	assemble := func(d draft) (*item.Item, []error, []error) {
+	assemble := func(d draft) (*datamodel.Item, []error, []error) {
 		it := itemFromDraft(d, sys)
 		hard, warns := validateAssembled(cfg, it, resolver, opts.Force)
 		return it, hard, warns
@@ -86,7 +76,7 @@ func (s *Store) Create(cfg *config.Config, opts CreateOpts) (*CreateResult, erro
 	}
 	base = applyFlags(base, opts)
 
-	var finalItem *item.Item
+	var finalItem *datamodel.Item
 	var warns []error
 	switch {
 	case opts.FromFile != "":
@@ -96,17 +86,17 @@ func (s *Store) Create(cfg *config.Config, opts CreateOpts) (*CreateResult, erro
 		}
 		d, perr := parseDraft(stripErrorBanner(content))
 		if perr != nil {
-			return nil, userErr("--from-file: %v", perr)
+			return nil, errx.User("--from-file: %v", perr)
 		}
 		it, errs, w := assemble(d)
 		if len(errs) > 0 {
-			return nil, invalidErr(errs)
+			return nil, errx.Invalid(errs)
 		}
 		finalItem, warns = it, w
 	case opts.NoEdit:
 		it, errs, w := assemble(base)
 		if len(errs) > 0 {
-			return nil, invalidErr(errs)
+			return nil, errx.Invalid(errs)
 		}
 		finalItem, warns = it, w
 	default:
@@ -135,7 +125,7 @@ func (s *Store) Create(cfg *config.Config, opts CreateOpts) (*CreateResult, erro
 	if err := s.finalize(cfg.Commit.Mode, cfg.Commit.Trailer, subject, finalItem.Number, path); err != nil {
 		return nil, err
 	}
-	return &CreateResult{
+	return &datamodel.CreateResult{
 		ID:     finalItem.ID,
 		Number: finalItem.Number,
 		Type:   finalItem.Type,
@@ -145,8 +135,6 @@ func (s *Store) Create(cfg *config.Config, opts CreateOpts) (*CreateResult, erro
 	}, nil
 }
 
-// systemFields are the values core assigns to a new item; the draft never
-// carries them.
 type systemFields struct {
 	ulid    string
 	number  string
@@ -155,8 +143,8 @@ type systemFields struct {
 	created string
 }
 
-func itemFromDraft(d draft, sys systemFields) *item.Item {
-	return &item.Item{
+func itemFromDraft(d draft, sys systemFields) *datamodel.Item {
+	return &datamodel.Item{
 		ID:        sys.ulid,
 		Number:    sys.number,
 		Aliases:   []string{},
@@ -180,9 +168,6 @@ func itemFromDraft(d draft, sys systemFields) *item.Item {
 	}
 }
 
-// templateDraft loads and parses templates/<type>.md, falling back to the
-// built-in skeleton when the file is absent (e.g. a store created before the
-// template was added).
 func (s *Store) templateDraft(typ string) (draft, error) {
 	data, err := os.ReadFile(s.templatePath(typ))
 	if err != nil {
@@ -190,18 +175,18 @@ func (s *Store) templateDraft(typ string) (draft, error) {
 			d, _ := parseDraft(defaultTemplate(typ))
 			return d, nil
 		}
-		return draft{}, userErr("reading template: %v", err)
+		return draft{}, errx.User("reading template: %v", err)
 	}
 	d, perr := parseDraft(string(data))
 	if perr != nil {
-		return draft{}, userErr("template %s.md: %v", typ, perr)
+		return draft{}, errx.User("template %s.md: %v", typ, perr)
 	}
 	d.Type = typ
 	return d, nil
 }
 
 func (s *Store) templatePath(typ string) string {
-	return filepath.Join(s.templateDir(), typ+".md")
+	return filepath.Join(s.fs().TemplateDir(), typ+".md")
 }
 
 func applyFlags(d draft, opts CreateOpts) draft {
@@ -242,32 +227,28 @@ func applyFlags(d draft, opts CreateOpts) draft {
 	return d
 }
 
-func allocateNumber(cfg *config.Config, snap id.Snapshot, u id.ULID) string {
-	if cfg.ID.Style == config.IDStyleHash {
+func allocateNumber(cfg *datamodel.Config, snap id.Snapshot, u id.ULID) string {
+	if cfg.ID.Style == datamodel.IDStyleHash {
 		return id.HashNumber(cfg.Project.Key, u)
 	}
 	return id.Allocate(snap).String()
 }
 
-// readSource reads a --from-file argument: a path, or "-" for stdin.
 func readSource(src string) (string, error) {
 	if src == "-" {
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
-			return "", userErr("reading stdin: %v", err)
+			return "", errx.User("reading stdin: %v", err)
 		}
 		return string(data), nil
 	}
 	data, err := os.ReadFile(src)
 	if err != nil {
-		return "", userErr("reading %s: %v", src, err)
+		return "", errx.User("reading %s: %v", src, err)
 	}
 	return string(data), nil
 }
 
-// nonEmptyPtr returns p unless it points to an empty string, in which case nil:
-// an empty draft value (`owner: ""`) means "unset", and the canonical file form
-// for an unset optional is an absent key, never an empty scalar.
 func nonEmptyPtr(p *string) *string {
 	if p == nil || *p == "" {
 		return nil
@@ -275,8 +256,6 @@ func nonEmptyPtr(p *string) *string {
 	return p
 }
 
-// quoteTitle renders a title for a commit subject, double-quoted with inner
-// quotes escaped.
 func quoteTitle(title string) string {
 	return `"` + strings.ReplaceAll(title, `"`, `\"`) + `"`
 }

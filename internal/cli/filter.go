@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
 func newFilterCmd(g *globalFlags) *cobra.Command {
@@ -39,7 +40,7 @@ func newFilterListCmd(g *globalFlags) *cobra.Command {
 	}
 }
 
-func renderFilterList(w io.Writer, res *core.FilterListResult) {
+func renderFilterList(w io.Writer, res *datamodel.FilterListResult) {
 	if len(res.Filters) == 0 {
 		fmt.Fprintln(w, "no filters configured")
 		return

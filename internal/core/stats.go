@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shivamshivanshu/kira/internal/config"
-	"github.com/shivamshivanshu/kira/internal/item"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 type StatsOpts struct {
@@ -15,41 +15,9 @@ type StatsOpts struct {
 	Velocity bool
 }
 
-type StatsResult struct {
-	Burndown *Burndown `json:"burndown,omitempty"`
-	Velocity *Velocity `json:"velocity,omitempty"`
-}
-
-type BurndownDay struct {
-	Date      string  `json:"date"`
-	Remaining float64 `json:"remaining"`
-	Ideal     float64 `json:"ideal"`
-}
-
-type Burndown struct {
-	Sprint      string        `json:"sprint"`
-	Start       string        `json:"start"`
-	End         string        `json:"end"`
-	Unit        string        `json:"unit"`
-	Days        []BurndownDay `json:"days"`
-	Unestimated int           `json:"unestimated"`
-	DegradedN   int           `json:"degraded_n"`
-}
-
-type VelocitySprint struct {
-	Key       string  `json:"key"`
-	Completed float64 `json:"completed"`
-}
-
-type Velocity struct {
-	Unit      string           `json:"unit"`
-	Sprints   []VelocitySprint `json:"sprints"`
-	Trailing3 float64          `json:"trailing_3"`
-}
-
-func (s *Store) Stats(cfg *config.Config, opts StatsOpts) (*StatsResult, error) {
+func (s *Store) Stats(cfg *datamodel.Config, opts StatsOpts) (*datamodel.StatsResult, error) {
 	if opts.Sprint == "" && !opts.Velocity {
-		return nil, userErr("general project metrics are not implemented yet (M2); pass --sprint <key> and/or --velocity")
+		return nil, errx.User("general project metrics are not implemented yet (M2); pass --sprint <key> and/or --velocity")
 	}
 	items, err := s.LoadAll()
 	if err != nil {
@@ -59,7 +27,7 @@ func (s *Store) Stats(cfg *config.Config, opts StatsOpts) (*StatsResult, error) 
 	unit := string(cfg.Estimate.Unit)
 
 	memo := map[string]doneInfo{}
-	infoOf := func(it *item.Item) (doneInfo, error) {
+	infoOf := func(it *datamodel.Item) (doneInfo, error) {
 		if di, ok := memo[it.ID]; ok {
 			return di, nil
 		}
@@ -71,7 +39,7 @@ func (s *Store) Stats(cfg *config.Config, opts StatsOpts) (*StatsResult, error) 
 		return di, nil
 	}
 
-	res := &StatsResult{}
+	res := &datamodel.StatsResult{}
 	if opts.Sprint != "" {
 		key, err := s.ResolveSprintKey(cfg, opts.Sprint)
 		if err != nil {
@@ -100,7 +68,7 @@ func (s *Store) Stats(cfg *config.Config, opts StatsOpts) (*StatsResult, error) 
 		closed := closedSprints(cfg, today)
 		bySprint := map[string][]velocityItem{}
 		for _, it := range items {
-			if it.Sprint == nil || !slices.ContainsFunc(closed, func(sp config.Sprint) bool { return sp.Key == *it.Sprint }) {
+			if it.Sprint == nil || !slices.ContainsFunc(closed, func(sp datamodel.Sprint) bool { return sp.Key == *it.Sprint }) {
 				continue
 			}
 			di, err := infoOf(it)
@@ -125,8 +93,8 @@ type burnItem struct {
 	degraded  bool
 }
 
-func computeBurndown(sp config.Sprint, unit string, items []burnItem, today string) *Burndown {
-	b := &Burndown{Sprint: sp.Key, Start: sp.Start, End: sp.End, Unit: unit, Days: []BurndownDay{}}
+func computeBurndown(sp datamodel.Sprint, unit string, items []burnItem, today string) *datamodel.Burndown {
+	b := &datamodel.Burndown{Sprint: sp.Key, Start: sp.Start, End: sp.End, Unit: unit, Days: []datamodel.BurndownDay{}}
 	for _, it := range items {
 		if !it.estimated {
 			b.Unestimated++
@@ -156,7 +124,7 @@ func computeBurndown(sp config.Sprint, unit string, items []burnItem, today stri
 		if day > today {
 			break
 		}
-		b.Days = append(b.Days, BurndownDay{
+		b.Days = append(b.Days, datamodel.BurndownDay{
 			Date:      day,
 			Remaining: remainingAt(day),
 			Ideal:     linearIdeal(initialRemaining, i, span),
@@ -175,8 +143,8 @@ type velocityItem struct {
 	dropped  bool
 }
 
-func computeVelocity(closed []config.Sprint, unit string, bySprint map[string][]velocityItem) *Velocity {
-	v := &Velocity{Unit: unit, Sprints: make([]VelocitySprint, 0, len(closed))}
+func computeVelocity(closed []datamodel.Sprint, unit string, bySprint map[string][]velocityItem) *datamodel.Velocity {
+	v := &datamodel.Velocity{Unit: unit, Sprints: make([]datamodel.VelocitySprint, 0, len(closed))}
 	for _, sp := range closed {
 		var completed float64
 		for _, it := range bySprint[sp.Key] {
@@ -185,7 +153,7 @@ func computeVelocity(closed []config.Sprint, unit string, bySprint map[string][]
 			}
 			completed += it.estimate
 		}
-		v.Sprints = append(v.Sprints, VelocitySprint{Key: sp.Key, Completed: completed})
+		v.Sprints = append(v.Sprints, datamodel.VelocitySprint{Key: sp.Key, Completed: completed})
 	}
 	n := min(3, len(v.Sprints))
 	if n > 0 {
@@ -198,14 +166,14 @@ func computeVelocity(closed []config.Sprint, unit string, bySprint map[string][]
 	return v
 }
 
-func closedSprints(cfg *config.Config, today string) []config.Sprint {
-	var closed []config.Sprint
+func closedSprints(cfg *datamodel.Config, today string) []datamodel.Sprint {
+	var closed []datamodel.Sprint
 	for _, sp := range cfg.Sprints {
 		if sp.End < today {
 			closed = append(closed, sp)
 		}
 	}
-	slices.SortFunc(closed, func(a, b config.Sprint) int { return strings.Compare(a.End, b.End) })
+	slices.SortFunc(closed, func(a, b datamodel.Sprint) int { return strings.Compare(a.End, b.End) })
 	return closed
 }
 

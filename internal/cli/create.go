@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/core"
-	"github.com/shivamshivanshu/kira/internal/item"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
 func newCreateCmd(g *globalFlags) *cobra.Command {
@@ -14,7 +14,7 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 		Use:   "create",
 		Short: "Create a ticket or epic",
 	}
-	cmd.AddCommand(newCreateSubCmd(g, item.TypeTicket), newCreateSubCmd(g, item.TypeEpic))
+	cmd.AddCommand(newCreateSubCmd(g, datamodel.TypeTicket), newCreateSubCmd(g, datamodel.TypeEpic))
 	return cmd
 }
 
@@ -32,7 +32,7 @@ func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Type = typ
 			if opts.Subtype == "" {
-				opts.Subtype = aliasType // --type: silent alias, one release (docs/design/04-cli.md create)
+				opts.Subtype = aliasType
 			}
 			if cmd.Flags().Changed("estimate") {
 				opts.Estimate = &estimate

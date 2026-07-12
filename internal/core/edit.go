@@ -8,50 +8,41 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/shivamshivanshu/kira/internal/config"
-	"github.com/shivamshivanshu/kira/internal/item"
+	"github.com/shivamshivanshu/kira/internal/codec"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-// FieldEdit is one --field key=value assignment.
 type FieldEdit struct {
 	Key   string
 	Value string
 }
 
-// EditOpts are the edit inputs (docs/design/04-cli.md edit). Exactly one input
-// mode applies: Fields (flag-only), FromFile (round-trip), or neither (open
-// $EDITOR on the current file).
 type EditOpts struct {
 	Fields   []FieldEdit
 	FromFile string
 	Force    bool
 }
 
-// Edit mutates the item ref refers to. It parses the new content (from flags,
-// --from-file, or the $EDITOR validate-retry loop), restores the immutable
-// system fields, normalizes cross-references, bumps updated, and commits only
-// the fields that actually changed. A no-op edit neither writes nor commits.
-func (s *Store) Edit(cfg *config.Config, ref string, opts EditOpts) (*MutationResult, error) {
+func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamodel.MutationResult, error) {
 	release, orig, _, resolver, err := s.lockAndResolve(cfg, ref)
 	if err != nil {
 		return nil, err
 	}
 	defer release()
 
-	assemble := func(it *item.Item) (*item.Item, []error, []error) {
+	assemble := func(it *datamodel.Item) (*datamodel.Item, []error, []error) {
 		restoreImmutable(it, orig)
 		hard, warns := validateAssembled(cfg, it, resolver, opts.Force)
 		return it, hard, warns
 	}
 
-	var updated *item.Item
+	var updated *datamodel.Item
 	var warns []error
-	// finish is the shared tail of the flag and from-file cases: assemble the
-	// candidate, reject on any hard error, else record it as the result.
-	finish := func(it *item.Item) error {
+	finish := func(it *datamodel.Item) error {
 		it, errs, w := assemble(it)
 		if len(errs) > 0 {
-			return invalidErr(errs)
+			return errx.Invalid(errs)
 		}
 		updated, warns = it, w
 		return nil
@@ -67,7 +58,7 @@ func (s *Store) Edit(cfg *config.Config, ref string, opts EditOpts) (*MutationRe
 			}
 		}
 		if len(errs) > 0 {
-			return nil, invalidErr(errs)
+			return nil, errx.Invalid(errs)
 		}
 		if err := finish(it); err != nil {
 			return nil, err
@@ -79,16 +70,16 @@ func (s *Store) Edit(cfg *config.Config, ref string, opts EditOpts) (*MutationRe
 		}
 		it, errs := parseFullItem(stripErrorBanner(content))
 		if len(errs) > 0 {
-			return nil, invalidErr(errs)
+			return nil, errx.Invalid(errs)
 		}
 		if err := finish(it); err != nil {
 			return nil, err
 		}
 	default:
-		content, err := runEditor(orig.Serialize(), func(c string) []error {
+		content, err := runEditor(codec.Serialize(orig), func(c string) []error {
 			it, errs := parseFullItem(c)
 			if len(errs) > 0 {
-				return errs // surface soft parse errors too, not just assembly errors
+				return errs
 			}
 			_, aerrs, _ := assemble(it)
 			return aerrs
@@ -105,19 +96,16 @@ func (s *Store) Edit(cfg *config.Config, ref string, opts EditOpts) (*MutationRe
 	if err := s.commitMutation(cfg, updated, changed, warns, subject); err != nil {
 		return nil, err
 	}
-	return &MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed}, nil
+	return &datamodel.MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed}, nil
 }
 
-// parseFullItem parses a complete item file, returning the item and any
-// structural errors (from item.ParseError). A document too malformed to yield
-// an item returns a nil item with the fatal error.
-func parseFullItem(content string) (*item.Item, []error) {
-	it, err := item.Parse(content)
+func parseFullItem(content string) (*datamodel.Item, []error) {
+	it, err := codec.Parse(content)
 	if it == nil {
 		return nil, []error{err}
 	}
 	if err != nil {
-		var pe *item.ParseError
+		var pe *datamodel.ParseError
 		if errors.As(err, &pe) {
 			return it, pe.Errs
 		}
@@ -126,10 +114,7 @@ func parseFullItem(content string) (*item.Item, []error) {
 	return it, nil
 }
 
-// restoreImmutable overwrites the system-managed fields on it with orig's, so an
-// edit can never change identity, number, type, creation time, or aliases
-// (docs/design/02-data-model.md §1 mutability column).
-func restoreImmutable(it, orig *item.Item) {
+func restoreImmutable(it, orig *datamodel.Item) {
 	it.ID = orig.ID
 	it.Number = orig.Number
 	it.Type = orig.Type
@@ -137,7 +122,7 @@ func restoreImmutable(it, orig *item.Item) {
 	it.Aliases = orig.Aliases
 }
 
-func applyFieldEdit(it *item.Item, key, value string) error {
+func applyFieldEdit(it *datamodel.Item, key, value string) error {
 	switch key {
 	case "title":
 		it.Title = value
@@ -179,7 +164,6 @@ func applyFieldEdit(it *item.Item, key, value string) error {
 	return nil
 }
 
-// splitList parses a comma-separated flag value into a trimmed, non-nil list.
 func splitList(value string) []string {
 	if strings.TrimSpace(value) == "" {
 		return []string{}
@@ -201,7 +185,7 @@ func ptrOrNil(value string) *string {
 	return &value
 }
 
-func cloneItem(src *item.Item) *item.Item {
+func cloneItem(src *datamodel.Item) *datamodel.Item {
 	dst := *src
 	dst.Aliases = slices.Clone(src.Aliases)
 	dst.Labels = slices.Clone(src.Labels)
@@ -215,9 +199,7 @@ func cloneItem(src *item.Item) *item.Item {
 	return &dst
 }
 
-// changedFields returns the mutable field names that differ between orig and
-// updated, in canonical order, for the commit subject.
-func changedFields(orig, updated *item.Item) []string {
+func changedFields(orig, updated *datamodel.Item) []string {
 	var changed []string
 	add := func(cond bool, name string) {
 		if cond {
@@ -235,8 +217,6 @@ func changedFields(orig, updated *item.Item) []string {
 	add(!slices.Equal(orig.Labels, updated.Labels), "labels")
 	add(!equalPtr(orig.Epic, updated.Epic), "epic")
 	add(!slices.Equal(orig.BlockedBy, updated.BlockedBy), "blocked_by")
-	// maps.EqualFunc treats nil and empty as equal — both mean "no links", and
-	// the canonical form is nil.
 	add(!maps.EqualFunc(orig.Links, updated.Links, slices.Equal[[]string]), "links")
 	add(!equalPtr(orig.Sprint, updated.Sprint), "sprint")
 	add(!equalPtr(orig.Due, updated.Due), "due")
@@ -245,8 +225,6 @@ func changedFields(orig, updated *item.Item) []string {
 	return changed
 }
 
-// equalPtr reports whether two optional values are equal, treating nil (an
-// absent field) as distinct from any set value.
 func equalPtr[T comparable](a, b *T) bool {
 	if a == nil || b == nil {
 		return a == b

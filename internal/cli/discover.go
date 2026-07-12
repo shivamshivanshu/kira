@@ -4,15 +4,17 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/fzfx"
+	"github.com/shivamshivanshu/kira/internal/termx"
 )
 
 const (
@@ -20,11 +22,6 @@ const (
 	actionEdit = "edit"
 )
 
-// newDiscoverCmd builds `kira discover`: an interactive fuzzy picker over
-// items. fzf is the primary backend (with a `kira show` preview); absent, it
-// falls back to an in-process bubbles picker on a tty, or a plain sorted list
-// when stdout is not a terminal (docs/design/04-cli.md discover). No --json:
-// this is a selector, not a scriptable read — scripts use `list`/`query`.
 func newDiscoverCmd(g *globalFlags) *cobra.Command {
 	var action string
 	var forceFzf bool
@@ -51,7 +48,7 @@ func newDiscoverCmd(g *globalFlags) *cobra.Command {
 
 			ref, err := pickCandidate(cmd, cands, forceFzf)
 			if err != nil || ref == "" {
-				return err // err==nil,ref=="" means the user cancelled: exit 0
+				return err
 			}
 			return dispatchAction(cmd, s, cfg, action, ref)
 		},
@@ -62,15 +59,14 @@ func newDiscoverCmd(g *globalFlags) *cobra.Command {
 	return cmd
 }
 
-// pickCandidate resolves the selection ref (a display number) from the chosen
-// backend. An empty ref with a nil error means the user cancelled.
+// An empty ref with a nil error means the user cancelled: the caller exits 0.
 func pickCandidate(cmd *cobra.Command, cands []core.Candidate, forceFzf bool) (string, error) {
 	switch {
-	case core.HaveFzf():
+	case fzfx.Installed():
 		return pickFzf(cands)
 	case forceFzf:
-		return "", core.NewEnvError("discover: --fzf given but fzf is not on PATH")
-	case core.IsTerminal(os.Stdout):
+		return "", errx.Env("discover: --fzf given but fzf is not on PATH")
+	case termx.IsTerminal(os.Stdout):
 		return pickBubbles(cands)
 	default:
 		renderCandidateList(cmd.OutOrStdout(), cands)
@@ -78,9 +74,6 @@ func pickCandidate(cmd *cobra.Command, cands []core.Candidate, forceFzf bool) (s
 	}
 }
 
-// candidateLine is the one-line-per-item picker row. The display number is the
-// first whitespace field, so fzf's `{1}` placeholder and our own parse both
-// recover it.
 func candidateLine(c core.Candidate) string {
 	return c.Number + "\t" + c.Title
 }
@@ -89,40 +82,31 @@ func refFromLine(line string) string {
 	return strings.TrimSpace(strings.SplitN(strings.TrimSpace(line), "\t", 2)[0])
 }
 
-// pickFzf feeds the candidate lines to fzf and reads back the selected line.
-// fzf reads keys from /dev/tty itself, so it works even when kira's stdout is
-// piped. A non-zero fzf exit (Esc/no match) means no selection, not an error.
 func pickFzf(cands []core.Candidate) (string, error) {
-	var stdin strings.Builder
-	for _, c := range cands {
-		stdin.WriteString(candidateLine(c))
-		stdin.WriteByte('\n')
+	rows := make([]string, len(cands))
+	for i, c := range cands {
+		rows[i] = candidateLine(c)
 	}
-	args := []string{"--with-nth", "1..", "--prompt", "kira> "}
+	opts := fzfx.Options{Prompt: "kira> "}
 	if exe, err := os.Executable(); err == nil {
-		args = append(args, "--preview", exe+" show {1}")
+		opts.PreviewCmd = exe + " show {1}"
 	}
-	cmd := exec.Command("fzf", args...)
-	cmd.Stdin = strings.NewReader(stdin.String())
-	cmd.Stderr = os.Stderr
-	out, err := cmd.Output()
+	selection, aborted, err := fzfx.Pick(rows, opts)
 	if err != nil {
-		if _, ok := err.(*exec.ExitError); ok {
-			return "", nil // cancelled / no match
-		}
-		return "", core.NewEnvError("running fzf: %v", err)
+		return "", errx.Env("%v", err)
 	}
-	return refFromLine(string(out)), nil
+	if aborted {
+		return "", nil
+	}
+	return refFromLine(selection), nil
 }
 
-// dispatchAction runs the selected item through the chosen verb, reusing the
-// same core services the direct commands call.
-func dispatchAction(cmd *cobra.Command, s *core.Store, cfg *config.Config, action, ref string) error {
+func dispatchAction(cmd *cobra.Command, s *core.Store, cfg *datamodel.Config, action, ref string) error {
 	switch action {
 	case actionEdit:
 		_, err := s.Edit(cfg, ref, core.EditOpts{})
 		return err
-	default: // show
+	default:
 		res, err := s.Show(cfg, ref)
 		if err != nil {
 			return err
@@ -138,9 +122,6 @@ func renderCandidateList(w io.Writer, cands []core.Candidate) {
 	}
 }
 
-// --- bubbles fallback picker (interactive, tty-only) ---
-
-// pickItem is one row in the bubbles list; it satisfies list.DefaultItem.
 type pickItem struct{ number, title string }
 
 func (i pickItem) Title() string       { return i.number + "  " + i.title }
@@ -157,8 +138,6 @@ func (m pickModel) Init() tea.Cmd { return nil }
 func (m pickModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// While the filter input is focused, keys belong to it; only act on
-		// enter/quit once the list is in its normal navigation state.
 		if m.list.FilterState() != list.Filtering {
 			switch msg.String() {
 			case "enter":
@@ -189,7 +168,7 @@ func pickBubbles(cands []core.Candidate) (string, error) {
 	l.Title = "kira discover"
 	final, err := tea.NewProgram(pickModel{list: l}, tea.WithAltScreen()).Run()
 	if err != nil {
-		return "", core.NewEnvError("discover picker: %v", err)
+		return "", errx.Env("discover picker: %v", err)
 	}
 	return final.(pickModel).chosen, nil
 }

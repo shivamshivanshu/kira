@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/core"
-	"github.com/shivamshivanshu/kira/internal/item"
 )
 
 func newStatsCmd(g *globalFlags) *cobra.Command {
@@ -31,7 +31,7 @@ func newStatsCmd(g *globalFlags) *cobra.Command {
 			if b := res.Burndown; b != nil {
 				fmt.Fprintf(out, "Burndown %s  %s -> %s (%s)\n", b.Sprint, b.Start, b.End, b.Unit)
 				for _, d := range b.Days {
-					fmt.Fprintf(out, "  %s  remaining %s  ideal %s\n", d.Date, item.EmitFloat(d.Remaining), item.EmitFloat(d.Ideal))
+					fmt.Fprintf(out, "  %s  remaining %s  ideal %s\n", d.Date, codec.EmitFloat(d.Remaining), codec.EmitFloat(d.Ideal))
 				}
 				if b.Unestimated > 0 {
 					fmt.Fprintf(out, "  unestimated items (burn nothing): %d\n", b.Unestimated)
@@ -43,9 +43,9 @@ func newStatsCmd(g *globalFlags) *cobra.Command {
 			if v := res.Velocity; v != nil {
 				fmt.Fprintf(out, "Velocity (%s)\n", v.Unit)
 				for _, sp := range v.Sprints {
-					fmt.Fprintf(out, "  %s  %s\n", sp.Key, item.EmitFloat(sp.Completed))
+					fmt.Fprintf(out, "  %s  %s\n", sp.Key, codec.EmitFloat(sp.Completed))
 				}
-				fmt.Fprintf(out, "  trailing-3 average: %s\n", item.EmitFloat(v.Trailing3))
+				fmt.Fprintf(out, "  trailing-3 average: %s\n", codec.EmitFloat(v.Trailing3))
 			}
 			return nil
 		},

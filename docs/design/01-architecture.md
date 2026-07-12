@@ -22,7 +22,7 @@ Part of the kira design set — see [DESIGN.md](../../DESIGN.md) for decisions a
 │                          │                                         │
 │            ┌─────────────┴─────────────┐                           │
 │            ▼                           ▼                           │
-│   internal/store                internal/index                    │
+│   internal/storage              internal/index                    │
 │   (frontmatter read/write,      (sqlite cache: items, labels,      │
 │    atomic rename)                links, commit_links, fts5 — §4)   │
 │            │                           │                           │
@@ -33,7 +33,7 @@ Part of the kira design set — see [DESIGN.md](../../DESIGN.md) for decisions a
    (canonical, git-tracked)
              │
              ▼
-   internal/gitutil (os/exec) ──▶ system `git`  (log, show, interpret-trailers,
+   internal/gitx (os/exec) ─────▶ system `git`  (log, show, interpret-trailers,
                                                   merge-base, status --porcelain)
                                   optional: `rg`, `fzf` via exec.LookPath — §7
 ```
@@ -157,21 +157,29 @@ Single-item *writes* (`edit`, `move`, `assign`, `link`, `comment`) **bypass the 
 
 Every mutation — a CLI command, a TUI keypress, an nvim `:w` on a scratch buffer — calls the same `internal/core` Go function. There is exactly one implementation of `Move`, `Edit`, `Link`, `Comment`, etc.; validation and commit semantics structurally cannot drift between frontends, because there is only one code path to drift from.
 
-### Package layout `(proposed)`
+### Package layout
 
 ```
 kira/
-  cmd/kira/         main package: cobra command tree wiring, flag parsing, --json marshal of core results
+  cmd/kira/         main package: thin entry point; command logic lives in internal/cli
   internal/
-    core/           service layer: Create, Show, Edit, Move, Assign, Link, Comment, List, Query, Find,
-                    Log, Stats, Doctor, Sync — one function per verb, called by cmd/ and tui/ alike
-    model/          Item, Config, workflow/state-machine types shared by store + index + core
-    store/          ticket file I/O: frontmatter marshal/unmarshal (yaml.v3), atomic write, template loading
-    index/          sqlite schema, staleness check (§4), incremental reindex, fts5 queries
-    gitutil/        os/exec wrappers: log, show, interpret-trailers, merge-base, status --porcelain, rev-parse
-    tui/            bubbletea screens (see 05-tui.md); calls internal/core only, never store/index directly
+    cli/            cobra command tree, flag parsing, --json marshal of core results
+    core/           service layer: one function per verb, called by cli/ (and tui/ later)
+    datamodel/      Item, Config, workflow/state-machine types shared by storage + core
+    codec/          frontmatter parse/serialize + comment blocks (yaml.v3, byte-stable)
+    config/         config load, defaults, sprint append
+    id/             ULID generation, ref resolution, sort keys
+    query/          query-language lexer, parser, eval
+    storage/        ticket file I/O: discovery, store lock, atomic write
+    gitx/           os/exec git wrappers: log, commit, stage, rev-parse
+    rgx/ fzfx/      optional rg / fzf accelerators (exec.LookPath, pure-Go fallback)
+    termx/ editorx/ terminal prompts + $EDITOR invocation
+    errx/           error classification → exit codes
+  tests/            contract goldens, e2e testscripts, integration
   go.mod
 ```
+
+Still design-only: `index/` (§4) and `tui/` (05-tui.md).
 
 ## 7. External-tool policy
 

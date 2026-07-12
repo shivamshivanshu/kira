@@ -31,8 +31,6 @@ func TestMintUniqueAndMonotonic(t *testing.T) {
 }
 
 func TestMintMonotonicWithinOneMillisecond(t *testing.T) {
-	// Freeze the clock so every mint lands in the same millisecond; the
-	// monotonic entropy source must still make the sequence strictly increase.
 	fixed := time.Date(2026, 7, 12, 10, 0, 0, 0, time.UTC)
 	const n = 5000
 	ids := make([]ULID, n)

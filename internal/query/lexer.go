@@ -49,9 +49,6 @@ func (t token) cmpText() string {
 	}
 }
 
-// Dashes, colons, dots, and pipes stay inside a bare word so dates, ULIDs,
-// KEY-n numbers, RFC3339 timestamps, rank strings, and state keys lex as one
-// token.
 func wordStop(r rune) bool {
 	switch r {
 	case '(', ')', ',', '"', '=', '!', '<', '>':
