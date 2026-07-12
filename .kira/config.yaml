@@ -1,0 +1,62 @@
+version: 1
+
+project:
+  key: KIRA
+  name: kira
+
+id:
+  style: sequential          # sequential (default, reconciled post-merge) | hash (ULID-derived, zero reconciliation)
+
+workflows:
+  ticket:
+    states:
+      - { key: TODO,        category: todo }
+      - { key: IN_PROGRESS, category: doing }
+      - { key: REVIEW,      category: doing }
+      - { key: DONE,        category: done }
+      - { key: WONT_DO,     category: done, resolution: dropped }
+    initial: TODO
+    transitions:
+      TODO:        [IN_PROGRESS, WONT_DO]
+      IN_PROGRESS: [REVIEW, TODO, WONT_DO]
+      REVIEW:      [DONE, IN_PROGRESS]
+      DONE:        []
+      WONT_DO:     []
+    enforce_transitions: true
+  epic:
+    states:
+      - { key: PLANNED, category: todo }
+      - { key: ACTIVE,  category: doing }
+      - { key: DONE,    category: done }
+    initial: PLANNED
+    transitions:
+      PLANNED: [ACTIVE]
+      ACTIVE:  [DONE]
+      DONE:    []
+
+priorities: [P0, P1, P2]
+labels:
+  known: []                   # add project labels; strict rejects unknown ones (--force overrides)
+  strict: false
+
+people:
+  known: []
+  strict: false
+
+commit:
+  mode: auto                  # auto | manual | prompt
+  trailer: Kira-Ticket
+
+merge:
+  policy: auto                # auto | manual
+
+sync:
+  push: false
+
+ui:
+  icons: auto                 # auto | always | never
+
+estimate:
+  unit: points                # points | hours
+sprints:
+  - { key: 2026-S14, name: Parity + restructure, start: "2026-07-13", end: "2026-07-20" }
