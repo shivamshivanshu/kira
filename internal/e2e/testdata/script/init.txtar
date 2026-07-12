@@ -1,0 +1,28 @@
+# kira init scaffolds .kira/ and records the initial commit in a fresh repo.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+
+exec kira init --key KIRA --json
+stdout '"initialized": true'
+stdout '"project_key": "KIRA"'
+
+exists .kira/config.yaml
+exists .kira/.gitignore
+exists .kira/templates/ticket.md
+exists .kira/templates/epic.md
+
+# the scaffold is committed as a single kira: init commit
+exec git log --oneline
+stdout 'kira: init'
+
+# and nothing kira-tracked is left uncommitted
+exec git status --porcelain
+! stdout '\.kira'
+
+# reinitializing without --force is refused
+! exec kira init --key KIRA
+stderr 'already exists'

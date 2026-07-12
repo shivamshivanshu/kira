@@ -1,0 +1,10 @@
+# commands outside a .kira/ store fail with an environment error.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+exec git init
+
+! exec kira list
+stderr 'no \.kira'
+
+! exec kira show KIRA-1
+stderr 'no \.kira'

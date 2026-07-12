@@ -97,7 +97,6 @@ func TestRoundTripProperty(t *testing.T) {
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("iter %d: mismatch\nwant %+v\ngot  %+v\nserialized:\n%s", i, want, got, out)
 		}
-		// Serialization is a fixed point: re-serializing changes nothing.
 		if out2 := got.Serialize(); out2 != out {
 			t.Fatalf("iter %d: serialize not idempotent\n%q\n%q", i, out, out2)
 		}

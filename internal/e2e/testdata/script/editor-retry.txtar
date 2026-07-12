@@ -1,0 +1,57 @@
+# the $EDITOR parse-validate-retry loop: a first invalid save reopens with an
+# error banner; the second, valid save creates the item.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# fake editor writes an empty-title (invalid) buffer first, a valid one second
+env EDITOR='sh editor.sh'
+exec kira create ticket --json
+stdout '"title": "Fixed Title"'
+stdout '"number": "KIRA-1"'
+
+-- editor.sh --
+if [ -f .retried ]; then
+	cp valid.md "$1"
+else
+	: > .retried
+	cp invalid.md "$1"
+fi
+-- invalid.md --
+---
+title:
+type: ticket
+priority:
+owner:
+reporter:
+labels: []
+epic:
+estimate:
+---
+
+## Description
+
+## Acceptance criteria
+
+## Comments
+-- valid.md --
+---
+title: "Fixed Title"
+type: ticket
+priority:
+owner:
+reporter:
+labels: []
+epic:
+estimate:
+---
+
+## Description
+
+## Acceptance criteria
+
+## Comments

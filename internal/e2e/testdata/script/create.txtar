@@ -1,0 +1,30 @@
+# create mints sequential numbers and commits one per mutation under auto mode.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# EDITOR=true leaves the flag-filled template unchanged, so the create is valid.
+exec kira create ticket --title 'First ticket' --json
+stdout '"number": "KIRA-1"'
+stdout '"state": "TODO"'
+exec git log --oneline
+stdout 'kira: create KIRA-1'
+
+# the next create allocates KIRA-2
+exec kira create ticket --title 'Second' --no-edit --json
+stdout '"number": "KIRA-2"'
+
+# exactly three commits: init + two creates (one structured commit per mutation)
+exec git rev-list --count HEAD
+stdout '^3$'
+
+# show reads the file directly; index-derived fields are present but empty pre-M2
+exec kira show KIRA-1 --json
+stdout '"title": "First ticket"'
+stdout '"blocks": \[\]'
+stdout '"linked_commits": \[\]'
+stdout '"history_tail": \[\]'

@@ -14,6 +14,10 @@ const (
 	closeFence = "\n" + fenceLine
 )
 
+// FenceLine is the frontmatter open/close fence, exported so core's draft
+// serializer writes the identical fence.
+const FenceLine = fenceLine
+
 // Parse decodes a kira item file (frontmatter + markdown body). It collects
 // every validation error into a *ParseError instead of failing on the first;
 // on success it returns a fully populated *Item whose Serialize reproduces a
@@ -40,7 +44,7 @@ func Parse(content string) (*Item, error) {
 	it.Number = reqScalar(nodes, keyNumber, add)
 	it.Aliases = reqList(nodes, keyAliases, add)
 	it.Type = reqScalar(nodes, keyType, add)
-	if it.Type != "" && it.Type != TypeTicket && it.Type != TypeEpic {
+	if it.Type != "" && !ValidType(it.Type) {
 		add("field %q: must be %s or %s, got %q", keyType, TypeTicket, TypeEpic, it.Type)
 	}
 	it.Title = reqScalar(nodes, keyTitle, add)
@@ -59,6 +63,14 @@ func Parse(content string) (*Item, error) {
 		return it, &ParseError{Errs: errs}
 	}
 	return it, nil
+}
+
+// SplitDocument splits raw item-file content into the frontmatter YAML text and
+// the markdown body after the closing fence. It is exported for core's draft
+// codec, which parses the partial (system-field-free) create form and must
+// split identically to a full item file.
+func SplitDocument(content string) (front, body string, err error) {
+	return splitDocument(content)
 }
 
 // splitDocument splits raw file content into the frontmatter YAML text and the

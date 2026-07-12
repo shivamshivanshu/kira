@@ -58,9 +58,23 @@ func writeOptScalar(b *strings.Builder, key string, v *string) {
 
 func writeOptFloat(b *strings.Builder, key string, v *float64) {
 	if v != nil {
-		writeLine(b, key, strconv.FormatFloat(*v, 'f', -1, 64))
+		writeLine(b, key, EmitFloat(*v))
 	}
 }
+
+// EmitFloat renders a float in kira's canonical numeric form (shortest decimal
+// that round-trips). Exported so core's draft serializer emits estimate
+// identically to a full item file.
+func EmitFloat(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
+
+// EmitScalar renders a scalar as canonical YAML: plain when it round-trips
+// plainly, double-quoted otherwise. Exported for core's draft serializer, which
+// must emit editable scalar fields identically to a full item file.
+func EmitScalar(s string) string { return emitScalar(s) }
+
+// EmitList renders a string slice as a canonical flow sequence (`[]` when
+// empty). Exported for core's draft serializer.
+func EmitList(xs []string) string { return emitList(xs) }
 
 // emitList renders a flow sequence: `[]` when empty, else `[a, b, c]` — matching
 // the canonical example in docs/design/02-data-model.md §8.

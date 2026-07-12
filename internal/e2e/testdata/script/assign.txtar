@@ -1,0 +1,21 @@
+# assign sets owner (default) or reporter and commits a structured subject.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'A' --no-edit
+
+exec kira assign KIRA-1 shivam --json
+stdout '"changed"'
+exec git log --oneline
+stdout 'kira: KIRA-1 assign owner shivam'
+exec kira show KIRA-1 --json
+stdout '"owner": "shivam"'
+
+# --reporter targets the reporter field instead
+exec kira assign KIRA-1 alice --reporter
+exec kira show KIRA-1 --json
+stdout '"reporter": "alice"'

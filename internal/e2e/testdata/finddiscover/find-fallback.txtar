@@ -1,0 +1,30 @@
+# find with rg absent: pure-Go regex scan over ticket files, same output contract.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create ticket --title orderbook-snapshot --no-edit
+exec kira create ticket --title unrelated-thing --no-edit
+
+# strip rg/fzf from PATH (git remains) to force the fallback scanner
+env PATH=${CLEANBIN}
+
+exec kira find snapshot --json
+stdout '"number": "KIRA-1"'
+! stdout 'KIRA-2'
+
+# human fallback renders number:line: text directly
+exec kira find snapshot
+stdout '^KIRA-1:\d+:'
+
+# no match: empty matches, exit 0
+exec kira find zzznotfound --json
+stdout '"matches": \[\]'
+
+# an invalid regex is a user error (exit 1), reported on stderr
+! exec kira find 'a[' --json
+stderr 'invalid pattern'

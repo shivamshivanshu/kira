@@ -1,0 +1,39 @@
+# move validates transitions, honors --force, and records the active pointer.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'M' --no-edit
+
+# an allowed transition commits a structured subject
+exec kira move KIRA-1 IN_PROGRESS --json
+stdout '"from": "TODO"'
+stdout '"to": "IN_PROGRESS"'
+exec git log --oneline
+stdout 'kira: KIRA-1 state TODO -> IN_PROGRESS'
+
+# an off-graph move is rejected under enforce_transitions
+! exec kira move KIRA-1 DONE
+stderr 'not an allowed transition'
+
+# --force overrides the adjacency check, still an ordinary audited commit
+exec kira move KIRA-1 DONE --force
+exec kira show KIRA-1 --json
+stdout '"state": "DONE"'
+
+# an invalid state name is always an error, even under --force
+! exec kira move KIRA-1 BOGUS --force
+stderr 'not a state'
+
+# --activate records the gitignored local pointer
+exec kira create ticket --title 'A' --no-edit
+exec kira move KIRA-2 IN_PROGRESS --activate
+exists .kira/.cache/active
+grep '[0-9A-Z]{26}' .kira/.cache/active
+
+# init + 2 creates + 3 successful moves = 6 commits (rejected moves never commit)
+exec git rev-list --count HEAD
+stdout '^6$'

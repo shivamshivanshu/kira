@@ -1,0 +1,33 @@
+# tree renders the epic hierarchy: epics with their child tickets, plus roots
+# with no parent.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create epic --title Epic --no-edit
+exec kira create ticket --title child --no-edit
+exec kira create ticket --title orphan --no-edit
+exec kira link KIRA-2 --epic KIRA-1
+
+# whole forest: root is null, the epic node carries its child
+exec kira tree --json
+stdout '"root": null'
+stdout '"number": "KIRA-1"'
+stdout '"type": "epic"'
+stdout '"number": "KIRA-2"'
+stdout '"number": "KIRA-3"'
+
+# human render shows the child indented under the epic
+exec kira tree
+stdout 'KIRA-1'
+stdout 'KIRA-2'
+
+# scoped to an epic: root is that epic, output limited to its subtree
+exec kira tree KIRA-1 --json
+! stdout '"root": null'
+stdout '"number": "KIRA-2"'
+! stdout '"number": "KIRA-3"'

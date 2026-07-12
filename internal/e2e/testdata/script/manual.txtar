@@ -1,0 +1,88 @@
+# under commit.mode: manual, a mutation stages its file but records no commit.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# switch the tracked config to manual mode and commit that change
+cp manual-config.yaml .kira/config.yaml
+exec git add .kira/config.yaml
+exec git commit -m 'switch to manual mode'
+
+# init + config change = 2 commits so far
+exec git rev-list --count HEAD
+stdout '^2$'
+
+# a create stages but does not commit
+exec kira create ticket --title Staged --no-edit --json
+stdout '"number": "KIRA-1"'
+exec git rev-list --count HEAD
+stdout '^2$'
+
+# the written ticket is staged, waiting for `kira commit`
+exec git status --porcelain
+stdout '^A  \.kira/tickets/'
+
+-- manual-config.yaml --
+version: 1
+
+project:
+  key: KIRA
+  name: kira
+
+id:
+  style: sequential
+
+workflows:
+  ticket:
+    states:
+      - { key: TODO,        category: todo }
+      - { key: IN_PROGRESS, category: doing }
+      - { key: REVIEW,      category: doing }
+      - { key: DONE,        category: done }
+      - { key: WONT_DO,     category: done, resolution: dropped }
+    initial: TODO
+    transitions:
+      TODO:        [IN_PROGRESS, WONT_DO]
+      IN_PROGRESS: [REVIEW, TODO, WONT_DO]
+      REVIEW:      [DONE, IN_PROGRESS]
+      DONE:        []
+      WONT_DO:     []
+    enforce_transitions: true
+  epic:
+    states:
+      - { key: PLANNED, category: todo }
+      - { key: ACTIVE,  category: doing }
+      - { key: DONE,    category: done }
+    initial: PLANNED
+    transitions:
+      PLANNED: [ACTIVE]
+      ACTIVE:  [DONE]
+      DONE:    []
+
+labels:
+  known: []
+  strict: false
+
+people:
+  known: []
+  strict: false
+
+commit:
+  mode: manual
+  trailer: Kira-Ticket
+
+merge:
+  policy: auto
+
+sync:
+  push: false
+
+ui:
+  icons: auto
+
+estimate:
+  unit: points

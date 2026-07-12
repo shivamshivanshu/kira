@@ -1,0 +1,29 @@
+# edit --field mutates named fields, commits only what changed, and no-ops cleanly.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'E' --no-edit
+
+exec kira edit KIRA-1 --field state=IN_PROGRESS --field owner=bob --json
+stdout '"changed"'
+stdout 'state'
+stdout 'owner'
+exec git log --oneline
+stdout 'kira: KIRA-1 edit'
+exec kira show KIRA-1 --json
+stdout '"state": "IN_PROGRESS"'
+stdout '"owner": "bob"'
+
+# init + create + edit = 3 commits
+exec git rev-list --count HEAD
+stdout '^3$'
+
+# a no-op edit writes nothing and adds no commit
+exec kira edit KIRA-1 --field state=IN_PROGRESS
+stdout 'no changes'
+exec git rev-list --count HEAD
+stdout '^3$'

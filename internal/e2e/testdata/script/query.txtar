@@ -1,0 +1,45 @@
+# query filters with the expression grammar; --flat gives a linear list, the
+# default groups by epic.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create epic --title Epic --no-edit
+exec kira create ticket --title 'race condition' --owner shivam --label bug --no-edit
+exec kira create ticket --title 'perf work' --owner alice --label perf --no-edit
+exec kira link KIRA-2 --epic KIRA-1
+
+# comparison predicate
+exec kira query 'owner=shivam' --flat --json
+stdout '"count": 1'
+stdout '"number": "KIRA-2"'
+
+# boolean OR
+exec kira query 'label=bug OR label=perf' --flat --json
+stdout '"count": 2'
+
+# bare word falls through to a title substring match
+exec kira query 'race' --flat --json
+stdout '"count": 1'
+stdout '"number": "KIRA-2"'
+
+# epic value resolves KIRA-n to the underlying ULID before matching
+exec kira query 'epic=KIRA-1' --flat --json
+stdout '"count": 1'
+stdout '"number": "KIRA-2"'
+
+# the default render is the epic tree
+exec kira query 'type=ticket' --json
+stdout '"tree"'
+
+# --tree and --flat are mutually exclusive
+! exec kira query 'race' --tree --flat
+stderr 'cannot use --tree and --flat'
+
+# a malformed expression is a user error with a positioned message
+! exec kira query 'owner>alice'
+stderr 'query:.*position'

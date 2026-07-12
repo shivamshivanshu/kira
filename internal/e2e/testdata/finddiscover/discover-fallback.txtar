@@ -1,0 +1,22 @@
+# discover with fzf absent and no tty: degrade to a plain sorted candidate list.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create ticket --title alpha-item --no-edit
+exec kira create ticket --title beta-item --no-edit
+
+# strip fzf from PATH; stdout is not a tty under testscript
+env PATH=${CLEANBIN}
+
+exec kira discover
+stdout 'KIRA-1\talpha-item'
+stdout 'KIRA-2\tbeta-item'
+
+# --fzf forces the fzf backend: absent, it is an environment error (exit 3)
+! exec kira discover --fzf
+stderr 'fzf is not on PATH'

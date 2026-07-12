@@ -1,0 +1,29 @@
+# comment appends anchored blocks authored from the git identity.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'C' --no-edit
+
+exec kira comment KIRA-1 -m 'first note'
+exec git log --oneline
+stdout 'kira: KIRA-1 comment'
+exec kira show KIRA-1 --json
+stdout '"text": "first note"'
+stdout '"author": "tester"'
+
+# a second comment appends a disjoint block
+exec kira comment KIRA-1 -m 'second'
+exec kira show KIRA-1 --json
+stdout '"text": "second"'
+
+# an empty comment is refused
+! exec kira comment KIRA-1 -m ' '
+stderr 'empty comment'
+
+# init + create + two comments = 4 commits
+exec git rev-list --count HEAD
+stdout '^4$'

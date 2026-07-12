@@ -46,6 +46,10 @@ const (
 	TypeEpic   = "epic"
 )
 
+// ValidType reports whether t is one of the two legal item types. It is the one
+// home of the ticket|epic rule, shared by the parser and core's validation.
+func ValidType(t string) bool { return t == TypeTicket || t == TypeEpic }
+
 // Frontmatter key names, in canonical order.
 const (
 	keyID        = "id"

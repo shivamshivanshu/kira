@@ -1,0 +1,38 @@
+# discover with a stub fzf on PATH: candidates are fed to fzf, the selected
+# line resolves to the item, and the chosen action runs against it.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create ticket --title alpha-item --no-edit
+exec kira create ticket --title beta-item --no-edit
+
+chmod 0755 fzf
+env PATH=${WORK}:${CLEANBIN}
+
+# the stub selects the first candidate (KIRA-1); default action show prints it
+exec kira discover
+stdout 'KIRA-1'
+stdout 'alpha-item'
+
+# --action edit routes the selection through the edit flow ($EDITOR=true → no-op)
+exec kira discover --action edit
+
+# an unknown action is rejected before any picker runs
+! exec kira discover --action bogus
+stderr '--action'
+
+-- fzf --
+#!/bin/sh
+# Drain stdin fully (like real fzf) and echo the first candidate line.
+first=
+while IFS= read -r line; do
+	if [ -z "$first" ]; then
+		first=$line
+	fi
+done
+echo "$first"

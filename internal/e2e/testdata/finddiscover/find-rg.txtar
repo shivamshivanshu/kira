@@ -1,0 +1,34 @@
+# find with ripgrep on PATH: passthrough exec, matches mapped to display number.
+[!exec:rg] skip 'ripgrep not installed'
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create ticket --title orderbook-snapshot --no-edit
+exec kira create ticket --title unrelated-thing --no-edit
+
+# a match maps back to the item's number + id; the other ticket is not a hit
+exec kira find snapshot --json
+stdout '"number": "KIRA-1"'
+stdout '"id": "'
+! stdout 'KIRA-2'
+
+# human output rewrites the file path to the display number
+exec kira find snapshot
+stdout '^KIRA-1:\d+:'
+
+# -i passes through to rg verbatim (case-insensitive match)
+exec kira find SNAPSHOT -i --json
+stdout '"number": "KIRA-1"'
+
+# -C context passes through; path still rewritten to number in human output
+exec kira find snapshot -C 1
+stdout 'KIRA-1'
+
+# no match: empty matches, exit 0
+exec kira find zzznotfound --json
+stdout '"matches": \[\]'

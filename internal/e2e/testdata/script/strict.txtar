@@ -1,0 +1,34 @@
+# strict vocabularies reject unknown values on write; --force bypasses for one write.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# swap in a config with strict labels, then commit it
+cp strict.yaml .kira/config.yaml
+exec git add .kira/config.yaml
+exec git commit -m 'strict config'
+
+# an unknown label is rejected under labels.strict
+! exec kira create ticket --title 'X' --label nope --no-edit
+stderr 'not in the known label'
+
+# --force bypasses the strict rejection; the write still happens and commits
+exec kira create ticket --title 'X' --label nope --no-edit --force
+exec kira show KIRA-1 --json
+stdout '"labels": \['
+
+-- strict.yaml --
+version: 1
+project:
+  key: KIRA
+  name: kira
+labels:
+  known: [bug, feature]
+  strict: true
+people:
+  known: [shivam, alice]
+  strict: true

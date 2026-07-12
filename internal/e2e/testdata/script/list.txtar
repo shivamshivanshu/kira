@@ -1,0 +1,43 @@
+# list applies ANDed filters over a linear scan.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create ticket --title one --owner alice --no-edit
+exec kira create ticket --title two --owner bob --no-edit
+exec kira create epic --title big --no-edit
+
+exec kira list --json
+stdout '"count": 3'
+
+exec kira list --type epic --json
+stdout '"count": 1'
+
+exec kira list --owner alice --json
+stdout '"count": 1'
+
+# tickets start in TODO; the epic starts in PLANNED
+exec kira list --state TODO --json
+stdout '"count": 2'
+
+# every initial state is category todo
+exec kira list --category todo --json
+stdout '"count": 3'
+
+# --tree groups by epic; the JSON envelope gains a tree key
+exec kira list --tree --json
+stdout '"tree"'
+
+# --query ANDs with the flat flags
+exec kira list --query 'owner=alice' --json
+stdout '"count": 1'
+exec kira list --owner bob --query 'two' --json
+stdout '"count": 1'
+
+# a malformed query is a user error (exit 1)
+! exec kira list --query 'state='
+stderr 'query:'

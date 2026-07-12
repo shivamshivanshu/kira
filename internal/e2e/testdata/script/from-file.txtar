@@ -1,0 +1,24 @@
+# --print-template feeds --from-file: the nvim create round-trip without $EDITOR.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# print-template mints nothing and writes nothing; it just emits the skeleton.
+exec kira create ticket --print-template --title 'FF ticket' --owner alice
+stdout 'title: FF ticket'
+cp stdout draft.md
+
+# no ticket was created by print-template
+exec kira list --json
+stdout '"count": 0'
+
+# feeding the draft back creates the item
+exec kira create ticket --from-file draft.md --json
+stdout '"number": "KIRA-1"'
+exec kira show KIRA-1 --json
+stdout '"title": "FF ticket"'
+stdout '"owner": "alice"'

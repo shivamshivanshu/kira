@@ -1,0 +1,43 @@
+# link sets single-sided epic/blocked-by edges and rejects illegal links.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'A' --no-edit
+exec kira create ticket --title 'B' --no-edit
+exec kira create epic --title 'E' --no-edit
+
+# blocked-by is stored on the dependent (KIRA-1) only
+exec kira link KIRA-1 --blocked-by KIRA-2
+exec git log --oneline
+stdout 'kira: KIRA-1 link blocked-by KIRA-2'
+exec kira show KIRA-1 --json
+stdout '"blocked_by": \['
+# the blocker's own file stores no inverse edge; blocks is derived (empty pre-index)
+exec kira show KIRA-2 --json
+stdout '"blocks": \[\]'
+
+# epic parent
+exec kira link KIRA-1 --epic KIRA-3
+exec kira show KIRA-1 --json
+stdout '"epic": "[0-9A-Z]{26}"'
+
+# self-link is rejected
+! exec kira link KIRA-1 --blocked-by KIRA-1
+stderr 'cannot link to itself'
+
+# an epic may not be given an epic parent
+! exec kira link KIRA-3 --epic KIRA-1
+stderr 'epic cannot have an epic parent'
+
+# giving both or neither edge flag is a usage error
+! exec kira link KIRA-1
+stderr 'exactly one'
+
+# --remove clears the edge
+exec kira link KIRA-1 --epic KIRA-3 --remove
+exec kira show KIRA-1 --json
+stdout '"epic": null'
