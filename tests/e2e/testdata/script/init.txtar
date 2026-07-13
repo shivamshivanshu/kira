@@ -15,6 +15,12 @@ exists .kira/.gitignore
 exists .kira/templates/ticket.md
 exists .kira/templates/epic.md
 
+# .gitattributes pins .kira/ to LF so the byte-stable writer stays stable
+exists .gitattributes
+grep '\.kira/\*\* text eol=lf' .gitattributes
+exec git ls-files .gitattributes
+stdout '^\.gitattributes$'
+
 # the scaffold is committed as a single kira: init commit
 exec git log --oneline
 stdout 'kira: init'

@@ -1,24 +1,22 @@
 package merge
 
 import (
-	"time"
-
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
 func laterUpdated(oursUpdated, theirsUpdated string, remote Side) Side {
-	ot, oerr := time.Parse(time.RFC3339, oursUpdated)
-	tt, terr := time.Parse(time.RFC3339, theirsUpdated)
+	cmp, oursOK, theirsOK := timex.CompareRFC3339(oursUpdated, theirsUpdated)
 	switch {
-	case oerr != nil && terr != nil:
+	case !oursOK && !theirsOK:
 		return remote
-	case oerr != nil:
+	case !oursOK:
 		return Theirs
-	case terr != nil:
+	case !theirsOK:
 		return Ours
-	case ot.After(tt):
+	case cmp > 0:
 		return Ours
-	case tt.After(ot):
+	case cmp < 0:
 		return Theirs
 	default:
 		return remote

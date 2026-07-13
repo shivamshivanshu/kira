@@ -34,7 +34,7 @@ func (s *Store) Blame(cfg *datamodel.Config, ref string) (*datamodel.BlameResult
 		return nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
 	}
 
-	events, _, err := s.cachedEvents(ulid)
+	events, _, err := s.cachedEvents(ulid, s.fileHead(ulid))
 	if err != nil {
 		return nil, err
 	}

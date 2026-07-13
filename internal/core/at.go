@@ -11,7 +11,7 @@ import (
 
 func (s *Store) listView(cfg *datamodel.Config, at string) ([]*datamodel.Item, *id.Resolver, *datamodel.Config, error) {
 	if at == "" {
-		items, _, resolver, err := s.load(cfg)
+		items, _, resolver, _, err := s.load(cfg)
 		return items, resolver, cfg, err
 	}
 	sha, err := s.resolveAtRef(at)
@@ -75,7 +75,7 @@ func (s *Store) ShowAt(cfg *datamodel.Config, ref, at string) (*datamodel.ShowRe
 }
 
 func (s *Store) skewNote(cfg *datamodel.Config, ref, atULID, at string) string {
-	_, _, resolver, err := s.load(cfg)
+	_, _, resolver, _, err := s.load(cfg)
 	if err != nil {
 		return ""
 	}

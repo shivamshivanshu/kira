@@ -28,12 +28,13 @@ func (s *Store) Stats(cfg *datamodel.Config, opts StatsOpts) (*datamodel.StatsRe
 	today := now.Format(time.DateOnly)
 	unit := string(cfg.Estimate.Unit)
 
+	heads := s.fileHeads()
 	memo := map[string]metricItem{}
 	metricsOf := func(it *datamodel.Item) (metricItem, error) {
 		if mi, ok := memo[it.ID]; ok {
 			return mi, nil
 		}
-		mi, err := s.itemMetrics(cfg, it)
+		mi, err := s.itemMetrics(cfg, it, heads[it.ID])
 		if err != nil {
 			return metricItem{}, err
 		}
@@ -179,7 +180,7 @@ func computeBurndown(sp datamodel.Sprint, unit string, items []metricItem, today
 	}
 	span := int(end.Sub(start).Hours()/24) + 1
 	initialRemaining := remainingAt(sp.Start)
-	for i := 0; i < span; i++ {
+	for i := range span {
 		day := start.AddDate(0, 0, i).Format(time.DateOnly)
 		if day > today {
 			break

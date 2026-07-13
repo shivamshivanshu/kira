@@ -7,62 +7,66 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
-func (i *Index) full(store *storage.Store) error {
-	items, err := store.LoadAll()
+func (i *Index) full(store *storage.Store) ([]string, error) {
+	items, warnings, err := store.LoadAll()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	tx, err := i.db.Begin()
 	if err != nil {
-		return errx.User("beginning index tx: %v", err)
+		return nil, errx.User("beginning index tx: %v", err)
 	}
 	defer tx.Rollback()
 	for _, table := range []string{"aliases", "labels", "links", "items"} {
 		if _, err := tx.Exec("DELETE FROM " + table); err != nil {
-			return errx.User("clearing index %s: %v", table, err)
+			return nil, errx.User("clearing index %s: %v", table, err)
 		}
 	}
 	for _, it := range items {
 		if err := insertItem(tx, it); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return commit(tx)
+	return warnings, commit(tx)
 }
 
-func (i *Index) refresh(absPaths []string) error {
+func (i *Index) refresh(absPaths []string) ([]string, error) {
 	tx, err := i.db.Begin()
 	if err != nil {
-		return errx.User("beginning index tx: %v", err)
+		return nil, errx.User("beginning index tx: %v", err)
 	}
 	defer tx.Rollback()
+	var warnings []string
 	for _, abs := range absPaths {
 		ulid := storage.ULIDFromPath(abs)
 		if ulid == "" {
 			continue
 		}
 		if _, err := tx.Exec("DELETE FROM items WHERE id = ?", ulid); err != nil {
-			return errx.User("deleting index item: %v", err)
+			return nil, errx.User("deleting index item: %v", err)
 		}
-		it, err := readItem(abs)
+		it, warning, err := readItem(abs)
 		if err != nil {
-			return err
+			return nil, err
+		}
+		if warning != "" {
+			warnings = append(warnings, warning)
 		}
 		if it == nil {
 			continue
 		}
 		if err := insertItem(tx, it); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return commit(tx)
+	return warnings, commit(tx)
 }
 
 func insertItem(tx *sql.Tx, it *datamodel.Item) error {
@@ -106,20 +110,20 @@ func insertItem(tx *sql.Tx, it *datamodel.Item) error {
 	return nil
 }
 
-func readItem(abs string) (*datamodel.Item, error) {
+func readItem(abs string) (*datamodel.Item, string, error) {
 	it, err := storage.ReadItem(abs)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
+			return nil, "", nil
 		}
-		return nil, errx.User("indexing %s: %v", filepath.Base(abs), err)
+		return nil, storage.SkipNote(filepath.Base(abs), err), nil
 	}
-	return it, nil
+	return it, "", nil
 }
 
 func dirtyState(absPaths []string) (string, []string) {
 	sorted := append([]string(nil), absPaths...)
-	sort.Strings(sorted)
+	slices.Sort(sorted)
 	h := sha256.New()
 	for _, abs := range sorted {
 		h.Write([]byte(abs))

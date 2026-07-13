@@ -1,0 +1,41 @@
+# The interactive editor must run OUTSIDE the store lock: a nested kira mutation
+# invoked from within $EDITOR succeeds instead of deadlocking on the lock waiter.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# the fake editor creates a second ticket before saving the buffer; if create
+# held the lock across the editor, this nested create would fail with a conflict
+env EDITOR='sh editor.sh'
+exec kira create ticket --json
+stdout '"number": "KIRA-2"'
+
+# both the nested (KIRA-1) and outer (KIRA-2) tickets landed
+exec kira list
+stdout 'KIRA-1'
+stdout 'KIRA-2'
+
+-- editor.sh --
+kira create ticket --no-edit --title nested
+cp valid.md "$1"
+-- valid.md --
+---
+title: "Outer"
+type: ticket
+priority:
+owner:
+reporter:
+labels: []
+epic:
+estimate:
+---
+
+## Description
+
+## Acceptance criteria
+
+## Comments

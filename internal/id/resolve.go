@@ -2,7 +2,7 @@ package id
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/oklog/ulid/v2"
@@ -61,7 +61,7 @@ func NewResolver(snap Snapshot) *Resolver {
 	for i, it := range snap.Items {
 		r.ulidByNumber[strings.ToUpper(it.Number)] = r.sortedULIDs[i]
 	}
-	sort.Strings(r.sortedULIDs)
+	slices.Sort(r.sortedULIDs)
 	return r
 }
 
@@ -101,8 +101,8 @@ func (r *Resolver) Resolve(token string) (string, error) {
 }
 
 func (r *Resolver) contains(u string) bool {
-	i := sort.SearchStrings(r.sortedULIDs, u)
-	return i < len(r.sortedULIDs) && r.sortedULIDs[i] == u
+	_, found := slices.BinarySearch(r.sortedULIDs, u)
+	return found
 }
 
 func (r *Resolver) prefixMatches(up string) []string {
@@ -110,7 +110,8 @@ func (r *Resolver) prefixMatches(up string) []string {
 		return nil
 	}
 	var out []string
-	for _, u := range r.sortedULIDs[sort.SearchStrings(r.sortedULIDs, up):] {
+	start, _ := slices.BinarySearch(r.sortedULIDs, up)
+	for _, u := range r.sortedULIDs[start:] {
 		if !strings.HasPrefix(u, up) {
 			break
 		}

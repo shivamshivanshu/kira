@@ -20,6 +20,9 @@ func loadRetry(store *storage.Store, repo gitx.Repo, opts Options, force bool) (
 	if err == nil {
 		return items, res, nil
 	}
+	if gitx.IsCmdError(err) {
+		return nil, Result{}, err
+	}
 	discard(store.CacheDir())
 	return loadOnce(store, repo, opts, true)
 }

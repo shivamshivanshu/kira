@@ -37,7 +37,7 @@ func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
 		switch {
 		case n == configPath:
 			hasConfig = true
-		case storage.IsTicketPath(n):
+		case storage.IsItemPath(n):
 			ticketPaths = append(ticketPaths, n)
 		}
 	}

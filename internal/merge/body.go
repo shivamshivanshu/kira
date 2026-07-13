@@ -1,7 +1,7 @@
 package merge
 
 import (
-	"sort"
+	"slices"
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
@@ -49,13 +49,20 @@ func unionComments(groups ...[]datamodel.Comment) []datamodel.Comment {
 	for _, c := range byID {
 		out = append(out, c)
 	}
-	sort.Slice(out, func(i, j int) bool {
-		ti, ei := time.Parse(time.RFC3339, out[i].Ts)
-		tj, ej := time.Parse(time.RFC3339, out[j].Ts)
-		if ei == nil && ej == nil && !ti.Equal(tj) {
-			return ti.Before(tj)
+	slices.SortFunc(out, func(a, b datamodel.Comment) int {
+		ta, ea := time.Parse(time.RFC3339, a.Ts)
+		tb, eb := time.Parse(time.RFC3339, b.Ts)
+		if ea == nil && eb == nil && !ta.Equal(tb) {
+			return ta.Compare(tb)
 		}
-		return out[i].ID < out[j].ID
+		switch {
+		case a.ID < b.ID:
+			return -1
+		case a.ID > b.ID:
+			return 1
+		default:
+			return 0
+		}
 	})
 	return out
 }

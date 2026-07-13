@@ -38,6 +38,30 @@ func TestGoldenRoundTrip(t *testing.T) {
 	}
 }
 
+func TestParseToleratesCRLFForReads(t *testing.T) {
+	lf := readExample(t)
+	crlf := strings.ReplaceAll(lf, "\n", "\r\n")
+
+	it, err := codec.Parse(crlf)
+	if err != nil {
+		t.Fatalf("parse CRLF: %v", err)
+	}
+	if !it.CRLF {
+		t.Fatal("CRLF source must flag it.CRLF so the write path can refuse")
+	}
+	lfItem, err := codec.Parse(lf)
+	if err != nil {
+		t.Fatalf("parse LF: %v", err)
+	}
+	it.CRLF = lfItem.CRLF
+	if !reflect.DeepEqual(it, lfItem) {
+		t.Fatal("CRLF and LF sources must parse to the same item")
+	}
+	if codec.Serialize(it) != lf {
+		t.Fatal("serialize must emit byte-stable LF output regardless of source EOLs")
+	}
+}
+
 func TestParseFields(t *testing.T) {
 	it, err := codec.Parse(readExample(t))
 	if err != nil {

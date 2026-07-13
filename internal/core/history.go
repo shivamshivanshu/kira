@@ -7,6 +7,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/index"
 	"github.com/shivamshivanshu/kira/internal/ptr"
+	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
 type stateTransition struct {
@@ -15,20 +16,37 @@ type stateTransition struct {
 	to   string
 }
 
-func (s *Store) cachedEvents(ulid string) (events []datamodel.Event, committed bool, err error) {
-	rel := s.fs().RelToRoot(s.itemPath(ulid))
-	fileHead, ferr := s.repo().LastCommitFor(rel)
-	if ferr != nil {
-		fileHead = ""
+func (s *Store) fileHead(ulid string) string {
+	head, err := s.repo().LastCommitFor(s.fs().RelToRoot(s.itemPath(ulid)))
+	if err != nil {
+		return ""
 	}
+	return head
+}
+
+func (s *Store) fileHeads() map[string]string {
+	raw, err := s.repo().LastCommits(s.fs().RelToRoot(s.fs().ItemsDir()))
+	if err != nil {
+		return nil
+	}
+	heads := make(map[string]string, len(raw))
+	for path, sha := range raw {
+		if ulid := storage.ULIDFromPath(path); ulid != "" {
+			heads[ulid] = sha
+		}
+	}
+	return heads
+}
+
+func (s *Store) cachedEvents(ulid, fileHead string) (events []datamodel.Event, committed bool, err error) {
 	events, _, err = index.LogEntries(s.fs(), ulid, fileHead, func() ([]datamodel.Event, error) {
 		return s.deriveEvents(ulid)
 	})
 	return events, fileHead != "", err
 }
 
-func (s *Store) cachedStateEvents(ulid string) (events []stateTransition, committed bool, err error) {
-	all, committed, err := s.cachedEvents(ulid)
+func (s *Store) cachedStateEvents(ulid, fileHead string) (events []stateTransition, committed bool, err error) {
+	all, committed, err := s.cachedEvents(ulid, fileHead)
 	if err != nil {
 		return nil, false, err
 	}
@@ -62,8 +80,8 @@ type metricItem struct {
 	reopens   int
 }
 
-func (s *Store) itemMetrics(cfg *datamodel.Config, it *datamodel.Item) (metricItem, error) {
-	evs, committed, err := s.cachedStateEvents(it.ID)
+func (s *Store) itemMetrics(cfg *datamodel.Config, it *datamodel.Item, fileHead string) (metricItem, error) {
+	evs, committed, err := s.cachedStateEvents(it.ID, fileHead)
 	if err != nil {
 		return metricItem{}, err
 	}

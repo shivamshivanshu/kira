@@ -1,6 +1,6 @@
 package core
 
-import "sort"
+import "slices"
 
 func sortByKey[T any, K interface{ Less(K) bool }](xs []T, key func(T) K) {
 	type dec struct {
@@ -11,7 +11,16 @@ func sortByKey[T any, K interface{ Less(K) bool }](xs []T, key func(T) K) {
 	for i, x := range xs {
 		ds[i] = dec{key(x), x}
 	}
-	sort.SliceStable(ds, func(i, j int) bool { return ds[i].k.Less(ds[j].k) })
+	slices.SortStableFunc(ds, func(a, b dec) int {
+		switch {
+		case a.k.Less(b.k):
+			return -1
+		case b.k.Less(a.k):
+			return 1
+		default:
+			return 0
+		}
+	})
 	for i := range ds {
 		xs[i] = ds[i].v
 	}

@@ -106,6 +106,35 @@ func TestWriteVerbsRefuseOnUnknown(t *testing.T) {
 	}
 }
 
+func TestWriteVerbsRefuseOnCRLF(t *testing.T) {
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "LF native")
+	crlf := strings.ReplaceAll(mustReadItem(t, s, res.ID), "\n", "\r\n")
+	overwriteItem(t, s, res.ID, crlf)
+
+	if _, err := s.Show(cfg, "KIRA-1"); err != nil {
+		t.Fatalf("show must tolerate CRLF for reads: %v", err)
+	}
+
+	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{Fields: []core.FieldEdit{{Key: "state", Value: "IN_PROGRESS"}}})
+	if err == nil {
+		t.Fatal("expected refusal, got nil error")
+	}
+	var e *errx.Error
+	if !errors.As(err, &e) {
+		t.Fatalf("want *errx.Error, got %T: %v", err, err)
+	}
+	if e.Code != errx.ExitEnv {
+		t.Fatalf("exit code = %d, want %d (ExitEnv)", e.Code, errx.ExitEnv)
+	}
+	if !strings.Contains(e.Error(), "CRLF") || !strings.Contains(e.Hint, "renormalize") {
+		t.Fatalf("error/hint missing CRLF renormalize guidance: %q / %q", e.Error(), e.Hint)
+	}
+	if got := mustReadItem(t, s, res.ID); !strings.Contains(got, "\r\n") {
+		t.Fatalf("a refused write renormalized the file")
+	}
+}
+
 func TestEditorModeRefusesBeforeReserializingOriginal(t *testing.T) {
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "Has future fields")

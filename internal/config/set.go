@@ -2,7 +2,8 @@ package config
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -32,12 +33,7 @@ var setKeys = map[string]setKind{
 }
 
 func SetKeys() []string {
-	keys := make([]string, 0, len(setKeys))
-	for k := range setKeys {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
+	return slices.Sorted(maps.Keys(setKeys))
 }
 
 // SetScalar edits one scalar by splicing its single line rather than

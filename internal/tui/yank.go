@@ -72,7 +72,9 @@ func (m *model) updateYank(key string) {
 }
 
 func (m *model) commitYank(i int) {
-	_ = m.clip.Copy(m.yank.entries[i].preview)
+	if i >= 0 && i < len(m.yank.entries) {
+		_ = m.clip.Copy(m.yank.entries[i].preview)
+	}
 	m.yank = nil
 }
 

@@ -29,7 +29,7 @@ func (s *Store) PrepareCommitMsg(cfg *datamodel.Config, msgFile string) error {
 
 func (s *Store) trailerNumber(cfg *datamodel.Config, repo gitx.Repo) (string, bool) {
 	branch, _ := repo.CurrentBranch()
-	items, _, resolver, err := s.load(cfg)
+	items, _, resolver, _, err := s.load(cfg)
 	if err != nil {
 		return "", false
 	}
@@ -67,7 +67,7 @@ func (s *Store) ValidateStaged(cfg *datamodel.Config) error {
 	}
 	var problems []error
 	for _, p := range paths {
-		if !storage.IsTicketPath(p) {
+		if !storage.IsItemPath(p) {
 			continue
 		}
 		content, err := s.repo().ShowStaged(p)

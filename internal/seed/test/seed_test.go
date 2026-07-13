@@ -62,7 +62,7 @@ func TestSeedProducesItems(t *testing.T) {
 		t.Fatalf("Config: %v", err)
 	}
 
-	sum, err := seed.Seed(root, cfg, seed.Opts{Size: 120, Seed: 3})
+	sum, err := seed.Run(root, cfg, seed.Opts{Size: 120, Seed: 3})
 	if err != nil {
 		t.Fatalf("Seed: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestSeedProducesItems(t *testing.T) {
 		t.Fatalf("summary mismatch: %+v", sum)
 	}
 
-	items, err := s.LoadAll()
+	items, _, err := s.LoadAll()
 	if err != nil {
 		t.Fatalf("LoadAll: %v", err)
 	}

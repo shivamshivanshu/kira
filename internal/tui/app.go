@@ -236,7 +236,10 @@ func (m model) renderHelp(h int) string {
 
 func (m model) renderMissing(h int) string {
 	name := viewLabel[m.view]
-	msg := m.theme.Dim.Render(strings.ToUpper(name[:1]) + name[1:] + " is not available yet — press 1 for the tree")
+	if name != "" {
+		name = strings.ToUpper(name[:1]) + name[1:]
+	}
+	msg := m.theme.Dim.Render(name + " is not available yet — press 1 for the tree")
 	return centered(m.theme, m.width, h, msg)
 }
 

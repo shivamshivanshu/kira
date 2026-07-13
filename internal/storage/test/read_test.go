@@ -13,7 +13,7 @@ func TestLoadAllSortedByULID(t *testing.T) {
 		".01J8ignored.md.tmp":           "garbage",
 	})
 	s := storage.New(root)
-	items, err := s.LoadAll()
+	items, _, err := s.LoadAll()
 	if err != nil {
 		t.Fatalf("LoadAll: %v", err)
 	}
@@ -29,12 +29,20 @@ func TestLoadAllSortedByULID(t *testing.T) {
 	}
 }
 
-func TestLoadAllRejectsMalformed(t *testing.T) {
+func TestLoadAllSkipsMalformed(t *testing.T) {
 	root := writeStore(t, map[string]string{
+		"01J8X7B1Q2W3E4R5T6Y7U8I9O0.md": sampleItem("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first"),
 		"01J8X8Q7RZTN5Y3VXW2A9K4E7F.md": "no frontmatter here",
 	})
 	s := storage.New(root)
-	if _, err := s.LoadAll(); err == nil {
-		t.Fatal("expected LoadAll to reject a malformed file")
+	items, warnings, err := s.LoadAll()
+	if err != nil {
+		t.Fatalf("LoadAll must not fail on a malformed file: %v", err)
+	}
+	if len(items) != 1 || items[0].Number != "KIRA-1" {
+		t.Fatalf("healthy ticket should still load, got %d items", len(items))
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("expected 1 skip warning, got %v", warnings)
 	}
 }

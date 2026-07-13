@@ -36,7 +36,7 @@ func (r Repo) IsAncestor(ancestor, descendant string) (bool, error) {
 	if errors.As(err, &exit) && exit.ExitCode() == 1 {
 		return false, nil
 	}
-	return false, err
+	return false, &CmdError{msg: fmt.Sprintf("git merge-base --is-ancestor %s %s: %v", ancestor, descendant, err)}
 }
 
 func (r Repo) StatusPorcelain(pathspec string) ([]string, error) {

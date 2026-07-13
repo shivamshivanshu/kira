@@ -21,11 +21,11 @@ func newStore(root string) *Store {
 }
 
 func Discover(startDir string) (*Store, error) {
-	fs, err := storage.Discover(startDir)
+	store, err := storage.Discover(startDir)
 	if err != nil {
 		return nil, err
 	}
-	return &Store{root: fs.Root(), store: fs}, nil
+	return &Store{root: store.Root(), store: store}, nil
 }
 
 func (s *Store) fs() *storage.Store { return s.store }
@@ -40,7 +40,7 @@ func (s *Store) Config() (*datamodel.Config, error) {
 	return cfg, nil
 }
 
-func (s *Store) LoadAll() ([]*datamodel.Item, error) { return s.fs().LoadAll() }
+func (s *Store) LoadAll() ([]*datamodel.Item, []string, error) { return s.fs().LoadAll() }
 
 func (s *Store) itemPath(ulid string) string { return s.fs().ItemPath(ulid) }
 
@@ -50,17 +50,17 @@ func (s *Store) writeItemRaw(ulid, content string) (string, error) {
 	return s.fs().WriteItemRaw(ulid, content)
 }
 
-func (s *Store) load(cfg *datamodel.Config) ([]*datamodel.Item, id.Snapshot, *id.Resolver, error) {
-	items, err := s.LoadAll()
+func (s *Store) load(cfg *datamodel.Config) ([]*datamodel.Item, id.Snapshot, *id.Resolver, []string, error) {
+	items, warnings, err := s.LoadAll()
 	if err != nil {
-		return nil, id.Snapshot{}, nil, err
+		return nil, id.Snapshot{}, nil, nil, err
 	}
 	snap, resolver := resolverFor(cfg.Project.Key, items)
-	return items, snap, resolver, nil
+	return items, snap, resolver, warnings, nil
 }
 
 func (s *Store) resolveRef(cfg *datamodel.Config, ref string) (*datamodel.Item, []*datamodel.Item, *id.Resolver, error) {
-	items, _, resolver, err := s.load(cfg)
+	items, _, resolver, _, err := s.load(cfg)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -74,12 +74,19 @@ func (s *Store) resolveRef(cfg *datamodel.Config, ref string) (*datamodel.Item, 
 	return nil, nil, nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
 }
 
-func guardKnownFields(items ...*datamodel.Item) error {
+func guardWritable(items ...*datamodel.Item) error {
 	for _, it := range items {
-		if it != nil && it.HasUnknown() {
+		if it == nil {
+			continue
+		}
+		if it.HasUnknown() {
 			names := slices.Concat(it.UnknownKeys, it.UnknownLinkTypes)
-			return errx.Env("this ticket uses fields from a newer kira: %s", strings.Join(names, ", ")).
+			return errx.Env("this item uses fields from a newer kira: %s", strings.Join(names, ", ")).
 				WithHint("upgrade kira, then retry: `go install github.com/shivamshivanshu/kira/cmd/kira@latest`")
+		}
+		if it.CRLF {
+			return errx.Env("this item has CRLF line endings, which kira cannot rewrite byte-stably").
+				WithHint("renormalize to LF, e.g. `git add --renormalize .` with `.kira/** text eol=lf` in .gitattributes")
 		}
 	}
 	return nil

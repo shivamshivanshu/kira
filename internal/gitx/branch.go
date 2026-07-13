@@ -50,10 +50,9 @@ func (r Repo) WorktreeForBranch(branch string) (string, bool) {
 	}
 	var path string
 	for _, line := range strings.Split(out, "\n") {
-		switch {
-		case strings.HasPrefix(line, "worktree "):
-			path = strings.TrimPrefix(line, "worktree ")
-		case line == "branch refs/heads/"+branch:
+		if p, ok := strings.CutPrefix(line, "worktree "); ok {
+			path = p
+		} else if line == "branch refs/heads/"+branch {
 			return path, true
 		}
 	}

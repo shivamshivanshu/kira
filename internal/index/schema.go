@@ -83,13 +83,41 @@ func (i *Index) ensureSchema() error {
 		return nil
 	}
 	if version != 0 {
-		return errx.User("index schema version %d != %d", version, schemaVersion)
+		if err := i.dropAllTables(); err != nil {
+			return err
+		}
 	}
 	if _, err := i.db.Exec(ddl); err != nil {
 		return errx.User("creating index schema: %v", err)
 	}
 	if _, err := i.db.Exec(fmt.Sprintf("PRAGMA user_version=%d", schemaVersion)); err != nil {
 		return errx.User("setting index schema version: %v", err)
+	}
+	return nil
+}
+
+func (i *Index) dropAllTables() error {
+	rows, err := i.db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+	if err != nil {
+		return errx.User("listing index tables: %v", err)
+	}
+	var names []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			rows.Close()
+			return errx.User("scanning index tables: %v", err)
+		}
+		names = append(names, name)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return errx.User("listing index tables: %v", err)
+	}
+	for _, name := range names {
+		if _, err := i.db.Exec("DROP TABLE IF EXISTS " + name); err != nil {
+			return errx.User("dropping stale index table %s: %v", name, err)
+		}
 	}
 	return nil
 }

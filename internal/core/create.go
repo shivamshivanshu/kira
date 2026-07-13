@@ -44,13 +44,24 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 		return nil, errx.User("no workflow configured for type %q", opts.Type)
 	}
 
+	base, err := s.templateDraft(opts.Type)
+	if err != nil {
+		return nil, err
+	}
+	base = applyFlags(base, opts)
+
+	d, err := s.draftForCreate(cfg, opts, wf.Initial, base)
+	if err != nil {
+		return nil, err
+	}
+
 	release, err := s.fs().Lock()
 	if err != nil {
 		return nil, err
 	}
 	defer release()
 
-	_, snap, resolver, err := s.load(cfg)
+	items, snap, resolver, _, err := s.load(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -63,56 +74,13 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 		state:   wf.Initial,
 		created: time.Now().Format(time.RFC3339),
 	}
-
-	assemble := func(d draft) (*datamodel.Item, []error, []error) {
-		it := itemFromDraft(d, sys)
-		hard, warns := validateAssembled(cfg, it, resolver, opts.Force)
-		return it, hard, warns
+	finalItem := itemFromDraft(d, sys)
+	hard, warns := validateAssembled(cfg, finalItem, resolver, opts.Force)
+	if len(hard) == 0 {
+		hard = validateGraph(finalItem, items)
 	}
-
-	base, err := s.templateDraft(opts.Type)
-	if err != nil {
-		return nil, err
-	}
-	base = applyFlags(base, opts)
-
-	var finalItem *datamodel.Item
-	var warns []error
-	switch {
-	case opts.FromFile != "":
-		content, err := readSource(opts.FromFile)
-		if err != nil {
-			return nil, err
-		}
-		d, perr := parseDraft(stripErrorBanner(content))
-		if perr != nil {
-			return nil, errx.User("--from-file: %v", perr)
-		}
-		it, errs, w := assemble(d)
-		if len(errs) > 0 {
-			return nil, errx.Invalid(errs)
-		}
-		finalItem, warns = it, w
-	case opts.NoEdit:
-		it, errs, w := assemble(base)
-		if len(errs) > 0 {
-			return nil, errx.Invalid(errs)
-		}
-		finalItem, warns = it, w
-	default:
-		content, err := runEditor(serializeDraft(base), func(c string) []error {
-			d, perr := parseDraft(c)
-			if perr != nil {
-				return []error{perr}
-			}
-			_, errs, _ := assemble(d)
-			return errs
-		})
-		if err != nil {
-			return nil, err
-		}
-		d, _ := parseDraft(content)
-		finalItem, _, warns = assemble(d)
+	if len(hard) > 0 {
+		return nil, errx.Invalid(hard)
 	}
 
 	emitWarnings(warns)
@@ -133,6 +101,50 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 		State:  finalItem.State,
 		Path:   path,
 	}, nil
+}
+
+func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, initialState string, base draft) (draft, error) {
+	switch {
+	case opts.FromFile != "":
+		content, err := readSource(opts.FromFile)
+		if err != nil {
+			return draft{}, err
+		}
+		d, perr := parseDraft(stripErrorBanner(content))
+		if perr != nil {
+			return draft{}, errx.User("--from-file: %v", perr)
+		}
+		return d, nil
+	case opts.NoEdit:
+		return base, nil
+	default:
+		_, snap, resolver, _, err := s.load(cfg)
+		if err != nil {
+			return draft{}, err
+		}
+		u := id.Mint()
+		sys := systemFields{
+			ulid:    u.String(),
+			number:  allocateNumber(cfg, snap, u),
+			typ:     opts.Type,
+			state:   initialState,
+			created: time.Now().Format(time.RFC3339),
+		}
+		content, err := runEditor(serializeDraft(base), func(c string) []error {
+			d, perr := parseDraft(c)
+			if perr != nil {
+				return []error{perr}
+			}
+			it := itemFromDraft(d, sys)
+			hard, _ := validateAssembled(cfg, it, resolver, opts.Force)
+			return hard
+		})
+		if err != nil {
+			return draft{}, err
+		}
+		d, _ := parseDraft(content)
+		return d, nil
+	}
 }
 
 type systemFields struct {

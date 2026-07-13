@@ -1,7 +1,7 @@
 package core
 
 import (
-	"sort"
+	"slices"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
@@ -68,7 +68,7 @@ func (s *Store) queryOptions(cfg *datamodel.Config, resolver *id.Resolver) query
 }
 
 func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel.ListItem, map[string]bool, error) {
-	items, _, resolver, err := s.load(cfg)
+	items, _, resolver, _, err := s.load(cfg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -218,11 +218,25 @@ func groupByEpic(rows []datamodel.ListItem, items []*datamodel.Item) []datamodel
 		}
 		ds[i] = dec{key: key, k: id.NewSortKey(numOf[key], key)}
 	}
-	sort.SliceStable(ds, func(i, j int) bool {
-		if ds[i].orphan || ds[j].orphan {
-			return !ds[i].orphan
+	slices.SortStableFunc(ds, func(a, b dec) int {
+		if a.orphan || b.orphan {
+			switch {
+			case !a.orphan:
+				return -1
+			case !b.orphan:
+				return 1
+			default:
+				return 0
+			}
 		}
-		return ds[i].k.Less(ds[j].k)
+		switch {
+		case a.k.Less(b.k):
+			return -1
+		case b.k.Less(a.k):
+			return 1
+		default:
+			return 0
+		}
 	})
 	groups := make([]datamodel.TreeGroup, 0, len(ds))
 	for _, d := range ds {

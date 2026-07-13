@@ -1,7 +1,8 @@
 package core
 
 import (
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -17,12 +18,7 @@ func Filters(cfg *datamodel.Config) *datamodel.FilterListResult {
 }
 
 func filterNames(cfg *datamodel.Config) []string {
-	names := make([]string, 0, len(cfg.Filters))
-	for name := range cfg.Filters {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
+	return slices.Sorted(maps.Keys(cfg.Filters))
 }
 
 func unknownFilterErr(cfg *datamodel.Config, name string) error {

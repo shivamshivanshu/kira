@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-func IsTicketPath(rel string) bool {
-	return strings.HasPrefix(rel, dirName+"/tickets/") && isTicketFilename(path.Base(rel))
+func IsItemPath(rel string) bool {
+	return strings.HasPrefix(rel, dirName+"/tickets/") && isItemFilename(path.Base(rel))
 }
 
-func isTicketFilename(base string) bool {
+func isItemFilename(base string) bool {
 	return strings.HasSuffix(base, ".md") && !strings.HasPrefix(base, ".")
 }

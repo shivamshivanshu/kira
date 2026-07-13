@@ -1,0 +1,9 @@
+  ## Description
+
+  The snapshot merge path drops updates when two feed threads race on the same price level. Repro:
+  bench/burst_test --dup-updates=high.
+
+  ## Acceptance criteria
+
+  [ ] TSan clean on order_book_test
+  [ ] No p99 regression on hot path

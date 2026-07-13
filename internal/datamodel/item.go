@@ -34,6 +34,7 @@ type Item struct {
 
 	UnknownKeys      []string `json:"-"`
 	UnknownLinkTypes []string `json:"-"`
+	CRLF             bool     `json:"-"`
 }
 
 func (it *Item) HasUnknown() bool {

@@ -1,11 +1,75 @@
 package core
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
+
+func TestValidateGraph(t *testing.T) {
+	epic := &datamodel.Item{ID: "E", Number: "KIRA-1", Type: datamodel.TypeEpic}
+	ticket := &datamodel.Item{ID: "T", Number: "KIRA-2", Type: datamodel.TypeTicket}
+	dupLinks := func(target string) map[string][]string {
+		return map[string][]string{datamodel.LinkDuplicateOf: {target}}
+	}
+
+	t.Run("epic parent allowed", func(t *testing.T) {
+		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Epic: strPtr("E")}
+		if errs := validateGraph(child, []*datamodel.Item{epic, child}); len(errs) != 0 {
+			t.Fatalf("epic parent must be allowed: %v", errs)
+		}
+	})
+	t.Run("non-epic parent rejected", func(t *testing.T) {
+		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Epic: strPtr("T")}
+		errs := validateGraph(child, []*datamodel.Item{ticket, child})
+		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "not an epic") {
+			t.Fatalf("non-epic parent must be rejected, got %v", errs)
+		}
+	})
+	t.Run("blocked_by cycle rejected", func(t *testing.T) {
+		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, BlockedBy: []string{"B"}}
+		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket, BlockedBy: []string{"A"}}
+		errs := validateGraph(a, []*datamodel.Item{a, b})
+		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "cycle") {
+			t.Fatalf("blocked_by cycle must be rejected, got %v", errs)
+		}
+	})
+	t.Run("blocked_by acyclic allowed", func(t *testing.T) {
+		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, BlockedBy: []string{"B"}}
+		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket}
+		if errs := validateGraph(a, []*datamodel.Item{a, b}); len(errs) != 0 {
+			t.Fatalf("acyclic blocked_by must be allowed: %v", errs)
+		}
+	})
+	t.Run("duplicate_of cycle rejected", func(t *testing.T) {
+		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, Links: dupLinks("B")}
+		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket, Links: dupLinks("A")}
+		errs := validateGraph(a, []*datamodel.Item{a, b})
+		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "cycle") {
+			t.Fatalf("duplicate_of cycle must be rejected, got %v", errs)
+		}
+	})
+	t.Run("symmetric relates not a cycle", func(t *testing.T) {
+		rel := func(target string) map[string][]string {
+			return map[string][]string{datamodel.LinkRelates: {target}}
+		}
+		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, Links: rel("B")}
+		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket, Links: rel("A")}
+		if errs := validateGraph(a, []*datamodel.Item{a, b}); len(errs) != 0 {
+			t.Fatalf("symmetric relates must not be treated as a cycle: %v", errs)
+		}
+	})
+	t.Run("pre-existing cycle elsewhere ignored", func(t *testing.T) {
+		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, BlockedBy: []string{"B"}}
+		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket, BlockedBy: []string{"A"}}
+		other := &datamodel.Item{ID: "U", Number: "KIRA-6", Type: datamodel.TypeTicket}
+		if errs := validateGraph(other, []*datamodel.Item{a, b, other}); len(errs) != 0 {
+			t.Fatalf("a cycle not involving the written item must not block it: %v", errs)
+		}
+	})
+}
 
 func strPtr(s string) *string { return &s }
 

@@ -186,6 +186,18 @@ func gitCmd(t *testing.T, dir string, args ...string) {
 	}
 }
 
+func gitOutput(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	cmd.Env = append(baseEnv(), "HOME="+dir)
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git %v: %v", args, err)
+	}
+	return strings.TrimSpace(string(out))
+}
+
 func renumberTicket(t *testing.T, dir, from, to string) {
 	t.Helper()
 	tdir := filepath.Join(dir, ".kira", "tickets")
@@ -220,11 +232,12 @@ func diffFixture(t *testing.T) string {
 	dir := kiraRepo(t)
 	mustKira(t, dir, "create", "ticket", "--title", "First", "--no-edit")
 	mustKira(t, dir, "create", "ticket", "--title", "Second", "--no-edit")
+	base := gitOutput(t, dir, "branch", "--show-current")
 	gitCmd(t, dir, "checkout", "-b", "later")
 	mustKira(t, dir, "move", "KIRA-1", "IN_PROGRESS")
 	mustKira(t, dir, "create", "ticket", "--title", "Third", "--no-edit")
 	renumberTicket(t, dir, "KIRA-2", "KIRA-9")
-	gitCmd(t, dir, "checkout", "master")
+	gitCmd(t, dir, "checkout", base)
 	return dir
 }
 

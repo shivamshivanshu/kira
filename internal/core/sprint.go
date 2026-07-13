@@ -72,7 +72,7 @@ func (s *Store) SprintCreate(cfg *datamodel.Config, sp datamodel.Sprint) (*datam
 }
 
 func (s *Store) SprintList(cfg *datamodel.Config) (*datamodel.SprintListResult, error) {
-	items, err := s.LoadAll()
+	items, _, err := s.LoadAll()
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func (s *Store) SprintClose(cfg *datamodel.Config, key, moveTo string) (*datamod
 			return nil, errx.User("--move-to: %q is not a key in the configured sprints", moveTo)
 		}
 	}
-	items, err := s.LoadAll()
+	items, _, err := s.LoadAll()
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package gitx
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -33,7 +34,7 @@ func (r Repo) OutputRaw(args ...string) (string, error) {
 		if msg == "" {
 			msg = err.Error()
 		}
-		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), msg)
+		return "", &CmdError{msg: fmt.Sprintf("git %s: %s", strings.Join(args, " "), msg)}
 	}
 	return stdout.String(), nil
 }
@@ -65,6 +66,28 @@ func (r Repo) FileLog(relPath string) (string, error) {
 
 func (r Repo) LastCommitFor(relPath string) (string, error) {
 	return r.Output("log", "-1", "--format=%H", "--", relPath)
+}
+
+func (r Repo) LastCommits(pathspec string) (map[string]string, error) {
+	out, err := r.Output("log", "--format="+nulFmt+"%H", "--name-only", "--", pathspec)
+	if err != nil {
+		return nil, err
+	}
+	heads := map[string]string{}
+	var sha string
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, nul) {
+			sha = line[len(nul):]
+			continue
+		}
+		if line == "" {
+			continue
+		}
+		if _, seen := heads[line]; !seen {
+			heads[line] = sha
+		}
+	}
+	return heads, nil
 }
 
 func (r Repo) FileCommitMeta(relPath string) (string, error) {
@@ -156,7 +179,7 @@ func (r Repo) CatFileBatch(specs []string) ([]BatchObject, error) {
 func parseCatFileBatch(buf []byte, n int) ([]BatchObject, error) {
 	out := make([]BatchObject, 0, n)
 	pos := 0
-	for i := 0; i < n; i++ {
+	for range n {
 		nl := bytes.IndexByte(buf[pos:], '\n')
 		if nl < 0 {
 			return nil, fmt.Errorf("git cat-file --batch: truncated header")
@@ -216,7 +239,8 @@ func MergeText(base, ours, theirs string) (merged string, conflict bool, err err
 	if runErr == nil {
 		return stdout.String(), false, nil
 	}
-	if ee, ok := runErr.(*exec.ExitError); ok {
+	var ee *exec.ExitError
+	if errors.As(runErr, &ee) {
 		if code := ee.ExitCode(); code > 0 && code < 128 {
 			return stdout.String(), true, nil
 		}

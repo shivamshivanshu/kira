@@ -1,0 +1,42 @@
+# An unparseable ticket is skipped with a warning; reads keep working and a
+# mutation resolving to it fails cleanly rather than bricking every command.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'good' --no-edit
+
+# drop in a ticket left with a git conflict marker -> unparseable
+cp conflict.md .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZZC.md
+
+# list still works and warns on stderr
+exec kira list
+stdout 'KIRA-1'
+stderr 'skipped \.kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZZC\.md'
+stderr 'run kira doctor'
+
+# show of the healthy ticket still works
+exec kira show KIRA-1
+stdout 'good'
+
+# doctor reports the same file as an error and exits non-zero
+! exec kira doctor
+stdout 'error'
+
+# a mutation resolving to the corrupt ticket fails cleanly, no panic
+! exec kira edit 01HZZZZZZZZZZZZZZZZZZZZZZZC --set title=x
+! stderr 'panic'
+
+-- conflict.md --
+<<<<<<< HEAD
+---
+id: 01HZZZZZZZZZZZZZZZZZZZZZZZC
+number: KIRA-2
+type: ticket
+title: conflicted
+=======
+title: other
+>>>>>>> branch

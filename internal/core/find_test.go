@@ -49,7 +49,7 @@ func fallbackFind(t *testing.T, tickets map[string]string, args FindArgs) (*data
 	t.Helper()
 	root := writeStore(t, tickets)
 	s := newStore(root)
-	items, err := s.LoadAll()
+	items, _, err := s.LoadAll()
 	if err != nil {
 		t.Fatalf("LoadAll: %v", err)
 	}

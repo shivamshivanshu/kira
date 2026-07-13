@@ -25,11 +25,7 @@ func (s *Store) Show(cfg *datamodel.Config, ref string) (*datamodel.ShowResult, 
 	res := showResultOf(cfg, it)
 	res.StderrNotes = idxNotes
 
-	fileHead, err := s.repo().LastCommitFor(s.fs().RelToRoot(s.itemPath(ulid)))
-	if err != nil {
-		fileHead = ""
-	}
-	events, links, err := index.LogEntries(s.fs(), ulid, fileHead, func() ([]datamodel.Event, error) {
+	events, links, err := index.LogEntries(s.fs(), ulid, s.fileHead(ulid), func() ([]datamodel.Event, error) {
 		return s.deriveEvents(ulid)
 	})
 	if err != nil {

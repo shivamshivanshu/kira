@@ -1,6 +1,7 @@
 package fzfx
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -32,7 +33,8 @@ func Pick(rows []string, opts Options) (string, bool, error) {
 	cmd.Stderr = os.Stderr
 	out, err := cmd.Output()
 	if err != nil {
-		if _, ok := err.(*exec.ExitError); ok {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
 			return "", true, nil
 		}
 		return "", false, fmt.Errorf("running fzf: %v", err)

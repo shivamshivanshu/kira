@@ -42,7 +42,8 @@ func Search(dir string, args []string) ([]Line, bool, error) {
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {
-		if ee, ok := err.(*exec.ExitError); ok {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
 			if ee.ExitCode() == 1 {
 				return nil, false, nil
 			}

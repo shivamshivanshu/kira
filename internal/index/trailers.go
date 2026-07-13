@@ -172,7 +172,7 @@ func (i *Index) upsertCommitLinks(commits []gitx.Commit, numbers map[string]stri
 
 	lenient := lenientPattern(projectKey)
 	for _, c := range commits {
-		trailer, lenientHits := resolveTickets(c, numbers, lenient)
+		trailer, lenientHits := resolveItemRefs(c, numbers, lenient)
 		for _, ulid := range trailer {
 			if _, err := insTrailer.Exec(ulid, c.SHA, c.Subject, c.Author, c.Timestamp, sourceTrailer); err != nil {
 				return errx.User("inserting commit link: %v", err)
@@ -187,7 +187,7 @@ func (i *Index) upsertCommitLinks(commits []gitx.Commit, numbers map[string]stri
 	return commit(tx)
 }
 
-func resolveTickets(c gitx.Commit, numbers map[string]string, lenient *regexp.Regexp) (trailer, lenientHits []string) {
+func resolveItemRefs(c gitx.Commit, numbers map[string]string, lenient *regexp.Regexp) (trailer, lenientHits []string) {
 	seen := map[string]bool{}
 	add := func(dst *[]string, token string) {
 		if ulid, ok := numbers[strings.ToUpper(token)]; ok && !seen[ulid] {

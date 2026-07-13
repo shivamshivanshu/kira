@@ -46,12 +46,12 @@ func Discover(startDir string) (*Store, error) {
 func (s *Store) Root() string        { return s.root }
 func (s *Store) KiraDir() string     { return filepath.Join(s.root, dirName) }
 func (s *Store) ConfigPath() string  { return filepath.Join(s.KiraDir(), "config.yaml") }
-func (s *Store) TicketsDir() string  { return filepath.Join(s.KiraDir(), "tickets") }
+func (s *Store) ItemsDir() string    { return filepath.Join(s.KiraDir(), "tickets") }
 func (s *Store) TemplateDir() string { return filepath.Join(s.KiraDir(), "templates") }
 func (s *Store) CacheDir() string    { return filepath.Join(s.KiraDir(), ".cache") }
 
 func (s *Store) ItemPath(ulid string) string {
-	return filepath.Join(s.TicketsDir(), ulid+".md")
+	return filepath.Join(s.ItemsDir(), ulid+".md")
 }
 
 func (s *Store) RelToRoot(abs string) string {

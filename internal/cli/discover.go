@@ -79,7 +79,8 @@ func candidateLine(c core.Candidate) string {
 }
 
 func refFromLine(line string) string {
-	return strings.TrimSpace(strings.SplitN(strings.TrimSpace(line), "\t", 2)[0])
+	before, _, _ := strings.Cut(strings.TrimSpace(line), "\t")
+	return strings.TrimSpace(before)
 }
 
 func pickFzf(cands []core.Candidate) (string, error) {

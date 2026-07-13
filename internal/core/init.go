@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,8 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/termx"
 )
+
+const gitattributesLine = ".kira/** text eol=lf"
 
 func Init(startDir, key string, force bool) (*datamodel.InitResult, error) {
 	root := startDir
@@ -46,7 +49,7 @@ func Init(startDir, key string, force bool) (*datamodel.InitResult, error) {
 		}
 	}
 
-	for _, dir := range []string{fs.TicketsDir(), fs.TemplateDir()} {
+	for _, dir := range []string{fs.ItemsDir(), fs.TemplateDir()} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return nil, errx.User("creating %s: %v", dir, err)
 		}
@@ -68,11 +71,36 @@ func Init(startDir, key string, force bool) (*datamodel.InitResult, error) {
 		return nil, errx.User("scaffolded config is invalid: %v", err)
 	}
 
-	if err := s.finalize(datamodel.CommitAuto, "", "kira: init", "", dirName); err != nil {
+	if err := ensureGitattributes(filepath.Join(abs, ".gitattributes")); err != nil {
+		return nil, err
+	}
+
+	if err := s.finalize(datamodel.CommitAuto, "", "kira: init", "", dirName, ".gitattributes"); err != nil {
 		return nil, err
 	}
 
 	return &datamodel.InitResult{Initialized: true, Path: dirName, ProjectKey: key}, nil
+}
+
+func ensureGitattributes(path string) error {
+	existing, err := os.ReadFile(path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return errx.User("reading .gitattributes: %v", err)
+	}
+	content := string(existing)
+	for _, line := range strings.Split(content, "\n") {
+		if strings.TrimSpace(line) == gitattributesLine {
+			return nil
+		}
+	}
+	if content != "" && !strings.HasSuffix(content, "\n") {
+		content += "\n"
+	}
+	content += gitattributesLine + "\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		return errx.User("writing .gitattributes: %v", err)
+	}
+	return nil
 }
 
 func deriveKey(name string) string {

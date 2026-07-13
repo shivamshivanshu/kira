@@ -28,13 +28,13 @@ func (s *Store) CachedItems() ([]*datamodel.Item, error) {
 }
 
 func (s *Store) indexedLoad(cfg *datamodel.Config) ([]*datamodel.Item, id.Snapshot, *id.Resolver, []string, error) {
-	items, _, err := index.Load(s.fs(), s.repo(), indexOptions(cfg))
+	items, res, err := index.Load(s.fs(), s.repo(), indexOptions(cfg))
 	if err != nil {
-		items, snap, resolver, loadErr := s.load(cfg)
-		return items, snap, resolver, []string{indexFallbackNote}, loadErr
+		items, snap, resolver, warnings, loadErr := s.load(cfg)
+		return items, snap, resolver, append([]string{indexFallbackNote}, warnings...), loadErr
 	}
 	snap, resolver := resolverFor(cfg.Project.Key, items)
-	return items, snap, resolver, nil, nil
+	return items, snap, resolver, res.Warnings, nil
 }
 
 func (s *Store) Index(cfg *datamodel.Config, full, closes bool) (*datamodel.IndexResult, error) {

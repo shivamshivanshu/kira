@@ -24,6 +24,15 @@ type EditOpts struct {
 }
 
 func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamodel.MutationResult, error) {
+	var edited *datamodel.Item
+	if len(opts.Fields) == 0 && opts.FromFile == "" {
+		content, err := s.editorContent(cfg, ref, opts)
+		if err != nil {
+			return nil, err
+		}
+		edited, _ = parseFullItem(content)
+	}
+
 	release, orig, _, resolver, err := s.lockAndResolve(cfg, ref)
 	if err != nil {
 		return nil, err
@@ -75,19 +84,9 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 			return nil, err
 		}
 	default:
-		content, err := runEditor(codec.Serialize(orig), func(c string) []error {
-			it, errs := parseFullItem(c)
-			if len(errs) > 0 {
-				return errs
-			}
-			_, aerrs, _ := assemble(it)
-			return aerrs
-		})
-		if err != nil {
+		if err := finish(edited); err != nil {
 			return nil, err
 		}
-		it, _ := parseFullItem(content)
-		updated, _, warns = assemble(it)
 	}
 
 	changed := datamodel.ChangedFields(orig, updated)
@@ -96,6 +95,25 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		return nil, err
 	}
 	return &datamodel.MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed}, nil
+}
+
+func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) (string, error) {
+	orig, _, resolver, err := s.resolveRef(cfg, ref)
+	if err != nil {
+		return "", err
+	}
+	if err := guardWritable(orig); err != nil {
+		return "", err
+	}
+	return runEditor(codec.Serialize(orig), func(c string) []error {
+		it, errs := parseFullItem(c)
+		if len(errs) > 0 {
+			return errs
+		}
+		restoreImmutable(it, orig)
+		hard, _ := validateAssembled(cfg, it, resolver, opts.Force)
+		return hard
+	})
 }
 
 func parseFullItem(content string) (*datamodel.Item, []error) {

@@ -2,9 +2,10 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
@@ -22,7 +23,7 @@ func ReadItem(path string) (*datamodel.Item, error) {
 }
 
 func ULIDFromFilename(name string) (string, bool) {
-	if !isTicketFilename(name) {
+	if !isItemFilename(name) {
 		return "", false
 	}
 	return strings.TrimSuffix(name, ".md"), true
@@ -33,13 +34,13 @@ func ULIDFromPath(p string) string {
 	return ulid
 }
 
-func (s *Store) LoadAll() ([]*datamodel.Item, error) {
-	entries, err := os.ReadDir(s.TicketsDir())
+func (s *Store) LoadAll() ([]*datamodel.Item, []string, error) {
+	entries, err := os.ReadDir(s.ItemsDir())
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
+			return nil, nil, nil
 		}
-		return nil, errx.User("reading tickets: %v", err)
+		return nil, nil, errx.User("reading tickets: %v", err)
 	}
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
@@ -50,17 +51,23 @@ func (s *Store) LoadAll() ([]*datamodel.Item, error) {
 			names = append(names, e.Name())
 		}
 	}
-	sort.Strings(names)
+	slices.Sort(names)
 
 	items := make([]*datamodel.Item, 0, len(names))
+	var warnings []string
 	for _, name := range names {
-		it, err := ReadItem(filepath.Join(s.TicketsDir(), name))
+		it, err := ReadItem(filepath.Join(s.ItemsDir(), name))
 		if err != nil {
-			return nil, errx.User("reading %s: %v", name, err)
+			warnings = append(warnings, SkipNote(name, err))
+			continue
 		}
 		items = append(items, it)
 	}
-	return items, nil
+	return items, warnings, nil
+}
+
+func SkipNote(name string, err error) string {
+	return fmt.Sprintf("skipped .kira/tickets/%s: %v; run kira doctor", name, err)
 }
 
 func Snapshot(key string, items []*datamodel.Item) id.Snapshot {

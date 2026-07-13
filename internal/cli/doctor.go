@@ -38,7 +38,7 @@ func newDoctorCmd(g *globalFlags) *cobra.Command {
 }
 
 func readTicketFiles(s *core.Store) ([]doctor.File, error) {
-	dir := storage.New(s.Root()).TicketsDir()
+	dir := storage.New(s.Root()).ItemsDir()
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {

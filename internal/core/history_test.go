@@ -81,7 +81,7 @@ func TestItemMetricsCleanHistory(t *testing.T) {
 	commitState(t, s, it, "REVIEW", "2026-01-07")
 	commitState(t, s, it, "DONE", "2026-01-08")
 
-	di, err := s.itemMetrics(cfg, it)
+	di, err := s.itemMetrics(cfg, it, s.fileHead(it.ID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestItemMetricsSquashedHistoryDegrades(t *testing.T) {
 	commitState(t, s, it, "TODO", "2026-01-05")
 	commitState(t, s, it, "DONE", "2026-01-08")
 
-	di, err := s.itemMetrics(cfg, it)
+	di, err := s.itemMetrics(cfg, it, s.fileHead(it.ID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestItemMetricsCreatedAlreadyDone(t *testing.T) {
 	it := eventTicket()
 	commitState(t, s, it, "DONE", "2026-01-05")
 
-	di, err := s.itemMetrics(cfg, it)
+	di, err := s.itemMetrics(cfg, it, s.fileHead(it.ID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestItemMetricsUncommittedFallsBackToUpdated(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	di, err := s.itemMetrics(cfg, it)
+	di, err := s.itemMetrics(cfg, it, s.fileHead(it.ID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ func TestCachedStateEventsChronology(t *testing.T) {
 	commitState(t, s, it, "IN_PROGRESS", "2026-01-06")
 	commitState(t, s, it, "REVIEW", "2026-01-07")
 
-	evs, committed, err := s.cachedStateEvents(it.ID)
+	evs, committed, err := s.cachedStateEvents(it.ID, s.fileHead(it.ID))
 	if err != nil {
 		t.Fatal(err)
 	}

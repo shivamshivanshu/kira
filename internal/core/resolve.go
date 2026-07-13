@@ -23,7 +23,7 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 
 	var paths []string
 	for _, p := range unmerged {
-		if storage.IsTicketPath(p) {
+		if storage.IsItemPath(p) {
 			paths = append(paths, p)
 		}
 	}
@@ -62,7 +62,7 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 			result.Skipped = append(result.Skipped, path)
 			continue
 		}
-		if err := guardKnownFields(oursItem, theirsItem); err != nil {
+		if err := guardWritable(oursItem, theirsItem); err != nil {
 			return nil, err
 		}
 		res := merge.Merge(parseOrNil(base.Content), oursItem, theirsItem, remote, gitTextMerge)

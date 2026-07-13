@@ -18,6 +18,7 @@ const (
 )
 
 func Parse(content string) (*datamodel.Item, error) {
+	crlf := strings.Contains(content, "\r\n")
 	front, body, err := splitDocument(content)
 	if err != nil {
 		return nil, err
@@ -29,7 +30,7 @@ func Parse(content string) (*datamodel.Item, error) {
 	}
 
 	nodes := frontmatterNodes(&doc)
-	it := &datamodel.Item{Body: body}
+	it := &datamodel.Item{Body: body, CRLF: crlf}
 	var errs []error
 	add := func(format string, args ...any) { errs = append(errs, fmt.Errorf(format, args...)) }
 
@@ -83,6 +84,7 @@ func DecodeFrontmatter(content string, out any) (body string, err error) {
 }
 
 func splitDocument(content string) (front, body string, err error) {
+	content = strings.ReplaceAll(content, "\r\n", "\n")
 	if !strings.HasPrefix(content, FenceLine) {
 		return "", "", fmt.Errorf("missing opening frontmatter fence")
 	}

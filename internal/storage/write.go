@@ -14,11 +14,11 @@ func (s *Store) WriteItem(it *datamodel.Item) (string, error) {
 }
 
 func (s *Store) WriteItemRaw(ulid, content string) (string, error) {
-	if err := os.MkdirAll(s.TicketsDir(), 0o755); err != nil {
+	if err := os.MkdirAll(s.ItemsDir(), 0o755); err != nil {
 		return "", errx.User("creating tickets dir: %v", err)
 	}
 	dst := s.ItemPath(ulid)
-	tmp := filepath.Join(s.TicketsDir(), "."+ulid+".md.tmp")
+	tmp := filepath.Join(s.ItemsDir(), "."+ulid+".md.tmp")
 	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		return "", errx.User("creating temp file: %v", err)

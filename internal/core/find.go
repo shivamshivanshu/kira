@@ -92,7 +92,7 @@ func ParseFindArgs(args, dropExact []string) FindArgs {
 }
 
 func (s *Store) Find(cfg *datamodel.Config, args FindArgs) ([]FindRow, error) {
-	items, err := s.LoadAll()
+	items, _, err := s.LoadAll()
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (s *Store) findRipgrep(args FindArgs, items []*datamodel.Item) ([]FindRow, 
 	fs := s.fs()
 	rgArgs := make([]string, 0, len(args.Passthru)+2)
 	rgArgs = append(rgArgs, args.Passthru...)
-	rgArgs = append(rgArgs, "--", fs.RelToRoot(fs.TicketsDir()))
+	rgArgs = append(rgArgs, "--", fs.RelToRoot(fs.ItemsDir()))
 
 	lines, matched, err := rgx.Search(fs.Root(), rgArgs)
 	if err != nil {

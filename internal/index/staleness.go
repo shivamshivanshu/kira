@@ -9,10 +9,11 @@ import (
 )
 
 type Result struct {
-	Action string
-	Reason string
-	Items  int
-	Closes CloseScan
+	Action   string
+	Reason   string
+	Items    int
+	Closes   CloseScan
+	Warnings []string
 }
 
 const (
@@ -35,7 +36,7 @@ func (i *Index) reindex(store *storage.Store, repo gitx.Repo, opts Options, forc
 		return Result{}, err
 	}
 	root := gitx.Repo{Dir: toplevel}
-	pathspec, err := filepath.Rel(toplevel, store.TicketsDir())
+	pathspec, err := filepath.Rel(toplevel, store.ItemsDir())
 	if err != nil {
 		return Result{}, errx.User("locating tickets under repo: %v", err)
 	}
@@ -51,7 +52,8 @@ func (i *Index) reindex(store *storage.Store, repo gitx.Repo, opts Options, forc
 	if err != nil {
 		return Result{}, err
 	}
-	if err := i.dispatch(store, d); err != nil {
+	warnings, err := i.dispatch(store, d)
+	if err != nil {
 		return Result{}, err
 	}
 
@@ -85,7 +87,7 @@ func (i *Index) reindex(store *storage.Store, repo gitx.Repo, opts Options, forc
 			return Result{}, err
 		}
 	}
-	return Result{Action: d.name, Reason: d.reason, Items: count, Closes: closes}, nil
+	return Result{Action: d.name, Reason: d.reason, Items: count, Closes: closes, Warnings: warnings}, nil
 }
 
 type decision struct {
@@ -126,14 +128,14 @@ func decide(root gitx.Repo, toplevel, pathspec string, force, hasMeta bool, head
 	}
 }
 
-func (i *Index) dispatch(store *storage.Store, d decision) error {
+func (i *Index) dispatch(store *storage.Store, d decision) ([]string, error) {
 	switch {
 	case d.full:
 		return i.full(store)
 	case d.name == actionIncremental:
 		return i.refresh(d.refresh)
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -164,7 +166,7 @@ func Probe(store *storage.Store, repo gitx.Repo) (FreshnessReport, error) {
 		return FreshnessReport{}, err
 	}
 	root := gitx.Repo{Dir: toplevel}
-	pathspec, err := filepath.Rel(toplevel, store.TicketsDir())
+	pathspec, err := filepath.Rel(toplevel, store.ItemsDir())
 	if err != nil {
 		return FreshnessReport{}, errx.User("locating tickets under repo: %v", err)
 	}

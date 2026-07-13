@@ -28,9 +28,9 @@ var seedEpoch = time.Date(2025, 1, 1, 9, 0, 0, 0, time.UTC)
 
 type materializer func(i int, sp Spec, parentNumber string) (number string, err error)
 
-func Seed(root string, cfg *datamodel.Config, opts Opts) (Summary, error) {
-	st := storage.New(root)
-	existing, err := st.LoadAll()
+func Run(root string, cfg *datamodel.Config, opts Opts) (Summary, error) {
+	store := storage.New(root)
+	existing, _, err := store.LoadAll()
 	if err != nil {
 		return Summary{}, err
 	}
@@ -38,7 +38,7 @@ func Seed(root string, cfg *datamodel.Config, opts Opts) (Summary, error) {
 
 	specs := Recipe(opts.Size, opts.Seed)
 	var sum Summary
-	if err := walk(specs, rawSink(st, cfg, baseN, &sum)); err != nil {
+	if err := walk(specs, rawSink(store, cfg, baseN, &sum)); err != nil {
 		return sum, err
 	}
 

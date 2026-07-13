@@ -20,7 +20,7 @@ func sparkline(vals []float64, nerd bool) string {
 	}
 	var maxV float64
 	for _, v := range vals {
-		maxV = math.Max(maxV, v)
+		maxV = max(maxV, v)
 	}
 	var b strings.Builder
 	for _, v := range vals {

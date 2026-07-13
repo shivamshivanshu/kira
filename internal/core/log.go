@@ -1,12 +1,13 @@
 package core
 
 import (
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/index"
+	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
 var scalarFields = scalarFieldSet()
@@ -40,11 +41,7 @@ func (s *Store) Log(cfg *datamodel.Config, ref string) (*datamodel.LogResult, er
 		return nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
 	}
 
-	fileHead, err := s.repo().LastCommitFor(s.fs().RelToRoot(s.itemPath(ulid)))
-	if err != nil {
-		fileHead = ""
-	}
-	events, links, err := index.LogEntries(s.fs(), ulid, fileHead, func() ([]datamodel.Event, error) {
+	events, links, err := index.LogEntries(s.fs(), ulid, s.fileHead(ulid), func() ([]datamodel.Event, error) {
 		return s.deriveEvents(ulid)
 	})
 	if err != nil {
@@ -81,9 +78,8 @@ func (s *Store) deriveEvents(ulid string) ([]datamodel.Event, error) {
 	for _, line := range strings.Split(out, "\n") {
 		if strings.HasPrefix(line, "\x00") {
 			flush()
-			parts := strings.SplitN(line[1:], "\x00", 2)
-			if len(parts) == 2 {
-				sha, ts = parts[0], parts[1]
+			if before, after, ok := strings.Cut(line[1:], "\x00"); ok {
+				sha, ts = before, after
 			}
 			continue
 		}
@@ -127,6 +123,12 @@ func interleave(events []datamodel.Event, links []index.CommitLink) []datamodel.
 			Kind: "commit", Ts: l.Ts, SHA: l.SHA, Subject: l.Subject, Author: l.Author,
 		})
 	}
-	sort.SliceStable(entries, func(i, j int) bool { return entries[i].Ts > entries[j].Ts })
+	slices.SortStableFunc(entries, func(a, b datamodel.LogEntry) int {
+		c, aOK, bOK := timex.CompareRFC3339(a.Ts, b.Ts)
+		if aOK && bOK {
+			return -c
+		}
+		return strings.Compare(b.Ts, a.Ts)
+	})
 	return entries
 }

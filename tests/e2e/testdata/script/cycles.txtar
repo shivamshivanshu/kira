@@ -1,0 +1,62 @@
+# Validation rejects a non-epic parent and blocked_by/link cycles; kira doctor
+# sweeps for the same conditions in files that were edited outside kira.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create epic --title Epic --no-edit
+exec kira create ticket --title child --no-edit --parent KIRA-1
+
+# --parent must point at an epic, not a ticket
+! exec kira create ticket --title bad --no-edit --parent KIRA-2
+stderr 'not an epic'
+
+exec kira create ticket --title a --no-edit
+exec kira create ticket --title b --no-edit
+exec kira link KIRA-3 --blocked-by KIRA-4
+
+# closing the loop would make a blocked_by cycle
+! exec kira link KIRA-4 --blocked-by KIRA-3
+stderr 'cycle'
+
+# doctor catches a blocked_by cycle and a non-epic parent injected into files
+cp cyca.md .kira/tickets/01HAAAAAAAAAAAAAAAAAAAAAAA.md
+cp cycb.md .kira/tickets/01HBBBBBBBBBBBBBBBBBBBBBBB.md
+! exec kira doctor
+stdout 'ref-cycle'
+stdout 'epic-kind'
+
+-- cyca.md --
+---
+id: 01HAAAAAAAAAAAAAAAAAAAAAAA
+number: KIRA-50
+aliases: []
+type: ticket
+title: cyca
+state: TODO
+labels: []
+epic: 01HBBBBBBBBBBBBBBBBBBBBBBB
+blocked_by: [01HBBBBBBBBBBBBBBBBBBBBBBB]
+created: 2026-07-10T09:14:00+05:30
+updated: 2026-07-10T09:14:00+05:30
+---
+## Description
+-- cycb.md --
+---
+id: 01HBBBBBBBBBBBBBBBBBBBBBBB
+number: KIRA-51
+aliases: []
+type: ticket
+title: cycb
+state: TODO
+labels: []
+epic: null
+blocked_by: [01HAAAAAAAAAAAAAAAAAAAAAAA]
+created: 2026-07-10T09:14:00+05:30
+updated: 2026-07-10T09:14:00+05:30
+---
+## Description

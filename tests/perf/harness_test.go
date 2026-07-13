@@ -30,6 +30,7 @@ var commands = []command{
 	{"tree", []string{"tree", "--json"}},
 	{"show", []string{"show", "KIRA-1", "--json"}},
 	{"query", []string{"query", "type = ticket", "--json"}},
+	{"stats", []string{"stats", "--json"}},
 }
 
 var (
@@ -142,7 +143,7 @@ func seedFixture(tb testing.TB, size int) string {
 	if err != nil {
 		tb.Fatal(err)
 	}
-	if _, err := seed.Seed(root, cfg, seed.Opts{Size: size, Seed: fixtureSeed}); err != nil {
+	if _, err := seed.Run(root, cfg, seed.Opts{Size: size, Seed: fixtureSeed}); err != nil {
 		tb.Fatalf("Seed: %v", err)
 	}
 	return root
@@ -164,8 +165,10 @@ func runKira(bin, dir string, extraEnv []string, args ...string) (time.Duration,
 
 func warm(tb testing.TB, bin, dir string) {
 	tb.Helper()
-	if _, out, err := runKira(bin, dir, nil, "list", "--json"); err != nil {
-		tb.Fatalf("warm-up failed: %v\n%s", err, out)
+	for _, args := range [][]string{{"list", "--json"}, {"stats", "--json"}} {
+		if _, out, err := runKira(bin, dir, nil, args...); err != nil {
+			tb.Fatalf("warm-up %v failed: %v\n%s", args, err, out)
+		}
 	}
 }
 

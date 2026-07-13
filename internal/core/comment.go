@@ -20,16 +20,26 @@ type CommentOpts struct {
 // that never bumps `updated` or reserializes frontmatter, so concurrent
 // comments on two branches stay disjoint appended regions and merge cleanly.
 func (s *Store) Comment(cfg *datamodel.Config, ref string, opts CommentOpts) (*datamodel.CommentResult, error) {
-	release, orig, _, _, err := s.lockAndResolve(cfg, ref)
-	if err != nil {
-		return nil, err
+	if !opts.HasMessage {
+		orig, _, _, err := s.resolveRef(cfg, ref)
+		if err != nil {
+			return nil, err
+		}
+		if err := guardWritable(orig); err != nil {
+			return nil, err
+		}
 	}
-	defer release()
 
 	text, err := s.commentText(opts)
 	if err != nil {
 		return nil, err
 	}
+
+	release, orig, _, _, err := s.lockAndResolve(cfg, ref)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
 
 	raw, err := os.ReadFile(s.itemPath(orig.ID))
 	if err != nil {

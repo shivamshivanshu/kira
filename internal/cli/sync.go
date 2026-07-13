@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/core"
-	syncpkg "github.com/shivamshivanshu/kira/internal/sync"
+	"github.com/shivamshivanshu/kira/internal/syncx"
 )
 
 func newSyncCmd(g *globalFlags) *cobra.Command {
@@ -23,9 +23,9 @@ func newSyncCmd(g *globalFlags) *cobra.Command {
 			}
 			switch {
 			case commit:
-				opts.Dirty = syncpkg.DirtyCommit
+				opts.Dirty = syncx.DirtyCommit
 			case stash:
-				opts.Dirty = syncpkg.DirtyStash
+				opts.Dirty = syncx.DirtyStash
 			}
 			s, cfg, err := openStore(g)
 			if err != nil {
@@ -53,7 +53,7 @@ func newSyncCmd(g *globalFlags) *cobra.Command {
 	return cmd
 }
 
-func printSyncReport(out io.Writer, report *syncpkg.Report) {
+func printSyncReport(out io.Writer, report *syncx.Report) {
 	for _, step := range report.Steps {
 		if step.Detail != "" {
 			fmt.Fprintf(out, "%-10s %s (%s)\n", step.Name+":", step.Status, step.Detail)

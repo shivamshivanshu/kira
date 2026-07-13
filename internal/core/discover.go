@@ -11,7 +11,7 @@ type Candidate struct {
 }
 
 func (s *Store) Candidates() ([]Candidate, error) {
-	items, err := s.LoadAll()
+	items, _, err := s.LoadAll()
 	if err != nil {
 		return nil, err
 	}

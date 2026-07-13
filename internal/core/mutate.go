@@ -20,7 +20,7 @@ func (s *Store) lockAndResolve(cfg *datamodel.Config, ref string) (func(), *data
 		release()
 		return nil, nil, nil, nil, err
 	}
-	if err := guardKnownFields(orig); err != nil {
+	if err := guardWritable(orig); err != nil {
 		release()
 		return nil, nil, nil, nil, err
 	}
@@ -40,6 +40,9 @@ func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply appl
 		return nil, nil, errx.Invalid(hard)
 	}
 	vhard, vwarns := validateAssembled(cfg, updated, resolver, force)
+	if len(vhard) == 0 {
+		vhard = validateGraph(updated, items)
+	}
 	if len(vhard) > 0 {
 		return nil, nil, errx.Invalid(vhard)
 	}

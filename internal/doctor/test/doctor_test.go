@@ -241,6 +241,57 @@ func TestEpicChainAcyclic(t *testing.T) {
 	}
 }
 
+func TestNonEpicParentDetected(t *testing.T) {
+	child := valid(ulidA, "KIRA-1")
+	parent := valid(ulidB, "KIRA-2")
+	child.Epic = strp(ulidB)
+	items := []*datamodel.Item{child, parent}
+	f := doctor.NonEpicParents(items, resolver(items...))
+	if len(f) != 1 || f[0].Class != doctor.ClassEpicKind || f[0].ItemID != ulidA {
+		t.Fatalf("expected one epic-kind finding on the child, got %+v", f)
+	}
+}
+
+func TestEpicParentAccepted(t *testing.T) {
+	child := valid(ulidA, "KIRA-1")
+	parent := valid(ulidB, "KIRA-2")
+	parent.Type = datamodel.TypeEpic
+	child.Epic = strp(ulidB)
+	items := []*datamodel.Item{child, parent}
+	if f := doctor.NonEpicParents(items, resolver(items...)); len(f) != 0 {
+		t.Fatalf("an epic parent must be accepted, got %+v", f)
+	}
+}
+
+func TestRefCycleDetected(t *testing.T) {
+	a := valid(ulidA, "KIRA-1")
+	b := valid(ulidB, "KIRA-2")
+	a.BlockedBy = []string{ulidB}
+	b.BlockedBy = []string{ulidA}
+	items := []*datamodel.Item{a, b}
+	f := doctor.RefCycles(items, resolver(items...))
+	if len(f) != 2 {
+		t.Fatalf("expected a finding per cycle member, got %+v", f)
+	}
+	for _, x := range f {
+		if x.Class != doctor.ClassRefCycle || x.Field != datamodel.KeyBlockedBy {
+			t.Fatalf("unexpected finding %+v", x)
+		}
+	}
+}
+
+func TestRefCycleIgnoresLinearAndSymmetric(t *testing.T) {
+	a := valid(ulidA, "KIRA-1")
+	b := valid(ulidB, "KIRA-2")
+	a.BlockedBy = []string{ulidB}
+	a.Links = map[string][]string{datamodel.LinkRelates: {ulidB}}
+	b.Links = map[string][]string{datamodel.LinkRelates: {ulidA}}
+	items := []*datamodel.Item{a, b}
+	if f := doctor.RefCycles(items, resolver(items...)); len(f) != 0 {
+		t.Fatalf("linear blocked_by and symmetric relates are not cycles, got %+v", f)
+	}
+}
+
 func TestRunAggregatesAndFlagsIdentity(t *testing.T) {
 	good := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
 		"state: TODO\nlabels: []\nblocked_by: []\nepic: null\n" +

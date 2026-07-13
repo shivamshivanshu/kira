@@ -16,7 +16,7 @@ func (s *Store) Reconcile(cfg *datamodel.Config) (*datamodel.ReconcileResult, er
 	}
 	defer release()
 
-	items, err := s.LoadAll()
+	items, _, err := s.LoadAll()
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +28,7 @@ func (s *Store) Reconcile(cfg *datamodel.Config) (*datamodel.ReconcileResult, er
 		if it == nil {
 			continue
 		}
-		if err := guardKnownFields(it); err != nil {
+		if err := guardWritable(it); err != nil {
 			return nil, err
 		}
 		it.Number = r.To

@@ -44,9 +44,11 @@ func (s *Store) Workon(cfg *datamodel.Config, ref string, opts WorkonOpts) (*dat
 		}
 		result.Worktree, result.BranchCreated = path, created
 		target = newStore(path)
-	} else if created, err := checkoutBranch(repo, branch, found); err != nil {
-		return nil, err
 	} else {
+		created, err := checkoutBranch(repo, branch, found)
+		if err != nil {
+			return nil, err
+		}
 		result.BranchCreated = created
 	}
 

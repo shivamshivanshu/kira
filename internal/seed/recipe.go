@@ -49,7 +49,7 @@ func Recipe(size int, seed int64) []Spec {
 		epicCount = 1
 	}
 	specs := make([]Spec, 0, size)
-	for i := 0; i < epicCount; i++ {
+	for i := range epicCount {
 		specs = append(specs, epicSpec(rng, i))
 	}
 	for i := epicCount; i < size; i++ {
@@ -94,7 +94,7 @@ func ticketSpec(rng *rand.Rand, epicCount int) Spec {
 func pickLabels(rng *rand.Rand) []string {
 	n := rng.Intn(3)
 	out := make([]string, 0, n)
-	for i := 0; i < n; i++ {
+	for range n {
 		out = append(out, labelVocab[rng.Intn(len(labelVocab))])
 	}
 	return dedup(out)
@@ -106,7 +106,7 @@ func pickComments(rng *rand.Rand) []string {
 	}
 	n := 1 + rng.Intn(3)
 	out := make([]string, 0, n)
-	for i := 0; i < n; i++ {
+	for range n {
 		out = append(out, commentPool[rng.Intn(len(commentPool))])
 	}
 	return out

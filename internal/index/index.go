@@ -33,19 +33,10 @@ func Open(cacheDir string) (*Index, error) {
 }
 
 func open(cacheDir string) (*Index, error) {
-	db, err := sql.Open("sqlite", dbPath(cacheDir))
+	dsn := "file:" + dbPath(cacheDir) + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(2000)&_pragma=foreign_keys(1)"
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, errx.User("opening index: %v", err)
-	}
-	for _, pragma := range []string{
-		"PRAGMA journal_mode=WAL",
-		"PRAGMA busy_timeout=2000",
-		"PRAGMA foreign_keys=ON",
-	} {
-		if _, err := db.Exec(pragma); err != nil {
-			db.Close()
-			return nil, errx.User("index pragma: %v", err)
-		}
 	}
 	idx := &Index{db: db, cacheDir: cacheDir}
 	if err := idx.ensureSchema(); err != nil {

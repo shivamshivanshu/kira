@@ -3,7 +3,6 @@ package core
 import (
 	"fmt"
 	"slices"
-	"sort"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
@@ -18,11 +17,11 @@ func (s *Store) Diff(ref string) (*datamodel.DiffResult, error) {
 	if err != nil {
 		return nil, errx.User("resolving %s: %v", ref, err)
 	}
-	baseSha, err := repo.MergeBase("HEAD", target)
+	baseSHA, err := repo.MergeBase("HEAD", target)
 	if err != nil {
 		return nil, errx.User("merge-base HEAD %s: %v", ref, err)
 	}
-	from, err := treeish.Load(repo, baseSha)
+	from, err := treeish.Load(repo, baseSHA)
 	if err != nil {
 		return nil, errx.User("%v", err)
 	}
@@ -30,10 +29,10 @@ func (s *Store) Diff(ref string) (*datamodel.DiffResult, error) {
 	if err != nil {
 		return nil, errx.User("%v", err)
 	}
-	return diffSnapshots(repo, from, to, baseSha, target), nil
+	return diffSnapshots(repo, from, to, baseSHA, target), nil
 }
 
-func diffSnapshots(repo gitx.Repo, from, to *treeish.Loaded, fromSha, toSha string) *datamodel.DiffResult {
+func diffSnapshots(repo gitx.Repo, from, to *treeish.Loaded, fromSHA, toSHA string) *datamodel.DiffResult {
 	fromByID := byULID(from.Items)
 	toByID := byULID(to.Items)
 
@@ -55,7 +54,7 @@ func diffSnapshots(repo gitx.Repo, from, to *treeish.Loaded, fromSha, toSha stri
 	}
 
 	sortDiffItems(items)
-	return &datamodel.DiffResult{From: fromSha, To: toSha, Items: items}
+	return &datamodel.DiffResult{From: fromSHA, To: toSHA, Items: items}
 }
 
 func changedItem(repo gitx.Repo, from, to *datamodel.Item) (datamodel.DiffItem, bool) {
@@ -94,7 +93,15 @@ func sortDiffItems(items []datamodel.DiffItem) {
 	for _, it := range items {
 		keys[it.ID] = id.NewSortKey(it.Number, it.ID)
 	}
-	sort.SliceStable(items, func(i, j int) bool {
-		return keys[items[i].ID].Less(keys[items[j].ID])
+	slices.SortStableFunc(items, func(a, b datamodel.DiffItem) int {
+		ka, kb := keys[a.ID], keys[b.ID]
+		switch {
+		case ka.Less(kb):
+			return -1
+		case kb.Less(ka):
+			return 1
+		default:
+			return 0
+		}
 	})
 }

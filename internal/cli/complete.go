@@ -2,7 +2,6 @@ package cli
 
 import (
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -177,7 +176,7 @@ func filterNames(cfg *datamodel.Config) []string {
 	for k := range cfg.Filters {
 		out = append(out, k)
 	}
-	sort.Strings(out)
+	slices.Sort(out)
 	return out
 }
 
@@ -192,7 +191,7 @@ func workflowStates(cfg *datamodel.Config) []string {
 			}
 		}
 	}
-	sort.Strings(out)
+	slices.Sort(out)
 	return out
 }
 

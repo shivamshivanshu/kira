@@ -1,11 +1,14 @@
 package index_test
 
 import (
+	"database/sql"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	_ "modernc.org/sqlite"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/gitx"
@@ -106,7 +109,7 @@ func TestLoadReconstructsLosslessly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	disk, err := f.store.LoadAll()
+	disk, _, err := f.store.LoadAll()
 	if err != nil {
 		t.Fatalf("LoadAll: %v", err)
 	}
@@ -365,6 +368,101 @@ func TestCorruptedDBRecovers(t *testing.T) {
 	}
 	if len(items) != 1 {
 		t.Fatalf("recovery produced %d items, want 1", len(items))
+	}
+}
+
+func TestTransientGitFailureKeepsCache(t *testing.T) {
+	f := newRepo(t)
+	f.writeTicket(t, "01J8X7B1Q2W3E4R5T6Y7U8I9O0", ticket("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first"))
+	f.commit(t, "one")
+	if _, _, err := index.Load(f.store, f.repo, index.Options{}); err != nil {
+		t.Fatalf("initial Load: %v", err)
+	}
+	dbFile := filepath.Join(f.store.CacheDir(), "index.db")
+	if _, err := os.Stat(dbFile); err != nil {
+		t.Fatalf("index.db missing after build: %v", err)
+	}
+
+	hidden := filepath.Join(f.root, ".git-hidden")
+	if err := os.Rename(filepath.Join(f.root, ".git"), hidden); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := index.Load(f.store, f.repo, index.Options{}); err == nil {
+		t.Fatal("Load must surface the git failure, not swallow it")
+	}
+	if _, err := os.Stat(dbFile); err != nil {
+		t.Fatalf("transient git failure discarded the cache: %v", err)
+	}
+
+	if err := os.Rename(hidden, filepath.Join(f.root, ".git")); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := index.Load(f.store, f.repo, index.Options{}); err != nil {
+		t.Fatalf("Load once git is reachable again: %v", err)
+	}
+}
+
+func TestForeignKeyCascadeOnDelete(t *testing.T) {
+	const ulid = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	content := "---\nid: " + ulid + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
+		"state: TODO\nlabels:\n  - a\n  - b\nepic: null\nblocked_by: []\n" +
+		"created: 2026-07-10T09:14:00+05:30\nupdated: 2026-07-10T09:14:00+05:30\n---\n\n## Description\n"
+	f.writeTicket(t, ulid, content)
+	f.commit(t, "one")
+
+	idx := open(t, f)
+	ensure(t, idx, f)
+
+	f.removeTicket(t, ulid)
+	f.commit(t, "drop")
+	ensure(t, idx, f)
+
+	db, err := sql.Open("sqlite", "file:"+filepath.Join(f.store.CacheDir(), "index.db")+"?mode=ro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var labels int
+	if err := db.QueryRow("SELECT count(*) FROM labels WHERE item_id = ?", ulid).Scan(&labels); err != nil {
+		t.Fatal(err)
+	}
+	if labels != 0 {
+		t.Fatalf("deleting the item left %d orphaned label rows; ON DELETE CASCADE was not enforced on the write connection", labels)
+	}
+}
+
+func TestSchemaVersionMismatchRebuilds(t *testing.T) {
+	f := newRepo(t)
+	f.writeTicket(t, "01J8X7B1Q2W3E4R5T6Y7U8I9O0", ticket("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first"))
+	f.commit(t, "one")
+	if _, _, err := index.Load(f.store, f.repo, index.Options{}); err != nil {
+		t.Fatalf("initial Load: %v", err)
+	}
+
+	db, err := sql.Open("sqlite", filepath.Join(f.store.CacheDir(), "index.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("PRAGMA user_version=3"); err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	if err := os.Remove(filepath.Join(f.store.CacheDir(), "meta.json")); err != nil {
+		t.Fatal(err)
+	}
+
+	idx := open(t, f)
+	res, err := idx.EnsureFresh(f.store, f.repo, index.Options{})
+	if err != nil {
+		t.Fatalf("stale schema must rebuild transparently, not error: %v", err)
+	}
+	items, err := idx.Items()
+	if err != nil {
+		t.Fatalf("Items after rebuild: %v", err)
+	}
+	if res.Action != "full" || len(items) != 1 {
+		t.Fatalf("stale schema rebuild: action=%q items=%d, want full/1", res.Action, len(items))
 	}
 }
 
