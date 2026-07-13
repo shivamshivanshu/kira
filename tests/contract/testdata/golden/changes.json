@@ -1,0 +1,54 @@
+{
+  "since": "<SHA>",
+  "head": "<SHA>",
+  "items": [
+    {
+      "id": "<ULID-1>",
+      "number": "KIRA-1",
+      "title": "First",
+      "status": "changed",
+      "body": {
+        "added": 2,
+        "removed": 0
+      },
+      "events": [
+        {
+          "ts": "<TS>",
+          "field": "state",
+          "old": "TODO",
+          "new": "IN_PROGRESS",
+          "commit": "<SHA>"
+        }
+      ]
+    },
+    {
+      "id": "<ULID-2>",
+      "number": "KIRA-3",
+      "title": "Third",
+      "status": "created",
+      "events": []
+    },
+    {
+      "id": "<ULID-3>",
+      "number": "KIRA-9",
+      "title": "Second",
+      "status": "changed",
+      "events": [
+        {
+          "ts": "<TS>",
+          "field": "number",
+          "old": "KIRA-2",
+          "new": "KIRA-9",
+          "commit": "<SHA>"
+        },
+        {
+          "ts": "<TS>",
+          "field": "priority",
+          "old": "",
+          "new": "P1",
+          "commit": "<SHA>"
+        }
+      ]
+    }
+  ]
+}

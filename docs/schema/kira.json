@@ -1,0 +1,1557 @@
+{
+  "$defs": {
+    "BlameField": {
+      "additionalProperties": false,
+      "properties": {
+        "by": {
+          "type": "string"
+        },
+        "degraded": {
+          "type": "boolean"
+        },
+        "field": {
+          "type": "string"
+        },
+        "source_kind": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "when": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "field",
+        "value",
+        "when",
+        "by",
+        "source_kind"
+      ],
+      "type": "object"
+    },
+    "BlameResult": {
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "items": {
+            "$ref": "#/$defs/BlameField"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "fields"
+      ],
+      "type": "object"
+    },
+    "BoardColumn": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ListItem"
+          },
+          "type": "array"
+        },
+        "state": {
+          "type": "string"
+        },
+        "wip": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "state",
+        "category",
+        "wip",
+        "count",
+        "items"
+      ],
+      "type": "object"
+    },
+    "BoardResult": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/BoardColumn"
+          },
+          "type": "array"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "columns"
+      ],
+      "type": "object"
+    },
+    "BodyDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "added": {
+          "type": "integer"
+        },
+        "removed": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "added",
+        "removed"
+      ],
+      "type": "object"
+    },
+    "Burndown": {
+      "additionalProperties": false,
+      "properties": {
+        "days": {
+          "items": {
+            "$ref": "#/$defs/BurndownDay"
+          },
+          "type": "array"
+        },
+        "degraded_n": {
+          "type": "integer"
+        },
+        "end": {
+          "type": "string"
+        },
+        "sprint": {
+          "type": "string"
+        },
+        "start": {
+          "type": "string"
+        },
+        "unestimated": {
+          "type": "integer"
+        },
+        "unit": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sprint",
+        "start",
+        "end",
+        "unit",
+        "days",
+        "unestimated",
+        "degraded_n"
+      ],
+      "type": "object"
+    },
+    "BurndownDay": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "type": "string"
+        },
+        "ideal": {
+          "type": "number"
+        },
+        "remaining": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "date",
+        "remaining",
+        "ideal"
+      ],
+      "type": "object"
+    },
+    "ChangedItem": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BodyDelta"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/Event"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "title",
+        "status",
+        "events"
+      ],
+      "type": "object"
+    },
+    "ChangesResult": {
+      "additionalProperties": false,
+      "properties": {
+        "head": {
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ChangedItem"
+          },
+          "type": "array"
+        },
+        "since": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "since",
+        "head",
+        "items"
+      ],
+      "type": "object"
+    },
+    "CommentResult": {
+      "additionalProperties": false,
+      "properties": {
+        "comment_id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "comment_id"
+      ],
+      "type": "object"
+    },
+    "CommentView": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "ts": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "author",
+        "ts",
+        "text"
+      ],
+      "type": "object"
+    },
+    "CommitLink": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "sha": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "ts": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sha",
+        "subject",
+        "author",
+        "ts"
+      ],
+      "type": "object"
+    },
+    "Completion": {
+      "additionalProperties": false,
+      "properties": {
+        "done": {
+          "type": "integer"
+        },
+        "dropped": {
+          "type": "integer"
+        },
+        "pct": {
+          "type": "number"
+        },
+        "total": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "done",
+        "total",
+        "dropped",
+        "pct"
+      ],
+      "type": "object"
+    },
+    "ConfigSetResult": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "value"
+      ],
+      "type": "object"
+    },
+    "CreateResult": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "type",
+        "title",
+        "state",
+        "path"
+      ],
+      "type": "object"
+    },
+    "DiffItem": {
+      "additionalProperties": false,
+      "properties": {
+        "changes": {
+          "items": {
+            "$ref": "#/$defs/FieldChange"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        },
+        "renumbered": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RenumberEvent"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "title",
+        "status"
+      ],
+      "type": "object"
+    },
+    "DiffResult": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/DiffItem"
+          },
+          "type": "array"
+        },
+        "to": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "items"
+      ],
+      "type": "object"
+    },
+    "EstimateRollup": {
+      "additionalProperties": false,
+      "properties": {
+        "actual_ratio_p50": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "total": {
+          "type": "number"
+        },
+        "unit": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "total",
+        "unit"
+      ],
+      "type": "object"
+    },
+    "Event": {
+      "additionalProperties": false,
+      "properties": {
+        "commit": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "new": {
+          "type": "string"
+        },
+        "old": {
+          "type": "string"
+        },
+        "ts": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ts",
+        "field",
+        "old",
+        "new",
+        "commit"
+      ],
+      "type": "object"
+    },
+    "FieldChange": {
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "field",
+        "from",
+        "to"
+      ],
+      "type": "object"
+    },
+    "FilterListResult": {
+      "additionalProperties": false,
+      "properties": {
+        "filters": {
+          "items": {
+            "$ref": "#/$defs/FilterView"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "filters"
+      ],
+      "type": "object"
+    },
+    "FilterView": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "query"
+      ],
+      "type": "object"
+    },
+    "FindResult": {
+      "additionalProperties": false,
+      "properties": {
+        "matches": {
+          "items": {
+            "$ref": "#/$defs/Match"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "matches"
+      ],
+      "type": "object"
+    },
+    "HistoryEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "from": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "to": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ts": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ts",
+        "field"
+      ],
+      "type": "object"
+    },
+    "IndexResult": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "closed": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "items": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "reason",
+        "items",
+        "closed"
+      ],
+      "type": "object"
+    },
+    "InitResult": {
+      "additionalProperties": false,
+      "properties": {
+        "initialized": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        },
+        "project_key": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "initialized",
+        "path",
+        "project_key"
+      ],
+      "type": "object"
+    },
+    "ListItem": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "epic": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "number": {
+          "type": "string"
+        },
+        "owner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "title",
+        "type",
+        "state",
+        "category",
+        "labels"
+      ],
+      "type": "object"
+    },
+    "ListResult": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "type": "integer"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ListItem"
+          },
+          "type": "array"
+        },
+        "tree": {
+          "items": {
+            "$ref": "#/$defs/TreeGroup"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "items",
+        "count"
+      ],
+      "type": "object"
+    },
+    "LogEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "new": {
+          "type": "string"
+        },
+        "old": {
+          "type": "string"
+        },
+        "sha": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "ts": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "ts"
+      ],
+      "type": "object"
+    },
+    "LogResult": {
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/LogEntry"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "entries"
+      ],
+      "type": "object"
+    },
+    "Match": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer"
+        },
+        "number": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "line",
+        "text"
+      ],
+      "type": "object"
+    },
+    "MergeResult": {
+      "additionalProperties": false,
+      "properties": {
+        "arbitrated": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number"
+      ],
+      "type": "object"
+    },
+    "MoveResult": {
+      "additionalProperties": false,
+      "properties": {
+        "activated": {
+          "type": "boolean"
+        },
+        "from": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "from",
+        "to",
+        "activated"
+      ],
+      "type": "object"
+    },
+    "MutationResult": {
+      "additionalProperties": false,
+      "properties": {
+        "changed": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "changed"
+      ],
+      "type": "object"
+    },
+    "Percentiles": {
+      "additionalProperties": false,
+      "properties": {
+        "degraded_n": {
+          "type": "integer"
+        },
+        "n": {
+          "type": "integer"
+        },
+        "p50": {
+          "type": "number"
+        },
+        "p90": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "p50",
+        "p90",
+        "n"
+      ],
+      "type": "object"
+    },
+    "RenumberEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "type": "object"
+    },
+    "Reopens": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "type": "integer"
+        },
+        "items": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "count",
+        "items"
+      ],
+      "type": "object"
+    },
+    "ResolveResult": {
+      "additionalProperties": false,
+      "properties": {
+        "resolved": {
+          "items": {
+            "$ref": "#/$defs/MergeResult"
+          },
+          "type": "array"
+        },
+        "skipped": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "resolved"
+      ],
+      "type": "object"
+    },
+    "ShowResult": {
+      "additionalProperties": false,
+      "properties": {
+        "aliases": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "blocked_by": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "blocks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "body": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "comments": {
+          "items": {
+            "$ref": "#/$defs/CommentView"
+          },
+          "type": "array"
+        },
+        "created": {
+          "type": "string"
+        },
+        "due": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "epic": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "estimate": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "history_tail": {
+          "items": {
+            "$ref": "#/$defs/HistoryEvent"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "linked_commits": {
+          "items": {
+            "$ref": "#/$defs/CommitLink"
+          },
+          "type": "array"
+        },
+        "links": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "object"
+        },
+        "number": {
+          "type": "string"
+        },
+        "owner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "priority": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rank": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reporter": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resolution": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "skew": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Skew"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": "string"
+        },
+        "subtype": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "updated": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "aliases",
+        "type",
+        "title",
+        "state",
+        "category",
+        "labels",
+        "blocked_by",
+        "links",
+        "blocks",
+        "created",
+        "updated",
+        "body",
+        "comments",
+        "linked_commits",
+        "history_tail"
+      ],
+      "type": "object"
+    },
+    "Skew": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "type": "string"
+        },
+        "at_id": {
+          "type": "string"
+        },
+        "now_id": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref",
+        "at",
+        "at_id",
+        "now_id"
+      ],
+      "type": "object"
+    },
+    "SprintActivateResult": {
+      "additionalProperties": false,
+      "properties": {
+        "activated": {
+          "type": "string"
+        },
+        "previous": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "activated"
+      ],
+      "type": "object"
+    },
+    "SprintCloseResult": {
+      "additionalProperties": false,
+      "properties": {
+        "closed": {
+          "type": "string"
+        },
+        "moved_to": {
+          "type": "string"
+        },
+        "unfinished": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "was_active": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "closed",
+        "was_active",
+        "unfinished"
+      ],
+      "type": "object"
+    },
+    "SprintCreateResult": {
+      "additionalProperties": false,
+      "properties": {
+        "created": {
+          "type": "boolean"
+        },
+        "sprint": {
+          "$ref": "#/$defs/SprintJSON"
+        }
+      },
+      "required": [
+        "created",
+        "sprint"
+      ],
+      "type": "object"
+    },
+    "SprintItemCounts": {
+      "additionalProperties": false,
+      "properties": {
+        "done": {
+          "type": "integer"
+        },
+        "total": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "done"
+      ],
+      "type": "object"
+    },
+    "SprintJSON": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "start": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "start",
+        "end"
+      ],
+      "type": "object"
+    },
+    "SprintListResult": {
+      "additionalProperties": false,
+      "properties": {
+        "sprints": {
+          "items": {
+            "$ref": "#/$defs/SprintListRow"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "sprints"
+      ],
+      "type": "object"
+    },
+    "SprintListRow": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "end": {
+          "type": "string"
+        },
+        "items": {
+          "$ref": "#/$defs/SprintItemCounts"
+        },
+        "key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "start": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "start",
+        "end",
+        "active",
+        "items"
+      ],
+      "type": "object"
+    },
+    "StatsResult": {
+      "additionalProperties": false,
+      "properties": {
+        "burndown": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Burndown"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "completion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Completion"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cycle_time_days": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Percentiles"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "estimate": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EstimateRollup"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lead_time_days": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Percentiles"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reopens": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Reopens"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StatsScope"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "throughput_per_week": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "velocity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Velocity"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "StatsScope": {
+      "additionalProperties": false,
+      "properties": {
+        "epic": {
+          "type": "string"
+        },
+        "epic_number": {
+          "type": "string"
+        },
+        "since": {
+          "type": "string"
+        },
+        "sprint": {
+          "type": "string"
+        },
+        "weeks": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "weeks"
+      ],
+      "type": "object"
+    },
+    "TreeGroup": {
+      "additionalProperties": false,
+      "properties": {
+        "epic": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "epic_number": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "items": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "TreeNode": {
+      "additionalProperties": false,
+      "properties": {
+        "children": {
+          "items": {
+            "$ref": "#/$defs/TreeNode"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "type",
+        "title",
+        "children"
+      ],
+      "type": "object"
+    },
+    "TreeResult": {
+      "additionalProperties": false,
+      "properties": {
+        "nodes": {
+          "items": {
+            "$ref": "#/$defs/TreeNode"
+          },
+          "type": "array"
+        },
+        "root": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "nodes"
+      ],
+      "type": "object"
+    },
+    "Velocity": {
+      "additionalProperties": false,
+      "properties": {
+        "sprints": {
+          "items": {
+            "$ref": "#/$defs/VelocitySprint"
+          },
+          "type": "array"
+        },
+        "trailing_3": {
+          "type": "number"
+        },
+        "unit": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "unit",
+        "sprints",
+        "trailing_3"
+      ],
+      "type": "object"
+    },
+    "VelocitySprint": {
+      "additionalProperties": false,
+      "properties": {
+        "completed": {
+          "type": "number"
+        },
+        "key": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "completed"
+      ],
+      "type": "object"
+    },
+    "VersionResult": {
+      "additionalProperties": false,
+      "properties": {
+        "commit": {
+          "type": "string"
+        },
+        "go": {
+          "type": "string"
+        },
+        "json_contract": {
+          "type": "integer"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "json_contract",
+        "go"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Machine-readable output shapes for kira commands run with --json.",
+  "title": "kira --json output"
+}

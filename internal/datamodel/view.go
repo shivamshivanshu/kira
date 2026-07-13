@@ -162,6 +162,26 @@ const (
 	DiffChanged = "changed"
 )
 
+type ChangesResult struct {
+	Since string        `json:"since"`
+	Head  string        `json:"head"`
+	Items []ChangedItem `json:"items"`
+}
+
+type ChangedItem struct {
+	ID     string     `json:"id"`
+	Number string     `json:"number"`
+	Title  string     `json:"title"`
+	Status string     `json:"status"`
+	Body   *BodyDelta `json:"body,omitempty"`
+	Events []Event    `json:"events"`
+}
+
+type BodyDelta struct {
+	Added   int `json:"added"`
+	Removed int `json:"removed"`
+}
+
 type Match struct {
 	ID     string `json:"id"`
 	Number string `json:"number"`
@@ -377,4 +397,13 @@ type BlameResult struct {
 	ID     string       `json:"id"`
 	Number string       `json:"number"`
 	Fields []BlameField `json:"fields"`
+}
+
+const JSONContractVersion = 1
+
+type VersionResult struct {
+	Version      string `json:"version"`
+	JSONContract int    `json:"json_contract"`
+	Go           string `json:"go"`
+	Commit       string `json:"commit,omitempty"`
 }

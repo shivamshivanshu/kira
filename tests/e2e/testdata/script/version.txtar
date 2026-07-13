@@ -1,3 +1,9 @@
 # kira version prints a non-empty version string and exits 0
 exec kira version
 stdout .
+
+# --json emits the json_contract handshake plus build metadata
+exec kira version --json
+stdout '"json_contract": 1'
+stdout '"version":'
+stdout '"go":'

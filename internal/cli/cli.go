@@ -79,7 +79,7 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 
 	root.AddCommand(
 		newTUICmd(g),
-		newVersionCmd(),
+		newVersionCmd(g),
 		newInitCmd(g),
 		newCreateCmd(g),
 		newShowCmd(g),
@@ -110,6 +110,8 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 		newDiffCmd(g),
 		newBoardCmd(g),
 		newConfigCmd(g),
+		newChangesCmd(g),
+		newSchemaCmd(g),
 	)
 	attachCompletions(root, g)
 	return root, g

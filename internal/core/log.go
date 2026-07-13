@@ -60,40 +60,25 @@ func (s *Store) deriveEvents(ulid string) ([]datamodel.Event, error) {
 		return nil, errx.User("%s", err)
 	}
 	var events []datamodel.Event
-	var sha, ts string
-	var d fmDiffState
-	minus, plus := map[string]string{}, map[string]string{}
-	flush := func() {
-		if !d.created {
-			for _, field := range datamodel.FrontmatterKeys {
-				mv, hadMinus := minus[field]
-				pv, hadPlus := plus[field]
-				if (hadMinus || hadPlus) && mv != pv {
-					events = append(events, datamodel.Event{Ts: ts, Field: field, Old: mv, New: pv, CommitSHA: sha})
-				}
-			}
-		}
-		d.reset()
-		minus, plus = map[string]string{}, map[string]string{}
-	}
-	for _, line := range strings.Split(out, "\n") {
-		if strings.HasPrefix(line, "\x00") {
-			flush()
-			if before, after, ok := strings.Cut(line[1:], "\x00"); ok {
-				sha, ts = before, after
-			}
-			continue
-		}
-		if added, k, v, ok := d.step(line); ok {
-			if added {
-				plus[k] = v
-			} else {
-				minus[k] = v
-			}
-		}
-	}
-	flush()
+	walkPatch(out, func(_ string, evs []datamodel.Event) {
+		events = append(events, evs...)
+	})
 	return events, nil
+}
+
+func fmEvents(created bool, minus, plus map[string]string, ts, sha string) []datamodel.Event {
+	if created {
+		return nil
+	}
+	var events []datamodel.Event
+	for _, field := range datamodel.FrontmatterKeys {
+		mv, hadMinus := minus[field]
+		pv, hadPlus := plus[field]
+		if (hadMinus || hadPlus) && mv != pv {
+			events = append(events, datamodel.Event{Ts: ts, Field: field, Old: mv, New: pv, CommitSHA: sha})
+		}
+	}
+	return events
 }
 
 func frontmatterField(line string) (key, value string, ok bool) {

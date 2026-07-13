@@ -60,8 +60,17 @@ func (r Repo) Commit(subject, trailerKey, trailerVal string) error {
 
 const fullFileContext = "--unified=1000000"
 
+func (r Repo) logPatch(args ...string) (string, error) {
+	format := "--format=" + nulFmt + "%H" + nulFmt + "%cI"
+	return r.Output(append([]string{"log", format, "-p", fullFileContext}, args...)...)
+}
+
 func (r Repo) FileLog(relPath string) (string, error) {
-	return r.Output("log", "--format=%x00%H%x00%cI", "-p", fullFileContext, "--", relPath)
+	return r.logPatch("--", relPath)
+}
+
+func (r Repo) RangePatch(revRange, pathspec string) (string, error) {
+	return r.logPatch(revRange, "--", pathspec)
 }
 
 func (r Repo) LastCommitFor(relPath string) (string, error) {

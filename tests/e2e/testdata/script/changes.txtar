@@ -1,0 +1,51 @@
+# kira changes --since reports field-level events grouped per item across the
+# whole backlog since a git ref, plus created/removed items and body edits.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create ticket --title First --no-edit
+exec kira create ticket --title Second --no-edit
+exec kira create ticket --title Third --no-edit
+exec git tag base
+
+# empty range: nothing changed since HEAD
+exec kira changes --since HEAD --json
+stdout '"items": \[\]'
+
+# a state change, a scalar field edit, a body-only edit, and a new item
+exec kira move KIRA-1 IN_PROGRESS
+exec kira edit KIRA-2 --field priority=P1
+env EDITOR='sh editor.sh'
+exec kira edit KIRA-3
+env EDITOR=true
+exec kira create ticket --title Fourth --no-edit
+
+exec kira changes --since base --json
+stdout '"field": "state"'
+stdout '"new": "IN_PROGRESS"'
+stdout '"field": "priority"'
+stdout '"new": "P1"'
+stdout '"body": \{'
+stdout '"added":'
+stdout '"status": "created"'
+stdout '"number": "KIRA-4"'
+
+# the body-only edit still lists its item (the gap field events alone would miss)
+# and renders like kira diff's body summary
+exec kira changes --since base
+stdout 'KIRA-3  Third'
+stdout 'body: \+\d+/-\d+ lines'
+stdout 'created KIRA-4  Fourth'
+stdout 'state: TODO -> IN_PROGRESS'
+
+# --since is required
+! exec kira changes
+stderr 'since'
+
+-- editor.sh --
+awk '{print} /## Description/{print ""; print "Extra detail added to the body."}' "$1" > "$1.new" && mv "$1.new" "$1"

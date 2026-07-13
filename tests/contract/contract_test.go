@@ -213,7 +213,7 @@ func gitOutput(t *testing.T, dir string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
-func renumberTicket(t *testing.T, dir, from, to string) {
+func mutateTicketFile(t *testing.T, dir, number, commitMsg string, transform func(string) string) {
 	t.Helper()
 	tdir := filepath.Join(dir, ".kira", "tickets")
 	entries, err := os.ReadDir(tdir)
@@ -227,19 +227,25 @@ func renumberTicket(t *testing.T, dir, from, to string) {
 			continue
 		}
 		s := string(data)
-		if !strings.Contains(s, "number: "+from+"\n") {
+		if !strings.Contains(s, "number: "+number+"\n") {
 			continue
 		}
-		s = strings.Replace(s, "number: "+from+"\n", "number: "+to+"\n", 1)
-		s = strings.Replace(s, "aliases: []\n", "aliases: ["+from+"]\n", 1)
-		if err := os.WriteFile(p, []byte(s), 0o644); err != nil {
-			t.Fatalf("write renumber: %v", err)
+		if err := os.WriteFile(p, []byte(transform(s)), 0o644); err != nil {
+			t.Fatalf("write ticket %s: %v", number, err)
 		}
 		gitCmd(t, dir, "add", "-A")
-		gitCmd(t, dir, "commit", "-m", "renumber")
+		gitCmd(t, dir, "commit", "-m", commitMsg)
 		return
 	}
-	t.Fatalf("ticket %s not found to renumber", from)
+	t.Fatalf("ticket %s not found", number)
+}
+
+func renumberTicket(t *testing.T, dir, from, to string) {
+	t.Helper()
+	mutateTicketFile(t, dir, from, "renumber", func(s string) string {
+		s = strings.Replace(s, "number: "+from+"\n", "number: "+to+"\n", 1)
+		return strings.Replace(s, "aliases: []\n", "aliases: ["+from+"]\n", 1)
+	})
 }
 
 func diffFixture(t *testing.T) string {
@@ -254,6 +260,27 @@ func diffFixture(t *testing.T) string {
 	renumberTicket(t, dir, "KIRA-2", "KIRA-9")
 	gitCmd(t, dir, "checkout", base)
 	return dir
+}
+
+func changesFixture(t *testing.T) string {
+	t.Helper()
+	dir := kiraRepo(t)
+	mustKira(t, dir, "create", "ticket", "--title", "First", "--no-edit")
+	mustKira(t, dir, "create", "ticket", "--title", "Second", "--no-edit")
+	gitCmd(t, dir, "tag", "base")
+	mustKira(t, dir, "move", "KIRA-1", "IN_PROGRESS")
+	editBody(t, dir, "KIRA-1", "A body-only detail line.")
+	mustKira(t, dir, "edit", "KIRA-2", "--field", "priority=P1")
+	mustKira(t, dir, "create", "ticket", "--title", "Third", "--no-edit")
+	renumberTicket(t, dir, "KIRA-2", "KIRA-9")
+	return dir
+}
+
+func editBody(t *testing.T, dir, number, text string) {
+	t.Helper()
+	mutateTicketFile(t, dir, number, "body edit", func(s string) string {
+		return strings.Replace(s, "## Description\n", "## Description\n\n"+text+"\n", 1)
+	})
 }
 
 func TestJSONContract(t *testing.T) {
@@ -285,6 +312,7 @@ func TestJSONContract(t *testing.T) {
 		{"tree-epic", seededRepo, []string{"tree", "KIRA-1"}, true},
 		{"find", seededRepo, []string{"find", "Blocker"}, true},
 		{"diff", diffFixture, []string{"diff", "later"}, true},
+		{"changes", changesFixture, []string{"changes", "--since", "base"}, true},
 		{"sprint-create", kiraRepo, []string{"sprint", "create", "--key", "2026-S15", "--name", "Sprint 15", "--start", "2026-07-27", "--end", "2026-08-09"}, false},
 		{"sprint-list", seededRepo, []string{"sprint", "list"}, true},
 		{"sprint-activate", seededRepo, []string{"sprint", "activate", "2026-S14"}, false},
