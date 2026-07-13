@@ -1,0 +1,31 @@
+# kira sync --stash must not strand the user's edits when the sync fails after
+# stashing (here: no upstream configured, so pull --rebase fails).
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+env GIT_AUTHOR_NAME=tester
+env GIT_AUTHOR_EMAIL=test@example.com
+env GIT_COMMITTER_NAME=tester
+env GIT_COMMITTER_EMAIL=test@example.com
+exec git init --initial-branch=main
+exec kira init --key KIRA
+exec kira create ticket --title A --no-edit
+
+# dirty a tracked kira file; the branch has no upstream.
+cp $WORK/dirtytmpl .kira/templates/ticket.md
+exec git status --porcelain
+stdout 'templates/ticket.md'
+
+# the sync fails (no upstream), but the deferred pop restores the working tree.
+! exec kira sync --stash
+stderr 'prepare'
+
+# stash stack is empty and the dirty edit is back — nothing stranded.
+exec git stash list
+! stdout .
+exec git status --porcelain
+stdout 'templates/ticket.md'
+
+-- dirtytmpl --
+# locally modified template to create a dirty tracked kira file
+Title:

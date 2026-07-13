@@ -11,7 +11,8 @@ import (
 )
 
 func newShowCmd(g *globalFlags) *cobra.Command {
-	return &cobra.Command{
+	var at string
+	cmd := &cobra.Command{
 		Use:   "show <id>",
 		Short: "Show a ticket or epic",
 		Args:  cobra.ExactArgs(1),
@@ -20,11 +21,14 @@ func newShowCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			res, err := s.Show(cfg, args[0])
+			res, skew, err := s.ShowView(cfg, args[0], at)
 			if err != nil {
 				return err
 			}
 			emitStderrNotes(cmd.ErrOrStderr(), res.StderrNotes)
+			if skew != "" {
+				fmt.Fprintln(cmd.ErrOrStderr(), "kira:", skew)
+			}
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
@@ -32,6 +36,8 @@ func newShowCmd(g *globalFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&at, "at", "", "read state at a git ref or date (YYYY-MM-DD), anchored on HEAD")
+	return cmd
 }
 
 func renderShow(w io.Writer, r *datamodel.ShowResult) {

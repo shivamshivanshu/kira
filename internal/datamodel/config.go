@@ -15,6 +15,7 @@ type Config struct {
 	Commit      Commit              `yaml:"commit"`
 	Merge       Merge               `yaml:"merge"`
 	Sync        Sync                `yaml:"sync"`
+	Workon      Workon              `yaml:"workon"`
 	UI          UI                  `yaml:"ui"`
 	Git         Git                 `yaml:"git"`
 	Estimate    Estimate            `yaml:"estimate"`
@@ -47,6 +48,11 @@ type Merge struct {
 
 type Sync struct {
 	Push bool `yaml:"push"`
+}
+
+type Workon struct {
+	BranchPattern string `yaml:"branch_pattern"`
+	Casing        Casing `yaml:"casing"`
 }
 
 type UI struct {

@@ -1,7 +1,6 @@
 package gitx
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -9,29 +8,13 @@ import (
 	"strings"
 )
 
-func (r Repo) outputRaw(args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = r.Dir
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), msg)
-	}
-	return stdout.String(), nil
-}
-
 func (r Repo) ToplevelHead() (toplevel, head string, err error) {
-	if out, e := r.outputRaw("rev-parse", "--is-inside-work-tree", "--show-toplevel", "HEAD"); e == nil {
+	if out, e := r.OutputRaw("rev-parse", "--is-inside-work-tree", "--show-toplevel", "HEAD"); e == nil {
 		if lines := strings.Split(strings.TrimSpace(out), "\n"); len(lines) >= 3 && lines[0] == "true" {
 			return lines[1], lines[2], nil
 		}
 	}
-	out, e := r.outputRaw("rev-parse", "--is-inside-work-tree", "--show-toplevel")
+	out, e := r.OutputRaw("rev-parse", "--is-inside-work-tree", "--show-toplevel")
 	if e != nil {
 		return "", "", e
 	}
@@ -57,7 +40,7 @@ func (r Repo) IsAncestor(ancestor, descendant string) (bool, error) {
 }
 
 func (r Repo) StatusPorcelain(pathspec string) ([]string, error) {
-	out, err := r.outputRaw("status", "--porcelain", "--", pathspec)
+	out, err := r.OutputRaw("status", "--porcelain", "--", pathspec)
 	if err != nil {
 		return nil, err
 	}

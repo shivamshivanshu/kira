@@ -45,6 +45,7 @@ func newListCmd(g *globalFlags) *cobra.Command {
 	f.StringVar(&opts.Filter, "filter", "", "apply a named saved query from config filters:")
 	f.StringVar(&opts.Query, "query", "", "filter by a query expression (ANDed with the flags)")
 	f.BoolVar(&opts.Tree, "tree", false, "group results by epic")
+	f.StringVar(&opts.At, "at", "", "read state at a git ref or date (YYYY-MM-DD), anchored on HEAD")
 	return cmd
 }
 

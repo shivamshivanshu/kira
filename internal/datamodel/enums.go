@@ -47,6 +47,15 @@ const (
 
 var EstimateUnits = []EstimateUnit{EstimatePoints, EstimateHours}
 
+type Casing string
+
+const (
+	CasingKebab Casing = "kebab"
+	CasingSnake Casing = "snake"
+)
+
+var Casings = []Casing{CasingKebab, CasingSnake}
+
 type Category string
 
 const (

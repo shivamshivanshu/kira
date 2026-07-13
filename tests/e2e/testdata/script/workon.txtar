@@ -1,0 +1,51 @@
+# kira workon: idempotent per-ticket branch, active pointer, prepare-commit-msg
+# trailer only on branch match, and --worktree pointer isolation.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira hooks install
+exec kira create ticket --title 'Fix the bug' --no-edit
+exec kira create ticket --title 'Second' --no-edit
+
+# workon creates a per-ticket branch, records the pointer, moves to doing.
+exec kira workon KIRA-1 --json
+stdout '"branch": "kira/kira-1-fix-the-bug"'
+stdout '"branch_created": true'
+stdout '"moved": true'
+exec git rev-parse --abbrev-ref HEAD
+stdout 'kira/kira-1-fix-the-bug'
+grep '"ticket"' .kira/.cache/active
+grep 'kira/kira-1-fix-the-bug' .kira/.cache/active
+exec kira show KIRA-1 --json
+stdout '"state": "IN_PROGRESS"'
+
+# re-running is idempotent: same branch, no second branch for the ticket.
+exec kira workon KIRA-1 --json
+stdout '"branch_created": false'
+exec git for-each-ref --format='%(refname:short)' refs/heads
+stdout 'kira/kira-1-fix-the-bug'
+! stdout 'kira/kira-1-fix-the-bug\nkira/kira-1'
+
+# on the matching branch, prepare-commit-msg appends the ticket trailer.
+cp $WORK/msg .git/COMMIT_MSG
+exec kira hooks prepare-commit-msg .git/COMMIT_MSG
+grep 'Kira-Ticket: KIRA-1' .git/COMMIT_MSG
+
+# after checking out away, a stale pointer must not mis-trailer the new branch.
+exec git checkout main
+cp $WORK/msg .git/COMMIT_MSG2
+exec kira hooks prepare-commit-msg .git/COMMIT_MSG2
+! grep 'Kira-Ticket' .git/COMMIT_MSG2
+
+# --worktree isolates the pointer: the main checkout's pointer is untouched.
+exec kira workon KIRA-2 --worktree --json
+stdout '"worktree"'
+grep 'kira/kira-1-fix-the-bug' .kira/.cache/active
+! grep 'kira-2' .kira/.cache/active
+
+-- msg --
+wip: working on it

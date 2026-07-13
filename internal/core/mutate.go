@@ -41,7 +41,7 @@ func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply appl
 	}
 	warns = append(warns, vwarns...)
 
-	changed := changedFields(orig, updated)
+	changed := datamodel.ChangedFields(orig, updated)
 	if err := s.commitMutation(cfg, updated, changed, warns, subjectOf(orig)); err != nil {
 		return nil, nil, err
 	}

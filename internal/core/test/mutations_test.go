@@ -11,6 +11,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/storage"
+	"github.com/shivamshivanshu/kira/internal/workon"
 )
 
 func wfAllows(wf datamodel.Workflow, from, to string) bool {
@@ -88,8 +89,9 @@ func TestMoveActivateWritesPointer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read active pointer: %v", err)
 	}
-	if strings.TrimSpace(string(data)) != res.ID {
-		t.Fatalf("active = %q, want %s", strings.TrimSpace(string(data)), res.ID)
+	ptr, ok := workon.ParseActive(data)
+	if !ok || ptr.Ticket != res.ID {
+		t.Fatalf("active = %q, want ticket %s", strings.TrimSpace(string(data)), res.ID)
 	}
 }
 

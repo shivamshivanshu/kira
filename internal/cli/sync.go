@@ -1,0 +1,64 @@
+package cli
+
+import (
+	"fmt"
+	"io"
+
+	"github.com/spf13/cobra"
+
+	"github.com/shivamshivanshu/kira/internal/core"
+	syncpkg "github.com/shivamshivanshu/kira/internal/sync"
+)
+
+func newSyncCmd(g *globalFlags) *cobra.Command {
+	var opts core.SyncOpts
+	var commit, stash bool
+	cmd := &cobra.Command{
+		Use:   "sync",
+		Short: "Get up to date with the remote (pull --rebase, reconcile, reindex) and optionally publish",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if commit && stash {
+				return fmt.Errorf("--commit and --stash are mutually exclusive")
+			}
+			switch {
+			case commit:
+				opts.Dirty = syncpkg.DirtyCommit
+			case stash:
+				opts.Dirty = syncpkg.DirtyStash
+			}
+			s, cfg, err := openStore(g)
+			if err != nil {
+				return err
+			}
+			report, err := s.Sync(cfg, opts, nil)
+			if err != nil {
+				if report != nil {
+					printSyncReport(cmd.ErrOrStderr(), report)
+				}
+				return err
+			}
+			if g.json {
+				return emitJSON(cmd.OutOrStdout(), report)
+			}
+			printSyncReport(cmd.OutOrStdout(), report)
+			return nil
+		},
+	}
+	f := cmd.Flags()
+	f.BoolVar(&opts.Push, "push", false, "push to the remote after a clean sync")
+	f.StringVar(&opts.Remote, "remote", "", "remote to sync with (default: the branch's upstream)")
+	f.BoolVar(&commit, "commit", false, "commit dirty kira paths before pulling")
+	f.BoolVar(&stash, "stash", false, "stash dirty changes before pulling and restore after")
+	return cmd
+}
+
+func printSyncReport(out io.Writer, report *syncpkg.Report) {
+	for _, step := range report.Steps {
+		if step.Detail != "" {
+			fmt.Fprintf(out, "%-10s %s (%s)\n", step.Name+":", step.Status, step.Detail)
+		} else {
+			fmt.Fprintf(out, "%-10s %s\n", step.Name+":", step.Status)
+		}
+	}
+}

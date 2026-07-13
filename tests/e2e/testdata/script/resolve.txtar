@@ -1,0 +1,29 @@
+# kira resolve cleans up conflict markers a plain git merge left on kira files
+# (no driver installed), applying the auto policy after the fact.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'Conflicted' --no-edit
+
+# same-field edits on two branches, no merge driver registered
+exec git checkout -b other
+exec kira edit KIRA-1 --field priority=P2
+exec git checkout -
+exec kira edit KIRA-1 --field priority=P1
+
+# plain merge conflicts on the ticket file
+! exec git merge other
+
+# resolve applies the auto engine and stages the cleaned file
+exec kira resolve
+stdout 'Resolved KIRA-1'
+exec kira show KIRA-1 --json
+stdout '"priority": "P[12]"'
+
+# nothing is left unmerged
+exec git ls-files -u
+! stdout .

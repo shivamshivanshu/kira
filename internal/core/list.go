@@ -21,10 +21,19 @@ type ListOpts struct {
 	Filter   string
 	Query    string
 	Tree     bool
+	At       string
 }
 
 func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResult, error) {
-	items, _, resolver, idxNotes, err := s.indexedLoad(cfg)
+	var items []*datamodel.Item
+	var resolver *id.Resolver
+	var idxNotes []string
+	var err error
+	if opts.At != "" {
+		items, resolver, cfg, err = s.listView(cfg, opts.At)
+	} else {
+		items, _, resolver, idxNotes, err = s.indexedLoad(cfg)
+	}
 	if err != nil {
 		return nil, err
 	}

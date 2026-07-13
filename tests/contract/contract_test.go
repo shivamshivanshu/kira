@@ -184,6 +184,60 @@ func wipLoaded(t *testing.T) string {
 	return dir
 }
 
+func gitCmd(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	cmd.Env = append(baseEnv(), "HOME="+dir,
+		"GIT_AUTHOR_NAME=tester", "GIT_AUTHOR_EMAIL=tester@example.com",
+		"GIT_COMMITTER_NAME=tester", "GIT_COMMITTER_EMAIL=tester@example.com")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v: %v: %s", args, err, out)
+	}
+}
+
+func renumberTicket(t *testing.T, dir, from, to string) {
+	t.Helper()
+	tdir := filepath.Join(dir, ".kira", "tickets")
+	entries, err := os.ReadDir(tdir)
+	if err != nil {
+		t.Fatalf("read tickets: %v", err)
+	}
+	for _, e := range entries {
+		p := filepath.Join(tdir, e.Name())
+		data, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		s := string(data)
+		if !strings.Contains(s, "number: "+from+"\n") {
+			continue
+		}
+		s = strings.Replace(s, "number: "+from+"\n", "number: "+to+"\n", 1)
+		s = strings.Replace(s, "aliases: []\n", "aliases: ["+from+"]\n", 1)
+		if err := os.WriteFile(p, []byte(s), 0o644); err != nil {
+			t.Fatalf("write renumber: %v", err)
+		}
+		gitCmd(t, dir, "add", "-A")
+		gitCmd(t, dir, "commit", "-m", "renumber")
+		return
+	}
+	t.Fatalf("ticket %s not found to renumber", from)
+}
+
+func diffFixture(t *testing.T) string {
+	t.Helper()
+	dir := kiraRepo(t)
+	mustKira(t, dir, "create", "ticket", "--title", "First", "--no-edit")
+	mustKira(t, dir, "create", "ticket", "--title", "Second", "--no-edit")
+	gitCmd(t, dir, "checkout", "-b", "later")
+	mustKira(t, dir, "move", "KIRA-1", "IN_PROGRESS")
+	mustKira(t, dir, "create", "ticket", "--title", "Third", "--no-edit")
+	renumberTicket(t, dir, "KIRA-2", "KIRA-9")
+	gitCmd(t, dir, "checkout", "master")
+	return dir
+}
+
 func TestJSONContract(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -212,6 +266,7 @@ func TestJSONContract(t *testing.T) {
 		{"tree", seededRepo, []string{"tree"}, true},
 		{"tree-epic", seededRepo, []string{"tree", "KIRA-1"}, true},
 		{"find", seededRepo, []string{"find", "Blocker"}, true},
+		{"diff", diffFixture, []string{"diff", "later"}, true},
 		{"sprint-create", kiraRepo, []string{"sprint", "create", "--key", "2026-S15", "--name", "Sprint 15", "--start", "2026-07-27", "--end", "2026-08-09"}, false},
 		{"sprint-list", seededRepo, []string{"sprint", "list"}, true},
 		{"sprint-activate", seededRepo, []string{"sprint", "activate", "2026-S14"}, false},
@@ -284,6 +339,7 @@ func scrub(s, dir string) string {
 	if dir != "" {
 		s = strings.ReplaceAll(s, dir, "<DIR>")
 	}
+	s = shaRE.ReplaceAllString(s, "<SHA>")
 	seen := map[string]string{}
 	s = ulidRE.ReplaceAllStringFunc(s, func(u string) string {
 		if r, ok := seen[u]; ok {

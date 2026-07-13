@@ -63,6 +63,8 @@ func newRootCmd() *cobra.Command {
 		newFindCmd(g),
 		newDiscoverCmd(g),
 		newHooksCmd(g),
+		newWorkonCmd(g),
+		newSyncCmd(g),
 		newSprintCmd(g),
 		newStatsCmd(g),
 		newIndexCmd(g),
@@ -70,6 +72,9 @@ func newRootCmd() *cobra.Command {
 		newBlameCmd(g),
 		newDoctorCmd(g),
 		newValidateCmd(g),
+		newMergeFileCmd(g),
+		newResolveCmd(g),
+		newDiffCmd(g),
 	)
 	return root
 }

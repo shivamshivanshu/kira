@@ -3,14 +3,12 @@ package core
 import (
 	"fmt"
 	"maps"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/workon"
 )
 
 type MoveOpts struct {
@@ -117,11 +115,7 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 	}, nil
 }
 
-// .cache/ needs no MkdirAll here: every Move holds the store lock, whose
-// acquisition creates the directory.
 func (s *Store) setActive(ulid string) error {
-	if err := os.WriteFile(filepath.Join(s.fs().CacheDir(), "active"), []byte(ulid+"\n"), 0o644); err != nil {
-		return errx.User("writing active pointer: %v", err)
-	}
-	return nil
+	branch, _ := s.repo().CurrentBranch()
+	return s.writeActive(workon.ActivePointer{Ticket: ulid, Branch: branch})
 }

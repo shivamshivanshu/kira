@@ -3,7 +3,6 @@ package core
 import (
 	"errors"
 	"fmt"
-	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -91,7 +90,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		updated, _, warns = assemble(it)
 	}
 
-	changed := changedFields(orig, updated)
+	changed := datamodel.ChangedFields(orig, updated)
 	subject := "kira: " + updated.Number + " edit " + strings.Join(changed, ",")
 	if err := s.commitMutation(cfg, updated, changed, warns, subject); err != nil {
 		return nil, err
@@ -197,37 +196,4 @@ func cloneItem(src *datamodel.Item) *datamodel.Item {
 		}
 	}
 	return &dst
-}
-
-func changedFields(orig, updated *datamodel.Item) []string {
-	var changed []string
-	add := func(cond bool, name string) {
-		if cond {
-			changed = append(changed, name)
-		}
-	}
-	add(!equalPtr(orig.Subtype, updated.Subtype), "subtype")
-	add(orig.Title != updated.Title, "title")
-	add(orig.State != updated.State, "state")
-	add(!equalPtr(orig.Resolution, updated.Resolution), "resolution")
-	add(!equalPtr(orig.Priority, updated.Priority), "priority")
-	add(!equalPtr(orig.Rank, updated.Rank), "rank")
-	add(!equalPtr(orig.Owner, updated.Owner), "owner")
-	add(!equalPtr(orig.Reporter, updated.Reporter), "reporter")
-	add(!slices.Equal(orig.Labels, updated.Labels), "labels")
-	add(!equalPtr(orig.Epic, updated.Epic), "epic")
-	add(!slices.Equal(orig.BlockedBy, updated.BlockedBy), "blocked_by")
-	add(!maps.EqualFunc(orig.Links, updated.Links, slices.Equal[[]string]), "links")
-	add(!equalPtr(orig.Sprint, updated.Sprint), "sprint")
-	add(!equalPtr(orig.Due, updated.Due), "due")
-	add(!equalPtr(orig.Estimate, updated.Estimate), "estimate")
-	add(orig.Body != updated.Body, "body")
-	return changed
-}
-
-func equalPtr[T comparable](a, b *T) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	return *a == *b
 }

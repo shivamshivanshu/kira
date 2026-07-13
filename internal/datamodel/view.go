@@ -95,6 +95,38 @@ type MutationResult struct {
 	Changed []string `json:"changed"`
 }
 
+type DiffResult struct {
+	From  string     `json:"from"`
+	To    string     `json:"to"`
+	Items []DiffItem `json:"items"`
+}
+
+type DiffItem struct {
+	ID         string         `json:"id"`
+	Number     string         `json:"number"`
+	Title      string         `json:"title"`
+	Status     string         `json:"status"`
+	Renumbered *RenumberEvent `json:"renumbered,omitempty"`
+	Changes    []FieldChange  `json:"changes,omitempty"`
+}
+
+type RenumberEvent struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
+type FieldChange struct {
+	Field string `json:"field"`
+	From  string `json:"from"`
+	To    string `json:"to"`
+}
+
+const (
+	DiffCreated = "created"
+	DiffDeleted = "deleted"
+	DiffChanged = "changed"
+)
+
 type Match struct {
 	ID     string `json:"id"`
 	Number string `json:"number"`
@@ -110,6 +142,17 @@ type InitResult struct {
 	Initialized bool   `json:"initialized"`
 	Path        string `json:"path"`
 	ProjectKey  string `json:"project_key"`
+}
+
+type MergeResult struct {
+	ID         string   `json:"id"`
+	Number     string   `json:"number"`
+	Arbitrated []string `json:"arbitrated,omitempty"`
+}
+
+type ResolveResult struct {
+	Resolved []MergeResult `json:"resolved"`
+	Skipped  []string      `json:"skipped,omitempty"`
 }
 
 type MoveResult struct {

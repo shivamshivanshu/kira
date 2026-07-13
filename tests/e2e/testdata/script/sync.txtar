@@ -1,0 +1,52 @@
+# kira sync against a local bare remote: pull --rebase, reconcile, skipped
+# reindex, push, and a two-clone round-trip.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+env GIT_AUTHOR_NAME=tester
+env GIT_AUTHOR_EMAIL=test@example.com
+env GIT_COMMITTER_NAME=tester
+env GIT_COMMITTER_EMAIL=test@example.com
+
+exec git init --bare origin.git
+
+# clone A: initialize kira and publish the baseline.
+exec git clone origin.git a
+cd $WORK/a
+exec kira init --key KIRA
+exec kira hooks install
+exec kira create ticket --title 'from A' --no-edit
+exec git push -u origin HEAD
+
+# clone B sees the baseline.
+cd $WORK
+exec git clone origin.git b
+cd $WORK/b
+exec kira list --json
+stdout 'from A'
+
+# A adds a ticket and publishes it via sync --push.
+cd $WORK/a
+exec kira create ticket --title 'A second' --no-edit
+exec kira sync --push
+stdout 'reconcile:'
+stdout 'reindex:'
+stdout 'skipped'
+stdout 'push:'
+
+# B pulls it down (pull actually fetches new state here).
+cd $WORK/b
+exec kira sync
+stdout 'pull:'
+exec kira list --json
+stdout 'from A'
+stdout 'A second'
+
+# round-trip: B creates and publishes, A pulls it.
+exec kira create ticket --title 'from B' --no-edit
+exec kira sync --push
+
+cd $WORK/a
+exec kira sync
+exec kira list --json
+stdout 'from B'

@@ -55,6 +55,7 @@ func Default() *datamodel.Config {
 		Commit:  datamodel.Commit{Mode: datamodel.CommitAuto, Trailer: "Kira-Ticket", CloseTrailer: "Kira-Closes"},
 		Merge:   datamodel.Merge{Policy: datamodel.MergeAuto},
 		Sync:    datamodel.Sync{Push: false},
+		Workon:  datamodel.Workon{BranchPattern: "{key}/{number}-{slug}", Casing: datamodel.CasingKebab},
 		UI:      datamodel.UI{Icons: datamodel.IconAuto},
 		Git:     datamodel.Git{},
 		Estimate: datamodel.Estimate{

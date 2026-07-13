@@ -120,7 +120,7 @@ Layered avoidance, not clever merging — each layer eliminates one class of con
 | File-per-ticket | Cross-ticket edits never touch the same file |
 | Single-sided edges (parent-on-child, blocked_by-on-dependent) | Relationship edits never touch a second file — [02-data-model.md §3](02-data-model.md#3-edges) |
 | One-key-per-line, fixed order | Different-field edits on the same ticket merge line-wise — [§3](#3-writer-format-invariants) |
-| Append-only comment blocks | Concurrent comments are disjoint appended hunks — [02-data-model.md §4](02-data-model.md#4-comments) |
+| Append-only comment blocks | Comments only ever append, never edit in place, so the kira driver/`resolve` unions them by `id` with no content merge. Unlike the layers above this is *not* conflict-free by construction: concurrent end-of-file appends still collide under plain `git`, and it is the driver's comment-union that makes them clean — [02-data-model.md §4](02-data-model.md#4-comments) |
 | Gitignored `.cache/` | Index is never staged, never a merge participant |
 
 **Policy knob**: `merge.policy: auto` (default) \| `manual`, in `config.yaml`. The founder's requirement: users must never be dropped into raw git conflict markers on kira files, JIRA-simple by default. `manual` is fully shipped for teams that want a human decision recorded on every same-field collision instead.
@@ -134,7 +134,7 @@ A same-field conflict (both branches touched, say, `state`) is resolved automati
 | Scalar | `state`, `owner`, `reporter`, `priority`, `title`, `estimate`, `epic` | one side changed vs base → take it; both sides changed → later `updated` timestamp wins; exact tie → the **incoming/remote** side wins — deterministic either way; see the tie-break note below for what "incoming/remote" means precisely |
 | List (set) | `labels`, `blocked_by` | three-way set merge: `(base − removals from either side) ∪ additions from both sides` |
 | `aliases` | — | union of both sides only — removals are **never honored**, regardless of what base says, since a retired `number` must keep resolving forever ([02-data-model.md §7](02-data-model.md#7-id-scheme)); this is not the general list rule above |
-| Comments | body `## Comments` blocks | union by comment `id`, sorted by `ts` — already close to free, since comments are append-only ([02-data-model.md §4](02-data-model.md#4-comments)) |
+| Comments | body `## Comments` blocks | union by comment `id`, sorted by `ts` — cheap for the engine since comments never edit in place, but a real merge step: concurrent appends collide under plain `git`, so the union is the driver's doing ([02-data-model.md §4](02-data-model.md#4-comments)) |
 | Body prose | `## Description`, `## Acceptance criteria` | one side changed → take it; both changed → `git merge-file` line-level text merge; a genuine textual conflict inside that merge falls back to whole-body LWW by `updated` |
 | `created`, `type` | — | immutable; both sides must already agree — schema invariant, not a merge decision |
 | `updated` | — | `max(ours.updated, theirs.updated)` |

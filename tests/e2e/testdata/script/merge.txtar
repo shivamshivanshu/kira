@@ -1,0 +1,29 @@
+# The registered merge driver resolves kira files field-by-field with no
+# conflict markers: different-field edits union, same-field edits take the
+# later-updated side (last-write-wins).
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'Mergeable' --no-edit
+
+# register the auto merge driver the way hooks install (WP-3.1) will
+exec git config merge.kira.name 'kira field-level auto-merge'
+exec git config merge.kira.driver 'kira merge-file %O %A %B'
+cp attributes .git/info/attributes
+
+# different-field edits on two branches union cleanly
+exec git checkout -b other
+exec kira assign KIRA-1 alice
+exec git checkout -
+exec kira edit KIRA-1 --field priority=P1
+exec git merge other
+exec kira show KIRA-1 --json
+stdout '"owner": "alice"'
+stdout '"priority": "P1"'
+
+-- attributes --
+.kira/tickets/*.md merge=kira

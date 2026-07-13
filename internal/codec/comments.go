@@ -9,7 +9,9 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
-var commentOpen = regexp.MustCompile(`^<!-- kira:comment id=(\S+) author=(\S+) ts=(\S+) -->$`)
+const commentMarker = "<!-- kira:comment id="
+
+var commentOpen = regexp.MustCompile(`^` + regexp.QuoteMeta(commentMarker) + `(\S+) author=(\S+) ts=(\S+) -->$`)
 
 const commentClose = "<!-- /kira:comment -->"
 
@@ -78,8 +80,24 @@ func AppendComment(content string, c datamodel.Comment) string {
 	return content + "\n" + formatComment(c) + "\n"
 }
 
+func SplitComments(body string) (prose string, comments []datamodel.Comment) {
+	comments = ParseComments(body)
+	if i := strings.Index(body, "\n"+commentMarker); i >= 0 {
+		return body[:i], comments
+	}
+	return body, comments
+}
+
+func JoinComments(prose string, comments []datamodel.Comment) string {
+	out := prose
+	for _, c := range comments {
+		out = AppendComment(out, c)
+	}
+	return out
+}
+
 func formatComment(c datamodel.Comment) string {
-	return "<!-- kira:comment id=" + c.ID + " author=" + c.Author + " ts=" + c.Ts + " -->\n" +
+	return commentMarker + c.ID + " author=" + c.Author + " ts=" + c.Ts + " -->\n" +
 		c.Body + "\n" +
 		commentClose
 }

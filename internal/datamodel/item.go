@@ -81,6 +81,7 @@ const (
 	KeyEstimate   = "estimate"
 	KeyCreated    = "created"
 	KeyUpdated    = "updated"
+	KeyBody       = "body"
 )
 
 var FrontmatterKeys = []string{

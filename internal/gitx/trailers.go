@@ -30,7 +30,7 @@ func (r Repo) LogTrailers(rangeExpr, ticketKey, closeKey string) ([]Commit, erro
 		nulFmt + "%(trailers:key=" + closeKey + ",valueonly,separator=" + valueFmt + ")" +
 		nulFmt + "%(trailers:only=true)" +
 		nulFmt + "%B"
-	out, err := r.outputRaw("log", rangeExpr, "--pretty=format:"+format)
+	out, err := r.OutputRaw("log", rangeExpr, "--pretty=format:"+format)
 	if err != nil {
 		return nil, err
 	}

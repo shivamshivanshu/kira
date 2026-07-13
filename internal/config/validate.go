@@ -27,6 +27,12 @@ func Validate(c *datamodel.Config) error {
 	if err := validateEnum("estimate.unit", c.Estimate.Unit, datamodel.EstimateUnits...); err != nil {
 		return err
 	}
+	if err := validateEnum("workon.casing", c.Workon.Casing, datamodel.Casings...); err != nil {
+		return err
+	}
+	if !strings.Contains(c.Workon.BranchPattern, "{number}") {
+		return fmt.Errorf("config: workon.branch_pattern: must contain {number}, got %q", c.Workon.BranchPattern)
+	}
 	if c.Estimate.HoursPerDay <= 0 {
 		return fmt.Errorf("config: estimate.hours_per_day: must be > 0, got %v", c.Estimate.HoursPerDay)
 	}

@@ -1,0 +1,88 @@
+# kira hooks install: chaining, refusal, validate, and post-merge reconciliation.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# fresh install: post-merge script + merge driver registered.
+exec kira hooks install
+stdout 'hook post-merge: installed'
+stdout 'merge driver: registered'
+exists .git/hooks/post-merge
+exists .kira/hooks/post-merge
+
+# validate is read-only and reports both reachable.
+exec kira hooks install --validate
+stdout 'hook post-merge: installed'
+stdout 'merge driver: registered'
+
+# reinstall is idempotent and never chains kira's own shim onto itself.
+exec kira hooks install
+stdout 'hook post-merge: installed'
+! grep 'kira:chain' .git/hooks/post-merge
+
+# chaining onto a pre-existing user hook preserves it and appends kira's block.
+mkdir $WORK/repo2
+cd $WORK/repo2
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp $WORK/userhook .git/hooks/post-merge
+exec kira hooks install
+stdout 'chained onto existing hook'
+grep '# kira:chain v1' .git/hooks/post-merge
+grep 'echo user-hook-ran' .git/hooks/post-merge
+
+# an unrecognized (non-shell) existing hook is refused, not clobbered.
+mkdir $WORK/repo3
+cd $WORK/repo3
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp $WORK/binaryhook .git/hooks/post-merge
+exec kira hooks install
+stdout 'hook post-merge: refused'
+stdout 'merge driver: registered'
+grep 'not a script' .git/hooks/post-merge
+
+# post-merge ID reconciliation: two branches independently allocate KIRA-1.
+mkdir $WORK/recon
+cd $WORK/recon
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira hooks install
+
+exec git checkout -b branchA
+exec kira create ticket --title A --no-edit --json
+stdout '"number": "KIRA-1"'
+exec git checkout main
+exec git checkout -b branchB
+exec kira create ticket --title B --no-edit --json
+stdout '"number": "KIRA-1"'
+
+exec git checkout branchA
+exec git merge --no-ff -m merge branchB
+exec kira hooks post-merge
+
+# the later ULID was renumbered to the next free number, with a visible commit,
+# and its retired number is preserved as an alias.
+exec git log --oneline
+stdout 'renumbered KIRA-1 -> KIRA-2'
+exec kira list --json
+stdout '"number": "KIRA-1"'
+stdout '"number": "KIRA-2"'
+exec kira show KIRA-2 --json
+stdout '"KIRA-1"'
+
+-- userhook --
+#!/bin/sh
+echo user-hook-ran
+-- binaryhook --
+this is not a script

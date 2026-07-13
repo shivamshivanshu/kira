@@ -1,0 +1,56 @@
+# --at time-travels list/show to a git ref or date; mutating verbs reject it.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+
+# first batch of history, dated early
+env GIT_AUTHOR_DATE=2026-01-01T00:00:00Z
+env GIT_COMMITTER_DATE=2026-01-01T00:00:00Z
+exec kira init --key KIRA
+exec kira create ticket --title 'First' --no-edit
+exec kira create ticket --title 'Second' --no-edit
+
+# second batch, dated later
+env GIT_AUTHOR_DATE=2026-06-01T00:00:00Z
+env GIT_COMMITTER_DATE=2026-06-01T00:00:00Z
+exec kira move KIRA-1 IN_PROGRESS
+exec kira create ticket --title 'Third' --no-edit
+
+# ref form: HEAD~2 predates the move and KIRA-3
+exec kira list --at HEAD~2
+stdout 'KIRA-1\s+TODO'
+stdout 'KIRA-2'
+! stdout 'KIRA-3'
+
+# current state differs
+exec kira list
+stdout 'KIRA-1\s+IN_PROGRESS'
+stdout 'KIRA-3'
+
+# show --at reads one item's old state
+exec kira show KIRA-1 --at HEAD~2
+stdout '\[TODO\]'
+
+# date form: a date between the two batches sees only the early state
+exec kira list --at 2026-03-01
+stdout 'KIRA-1\s+TODO'
+stdout 'KIRA-2'
+! stdout 'KIRA-3'
+
+# a date before any commit is an error
+! exec kira list --at 2000-01-01
+stderr 'resolving --at 2000-01-01'
+
+# sprint=active under --at resolves against the current pointer, not a
+# historical one (none exists) — deliberately pinned as acceptable
+exec kira list --at HEAD~2 --sprint active
+stderr 'no active sprint set'
+
+# mutating verbs never accept --at
+! exec kira move KIRA-1 REVIEW --at HEAD~2
+stderr 'unknown flag'
+! exec kira edit KIRA-1 --field title=x --at HEAD~2
+stderr 'unknown flag'

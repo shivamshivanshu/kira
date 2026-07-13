@@ -1,0 +1,3 @@
+#!/bin/sh
+# kira pre-commit hook — delegates to the kira binary
+exec kira hooks pre-commit "$@"
