@@ -37,7 +37,7 @@ func Discover(startDir string) (*Store, error) {
 		}
 		parent := filepath.Dir(abs)
 		if parent == abs {
-			return nil, errx.Env("%w in %q or any parent directory (run `kira init`)", ErrStoreNotFound, dir)
+			return nil, errx.Env("%w in %q or any parent directory", ErrStoreNotFound, dir).WithHint("run `kira init` to create one here")
 		}
 		abs = parent
 	}

@@ -1,0 +1,70 @@
+# WP-3.5.1 error contract: human-mode failures render as `kira: <what>` plus a
+# `  hint: <next action>` line. Pins the first-run errors and their hints.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+
+# no store yet: env error with an init hint
+! exec kira list
+stderr '^kira: no \.kira'
+stderr 'hint: run .kira init.'
+
+exec kira init --key KIRA
+exec kira create ticket --title 'First' --no-edit
+
+# init over an existing store
+! exec kira init --key KIRA
+stderr 'already exists'
+stderr 'hint: use .--force'
+
+# unknown id: no near match falls back to a list hint
+! exec kira show KIRA-999
+stderr 'resolves to no item'
+stderr 'hint: run .kira list'
+
+# unknown id: near match yields a suggestion
+! exec kira show KIRA-1X
+stderr 'resolves to no item'
+stderr 'hint: did you mean .KIRA-1'
+
+# unknown field: nearest editable field or the full list
+! exec kira edit KIRA-1 --field nope=x
+stderr 'unknown or immutable field'
+stderr 'hint: editable fields:'
+
+# unknown state (does not exist) with a near match: typo suggestion
+! exec kira move KIRA-1 REVEW
+stderr 'not a state in the ticket workflow'
+stderr 'hint: did you mean .REVIEW'
+
+# unknown state (does not exist) with no near match: lists valid states
+! exec kira move KIRA-1 ZZZZZ
+stderr 'not a state in the ticket workflow'
+stderr 'hint: valid states:'
+
+# unknown sprint: none configured
+! exec kira edit KIRA-1 --sprint 2099-S1
+stderr 'is not a key in the configured sprints'
+stderr 'hint: no sprints are configured'
+
+# off-graph transition (DONE exists, but TODO->DONE is not allowed): lists allowed targets, not a typo suggestion
+! exec kira move KIRA-1 DONE
+stderr 'is not an allowed transition'
+stderr 'hint: allowed from TODO: IN_PROGRESS, WONT_DO'
+
+# require guard on REVIEW -> DONE
+exec kira move KIRA-1 IN_PROGRESS
+exec kira move KIRA-1 REVIEW
+! exec kira move KIRA-1 DONE
+stderr 'requires resolution to be set'
+stderr 'hint: set resolution first'
+
+# editor needed but $EDITOR/$VISUAL unset
+env EDITOR=
+env VISUAL=
+! exec kira create ticket --title 'Second'
+stderr 'EDITOR is not set'
+stderr 'hint: set .EDITOR'

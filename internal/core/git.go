@@ -15,10 +15,10 @@ func (s *Store) repo() gitx.Repo {
 
 func (s *Store) requireRepo() error {
 	if !gitx.Installed() {
-		return errx.Env("git binary not found on PATH")
+		return errx.Env("git binary not found on PATH").WithHint("install git and make sure it is on your PATH")
 	}
 	if err := s.repo().InsideWorkTree(); err != nil {
-		return errx.Env("not a git repository: %s", s.root)
+		return errx.Env("not a git repository: %s", s.root).WithHint("run `git init` here first")
 	}
 	return nil
 }

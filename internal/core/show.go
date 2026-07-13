@@ -14,9 +14,9 @@ func (s *Store) Show(cfg *datamodel.Config, ref string) (*datamodel.ShowResult, 
 	if err != nil {
 		return nil, err
 	}
-	ulid, err := resolver.Resolve(ref)
+	ulid, err := resolveID(resolver, ref)
 	if err != nil {
-		return nil, errx.User("%v", err)
+		return nil, err
 	}
 	it, err := storage.ReadItem(s.itemPath(ulid))
 	if err != nil {

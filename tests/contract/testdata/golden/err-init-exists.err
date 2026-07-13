@@ -1,1 +1,1 @@
-kira: .kira already exists (use --force to reinitialize)
+{"error":".kira already exists","hint":"use `--force` to reinitialize over it","code":1}

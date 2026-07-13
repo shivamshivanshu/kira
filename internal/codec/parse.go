@@ -2,6 +2,7 @@ package codec
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -17,31 +18,17 @@ const (
 )
 
 func Parse(content string) (*datamodel.Item, error) {
-	it, _, err := parse(content)
-	return it, err
-}
-
-func ParseKeys(content string) (*datamodel.Item, []string, error) {
-	return parse(content)
-}
-
-func parse(content string) (*datamodel.Item, []string, error) {
 	front, body, err := splitDocument(content)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	var doc yaml.Node
 	if err := yaml.Unmarshal([]byte(front), &doc); err != nil {
-		return nil, nil, fmt.Errorf("frontmatter yaml: %w", err)
+		return nil, fmt.Errorf("frontmatter yaml: %w", err)
 	}
 
 	nodes := frontmatterNodes(&doc)
-	keys := make([]string, 0, len(nodes))
-	for k := range nodes {
-		keys = append(keys, k)
-	}
-
 	it := &datamodel.Item{Body: body}
 	var errs []error
 	add := func(format string, args ...any) { errs = append(errs, fmt.Errorf(format, args...)) }
@@ -64,17 +51,24 @@ func parse(content string) (*datamodel.Item, []string, error) {
 	it.Labels = reqList(nodes, datamodel.KeyLabels, add)
 	it.Epic = reqNullableScalar(nodes, datamodel.KeyEpic, add)
 	it.BlockedBy = reqList(nodes, datamodel.KeyBlockedBy, add)
-	it.Links = optLinks(nodes, datamodel.KeyLinks, add)
+	it.Links, it.UnknownLinkTypes = optLinks(nodes, datamodel.KeyLinks, add)
 	it.Sprint = optScalar(nodes, datamodel.KeySprint, add)
 	it.Due = optScalar(nodes, datamodel.KeyDue, add)
 	it.Estimate = optFloat(nodes, datamodel.KeyEstimate, add)
 	it.Created = reqTimestamp(nodes, datamodel.KeyCreated, add)
 	it.Updated = reqTimestamp(nodes, datamodel.KeyUpdated, add)
 
-	if len(errs) > 0 {
-		return it, keys, &datamodel.ParseError{Errs: errs}
+	for k := range nodes {
+		if !datamodel.IsFrontmatterKey(k) {
+			it.UnknownKeys = append(it.UnknownKeys, k)
+		}
 	}
-	return it, keys, nil
+	slices.Sort(it.UnknownKeys)
+
+	if len(errs) > 0 {
+		return it, &datamodel.ParseError{Errs: errs}
+	}
+	return it, nil
 }
 
 func DecodeFrontmatter(content string, out any) (body string, err error) {
@@ -195,20 +189,21 @@ func scalarSeq(n *yaml.Node, label string, add addFunc) []string {
 	return out
 }
 
-func optLinks(nodes map[string]*yaml.Node, key string, add addFunc) map[string][]string {
+func optLinks(nodes map[string]*yaml.Node, key string, add addFunc) (map[string][]string, []string) {
 	n, ok := nodes[key]
 	if !ok || isNull(n) {
-		return nil
+		return nil, nil
 	}
 	if n.Kind != yaml.MappingNode {
 		add("field %q: expected a map of link type to id list", key)
-		return nil
+		return nil, nil
 	}
 	var links map[string][]string
+	var unknown []string
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		typ, val := n.Content[i].Value, n.Content[i+1]
 		if !datamodel.ValidLinkType(typ) {
-			add("field %q: unknown link type %q (want one of %v)", key, typ, datamodel.LinkTypes)
+			unknown = append(unknown, typ)
 			continue
 		}
 		if isNull(val) {
@@ -227,7 +222,8 @@ func optLinks(nodes map[string]*yaml.Node, key string, add addFunc) map[string][
 		}
 		links[typ] = targets
 	}
-	return links
+	slices.Sort(unknown)
+	return links, unknown
 }
 
 func optFloat(nodes map[string]*yaml.Node, key string, add addFunc) *float64 {

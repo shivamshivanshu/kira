@@ -28,6 +28,9 @@ func (s *Store) Reconcile(cfg *datamodel.Config) (*datamodel.ReconcileResult, er
 		if it == nil {
 			continue
 		}
+		if err := guardKnownFields(it); err != nil {
+			return nil, err
+		}
 		it.Number = r.To
 		if !slices.Contains(it.Aliases, r.From) {
 			it.Aliases = append(it.Aliases, r.From)

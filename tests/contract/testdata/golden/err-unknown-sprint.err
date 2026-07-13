@@ -1,1 +1,1 @@
-kira: invalid item: field "sprint": "2099-S1" is not a key in the configured sprints
+{"error":"invalid item: field \"sprint\": \"2099-S1\" is not a key in the configured sprints","hint":"no sprints are configured; add one with `kira sprint create`","code":1}

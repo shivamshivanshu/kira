@@ -101,7 +101,7 @@ func stripErrorBanner(content string) string {
 
 func runEditor(initial string, validate func(content string) []error) (string, error) {
 	if _, err := editorx.Command(); err != nil {
-		return "", errx.Env("%v", err)
+		return "", errx.Env("%v", err).WithHint("set $EDITOR, e.g. `export EDITOR=vim`")
 	}
 	tmp, err := os.CreateTemp("", "kira-*.md")
 	if err != nil {

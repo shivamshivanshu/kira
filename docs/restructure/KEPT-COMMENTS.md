@@ -24,6 +24,12 @@ Disposition ∈ {delete (rationale), move-to-design-doc §X, keep-in-code}.
 | tests/contract/contract_test.go:59 `baseEnv` | "rg/fzf are deliberately absent from toolBin, so find always takes its deterministic pure-Go fallback regardless of what the host has installed." | keep-in-code — deliberate-omission that golden byte-stability depends on |
 | tests/e2e/find_discover_test.go:33 `setupCleanBin` | "testscript runs `kira` by re-execing the test binary via a PATH symlink; a script that sets PATH=$CLEANBIN would lose it, so mirror that symlink here. rg/fzf are deliberately omitted to simulate their absence." | keep-in-code — testscript re-exec plumbing; removing the symlink fails scripts with a misleading "kira: not found" |
 
+## WP-3.5.2 (self-documenting seed config + comment-preserving `config set`)
+
+| file:symbol | verbatim comment | proposed disposition |
+|---|---|---|
+| internal/config/set.go:42 `SetScalar` | "SetScalar edits one scalar by splicing its single line rather than re-encoding the document, so every comment and untouched line stays byte-identical (a whole-file yaml re-encode reflows comment alignment and flow styles)." | keep-in-code — same byte-preserving-splice invariant as `AppendSprint` (row above), invisible in the splice code; it is the reason `config set` exists as line surgery rather than a Node round-trip |
+
 ## Ratified conventions
 
 - One-line package doc-comments are exempt from the zero-comment rule (covers internal/cli/cli.go, internal/core/doc.go, internal/config/load.go, internal/id/id.go, internal/query/eval.go).

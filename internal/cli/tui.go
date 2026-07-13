@@ -55,7 +55,7 @@ func canOfferInit(g *globalFlags, err error) bool {
 func commandRunner(g *globalFlags) func([]string) (string, error) {
 	return func(argv []string) (string, error) {
 		var buf bytes.Buffer
-		root := newRootCmd()
+		root, _ := newRootCmd()
 		root.SetOut(&buf)
 		root.SetErr(&buf)
 		full := []string{"--no-color"}

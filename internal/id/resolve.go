@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/oklog/ulid/v2"
+
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 type Item struct {
@@ -19,7 +21,10 @@ type Snapshot struct {
 	Items []Item
 }
 
-type NotFoundError struct{ Token string }
+type NotFoundError struct {
+	Token      string
+	Suggestion string
+}
 
 func (e *NotFoundError) Error() string { return fmt.Sprintf("id: %q resolves to no item", e.Token) }
 
@@ -36,6 +41,7 @@ type Resolver struct {
 	key          string
 	sortedULIDs  []string
 	ulidByNumber map[string]string
+	numbers      []string
 }
 
 func NewResolver(snap Snapshot) *Resolver {
@@ -43,9 +49,11 @@ func NewResolver(snap Snapshot) *Resolver {
 		key:          snap.Key,
 		sortedULIDs:  make([]string, len(snap.Items)),
 		ulidByNumber: make(map[string]string, len(snap.Items)),
+		numbers:      make([]string, len(snap.Items)),
 	}
 	for i, it := range snap.Items {
 		r.sortedULIDs[i] = strings.ToUpper(it.ULID)
+		r.numbers[i] = strings.ToUpper(it.Number)
 		for _, a := range it.Aliases {
 			r.ulidByNumber[strings.ToUpper(a)] = r.sortedULIDs[i]
 		}
@@ -89,7 +97,7 @@ func (r *Resolver) Resolve(token string) (string, error) {
 		return u, nil
 	}
 
-	return "", &NotFoundError{Token: token}
+	return "", &NotFoundError{Token: token, Suggestion: errx.Nearest(numKey, r.numbers)}
 }
 
 func (r *Resolver) contains(u string) bool {

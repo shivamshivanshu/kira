@@ -1,1 +1,1 @@
-kira: id: "KIRA-999" resolves to no item
+{"error":"id: \"KIRA-999\" resolves to no item","hint":"run `kira list` to see valid ids","code":1}

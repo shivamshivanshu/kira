@@ -36,7 +36,7 @@ func (s *Store) ResolveSprintKey(cfg *datamodel.Config, key string) (string, err
 		key = active
 	}
 	if !cfg.HasSprint(key) {
-		return "", errx.User("%q is not a key in the configured sprints", key)
+		return "", errx.User("%q is not a key in the configured sprints", key).WithHint("%s", sprintHint(cfg, key))
 	}
 	return key, nil
 }

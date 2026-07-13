@@ -1,1 +1,1 @@
-kira: no .kira/ found in "<DIR>" or any parent directory (run `kira init`)
+{"error":"no .kira/ found in \"<DIR>\" or any parent directory","hint":"run `kira init` to create one here","code":3}

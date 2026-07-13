@@ -1,6 +1,9 @@
 package core
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
@@ -61,14 +64,25 @@ func (s *Store) resolveRef(cfg *datamodel.Config, ref string) (*datamodel.Item, 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	ulid, err := resolver.Resolve(ref)
+	ulid, err := resolveID(resolver, ref)
 	if err != nil {
-		return nil, nil, nil, errx.User("%v", err)
+		return nil, nil, nil, err
 	}
 	if it := findByULID(items, ulid); it != nil {
 		return it, items, resolver, nil
 	}
 	return nil, nil, nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
+}
+
+func guardKnownFields(items ...*datamodel.Item) error {
+	for _, it := range items {
+		if it != nil && it.HasUnknown() {
+			names := slices.Concat(it.UnknownKeys, it.UnknownLinkTypes)
+			return errx.Env("this ticket uses fields from a newer kira: %s", strings.Join(names, ", ")).
+				WithHint("upgrade kira, then retry: `go install github.com/shivamshivanshu/kira/cmd/kira@latest`")
+		}
+	}
+	return nil
 }
 
 func findByULID(items []*datamodel.Item, ulid string) *datamodel.Item {

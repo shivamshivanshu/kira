@@ -158,6 +158,11 @@ type InitResult struct {
 	ProjectKey  string `json:"project_key"`
 }
 
+type ConfigSetResult struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 type MergeResult struct {
 	ID         string   `json:"id"`
 	Number     string   `json:"number"`

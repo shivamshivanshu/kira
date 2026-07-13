@@ -62,9 +62,9 @@ func (s *Store) ShowAt(cfg *datamodel.Config, ref, at string) (*datamodel.ShowRe
 	if err != nil {
 		return nil, "", errx.User("%v", err)
 	}
-	ulid, err := loaded.Resolver.Resolve(ref)
+	ulid, err := resolveID(loaded.Resolver, ref)
 	if err != nil {
-		return nil, "", errx.User("%v", err)
+		return nil, "", err
 	}
 	it := findByULID(loaded.Items, ulid)
 	if it == nil {

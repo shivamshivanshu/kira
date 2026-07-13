@@ -33,7 +33,7 @@ func Init(startDir, key string, force bool) (*datamodel.InitResult, error) {
 	fs := s.fs()
 	dirName := fs.RelToRoot(fs.KiraDir())
 	if fi, err := os.Stat(fs.KiraDir()); err == nil && fi.IsDir() && !force {
-		return nil, errx.User("%s already exists (use --force to reinitialize)", dirName)
+		return nil, errx.User("%s already exists", dirName).WithHint("use `--force` to reinitialize over it")
 	}
 
 	name := filepath.Base(abs)

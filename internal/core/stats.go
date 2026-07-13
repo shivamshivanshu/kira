@@ -95,9 +95,9 @@ func (s *Store) resolveScope(cfg *datamodel.Config, opts StatsOpts, items []*dat
 
 	set := items
 	if opts.Epic != "" {
-		ulid, err := resolver.Resolve(opts.Epic)
+		ulid, err := resolveID(resolver, opts.Epic)
 		if err != nil {
-			return nil, nil, "", errx.User("%v", err)
+			return nil, nil, "", err
 		}
 		epic := findByULID(items, ulid)
 		if epic == nil {

@@ -31,6 +31,13 @@ type Item struct {
 	Updated    string
 
 	Body string
+
+	UnknownKeys      []string `json:"-"`
+	UnknownLinkTypes []string `json:"-"`
+}
+
+func (it *Item) HasUnknown() bool {
+	return len(it.UnknownKeys) > 0 || len(it.UnknownLinkTypes) > 0
 }
 
 const (
@@ -92,6 +99,16 @@ var FrontmatterKeys = []string{
 	KeyEpic, KeyBlockedBy, KeyLinks, KeySprint, KeyDue, KeyEstimate,
 	KeyCreated, KeyUpdated,
 }
+
+var frontmatterKeySet = func() map[string]bool {
+	m := make(map[string]bool, len(FrontmatterKeys))
+	for _, k := range FrontmatterKeys {
+		m[k] = true
+	}
+	return m
+}()
+
+func IsFrontmatterKey(k string) bool { return frontmatterKeySet[k] }
 
 func (it *Item) CreatedTime() (time.Time, error) { return time.Parse(time.RFC3339, it.Created) }
 

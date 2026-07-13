@@ -27,7 +27,12 @@ func filterNames(cfg *datamodel.Config) []string {
 
 func unknownFilterErr(cfg *datamodel.Config, name string) error {
 	if len(cfg.Filters) == 0 {
-		return errx.User("unknown filter %q (no filters configured)", name)
+		return errx.User("unknown filter %q (no filters configured)", name).WithHint("define filters under `filters:` in .kira/config.yaml")
 	}
-	return errx.User("unknown filter %q (available: %s)", name, strings.Join(filterNames(cfg), ", "))
+	names := filterNames(cfg)
+	base := errx.User("unknown filter %q (available: %s)", name, strings.Join(names, ", "))
+	if n := errx.Nearest(name, names); n != "" {
+		return base.WithHint("did you mean `%s`?", n)
+	}
+	return base
 }

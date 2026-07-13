@@ -62,6 +62,9 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 			result.Skipped = append(result.Skipped, path)
 			continue
 		}
+		if err := guardKnownFields(oursItem, theirsItem); err != nil {
+			return nil, err
+		}
 		res := merge.Merge(parseOrNil(base.Content), oursItem, theirsItem, remote, gitTextMerge)
 		if interactive {
 			pickFields(res.Item, oursItem, theirsItem, res.Arbitrated)

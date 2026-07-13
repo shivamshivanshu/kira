@@ -4,7 +4,7 @@ Execution plan for [DESIGN.md](DESIGN.md). Each work package (WP) is sized for d
 
 Dependency spine: M0 → M1 → M2 → M3; M4 (TUI) needs M2; M5 (nvim) needs the M1 JSON freeze + M2 (history/linked commits feed the floats); M3 is independent of M4/M5 but gates any multi-user recommendation.
 
-## M0 — File model + core CRUD
+## M0 — File model + core CRUD ✅
 
 Shippable: a usable, greppable ticket store. No index, no TUI.
 
@@ -19,7 +19,7 @@ Shippable: a usable, greppable ticket store. No index, no TUI.
 
 **Gate:** unit + golden + testscript green; kira initialized on itself.
 
-## M1 — Workflow, relationships, search
+## M1 — Workflow, relationships, search ✅
 
 Shippable: a real solo tracker with process discipline.
 
@@ -34,7 +34,7 @@ Shippable: a real solo tracker with process discipline.
 
 **Gate:** JSON contract frozen (additive-only after this point) — precondition for all frontend work.
 
-## M1.5 — JIRA parity (fields + query)
+## M1.5 — JIRA parity (fields + query) ✅
 
 Shippable: grooming, sprints, and Definition-of-Done enforcement — the JIRA-parity gaps ([gap analysis](/home/claude_notes/scratchpad/20260712/kira-jira-gap-analysis.md) Tier 1–3) that close without waiting on M2. All additive to the frozen v1 JSON contract; goldens regenerate with new field cases, no existing shape changes. Sits after M1 (needs the query engine + JSON freeze) and before M2 (index makes the new queries fast but the linear-scan fallback already serves them). Dogfooded as kira epic "JIRA parity" / tickets KIRA-3..KIRA-8.
 
@@ -49,7 +49,7 @@ Shippable: grooming, sprints, and Definition-of-Done enforcement — the JIRA-pa
 
 **Gate:** unit + golden + testscript green; contract goldens regenerated additive-only (no existing key changed); kira's own backlog groomed with `rank`/`priorities` and a live sprint.
 
-## M2 — Index + git integration
+## M2 — Index + git integration ✅
 
 Shippable: fast at scale; the git-native value prop (history, linked commits, stats) lands.
 
@@ -66,7 +66,7 @@ Shippable: fast at scale; the git-native value prop (history, linked commits, st
 
 **Gate:** index provably disposable; `log`/`stats` correct on fixture repo; CI dogfood `kira doctor` step added.
 
-## M3 — Distributed correctness
+## M3 — Distributed correctness ✅
 
 Shippable: safe for teams/branches. Gates any multi-user recommendation.
 
@@ -81,7 +81,7 @@ Shippable: safe for teams/branches. Gates any multi-user recommendation.
 
 **Gate:** WP-3.4 matrix green.
 
-## M3.5 — Pre-release CLI polish
+## M3.5 — Pre-release CLI polish ✅
 
 Shippable: first-impression CLI quality; all four WPs must land before any public release (errors are the product's real first impression; init output is one-shot per repo, so retrofitting the seed misses existing repos; binaries shipped without the codec fail-safe destroy newer fields forever; dynamic completion rides the `kira completion` scripts).
 
@@ -94,7 +94,7 @@ Shippable: first-impression CLI quality; all four WPs must land before any publi
 
 **Gate:** goldens green; kira's own first-run error paths exercised via testscript.
 
-## M4 — TUI
+## M4 — TUI ✅
 
 Shippable: the JIRA-replacement daily driver. Needs M2. If the milestone needs a cut line, crash containment (WP-4.1) and the tour seeder are the two defended items — perf fixtures, vhs tapes, and `kira tour` all hang off the seeder, and the first dogfood panic is when containment pays.
 

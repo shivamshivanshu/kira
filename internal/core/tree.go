@@ -26,9 +26,9 @@ func (s *Store) Tree(cfg *datamodel.Config, ref string) (*datamodel.TreeResult, 
 	build := newTreeBuilder(children)
 
 	if ref != "" {
-		ulid, err := resolver.Resolve(ref)
+		ulid, err := resolveID(resolver, ref)
 		if err != nil {
-			return nil, errx.User("%v", err)
+			return nil, err
 		}
 		it, ok := byID[ulid]
 		if !ok {

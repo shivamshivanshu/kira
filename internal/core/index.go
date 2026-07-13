@@ -23,6 +23,10 @@ func indexOptions(cfg *datamodel.Config) index.Options {
 	}
 }
 
+func (s *Store) CachedItems() ([]*datamodel.Item, error) {
+	return index.ReadCached(s.fs().CacheDir())
+}
+
 func (s *Store) indexedLoad(cfg *datamodel.Config) ([]*datamodel.Item, id.Snapshot, *id.Resolver, []string, error) {
 	items, _, err := index.Load(s.fs(), s.repo(), indexOptions(cfg))
 	if err != nil {

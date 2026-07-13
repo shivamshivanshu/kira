@@ -3,6 +3,7 @@ package contract
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"flag"
 	"os"
@@ -140,19 +141,8 @@ func seededRepo(t *testing.T) string {
 
 func addSprint(t *testing.T, dir string) {
 	t.Helper()
-	path := filepath.Join(dir, ".kira", "config.yaml")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read config: %v", err)
-	}
-	patched := strings.Replace(string(data), "sprints: []",
-		"sprints: [{ key: 2026-S14, name: Sprint 14, start: 2026-07-13, end: 2026-07-26 }]", 1)
-	if patched == string(data) {
-		t.Fatal("config template no longer has an empty sprints list to patch")
-	}
-	if err := os.WriteFile(path, []byte(patched), 0o644); err != nil {
-		t.Fatalf("write config: %v", err)
-	}
+	mustKira(t, dir, "sprint", "create", "--key", "2026-S14", "--name", "Sprint 14",
+		"--start", "2026-07-13", "--end", "2026-07-26")
 }
 
 func oneTicket(t *testing.T) string {
@@ -304,6 +294,7 @@ func TestJSONErrors(t *testing.T) {
 		wantCode int
 	}{
 		{"err-unknown-id", seededRepo, []string{"show", "KIRA-999"}, 1},
+		{"err-unknown-id-suggest", seededRepo, []string{"show", "KIRA-1X"}, 1},
 		{"err-bad-transition", oneTicket, []string{"move", "KIRA-1", "DONE"}, 1},
 		{"err-require-guard", reviewTicket, []string{"move", "KIRA-1", "DONE"}, 1},
 		{"err-bad-field", oneTicket, []string{"edit", "KIRA-1", "--field", "nope=x"}, 1},
@@ -323,6 +314,16 @@ func TestJSONErrors(t *testing.T) {
 			}
 			if stderr == "" {
 				t.Errorf("stderr must carry the error, got empty")
+			}
+			var obj struct {
+				Error string `json:"error"`
+				Hint  string `json:"hint"`
+				Code  int    `json:"code"`
+			}
+			if err := json.Unmarshal([]byte(stderr), &obj); err != nil {
+				t.Errorf("stderr is not a JSON error object: %v (got: %s)", err, stderr)
+			} else if obj.Error == "" || obj.Code != c.wantCode {
+				t.Errorf("json error object malformed: %+v", obj)
 			}
 			checkGolden(t, c.name+".err", scrub(stderr, dir))
 		})

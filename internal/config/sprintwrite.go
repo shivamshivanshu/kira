@@ -114,7 +114,10 @@ func findTopLevel(doc *yaml.Node, name string) (key, val *yaml.Node) {
 	if len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
 		return nil, nil
 	}
-	m := doc.Content[0]
+	return mapEntry(doc.Content[0], name)
+}
+
+func mapEntry(m *yaml.Node, name string) (key, val *yaml.Node) {
 	for i := 0; i+1 < len(m.Content); i += 2 {
 		if m.Content[i].Value == name {
 			return m.Content[i], m.Content[i+1]

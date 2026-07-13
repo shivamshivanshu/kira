@@ -42,6 +42,9 @@ func MergeFile(repo gitx.Repo, basePath, oursPath, theirsPath string) (*datamode
 	if err != nil {
 		return nil, err
 	}
+	if err := guardKnownFields(ours, theirs); err != nil {
+		return nil, err
+	}
 	res := merge.Merge(parseOrNil(string(baseData)), ours, theirs, remoteSide(repo), gitTextMerge)
 	if err := os.WriteFile(oursPath, []byte(codec.Serialize(res.Item)), 0o644); err != nil {
 		return nil, errx.User("writing merge result: %v", err)

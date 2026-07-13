@@ -170,13 +170,62 @@ func TestLinksCanonicalization(t *testing.T) {
 		t.Fatalf("canonical links emission wrong:\n%s", out)
 	}
 
-	if _, err := codec.Parse(strings.Replace(src, "duplicate_of:", "mystery:", 1)); err == nil {
-		t.Fatal("unknown link type: expected rejection")
+	unk, err := codec.Parse(strings.Replace(src, "duplicate_of:", "mystery:", 1))
+	if err != nil {
+		t.Fatalf("unknown link type must parse (recorded, not rejected): %v", err)
+	}
+	if !reflect.DeepEqual(unk.UnknownLinkTypes, []string{"mystery"}) {
+		t.Fatalf("UnknownLinkTypes = %v, want [mystery]", unk.UnknownLinkTypes)
+	}
+	if _, ok := unk.Links["mystery"]; ok {
+		t.Fatal("unknown link type must not land in Links")
 	}
 
 	it.Links = nil
 	if out := codec.Serialize(it); strings.Contains(out, "links") {
 		t.Fatalf("empty links must emit no line:\n%s", out)
+	}
+}
+
+func TestUnknownKeysRecordedNotRejected(t *testing.T) {
+	src := "---\n" +
+		"id: 01J8X8Q7RZTN5Y3VXW2A9K4E7F\n" +
+		"number: KIRA-1\n" +
+		"aliases: []\n" +
+		"type: ticket\n" +
+		"title: \"t\"\n" +
+		"state: TODO\n" +
+		"labels: []\n" +
+		"epic: null\n" +
+		"blocked_by: []\n" +
+		"future_field: whatever\n" +
+		"another_future: 42\n" +
+		"created: 2026-07-10T09:14:00+05:30\n" +
+		"updated: 2026-07-12T11:02:00+05:30\n" +
+		"---\nbody\n"
+
+	it, err := codec.Parse(src)
+	if err != nil {
+		t.Fatalf("unknown top-level keys must parse, not reject: %v", err)
+	}
+	if !reflect.DeepEqual(it.UnknownKeys, []string{"another_future", "future_field"}) {
+		t.Fatalf("UnknownKeys = %v, want sorted [another_future future_field]", it.UnknownKeys)
+	}
+	if !it.HasUnknown() {
+		t.Fatal("HasUnknown must be true when unknown keys are present")
+	}
+	if out := codec.Serialize(it); strings.Contains(out, "future_field") {
+		t.Fatalf("canonical serializer must not re-emit unknown keys (preservation deferred):\n%s", out)
+	}
+}
+
+func TestKnownItemHasNoUnknowns(t *testing.T) {
+	it, err := codec.Parse(readExample(t))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if it.HasUnknown() || it.UnknownKeys != nil || it.UnknownLinkTypes != nil {
+		t.Fatalf("clean item must carry no unknowns: keys=%v links=%v", it.UnknownKeys, it.UnknownLinkTypes)
 	}
 }
 

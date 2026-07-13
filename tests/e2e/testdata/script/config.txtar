@@ -1,0 +1,58 @@
+# kira config set edits one scalar in .kira/config.yaml, preserving comments,
+# validates through the normal config loader, and commits like any mutation
+# (docs/design/04-cli.md `kira config`).
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# enum
+exec kira config set ui.icons never --json
+stdout '"key": "ui.icons"'
+stdout '"value": "never"'
+grep 'icons: never' .kira/config.yaml
+# the inline doc comment on that line survives the edit
+grep 'icons: never.*# auto \| always \| never' .kira/config.yaml
+
+# string
+exec kira config set project.name 'My Project'
+grep 'name: My Project' .kira/config.yaml
+
+# bool
+exec kira config set sync.push true
+grep 'push: true' .kira/config.yaml
+
+# float
+exec kira config set estimate.hours_per_day 7.5
+grep 'hours_per_day: 7.5' .kira/config.yaml
+
+# absent (commented-out) block is created in place; its doc comment is kept
+exec kira config set git.landed_ref origin/main
+grep 'landed_ref: origin/main' .kira/config.yaml
+grep '#git: \{\}' .kira/config.yaml
+
+# each set auto-commits (commit.mode is still auto) and leaves nothing dirty
+exec git log --oneline
+stdout 'kira: config set git.landed_ref'
+stdout 'kira: config set ui.icons'
+exec git status --porcelain
+! stdout '\.kira'
+
+# unknown key is rejected and the valid keys are listed
+! exec kira config set bogus.key x
+stderr 'unknown key'
+stderr 'commit.mode'
+
+# an out-of-vocabulary enum value is rejected by validation
+! exec kira config set merge.policy sideways
+stderr 'merge.policy'
+
+# switching commit.mode to manual is itself committed (read under the old mode),
+# after which further sets only stage
+exec kira config set commit.mode manual
+grep 'mode: manual' .kira/config.yaml
+exec git log --oneline
+stdout 'kira: config set commit.mode'

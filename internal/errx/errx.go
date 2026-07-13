@@ -1,6 +1,7 @@
 package errx
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -15,10 +16,17 @@ const (
 type Error struct {
 	Code int
 	Err  error
+	Hint string
 }
 
 func (e *Error) Error() string { return e.Err.Error() }
 func (e *Error) Unwrap() error { return e.Err }
+
+func (e *Error) WithHint(format string, args ...any) *Error {
+	c := *e
+	c.Hint = fmt.Sprintf(format, args...)
+	return &c
+}
 
 func User(format string, args ...any) *Error {
 	return &Error{Code: ExitUser, Err: fmt.Errorf(format, args...)}
@@ -34,8 +42,17 @@ func Env(format string, args ...any) *Error {
 
 func Invalid(errs []error) *Error {
 	msgs := make([]string, len(errs))
+	hint := ""
 	for i, e := range errs {
 		msgs[i] = e.Error()
+		if hint == "" {
+			var ce *Error
+			if errors.As(e, &ce) {
+				hint = ce.Hint
+			}
+		}
 	}
-	return User("invalid item: %s", strings.Join(msgs, "; "))
+	out := User("invalid item: %s", strings.Join(msgs, "; "))
+	out.Hint = hint
+	return out
 }

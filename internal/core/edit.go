@@ -158,7 +158,7 @@ func applyFieldEdit(it *datamodel.Item, key, value string) error {
 	case "labels":
 		it.Labels = splitList(value)
 	default:
-		return fmt.Errorf("--field: unknown or immutable field %q", key)
+		return errx.User("--field: unknown or immutable field %q", key).WithHint("%s", fieldHint(key))
 	}
 	return nil
 }

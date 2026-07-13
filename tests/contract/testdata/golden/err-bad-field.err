@@ -1,1 +1,1 @@
-kira: invalid item: --field: unknown or immutable field "nope"
+{"error":"invalid item: --field: unknown or immutable field \"nope\"","hint":"editable fields: due, epic, estimate, labels, owner, priority, rank, reporter, resolution, sprint, state, subtype, title","code":1}

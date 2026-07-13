@@ -2,8 +2,10 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -15,19 +17,39 @@ import (
 )
 
 func Main() int {
-	if err := newRootCmd().Execute(); err != nil {
-		var crash *tui.CrashError
-		if errors.As(err, &crash) {
-			return errx.ExitCrash
-		}
-		fmt.Fprintln(os.Stderr, "kira:", err)
-		var ce *errx.Error
-		if errors.As(err, &ce) {
-			return ce.Code
-		}
-		return 1
+	root, g := newRootCmd()
+	if err := root.Execute(); err != nil {
+		return renderError(os.Stderr, err, g.json)
 	}
 	return 0
+}
+
+func renderError(w io.Writer, err error, jsonMode bool) int {
+	var crash *tui.CrashError
+	if errors.As(err, &crash) {
+		return errx.ExitCrash
+	}
+	code := errx.ExitUser
+	hint := ""
+	var ce *errx.Error
+	if errors.As(err, &ce) {
+		code, hint = ce.Code, ce.Hint
+	}
+	if jsonMode {
+		enc := json.NewEncoder(w)
+		enc.SetEscapeHTML(false)
+		_ = enc.Encode(struct {
+			Error string `json:"error"`
+			Hint  string `json:"hint"`
+			Code  int    `json:"code"`
+		}{err.Error(), hint, code})
+		return code
+	}
+	fmt.Fprintln(w, "kira:", err)
+	if hint != "" {
+		fmt.Fprintln(w, "  hint:", hint)
+	}
+	return code
 }
 
 type globalFlags struct {
@@ -37,7 +59,7 @@ type globalFlags struct {
 	quiet   bool
 }
 
-func newRootCmd() *cobra.Command {
+func newRootCmd() (*cobra.Command, *globalFlags) {
 	g := &globalFlags{}
 	root := &cobra.Command{
 		Use:           "kira",
@@ -86,8 +108,10 @@ func newRootCmd() *cobra.Command {
 		newResolveCmd(g),
 		newDiffCmd(g),
 		newBoardCmd(g),
+		newConfigCmd(g),
 	)
-	return root
+	attachCompletions(root, g)
+	return root, g
 }
 
 func openStore(g *globalFlags) (*core.Store, *datamodel.Config, error) {

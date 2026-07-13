@@ -1,1 +1,1 @@
-kira: invalid item: REVIEW -> DONE requires resolution to be set (use --force to override)
+{"error":"invalid item: REVIEW -> DONE requires resolution to be set","hint":"set resolution first, or use `--force` to override","code":1}

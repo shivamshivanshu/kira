@@ -31,9 +31,9 @@ func (s *Store) Log(cfg *datamodel.Config, ref string) (*datamodel.LogResult, er
 	if err != nil {
 		return nil, err
 	}
-	ulid, err := resolver.Resolve(ref)
+	ulid, err := resolveID(resolver, ref)
 	if err != nil {
-		return nil, errx.User("%v", err)
+		return nil, err
 	}
 	it := findByULID(items, ulid)
 	if it == nil {

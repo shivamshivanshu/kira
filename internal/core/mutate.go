@@ -20,6 +20,10 @@ func (s *Store) lockAndResolve(cfg *datamodel.Config, ref string) (func(), *data
 		release()
 		return nil, nil, nil, nil, err
 	}
+	if err := guardKnownFields(orig); err != nil {
+		release()
+		return nil, nil, nil, nil, err
+	}
 	return release, orig, items, resolver, nil
 }
 

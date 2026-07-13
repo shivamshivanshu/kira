@@ -1,0 +1,71 @@
+# Dynamic shell completion: __complete serves item IDs with titles, move targets
+# from the item's cached current state, and flag vocab -- all from a read-only
+# index that is never reindexed on the completion path.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'Fix orderbook race' --no-edit
+exec kira create ticket --title 'Add snapshot merge' --no-edit
+exec kira create epic --title 'Latency epic' --no-edit
+exec kira index
+
+# item IDs complete with title descriptions (cobra value\tdescription form)
+exec kira __complete show ''
+stdout 'KIRA-1\tFix orderbook race'
+stdout 'KIRA-2\tAdd snapshot merge'
+stdout 'KIRA-3\tLatency epic'
+
+# server-side prefix filter on toComplete
+exec kira __complete show 'KIRA-2'
+stdout 'KIRA-2\tAdd snapshot merge'
+! stdout 'KIRA-1'
+
+# move targets derive from the item's CURRENT cached state: TODO -> IN_PROGRESS, WONT_DO
+exec kira __complete move KIRA-1 ''
+stdout 'IN_PROGRESS'
+stdout 'WONT_DO'
+! stdout 'REVIEW'
+
+# advance the item and reindex; the same position now reflects IN_PROGRESS
+exec kira move KIRA-1 IN_PROGRESS
+exec kira index
+exec kira __complete move KIRA-1 ''
+stdout 'REVIEW'
+stdout 'TODO'
+
+# `config set` first arg completes from SetKeys()
+exec kira __complete config set ''
+stdout 'commit.mode'
+stdout 'merge.policy'
+
+# flag vocab from config and showfmt
+exec kira __complete create ticket --priority ''
+stdout 'P0'
+exec kira __complete list --category ''
+stdout 'todo'
+exec kira __complete show --format ''
+stdout 'number-title'
+
+# --parent completes epics only
+exec kira __complete create ticket --parent ''
+stdout 'KIRA-3\tLatency epic'
+! stdout 'KIRA-1'
+
+# stale-serves: a new item written + committed WITHOUT reindex stays invisible;
+# completion serves the OLD cache and leaves it byte-identical (no reindex).
+cp .kira/.cache/index.db saved.db
+exec kira create ticket --title 'GhostTicket' --no-edit
+exec kira __complete show ''
+stdout 'KIRA-1\tFix orderbook race'
+! stdout 'GhostTicket'
+cmp .kira/.cache/index.db saved.db
+
+# absent index => no suggestions (never the linear-scan fallback)
+rm .kira/.cache/index.db
+exec kira __complete show ''
+! stdout 'KIRA-1'
+! stdout 'GhostTicket'

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/workon"
 )
@@ -27,14 +28,14 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 		}
 		target, ok := stateIn(wf, state)
 		if !ok {
-			return []error{fmt.Errorf("%q is not a state in the %s workflow", state, it.Type)}, nil
+			return []error{errx.User("%q is not a state in the %s workflow", state, it.Type).WithHint("%s", stateHint(wf, state))}, nil
 		}
 		from = it.State
 		it.State = state
 		tr := matchedTransition(wf, from, state)
 		if wf.EnforceTransitions && from != state && tr == nil {
 			if !opts.Force {
-				return []error{fmt.Errorf("%s -> %s is not an allowed transition (use --force to override)", from, state)}, nil
+				return []error{errx.User("%s -> %s is not an allowed transition", from, state).WithHint("%s", transitionHint(wf, from))}, nil
 			}
 			warns = append(warns, fmt.Errorf("forced off-graph transition %s -> %s", from, state))
 		}
@@ -54,7 +55,7 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 			if len(missing) > 0 {
 				fields := strings.Join(missing, ", ")
 				if !opts.Force {
-					return []error{fmt.Errorf("%s -> %s requires %s to be set (use --force to override)", from, state, fields)}, nil
+					return []error{errx.User("%s -> %s requires %s to be set", from, state, fields).WithHint("set %s first, or use `--force` to override", fields)}, nil
 				}
 				warns = append(warns, fmt.Errorf("forced past require guard: %s not set", fields))
 			}

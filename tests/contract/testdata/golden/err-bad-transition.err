@@ -1,1 +1,1 @@
-kira: invalid item: TODO -> DONE is not an allowed transition (use --force to override)
+{"error":"invalid item: TODO -> DONE is not an allowed transition","hint":"allowed from TODO: IN_PROGRESS, WONT_DO (or `--force` to override)","code":1}

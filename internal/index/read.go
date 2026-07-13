@@ -2,10 +2,23 @@ package index
 
 import (
 	"database/sql"
+	"os"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
+
+func ReadCached(cacheDir string) ([]*datamodel.Item, error) {
+	if _, err := os.Stat(dbPath(cacheDir)); err != nil {
+		return nil, nil
+	}
+	db, err := sql.Open("sqlite", "file:"+dbPath(cacheDir)+"?mode=ro&immutable=1")
+	if err != nil {
+		return nil, errx.User("opening index read-only: %v", err)
+	}
+	defer db.Close()
+	return (&Index{db: db, cacheDir: cacheDir}).Items()
+}
 
 func (i *Index) Items() ([]*datamodel.Item, error) {
 	items, byID, err := i.scanItems()
