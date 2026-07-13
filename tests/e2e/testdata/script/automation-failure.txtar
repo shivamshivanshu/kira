@@ -1,0 +1,38 @@
+# a failing hook and a timing-out hook both warn on stderr but never fail the move.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp config-fail.yaml .kira/config.yaml
+exec kira create ticket --title 'First' --no-edit
+exec kira automation trust
+
+# the move succeeds (exit 0) despite one hook exiting non-zero and one timing out.
+exec kira move KIRA-1 WONT_DO
+stderr '\[automation:boom\]'
+stderr '\[automation:slow\] timed out'
+
+# the state change actually landed.
+exec kira show KIRA-1 --json
+stdout '"state": "WONT_DO"'
+
+-- config-fail.yaml --
+version: 1
+project:
+  key: KIRA
+automation:
+  - name: boom
+    on: item.state_changed
+    run: bash boom.sh
+  - name: slow
+    on: item.state_changed
+    timeout: 1s
+    run: bash slow.sh
+-- boom.sh --
+echo "boom ran"
+exit 1
+-- slow.sh --
+sleep 3

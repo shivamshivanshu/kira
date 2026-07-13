@@ -91,7 +91,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 
 	changed := datamodel.ChangedFields(orig, updated)
 	subject := "kira: " + updated.Number + " edit " + strings.Join(changed, ",")
-	if err := s.commitMutation(cfg, updated, changed, warns, subject); err != nil {
+	if err := s.commitMutation(cfg, orig, updated, changed, warns, subject, datamodel.SourceCLI); err != nil {
 		return nil, err
 	}
 	return &datamodel.MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed}, nil

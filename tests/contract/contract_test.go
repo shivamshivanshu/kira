@@ -152,6 +152,21 @@ func oneTicket(t *testing.T) string {
 	return dir
 }
 
+func automationRepo(t *testing.T) string {
+	t.Helper()
+	dir := kiraRepo(t)
+	cfgPath := filepath.Join(dir, ".kira", "config.yaml")
+	data, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	block := "\nautomation:\n  - name: notify\n    on: item.state_changed\n    match:\n      to: done\n    run: bash notify.sh\n"
+	if err := os.WriteFile(cfgPath, append(data, block...), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	return dir
+}
+
 func reviewTicket(t *testing.T) string {
 	t.Helper()
 	dir := oneTicket(t)
@@ -279,6 +294,7 @@ func TestJSONContract(t *testing.T) {
 		{"log", seededRepo, []string{"log", "KIRA-2"}, true},
 		{"stats", seededRepo, []string{"stats"}, true},
 		{"blame", seededRepo, []string{"blame", "KIRA-2"}, true},
+		{"automation-list", automationRepo, []string{"automation", "list"}, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

@@ -27,7 +27,7 @@ func (s *Store) lockAndResolve(cfg *datamodel.Config, ref string) (func(), *data
 	return release, orig, items, resolver, nil
 }
 
-func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string) (*datamodel.Item, []string, error) {
+func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, error) {
 	release, orig, items, resolver, err := s.lockAndResolve(cfg, ref)
 	if err != nil {
 		return nil, nil, err
@@ -49,23 +49,41 @@ func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply appl
 	warns = append(warns, vwarns...)
 
 	changed := datamodel.ChangedFields(orig, updated)
-	if err := s.commitMutation(cfg, updated, changed, warns, subjectOf(orig)); err != nil {
+	if err := s.commitMutation(cfg, orig, updated, changed, warns, subjectOf(orig), source); err != nil {
 		return nil, nil, err
 	}
 	return updated, changed, nil
 }
 
-func (s *Store) commitMutation(cfg *datamodel.Config, updated *datamodel.Item, changed []string, warns []error, subject string) error {
+func (s *Store) commitMutation(cfg *datamodel.Config, before, updated *datamodel.Item, changed []string, warns []error, subject string, source datamodel.ChangeSource) error {
 	if len(changed) == 0 {
 		return nil
 	}
 	updated.Updated = time.Now().Format(time.RFC3339)
 
-	emitWarnings(warns)
-
 	path, err := s.writeItem(updated)
 	if err != nil {
 		return err
 	}
-	return s.finalize(cfg.Commit.Mode, cfg.Commit.Trailer, subject, updated.Number, path)
+	return s.commit(cfg, &datamodel.ChangeSet{
+		Kind:    datamodel.ChangeMutated,
+		Before:  before,
+		After:   updated,
+		Changed: changed,
+		Paths:   []string{path},
+		Subject: subject,
+		Source:  source,
+	}, warns)
+}
+
+func (s *Store) commit(cfg *datamodel.Config, cs *datamodel.ChangeSet, warns []error) error {
+	emitWarnings(warns)
+	sha, err := s.finalize(cfg.Commit.Mode, cfg.Commit.Trailer, cs.Subject, cs.After.Number, cs.Paths...)
+	if err != nil {
+		return err
+	}
+	if len(cfg.Automation) > 0 {
+		s.fireAutomation(cfg, cs, sha)
+	}
+	return nil
 }

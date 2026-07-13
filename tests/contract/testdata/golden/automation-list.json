@@ -1,0 +1,11 @@
+{
+  "hooks": [
+    {
+      "name": "notify",
+      "on": "item.state_changed",
+      "run": "bash notify.sh",
+      "enabled": true
+    }
+  ],
+  "trusted": false
+}

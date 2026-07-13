@@ -129,7 +129,8 @@ func (s *Store) commitTrackedHooks(cfg *datamodel.Config, repo gitx.Repo, tracke
 	if len(dirty) == 0 {
 		return nil
 	}
-	return s.finalize(cfg.Commit.Mode, "", "kira: install hooks", "", tracked...)
+	_, err = s.finalize(cfg.Commit.Mode, "", "kira: install hooks", "", tracked...)
+	return err
 }
 
 func (s *Store) ValidateHooks(cfg *datamodel.Config) (*datamodel.HooksValidateResult, error) {

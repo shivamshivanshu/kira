@@ -65,7 +65,7 @@ func (s *Store) SprintCreate(cfg *datamodel.Config, sp datamodel.Sprint) (*datam
 		return nil, errx.User("writing config: %v", err)
 	}
 	subject := "kira: sprint create " + sp.Key
-	if err := s.finalize(cfg.Commit.Mode, cfg.Commit.Trailer, subject, "", fs.RelToRoot(fs.ConfigPath())); err != nil {
+	if _, err := s.finalize(cfg.Commit.Mode, cfg.Commit.Trailer, subject, "", fs.RelToRoot(fs.ConfigPath())); err != nil {
 		return nil, err
 	}
 	return &datamodel.SprintCreateResult{Created: true, Sprint: sprintJSON(sp)}, nil
@@ -143,7 +143,7 @@ func (s *Store) SprintClose(cfg *datamodel.Config, key, moveTo string) (*datamod
 			return fmt.Sprintf("kira: %s sprint %s -> %s", orig.Number, key, moveTo)
 		}
 		for _, it := range unfinished {
-			if _, _, err := s.mutate(cfg, it.ID, false, apply, subjectOf); err != nil {
+			if _, _, err := s.mutate(cfg, it.ID, false, apply, subjectOf, datamodel.SourceCLI); err != nil {
 				return nil, err
 			}
 		}

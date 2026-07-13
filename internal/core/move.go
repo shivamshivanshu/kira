@@ -16,6 +16,7 @@ type MoveOpts struct {
 	Resolution string
 	Force      bool
 	Activate   bool
+	Source     datamodel.ChangeSource
 }
 
 func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*datamodel.MoveResult, error) {
@@ -97,7 +98,11 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 		return fmt.Sprintf("kira: %s state %s -> %s", orig.Number, orig.State, state)
 	}
 
-	updated, _, err := s.mutate(cfg, ref, opts.Force, apply, subjectOf)
+	source := opts.Source
+	if source == "" {
+		source = datamodel.SourceCLI
+	}
+	updated, _, err := s.mutate(cfg, ref, opts.Force, apply, subjectOf, source)
 	if err != nil {
 		return nil, err
 	}

@@ -12,20 +12,23 @@ import (
 )
 
 type Store struct {
-	root  string
-	store *storage.Store
+	root     string
+	store    *storage.Store
+	prompter Prompter
 }
 
 func newStore(root string) *Store {
-	return &Store{root: root, store: storage.New(root)}
+	return &Store{root: root, store: storage.New(root), prompter: silentPrompter{}}
 }
 
-func Discover(startDir string) (*Store, error) {
+func Discover(startDir string, opts ...Option) (*Store, error) {
 	store, err := storage.Discover(startDir)
 	if err != nil {
 		return nil, err
 	}
-	return &Store{root: store.Root(), store: store}, nil
+	s := &Store{root: store.Root(), store: store, prompter: silentPrompter{}}
+	s.applyOptions(opts)
+	return s, nil
 }
 
 func (s *Store) fs() *storage.Store { return s.store }

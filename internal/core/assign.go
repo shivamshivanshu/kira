@@ -27,7 +27,7 @@ func (s *Store) Assign(cfg *datamodel.Config, ref, user string, opts AssignOpts)
 		return "kira: " + orig.Number + " assign " + field + " " + user
 	}
 
-	updated, changed, err := s.mutate(cfg, ref, opts.Force, apply, subjectOf)
+	updated, changed, err := s.mutate(cfg, ref, opts.Force, apply, subjectOf, datamodel.SourceCLI)
 	if err != nil {
 		return nil, err
 	}

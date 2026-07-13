@@ -95,6 +95,7 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 		newFindCmd(g),
 		newDiscoverCmd(g),
 		newHooksCmd(g),
+		newAutomationCmd(g),
 		newWorkonCmd(g),
 		newSyncCmd(g),
 		newSprintCmd(g),
@@ -115,7 +116,7 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 }
 
 func openStore(g *globalFlags) (*core.Store, *datamodel.Config, error) {
-	s, err := core.Discover(g.chdir)
+	s, err := core.Discover(g.chdir, core.WithPrompter(terminalPrompter{}))
 	if err != nil {
 		return nil, nil, err
 	}

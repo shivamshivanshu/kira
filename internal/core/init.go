@@ -10,12 +10,11 @@ import (
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
-	"github.com/shivamshivanshu/kira/internal/termx"
 )
 
 const gitattributesLine = ".kira/** text eol=lf"
 
-func Init(startDir, key string, force bool) (*datamodel.InitResult, error) {
+func Init(startDir, key string, force bool, opts ...Option) (*datamodel.InitResult, error) {
 	root := startDir
 	if root == "" {
 		cwd, err := os.Getwd()
@@ -29,6 +28,7 @@ func Init(startDir, key string, force bool) (*datamodel.InitResult, error) {
 		return nil, errx.Env("resolving %q: %v", root, err)
 	}
 	s := newStore(abs)
+	s.applyOptions(opts)
 	if err := s.requireRepo(); err != nil {
 		return nil, err
 	}
@@ -42,8 +42,8 @@ func Init(startDir, key string, force bool) (*datamodel.InitResult, error) {
 	name := filepath.Base(abs)
 	if key == "" {
 		def := deriveKey(name)
-		if termx.IsInteractive() {
-			key = termx.ReadLineDefault(fmt.Sprintf("project key [%s]: ", def), def)
+		if s.prompter.Interactive() {
+			key = s.prompter.ReadLine(fmt.Sprintf("project key [%s]: ", def), def)
 		} else {
 			key = def
 		}
@@ -75,7 +75,7 @@ func Init(startDir, key string, force bool) (*datamodel.InitResult, error) {
 		return nil, err
 	}
 
-	if err := s.finalize(datamodel.CommitAuto, "", "kira: init", "", dirName, ".gitattributes"); err != nil {
+	if _, err := s.finalize(datamodel.CommitAuto, "", "kira: init", "", dirName, ".gitattributes"); err != nil {
 		return nil, err
 	}
 

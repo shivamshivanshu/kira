@@ -28,7 +28,7 @@ func (s *Store) ConfigSet(cfg *datamodel.Config, key, value string) (*datamodel.
 		return nil, errx.User("writing config: %v", err)
 	}
 	subject := "kira: config set " + key
-	if err := s.finalize(cfg.Commit.Mode, cfg.Commit.Trailer, subject, "", fs.RelToRoot(fs.ConfigPath())); err != nil {
+	if _, err := s.finalize(cfg.Commit.Mode, cfg.Commit.Trailer, subject, "", fs.RelToRoot(fs.ConfigPath())); err != nil {
 		return nil, err
 	}
 	return &datamodel.ConfigSetResult{Key: key, Value: value}, nil

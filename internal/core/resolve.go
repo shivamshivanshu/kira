@@ -11,7 +11,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/merge"
 	"github.com/shivamshivanshu/kira/internal/storage"
-	"github.com/shivamshivanshu/kira/internal/termx"
 )
 
 func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResult, error) {
@@ -67,7 +66,7 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 		}
 		res := merge.Merge(parseOrNil(base.Content), oursItem, theirsItem, remote, gitTextMerge)
 		if interactive {
-			pickFields(res.Item, oursItem, theirsItem, res.Arbitrated)
+			s.pickFields(res.Item, oursItem, theirsItem, res.Arbitrated)
 		}
 		if err := s.writeResolvedFile(path, res.Item); err != nil {
 			return nil, err
@@ -124,10 +123,10 @@ func applySide(dst, src *datamodel.Item, field string) {
 	}
 }
 
-func pickFields(target, ours, theirs *datamodel.Item, fields []string) {
+func (s *Store) pickFields(target, ours, theirs *datamodel.Item, fields []string) {
 	for _, f := range fields {
 		prompt := f + ": [o]urs=" + fieldString(ours, f) + " [t]heirs=" + fieldString(theirs, f) + " (default: auto) "
-		switch strings.ToLower(termx.ReadLineDefault(prompt, "")) {
+		switch strings.ToLower(s.prompter.ReadLine(prompt, "")) {
 		case "o":
 			applySide(target, ours, f)
 		case "t":

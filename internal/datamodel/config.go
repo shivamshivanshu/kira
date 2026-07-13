@@ -19,6 +19,7 @@ type Config struct {
 	UI          UI                  `yaml:"ui"`
 	Git         Git                 `yaml:"git"`
 	Estimate    Estimate            `yaml:"estimate"`
+	Automation  []AutomationHook    `yaml:"automation"`
 	Fields      map[string]any      `yaml:"fields"`
 }
 

@@ -36,7 +36,7 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 		if target == "" {
 			continue
 		}
-		if _, mvErr := s.Move(cfg, cand.ULID, target, MoveOpts{Force: true}); mvErr != nil {
+		if _, mvErr := s.Move(cfg, cand.ULID, target, MoveOpts{Force: true, Source: datamodel.SourceTrailer}); mvErr != nil {
 			failed = true
 			notes = append(notes, fmt.Sprintf("failed to close %s: %v", it.Number, mvErr))
 			continue

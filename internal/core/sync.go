@@ -69,6 +69,7 @@ func (s *Store) Sync(cfg *datamodel.Config, opts SyncOpts, reindexer syncx.Reind
 		}
 		report.Add("push", syncx.StepDone, "")
 	}
+	s.fireSyncCompleted(cfg, report)
 	return report, nil
 }
 
@@ -119,7 +120,7 @@ func (s *Store) prepareTree(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts
 		report.Add("prepare", syncx.StepDone, fmt.Sprintf("stashed %d paths", len(dirty)))
 		return true, nil
 	}
-	if err := s.finalize(datamodel.CommitAuto, cfg.Commit.Trailer, "kira: sync checkpoint", "", dirty...); err != nil {
+	if _, err := s.finalize(datamodel.CommitAuto, cfg.Commit.Trailer, "kira: sync checkpoint", "", dirty...); err != nil {
 		return false, err
 	}
 	report.Add("prepare", syncx.StepDone, fmt.Sprintf("committed %d paths", len(dirty)))

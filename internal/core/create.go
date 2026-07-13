@@ -83,14 +83,19 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 		return nil, errx.Invalid(hard)
 	}
 
-	emitWarnings(warns)
-
 	path, err := s.writeItem(finalItem)
 	if err != nil {
 		return nil, err
 	}
 	subject := "kira: create " + finalItem.Number + " " + quoteTitle(finalItem.Title)
-	if err := s.finalize(cfg.Commit.Mode, cfg.Commit.Trailer, subject, finalItem.Number, path); err != nil {
+	cs := &datamodel.ChangeSet{
+		Kind:    datamodel.ChangeCreated,
+		After:   finalItem,
+		Paths:   []string{path},
+		Subject: subject,
+		Source:  datamodel.SourceCLI,
+	}
+	if err := s.commit(cfg, cs, warns); err != nil {
 		return nil, err
 	}
 	return &datamodel.CreateResult{

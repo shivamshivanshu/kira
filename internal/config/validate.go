@@ -59,7 +59,26 @@ func Validate(c *datamodel.Config) error {
 	if err := validateFilters(c); err != nil {
 		return err
 	}
+	if err := validateAutomation(c); err != nil {
+		return err
+	}
 	return validateSprints(c)
+}
+
+func validateAutomation(c *datamodel.Config) error {
+	for i, h := range c.Automation {
+		where := fmt.Sprintf("automation[%d]", i)
+		if !slices.Contains(datamodel.AutomationEvents, h.On) {
+			return fmt.Errorf("config: %s.on: invalid event %q, want one of %v", where, h.On, datamodel.AutomationEvents)
+		}
+		if strings.TrimSpace(h.Run) == "" {
+			return fmt.Errorf("config: %s.run: required", where)
+		}
+		if _, err := h.TimeoutDuration(); err != nil {
+			return fmt.Errorf("config: %s.timeout: invalid duration %q", where, h.Timeout)
+		}
+	}
+	return nil
 }
 
 func validateVocabList(key string, list []string) error {

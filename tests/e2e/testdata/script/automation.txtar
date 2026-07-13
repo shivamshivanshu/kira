@@ -1,0 +1,71 @@
+# automation hooks: trust gate, firing, payload/env, recursion guard, revoke-on-edit.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp config-auto.yaml .kira/config.yaml
+exec kira create ticket --title 'First' --no-edit
+
+# defined but untrusted: hook must not fire, and kira nags once on stderr.
+exec kira move KIRA-1 WONT_DO
+stderr 'not trusted'
+! exists marker
+
+# trust lists the defined hook then records the grant.
+exec kira automation trust
+stdout 'hook ondone on item.state_changed: bash hook.sh'
+stdout 'trusted 1 automation hooks'
+
+# list reflects the trusted state.
+exec kira automation list
+stdout 'trust: trusted'
+
+# trusted: moving a fresh ticket to a done-category state fires the hook.
+exec kira create ticket --title 'Second' --no-edit
+exec kira move KIRA-2 WONT_DO
+exists marker
+grep 'event=item.state_changed to=WONT_DO cat=done num=KIRA-2 type=ticket' marker
+grep 'commit=[0-9a-f]{40}' marker
+grep '"payload_version":1' marker
+grep '"to_category":"done"' marker
+grep '"source":"cli"' marker
+
+# recursion guard: KIRA_AUTOMATION set in kira's own env disables all firing.
+rm marker
+env KIRA_AUTOMATION=1
+exec kira create ticket --title 'Third' --no-edit
+exec kira move KIRA-3 WONT_DO
+! exists marker
+env KIRA_AUTOMATION=
+
+# editing the automation config flips the hash and auto-revokes trust.
+cp config-auto2.yaml .kira/config.yaml
+exec kira automation list
+stdout 'trust: not trusted'
+
+-- config-auto.yaml --
+version: 1
+project:
+  key: KIRA
+automation:
+  - name: ondone
+    on: item.state_changed
+    match:
+      to: done
+    run: bash hook.sh
+-- config-auto2.yaml --
+version: 1
+project:
+  key: KIRA
+automation:
+  - name: ondone
+    on: item.state_changed
+    match:
+      to: done
+    run: bash hook2.sh
+-- hook.sh --
+echo "event=$KIRA_EVENT to=$KIRA_TO cat=$KIRA_TO_CATEGORY num=$KIRA_NUMBER type=$KIRA_TYPE commit=$KIRA_COMMIT" > "$KIRA_ROOT/marker"
+cat >> "$KIRA_ROOT/marker"

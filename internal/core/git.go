@@ -6,7 +6,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
-	"github.com/shivamshivanshu/kira/internal/termx"
 )
 
 func (s *Store) repo() gitx.Repo {
@@ -23,25 +22,26 @@ func (s *Store) requireRepo() error {
 	return nil
 }
 
-func (s *Store) finalize(mode datamodel.CommitMode, trailerKey, subject, trailerNumber string, paths ...string) error {
+func (s *Store) finalize(mode datamodel.CommitMode, trailerKey, subject, trailerNumber string, paths ...string) (string, error) {
 	if err := s.repo().Stage(paths...); err != nil {
-		return errx.User("%s", err)
+		return "", errx.User("%s", err)
 	}
 	switch mode {
 	case datamodel.CommitManual:
-		return nil
+		return "", nil
 	case datamodel.CommitPrompt:
-		if !termx.IsInteractive() {
-			return nil
+		if !s.prompter.Interactive() {
+			return "", nil
 		}
-		if !termx.Confirm(fmt.Sprintf("commit %q? [y/N] ", subject)) {
-			return nil
+		if !s.prompter.Confirm(fmt.Sprintf("commit %q? [y/N] ", subject)) {
+			return "", nil
 		}
 		fallthrough
 	default:
 		if err := s.repo().Commit(subject, trailerKey, trailerNumber); err != nil {
-			return errx.User("%s", err)
+			return "", errx.User("%s", err)
 		}
-		return nil
+		sha, _ := s.repo().Output("rev-parse", "HEAD")
+		return sha, nil
 	}
 }
