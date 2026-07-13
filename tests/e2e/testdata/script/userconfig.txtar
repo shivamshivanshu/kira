@@ -34,10 +34,9 @@ exec kira move KIRA-2 WONT_DO
 exists repo-marker
 exists user-marker
 
-# a hooks.json beside hooks.yaml is ignored (yaml wins) with a warning.
+# only hooks.yaml is read; a stray hooks.json is not consulted.
 cp userhooks.json xdg/kira/hooks.json
 exec kira automation list
-stderr 'hooks.json: shadowed by hooks.yaml; ignored'
 stdout 'hook onuser on item.state_changed: bash userhook.sh \(user\)'
 ! stdout 'fromjson'
 rm xdg/kira/hooks.json

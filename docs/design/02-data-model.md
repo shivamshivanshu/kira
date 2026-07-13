@@ -307,7 +307,7 @@ fields: {}                    # reserved: per-type extra-field declarations (v2)
 kira reads config from two sources and merges them per key, not as a blind overlay. The repo file (`.kira/config.yaml`) stays authoritative for everything that must agree across clones; a user tier under `~/.config/kira/` carries only per-machine presentation and personal automation, split by topic across a small set of files:
 
 - `config.yaml` — a preferences overlay. Only the `ui` block is honored.
-- `hooks.yaml` or `hooks.json` — a bare top-level list of personal automation hooks. Both extensions are accepted (the `.json` variant is read through the same YAML decoder, since YAML ⊇ JSON); if both files exist, `hooks.yaml` wins and the `.json` is ignored with a warning.
+- `hooks.yaml` — a bare top-level list of personal automation hooks.
 - `entities/` — reserved for future user-level type definitions; not yet consumed.
 
 The user config directory is `$XDG_CONFIG_HOME/kira` when `XDG_CONFIG_HOME` is set, else `$HOME/.config/kira`. With neither variable set (e.g. a sandbox), there is no user tier — this is silent, never an error. The tier is read on every command as a stat plus optional parse per file. A missing or malformed user file is warned about once and ignored, never fatal: a broken personal config must not brick a repo.

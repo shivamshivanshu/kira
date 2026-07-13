@@ -199,29 +199,17 @@ func TestUserHooksFromHooksYAML(t *testing.T) {
 	}
 }
 
-func TestUserHooksFromHooksJSON(t *testing.T) {
-	dir, env := userTierEnv(t)
-	writeUserFile(t, dir, "hooks.json", `[{"name":"j","on":"item.created","run":"touch marker"}]`)
-	cfg, warn := loadWith(t, minimalRepo, env)
-	if warn != "" {
-		t.Fatalf("valid json hooks must not warn, got %q", warn)
-	}
-	if len(cfg.UserAutomation) != 1 || cfg.UserAutomation[0].Name != "j" {
-		t.Fatalf("json hook not loaded: %+v", cfg.UserAutomation)
-	}
-}
-
-func TestBothHookExtensionsYAMLWins(t *testing.T) {
+func TestOnlyHooksYAMLIsRead(t *testing.T) {
 	dir, env := userTierEnv(t)
 	writeUserFile(t, dir, "hooks.yaml", "- name: fromyaml\n  on: item.created\n  run: 'true'\n")
 	writeUserFile(t, dir, "hooks.json", `[{"name":"fromjson","on":"item.created","run":"true"}]`)
 	cfg, warn := loadWith(t, minimalRepo, env)
 
-	if !strings.Contains(warn, "hooks.json") || !strings.Contains(warn, "shadowed by hooks.yaml; ignored") {
-		t.Fatalf("both extensions must warn that json is ignored, got %q", warn)
+	if warn != "" {
+		t.Fatalf("hooks.yaml alone is read; no warning expected, got %q", warn)
 	}
 	if len(cfg.UserAutomation) != 1 || cfg.UserAutomation[0].Name != "fromyaml" {
-		t.Fatalf("hooks.yaml must win over hooks.json: %+v", cfg.UserAutomation)
+		t.Fatalf("only hooks.yaml must load: %+v", cfg.UserAutomation)
 	}
 }
 

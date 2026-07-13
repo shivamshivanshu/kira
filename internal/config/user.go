@@ -15,7 +15,6 @@ const (
 	userConfigDirName  = "kira"
 	userConfigFileName = "config.yaml"
 	userHooksYAMLName  = "hooks.yaml"
-	userHooksJSONName  = "hooks.json"
 
 	userKeyUI         = "ui"
 	userKeyAutomation = "automation"
@@ -88,8 +87,8 @@ func readUserPrefs(path string, warn io.Writer) *datamodel.UI {
 }
 
 func readUserHooks(dir string, warn io.Writer) []datamodel.AutomationHook {
-	path := userHooksPath(dir, warn)
-	if path == "" {
+	path := filepath.Join(dir, userHooksYAMLName)
+	if !fileExists(path) {
 		return nil
 	}
 	ignore := ignorer(warn, path)
@@ -108,24 +107,6 @@ func readUserHooks(dir string, warn io.Writer) []datamodel.AutomationHook {
 		return nil
 	}
 	return hooks
-}
-
-func userHooksPath(dir string, warn io.Writer) string {
-	yamlPath := filepath.Join(dir, userHooksYAMLName)
-	jsonPath := filepath.Join(dir, userHooksJSONName)
-	yamlOK := fileExists(yamlPath)
-	jsonOK := fileExists(jsonPath)
-	switch {
-	case yamlOK:
-		if jsonOK {
-			ignorer(warn, jsonPath)("shadowed by %s", userHooksYAMLName)
-		}
-		return yamlPath
-	case jsonOK:
-		return jsonPath
-	default:
-		return ""
-	}
 }
 
 func readMapping(path string, ignore ignoreFunc) (*yaml.Node, bool) {
