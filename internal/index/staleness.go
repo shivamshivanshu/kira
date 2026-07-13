@@ -141,11 +141,43 @@ func ticketAbsPaths(toplevel string, relPaths []string) []string {
 	var out []string
 	for _, rel := range relPaths {
 		abs := filepath.Join(toplevel, rel)
-		if ulidFromPath(abs) != "" {
+		if storage.ULIDFromPath(abs) != "" {
 			out = append(out, abs)
 		}
 	}
 	return out
+}
+
+type FreshnessReport struct {
+	Built  bool
+	Fresh  bool
+	Reason string
+}
+
+func Probe(store *storage.Store, repo gitx.Repo) (FreshnessReport, error) {
+	prev, hasMeta := loadMetaAt(store.CacheDir())
+	if !hasMeta {
+		return FreshnessReport{}, nil
+	}
+	toplevel, head, err := repo.ToplevelHead()
+	if err != nil {
+		return FreshnessReport{}, err
+	}
+	root := gitx.Repo{Dir: toplevel}
+	pathspec, err := filepath.Rel(toplevel, store.TicketsDir())
+	if err != nil {
+		return FreshnessReport{}, errx.User("locating tickets under repo: %v", err)
+	}
+	statusPaths, err := root.StatusPorcelain(pathspec)
+	if err != nil {
+		return FreshnessReport{}, err
+	}
+	dirtyHash, dirtyPaths := dirtyState(ticketAbsPaths(toplevel, statusPaths))
+	d, err := decide(root, toplevel, pathspec, false, hasMeta, head, prev, dirtyHash, dirtyPaths)
+	if err != nil {
+		return FreshnessReport{}, err
+	}
+	return FreshnessReport{Built: true, Fresh: d.name == actionFresh, Reason: d.reason}, nil
 }
 
 func (i *Index) count() (int, error) {

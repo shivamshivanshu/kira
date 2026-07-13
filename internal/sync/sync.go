@@ -1,6 +1,7 @@
 // Package sync defines the report shape, dirty-tree policy, and seam interfaces
-// composed by `kira sync`. The reindex step is a seam: the real implementation
-// lands with the M2 index; until then a no-op reports the step as skipped.
+// composed by `kira sync`. The reindex step is a seam: core injects a real
+// reindexer backed by the index; the no-op stays for callers that run without
+// one and reports the step as skipped.
 package sync
 
 type StepStatus string
@@ -42,5 +43,5 @@ type Reindexer interface {
 type NoopReindexer struct{}
 
 func (NoopReindexer) Reindex() Step {
-	return Step{Name: "reindex", Status: StepSkipped, Detail: "index not available until M2"}
+	return Step{Name: "reindex", Status: StepSkipped, Detail: "no reindexer configured"}
 }

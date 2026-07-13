@@ -7,9 +7,11 @@ exec git config user.email test@example.com
 exec git config user.name tester
 exec kira init --key KIRA
 exec kira create ticket --title 'real one' --no-edit
+exec kira index
 
-# a clean repo reports ok and exits zero
+# a clean repo with a built index reports ok, a fresh index, and exits zero
 exec kira doctor
+stdout 'index is up to date'
 stdout 'ok: 0 error'
 
 # drop in broken items: schema/state/vocab/refs violations + a colliding number
@@ -22,6 +24,7 @@ stdout 'dangling-ref'
 stdout 'error   schema'
 stdout 'vocab'
 stdout 'id-collision'
+stdout 'index is stale'
 stdout 'problems found'
 
 # --json emits a machine-readable report on stdout and still exits non-zero

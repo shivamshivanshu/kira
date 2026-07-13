@@ -6,6 +6,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/index"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 type stateTransition struct {
@@ -68,7 +69,7 @@ func (s *Store) itemMetrics(cfg *datamodel.Config, it *datamodel.Item) (metricIt
 	}
 	mi := metricItem{
 		number:    it.Number,
-		estimate:  deref(it.Estimate),
+		estimate:  ptr.Deref(it.Estimate),
 		estimated: it.Estimate != nil,
 		dropped:   isDropped(it),
 	}

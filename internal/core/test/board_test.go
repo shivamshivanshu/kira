@@ -86,11 +86,30 @@ func TestBoardCountsAreGlobalWhileItemsAreEpicScoped(t *testing.T) {
 	}
 }
 
-func TestBoardAtIsSeamedOff(t *testing.T) {
+func TestBoardAtRendersHistoricalState(t *testing.T) {
 	s, cfg := newStore(t)
-	_, err := s.Board(cfg, core.BoardOpts{At: "HEAD"})
-	if err == nil || !strings.Contains(err.Error(), "requires the M3 tree-ish loader") {
-		t.Fatalf("board --at should return a clear seam error, got %v", err)
+	a := mustCreate(t, s, cfg, "a")
+	if _, err := s.Move(cfg, a.ID, "IN_PROGRESS", core.MoveOpts{}); err != nil {
+		t.Fatal(err)
+	}
+
+	now, err := s.Board(cfg, core.BoardOpts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ip := columnByState(now, "IN_PROGRESS"); len(ip.Items) != 1 {
+		t.Fatalf("current IN_PROGRESS should hold the moved ticket, got %+v", ip.Items)
+	}
+
+	past, err := s.Board(cfg, core.BoardOpts{At: "HEAD~1"})
+	if err != nil {
+		t.Fatalf("board --at through the tree-ish loader: %v", err)
+	}
+	if todo := columnByState(past, "TODO"); len(todo.Items) != 1 || todo.Items[0].ID != a.ID {
+		t.Fatalf("board --at HEAD~1 (pre-move) should show the ticket in TODO, got %+v", todo.Items)
+	}
+	if ip := columnByState(past, "IN_PROGRESS"); len(ip.Items) != 0 {
+		t.Fatalf("board --at HEAD~1 IN_PROGRESS should be empty, got %+v", ip.Items)
 	}
 }
 

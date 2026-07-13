@@ -23,12 +23,21 @@ stdout 'KIRA-1'
 # the WIP header shows n/wip whenever a wip limit is configured (IN_PROGRESS wip=3)
 stdout '1/3'
 
+# a second ticket, created after the move
+exec kira create ticket --title 'Later arrival' --no-edit
+
 # --json emits the documented columns contract
 exec kira board --json
 stdout '"state": "TODO"'
 stdout '"category": "todo"'
 stdout '"state": "IN_PROGRESS"'
 
-# --at is seamed off until the M3 tree-ish loader lands
-! exec kira board --at HEAD
-stderr 'requires the M3 tree-ish loader'
+# --at renders a static board as of an older ref through the tree-ish loader:
+# HEAD~2 predates both the move and KIRA-2
+exec kira board --plain --at HEAD~2
+stdout 'KIRA-1'
+! stdout 'KIRA-2'
+
+# the live board sees the later ticket
+exec kira board --plain
+stdout 'KIRA-2'

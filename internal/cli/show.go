@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/showfmt"
 )
 
@@ -64,13 +65,13 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 	line("id", r.ID)
 	line("type", r.Type)
 	line("category", r.Category)
-	line("priority", deref(r.Priority))
-	line("owner", deref(r.Owner))
-	line("reporter", deref(r.Reporter))
+	line("priority", ptr.Deref(r.Priority))
+	line("owner", ptr.Deref(r.Owner))
+	line("reporter", ptr.Deref(r.Reporter))
 	if len(r.Labels) > 0 {
 		line("labels", strings.Join(r.Labels, ", "))
 	}
-	line("epic", deref(r.Epic))
+	line("epic", ptr.Deref(r.Epic))
 	if len(r.BlockedBy) > 0 {
 		line("blocked_by", strings.Join(r.BlockedBy, ", "))
 	}
@@ -79,11 +80,4 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 	if strings.TrimSpace(r.Body) != "" {
 		fmt.Fprintf(w, "\n%s", r.Body)
 	}
-}
-
-func deref(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
 }

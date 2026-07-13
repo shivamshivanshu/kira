@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/rgx"
+	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
 type RowKind int
@@ -128,7 +128,7 @@ func (s *Store) findRipgrep(args FindArgs, items []*datamodel.Item) ([]FindRow, 
 			continue
 		}
 		number, itemID := l.Path, ""
-		if it := byULID[ulidFromPath(l.Path)]; it != nil {
+		if it := byULID[storage.ULIDFromPath(l.Path)]; it != nil {
 			number, itemID = it.Number, it.ID
 		}
 		if l.IsMatch {
@@ -176,8 +176,4 @@ func (s *Store) findFallback(args FindArgs, items []*datamodel.Item) ([]FindRow,
 		}
 	}
 	return rows, nil
-}
-
-func ulidFromPath(path string) string {
-	return strings.TrimSuffix(filepath.Base(path), ".md")
 }

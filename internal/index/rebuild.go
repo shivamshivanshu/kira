@@ -44,7 +44,7 @@ func (i *Index) refresh(absPaths []string) error {
 	}
 	defer tx.Rollback()
 	for _, abs := range absPaths {
-		ulid := ulidFromPath(abs)
+		ulid := storage.ULIDFromPath(abs)
 		if ulid == "" {
 			continue
 		}
@@ -130,11 +130,6 @@ func dirtyState(absPaths []string) (string, []string) {
 		h.Write([]byte{0})
 	}
 	return hex.EncodeToString(h.Sum(nil)), sorted
-}
-
-func ulidFromPath(path string) string {
-	ulid, _ := storage.ULIDFromFilename(filepath.Base(path))
-	return ulid
 }
 
 func commit(tx *sql.Tx) error {

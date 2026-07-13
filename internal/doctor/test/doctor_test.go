@@ -288,7 +288,7 @@ func TestRunFreshnessSeam(t *testing.T) {
 	}
 
 	fresh := env
-	fresh.Freshness = &doctor.Freshness{Fresh: false, Reason: "head-advanced"}
+	fresh.Freshness = &doctor.Freshness{Built: true, Fresh: false, Reason: "head-advanced"}
 	stale := doctor.Run(config.Default(), nil, fresh)
 	for _, f := range stale.Findings {
 		if f.Class == doctor.ClassFreshness && f.Severity == doctor.SeverityWarning {

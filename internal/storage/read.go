@@ -22,10 +22,15 @@ func ReadItem(path string) (*datamodel.Item, error) {
 }
 
 func ULIDFromFilename(name string) (string, bool) {
-	if !strings.HasSuffix(name, ".md") || strings.HasPrefix(name, ".") {
+	if !isTicketFilename(name) {
 		return "", false
 	}
 	return strings.TrimSuffix(name, ".md"), true
+}
+
+func ULIDFromPath(p string) string {
+	ulid, _ := ULIDFromFilename(filepath.Base(p))
+	return ulid
 }
 
 func (s *Store) LoadAll() ([]*datamodel.Item, error) {

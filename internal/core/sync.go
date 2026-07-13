@@ -7,6 +7,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/index"
 	syncpkg "github.com/shivamshivanshu/kira/internal/sync"
 )
 
@@ -21,7 +22,7 @@ func (s *Store) Sync(cfg *datamodel.Config, opts SyncOpts, reindexer syncpkg.Rei
 		return nil, err
 	}
 	if reindexer == nil {
-		reindexer = syncpkg.NoopReindexer{}
+		reindexer = storeReindexer{store: s, cfg: cfg}
 	}
 	repo := s.repo()
 	report = &syncpkg.Report{}
@@ -55,7 +56,11 @@ func (s *Store) Sync(cfg *datamodel.Config, opts SyncOpts, reindexer syncpkg.Rei
 	}
 	report.Add("reconcile", syncpkg.StepDone, detail)
 
-	report.Steps = append(report.Steps, reindexer.Reindex())
+	reindexStep := reindexer.Reindex()
+	report.Steps = append(report.Steps, reindexStep)
+	if reindexStep.Status == syncpkg.StepDone {
+		report.Steps = append(report.Steps, s.syncCloses(cfg))
+	}
 
 	if opts.Push || cfg.Sync.Push {
 		if e := repo.Push(opts.Remote); e != nil {
@@ -65,6 +70,30 @@ func (s *Store) Sync(cfg *datamodel.Config, opts SyncOpts, reindexer syncpkg.Rei
 		report.Add("push", syncpkg.StepDone, "")
 	}
 	return report, nil
+}
+
+type storeReindexer struct {
+	store *Store
+	cfg   *datamodel.Config
+}
+
+func (r storeReindexer) Reindex() syncpkg.Step {
+	res, err := index.Refresh(r.store.fs(), r.store.repo(), indexOptions(r.cfg), false)
+	if err != nil {
+		return syncpkg.Step{Name: "reindex", Status: syncpkg.StepFailed, Detail: err.Error()}
+	}
+	return syncpkg.Step{Name: "reindex", Status: syncpkg.StepDone, Detail: fmt.Sprintf("%d items", res.Items)}
+}
+
+func (s *Store) syncCloses(cfg *datamodel.Config) syncpkg.Step {
+	res, err := s.Index(cfg, false, true)
+	if err != nil {
+		return syncpkg.Step{Name: "closes", Status: syncpkg.StepFailed, Detail: err.Error()}
+	}
+	if len(res.Closed) == 0 {
+		return syncpkg.Step{Name: "closes", Status: syncpkg.StepDone, Detail: "no transitions"}
+	}
+	return syncpkg.Step{Name: "closes", Status: syncpkg.StepDone, Detail: fmt.Sprintf("closed %s", strings.Join(res.Closed, ", "))}
 }
 
 func (s *Store) prepareTree(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts, report *syncpkg.Report) (bool, error) {

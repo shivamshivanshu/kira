@@ -250,7 +250,7 @@ func (i *Index) numberToULID() (map[string]string, error) {
 
 func (i *Index) CommitLinks(itemID string) ([]CommitLink, error) {
 	rows, err := i.db.Query(`SELECT sha, subject, author, ts FROM commit_links
-		WHERE item_id = ? ORDER BY ts DESC, rowid`, itemID)
+		WHERE item_id = ? ORDER BY source = ? DESC, ts DESC, rowid`, itemID, sourceTrailer)
 	if err != nil {
 		return nil, errx.User("querying commit links: %v", err)
 	}

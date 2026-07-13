@@ -19,7 +19,7 @@ func indexByEpic(items []*datamodel.Item) (map[string]*datamodel.Item, map[strin
 }
 
 func (s *Store) EpicProgress(cfg *datamodel.Config) (map[string]datamodel.EpicProgress, error) {
-	items, err := s.LoadAll()
+	items, _, _, _, err := s.indexedLoad(cfg)
 	if err != nil {
 		return nil, err
 	}

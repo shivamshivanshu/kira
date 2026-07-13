@@ -12,25 +12,30 @@ type BoardOpts struct {
 }
 
 func (s *Store) Board(cfg *datamodel.Config, opts BoardOpts) (*datamodel.BoardResult, error) {
+	wfCfg := cfg
 	if opts.At != "" {
-		return nil, errx.User("board --at requires the M3 tree-ish loader (not yet available)")
+		_, _, atCfg, err := s.listView(cfg, opts.At)
+		if err != nil {
+			return nil, err
+		}
+		wfCfg = atCfg
 	}
 	typ := opts.Type
 	if typ == "" {
 		typ = datamodel.TypeTicket
 	}
-	wf, ok := cfg.Workflows[typ]
+	wf, ok := wfCfg.Workflows[typ]
 	if !ok {
 		return nil, errx.User("no workflow configured for type %q", typ)
 	}
 
-	global, err := s.List(cfg, ListOpts{Type: typ})
+	global, err := s.List(cfg, ListOpts{Type: typ, At: opts.At})
 	if err != nil {
 		return nil, err
 	}
 	shown := global
 	if opts.Epic != "" {
-		if shown, err = s.List(cfg, ListOpts{Type: typ, Epic: opts.Epic}); err != nil {
+		if shown, err = s.List(cfg, ListOpts{Type: typ, Epic: opts.Epic, At: opts.At}); err != nil {
 			return nil, err
 		}
 	}

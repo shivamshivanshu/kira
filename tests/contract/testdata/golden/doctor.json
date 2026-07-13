@@ -19,7 +19,7 @@
     {
       "class": "index-freshness",
       "severity": "info",
-      "message": "index freshness not checked (index unavailable)"
+      "message": "index not built yet; it builds on first read"
     }
   ],
   "summary": {

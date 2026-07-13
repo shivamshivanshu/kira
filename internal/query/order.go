@@ -1,6 +1,9 @@
 package query
 
-import "github.com/shivamshivanshu/kira/internal/datamodel"
+import (
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/ptr"
+)
 
 type OrderKey struct {
 	null    bool
@@ -14,7 +17,7 @@ func (o *Order) Keyer(cfg *datamodel.Config) func(*datamodel.Item) OrderKey {
 	case fieldPriority:
 		index := PriorityIndex(cfg.Priorities)
 		return func(it *datamodel.Item) OrderKey {
-			idx, ok := index[deref(it.Priority)]
+			idx, ok := index[ptr.Deref(it.Priority)]
 			if !ok {
 				return OrderKey{null: true}
 			}

@@ -231,11 +231,4 @@ func closedSprints(cfg *datamodel.Config, today string) []datamodel.Sprint {
 	return closed
 }
 
-func deref(p *float64) float64 {
-	if p == nil {
-		return 0
-	}
-	return *p
-}
-
 func round1(x float64) float64 { return math.Round(x*10) / 10 }

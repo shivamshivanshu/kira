@@ -8,6 +8,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/doctor"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/index"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
@@ -46,8 +47,21 @@ func gitDir(repo gitx.Repo, root string) string {
 	return p
 }
 
-func indexFreshnessReporter(_ string, _ gitx.Repo) doctor.FreshnessReporter {
-	return nil
+type indexFreshness struct {
+	store *storage.Store
+	repo  gitx.Repo
+}
+
+func (r indexFreshness) Freshness() (doctor.Freshness, error) {
+	rep, err := index.Probe(r.store, r.repo)
+	if err != nil {
+		return doctor.Freshness{}, err
+	}
+	return doctor.Freshness{Built: rep.Built, Fresh: rep.Fresh, Reason: rep.Reason}, nil
+}
+
+func indexFreshnessReporter(root string, repo gitx.Repo) doctor.FreshnessReporter {
+	return indexFreshness{store: storage.New(root), repo: repo}
 }
 
 func missingBinaries(names ...string) []string {

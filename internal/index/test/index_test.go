@@ -368,6 +368,40 @@ func TestCorruptedDBRecovers(t *testing.T) {
 	}
 }
 
+func TestProbeReportsFreshnessReadOnly(t *testing.T) {
+	f := newRepo(t)
+	f.writeTicket(t, "01J8X7B1Q2W3E4R5T6Y7U8I9O0", ticket("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first"))
+	f.commit(t, "one")
+
+	rep, err := index.Probe(f.store, f.repo)
+	if err != nil {
+		t.Fatalf("Probe before build: %v", err)
+	}
+	if rep.Built || rep.Fresh {
+		t.Fatalf("probe before build = %+v, want absent (not built)", rep)
+	}
+
+	idx := open(t, f)
+	ensure(t, idx, f)
+
+	rep, err = index.Probe(f.store, f.repo)
+	if err != nil {
+		t.Fatalf("Probe after build: %v", err)
+	}
+	if !rep.Built || !rep.Fresh {
+		t.Fatalf("probe after build = %+v, want built+fresh", rep)
+	}
+
+	f.writeTicket(t, "01J8X8Q7RZTN5Y3VXW2A9K4E7F", ticket("01J8X8Q7RZTN5Y3VXW2A9K4E7F", "KIRA-2", "second"))
+	rep, err = index.Probe(f.store, f.repo)
+	if err != nil {
+		t.Fatalf("Probe after edit: %v", err)
+	}
+	if rep.Fresh {
+		t.Fatalf("probe after uncommitted edit = %+v, want stale", rep)
+	}
+}
+
 func open(t *testing.T, f repoFixture) *index.Index {
 	t.Helper()
 	idx, err := index.Open(f.store.CacheDir())

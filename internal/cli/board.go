@@ -43,6 +43,6 @@ func newBoardCmd(g *globalFlags) *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.BoolVar(&plain, "plain", false, "force the static table instead of launching the interactive board")
-	f.StringVar(&at, "at", "", "render the board at a git ref (requires the M3 tree-ish loader)")
+	f.StringVar(&at, "at", "", "render the board as of a git ref (static, read-only)")
 	return cmd
 }

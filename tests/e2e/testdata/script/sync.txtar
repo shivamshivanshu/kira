@@ -1,5 +1,6 @@
-# kira sync against a local bare remote: pull --rebase, reconcile, skipped
-# reindex, push, and a two-clone round-trip.
+# kira sync against a local bare remote: pull --rebase, reconcile, a real
+# reindex that leaves the index fresh, close-scan of the landed ref, push, and a
+# two-clone round-trip that lands a Kira-Closes commit through sync.
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
@@ -10,13 +11,15 @@ env GIT_COMMITTER_EMAIL=test@example.com
 
 exec git init --bare origin.git
 
-# clone A: initialize kira and publish the baseline.
+# clone A: initialize kira on main and publish the baseline.
 exec git clone origin.git a
 cd $WORK/a
+exec git symbolic-ref HEAD refs/heads/main
 exec kira init --key KIRA
 exec kira hooks install
 exec kira create ticket --title 'from A' --no-edit
 exec git push -u origin HEAD
+exec git -C $WORK/origin.git symbolic-ref HEAD refs/heads/main
 
 # clone B sees the baseline.
 cd $WORK
@@ -25,22 +28,35 @@ cd $WORK/b
 exec kira list --json
 stdout 'from A'
 
-# A adds a ticket and publishes it via sync --push.
+# A adds a ticket and publishes it via sync --push; the reindex step is real.
 cd $WORK/a
 exec kira create ticket --title 'A second' --no-edit
 exec kira sync --push
 stdout 'reconcile:'
-stdout 'reindex:'
-stdout 'skipped'
+stdout 'reindex: +done'
+stdout 'closes:'
 stdout 'push:'
 
-# B pulls it down (pull actually fetches new state here).
+# B pulls it down (pull actually fetches new state here) and the index is fresh.
 cd $WORK/b
 exec kira sync
 stdout 'pull:'
 exec kira list --json
 stdout 'from A'
 stdout 'A second'
+
+# A lands a Kira-Closes commit on the shared branch and publishes it.
+cd $WORK/a
+exec sleep 1
+exec git commit --allow-empty -m 'ship KIRA-1' -m 'Kira-Closes: KIRA-1'
+exec git push
+
+# B syncs: the landed close arrives and fires the done-transition locally.
+cd $WORK/b
+exec kira sync
+stdout 'closes: +done \(closed KIRA-1\)'
+exec kira show KIRA-1 --json
+stdout '"category": "done"'
 
 # round-trip: B creates and publishes, A pulls it.
 exec kira create ticket --title 'from B' --no-edit

@@ -1,6 +1,7 @@
 package doctor
 
 type Freshness struct {
+	Built  bool   `json:"built"`
 	Fresh  bool   `json:"fresh"`
 	Reason string `json:"reason"`
 }
@@ -101,19 +102,14 @@ func hookFindings(env Env) []Finding {
 }
 
 func freshnessFinding(f *Freshness) Finding {
-	if f == nil {
-		return Finding{
-			Class:    ClassFreshness,
-			Severity: SeverityInfo,
-			Message:  "index freshness not checked (index unavailable)",
-		}
-	}
-	if f.Fresh {
+	switch {
+	case f == nil:
+		return Finding{Class: ClassFreshness, Severity: SeverityInfo, Message: "index freshness not checked (index unavailable)"}
+	case !f.Built:
+		return Finding{Class: ClassFreshness, Severity: SeverityInfo, Message: "index not built yet; it builds on first read"}
+	case f.Fresh:
 		return Finding{Class: ClassFreshness, Severity: SeverityInfo, Message: "index is up to date"}
-	}
-	return Finding{
-		Class:    ClassFreshness,
-		Severity: SeverityWarning,
-		Message:  "index is stale (" + f.Reason + "); run `kira index`",
+	default:
+		return Finding{Class: ClassFreshness, Severity: SeverityWarning, Message: "index is stale (" + f.Reason + "); run `kira index`"}
 	}
 }

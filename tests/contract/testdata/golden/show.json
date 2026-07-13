@@ -41,6 +41,86 @@
       "text": "first comment"
     }
   ],
-  "linked_commits": [],
-  "history_tail": []
+  "linked_commits": [
+    {
+      "sha": "<SHA>",
+      "subject": "kira: KIRA-2 state TODO -> IN_PROGRESS",
+      "author": "tester",
+      "ts": "<TS>"
+    },
+    {
+      "sha": "<SHA>",
+      "subject": "kira: KIRA-2 comment",
+      "author": "tester",
+      "ts": "<TS>"
+    },
+    {
+      "sha": "<SHA>",
+      "subject": "kira: KIRA-2 link relates KIRA-3",
+      "author": "tester",
+      "ts": "<TS>"
+    },
+    {
+      "sha": "<SHA>",
+      "subject": "kira: KIRA-2 link blocked-by KIRA-3",
+      "author": "tester",
+      "ts": "<TS>"
+    },
+    {
+      "sha": "<SHA>",
+      "subject": "kira: KIRA-2 edit subtype,priority,rank,reporter,sprint,due",
+      "author": "tester",
+      "ts": "<TS>"
+    },
+    {
+      "sha": "<SHA>",
+      "subject": "kira: create KIRA-2 \"Rich ticket\"",
+      "author": "tester",
+      "ts": "<TS>"
+    }
+  ],
+  "history_tail": [
+    {
+      "ts": "<TS>",
+      "field": "state",
+      "from": "TODO",
+      "to": "IN_PROGRESS"
+    },
+    {
+      "ts": "<TS>",
+      "field": "subtype",
+      "from": null,
+      "to": "bug"
+    },
+    {
+      "ts": "<TS>",
+      "field": "priority",
+      "from": null,
+      "to": "P1"
+    },
+    {
+      "ts": "<TS>",
+      "field": "rank",
+      "from": null,
+      "to": "0|hzzzzz:"
+    },
+    {
+      "ts": "<TS>",
+      "field": "reporter",
+      "from": null,
+      "to": "alice"
+    },
+    {
+      "ts": "<TS>",
+      "field": "sprint",
+      "from": null,
+      "to": "2026-S14"
+    },
+    {
+      "ts": "<TS>",
+      "field": "due",
+      "from": null,
+      "to": "2026-07-20"
+    }
+  ]
 }

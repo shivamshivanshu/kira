@@ -22,9 +22,11 @@ stdout '"number": "KIRA-2"'
 exec git rev-list --count HEAD
 stdout '^3$'
 
-# show reads the file directly; index-derived fields are present but empty pre-M2
+# show carries index-derived fields: the creation commit links back via its
+# Kira-Ticket trailer, while a freshly created ticket has no history events yet
 exec kira show KIRA-1 --json
 stdout '"title": "First ticket"'
 stdout '"blocks": \[\]'
-stdout '"linked_commits": \[\]'
+stdout '"linked_commits":'
+stdout 'kira: create KIRA-1'
 stdout '"history_tail": \[\]'
