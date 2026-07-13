@@ -9,10 +9,11 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
 func Load(root string) (*datamodel.Config, error) {
-	path := filepath.Join(root, ".kira", "config.yaml")
+	path := filepath.Join(root, storage.ConfigRelPath)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("config: reading %s: %w", path, err)

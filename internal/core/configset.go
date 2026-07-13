@@ -8,6 +8,14 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
+func Filters(cfg *datamodel.Config) *datamodel.FilterListResult {
+	views := make([]datamodel.FilterView, 0, len(cfg.Filters))
+	for _, name := range filterNames(cfg) {
+		views = append(views, datamodel.FilterView{Name: name, Query: cfg.Filters[name]})
+	}
+	return &datamodel.FilterListResult{Filters: views}
+}
+
 func (s *Store) ConfigSet(cfg *datamodel.Config, key, value string) (*datamodel.ConfigSetResult, error) {
 	fs := s.fs()
 	release, err := fs.Lock()
@@ -27,8 +35,8 @@ func (s *Store) ConfigSet(cfg *datamodel.Config, key, value string) (*datamodel.
 	if err := os.WriteFile(fs.ConfigPath(), out, 0o644); err != nil {
 		return nil, errx.User("writing config: %v", err)
 	}
-	subject := "kira: config set " + key
-	if _, err := s.finalize(cfg.Commit.Mode, cfg.Commit.Trailer, subject, "", fs.RelToRoot(fs.ConfigPath())); err != nil {
+	subject := subjectPrefix + "config set " + key
+	if _, err := s.finalize(cfg.Commit.Mode, commitSpec{trailerKey: cfg.Commit.Trailer, subject: subject}, fs.RelToRoot(fs.ConfigPath())); err != nil {
 		return nil, err
 	}
 	return &datamodel.ConfigSetResult{Key: key, Value: value}, nil

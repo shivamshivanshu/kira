@@ -74,7 +74,6 @@ ui:
 
 estimate:
   unit: points                # points | hours
-  hours_per_day: 8            # working hours per day, for the hours↔days rollups
 
 # --- optional blocks: uncomment and edit to enable (defaults shown are inert) ---
 

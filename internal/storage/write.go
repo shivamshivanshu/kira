@@ -9,37 +9,79 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-func (s *Store) WriteItem(it *datamodel.Item) (string, error) {
+func (s *FS) WriteItem(it *datamodel.Item) (string, error) {
 	return s.WriteItemRaw(it.ID, codec.Serialize(it))
 }
 
-func (s *Store) WriteItemRaw(ulid, content string) (string, error) {
+func (s *FS) WriteItemRaw(ulid, content string) (string, error) {
 	if err := os.MkdirAll(s.ItemsDir(), 0o755); err != nil {
 		return "", errx.User("creating tickets dir: %v", err)
 	}
 	dst := s.ItemPath(ulid)
-	tmp := filepath.Join(s.ItemsDir(), "."+ulid+".md.tmp")
-	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	af, err := createAtomicFile(s.ItemsDir(), "."+ulid+itemExt+".tmp")
 	if err != nil {
 		return "", errx.User("creating temp file: %v", err)
 	}
-	if _, err := f.WriteString(content); err != nil {
-		f.Close()
-		os.Remove(tmp)
+	defer af.cleanup()
+
+	if err := af.write(content); err != nil {
 		return "", errx.User("writing temp file: %v", err)
 	}
-	if err := f.Sync(); err != nil {
-		f.Close()
-		os.Remove(tmp)
+	if err := af.sync(); err != nil {
 		return "", errx.User("syncing temp file: %v", err)
 	}
-	if err := f.Close(); err != nil {
-		os.Remove(tmp)
+	if err := af.close(); err != nil {
 		return "", errx.User("closing temp file: %v", err)
 	}
-	if err := os.Rename(tmp, dst); err != nil {
-		os.Remove(tmp)
+	if err := af.commit(dst); err != nil {
 		return "", errx.User("renaming into place: %v", err)
 	}
 	return s.RelToRoot(dst), nil
+}
+
+type atomicFile struct {
+	f         *os.File
+	path      string
+	closed    bool
+	committed bool
+}
+
+func createAtomicFile(dir, name string) (*atomicFile, error) {
+	path := filepath.Join(dir, name)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	if err != nil {
+		return nil, err
+	}
+	return &atomicFile{f: f, path: path}, nil
+}
+
+func (a *atomicFile) write(content string) error {
+	_, err := a.f.WriteString(content)
+	return err
+}
+
+func (a *atomicFile) sync() error { return a.f.Sync() }
+
+func (a *atomicFile) close() error {
+	if a.closed {
+		return nil
+	}
+	a.closed = true
+	return a.f.Close()
+}
+
+func (a *atomicFile) commit(dst string) error {
+	if err := os.Rename(a.path, dst); err != nil {
+		return err
+	}
+	a.committed = true
+	return nil
+}
+
+func (a *atomicFile) cleanup() {
+	if a.committed {
+		return
+	}
+	a.close()
+	os.Remove(a.path)
 }

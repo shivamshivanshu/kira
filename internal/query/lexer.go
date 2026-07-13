@@ -28,7 +28,13 @@ type token struct {
 	pos  int
 }
 
-func (t token) isCmp() bool { return t.kind >= tokEq && t.kind <= tokGe }
+func (t token) isCmp() bool {
+	switch t.kind {
+	case tokEq, tokNe, tokLt, tokLe, tokGt, tokGe:
+		return true
+	}
+	return false
+}
 
 func (t token) cmpText() string {
 	switch t.kind {

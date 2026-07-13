@@ -67,8 +67,7 @@ type Git struct {
 }
 
 type Estimate struct {
-	Unit        EstimateUnit `yaml:"unit"`
-	HoursPerDay float64      `yaml:"hours_per_day"`
+	Unit EstimateUnit `yaml:"unit"`
 }
 
 const SchemaVersion = 1

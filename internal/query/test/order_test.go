@@ -30,7 +30,7 @@ func fixture() (items []*datamodel.Item, cfg *datamodel.Config) {
 		Labels: []string{"bug"}, Epic: strp(epicID),
 		Subtype: strp("bug"), Rank: strp("aam"), Sprint: strp("2026-S14"),
 		Due: strp("2026-07-20"), Estimate: f64p(3),
-		BlockedBy: []string{it2ID}, Links: map[string][]string{datamodel.LinkRelates: {it3ID}},
+		BlockedBy: []string{it2ID}, Links: map[string][]string{string(datamodel.LinkRelates): {it3ID}},
 		Created: "2026-07-05T00:00:00Z", Updated: "2026-07-06T00:00:00Z",
 	}
 	it2 := &datamodel.Item{
@@ -100,5 +100,18 @@ func TestOrderBy(t *testing.T) {
 		if s := strings.Join(got, ","); s != tc.want {
 			t.Errorf("%q ordered %s, want %s", tc.expr, s, tc.want)
 		}
+	}
+}
+
+func TestOrderLessEqualStringKeys(t *testing.T) {
+	items, cfg := fixture()
+	q, err := query.Parse("x ORDER BY owner")
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	keyOf := q.Order.Keyer(cfg)
+	a, b := keyOf(items[1]), keyOf(items[3])
+	if q.Order.Less(a, b) || q.Order.Less(b, a) {
+		t.Errorf("equal string keys (both owner shivam) must not compare Less in either direction")
 	}
 }

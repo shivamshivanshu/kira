@@ -14,7 +14,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
-func (i *Index) full(store *storage.Store) ([]string, error) {
+func (i *Index) full(store *storage.FS) ([]string, error) {
 	items, warnings, err := store.LoadAll()
 	if err != nil {
 		return nil, err
@@ -74,10 +74,10 @@ func insertItem(tx *sql.Tx, it *datamodel.Item) error {
 		(id, number, type, subtype, title, state, resolution, priority, rank,
 		 owner, reporter, epic, sprint, due, estimate, created, updated)
 		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		it.ID, it.Number, it.Type, nullStr(it.Subtype), it.Title, it.State,
-		nullStr(it.Resolution), nullStr(it.Priority), nullStr(it.Rank), nullStr(it.Owner),
-		nullStr(it.Reporter), nullStr(it.Epic), nullStr(it.Sprint), nullStr(it.Due),
-		nullFloat(it.Estimate), it.Created, it.Updated); err != nil {
+		it.ID, it.Number, it.Type, nullable(it.Subtype), it.Title, it.State,
+		nullable(it.Resolution), nullable(it.Priority), nullable(it.Rank), nullable(it.Owner),
+		nullable(it.Reporter), nullable(it.Epic), nullable(it.Sprint), nullable(it.Due),
+		nullable(it.Estimate), it.Created, it.Updated); err != nil {
 		return errx.User("inserting index item %s: %v", it.ID, err)
 	}
 	for ord, alias := range it.Aliases {
@@ -99,9 +99,9 @@ func insertItem(tx *sql.Tx, it *datamodel.Item) error {
 		ord++
 	}
 	for _, kind := range datamodel.LinkTypes {
-		for _, target := range it.Links[kind] {
+		for _, target := range it.Links[string(kind)] {
 			if _, err := tx.Exec("INSERT INTO links (item_id, ord, kind, target_id) VALUES (?,?,?,?)",
-				it.ID, ord, kind, target); err != nil {
+				it.ID, ord, string(kind), target); err != nil {
 				return errx.User("inserting index link: %v", err)
 			}
 			ord++
@@ -143,14 +143,7 @@ func commit(tx *sql.Tx) error {
 	return nil
 }
 
-func nullStr(p *string) any {
-	if p == nil {
-		return nil
-	}
-	return *p
-}
-
-func nullFloat(p *float64) any {
+func nullable[T any](p *T) any {
 	if p == nil {
 		return nil
 	}

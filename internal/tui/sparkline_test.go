@@ -21,15 +21,3 @@ func TestSparklineFlatAndEmpty(t *testing.T) {
 		t.Fatalf("all-zero series = %q, want lowest level", s)
 	}
 }
-
-func TestHbarScales(t *testing.T) {
-	if b := hbar(4, 8, 8, true); b != "████    " {
-		t.Fatalf("half bar = %q", b)
-	}
-	if b := hbar(0, 8, 4, false); b != "    " {
-		t.Fatalf("zero bar = %q", b)
-	}
-	if b := hbar(8, 8, 4, false); b != "####" {
-		t.Fatalf("full bar = %q", b)
-	}
-}

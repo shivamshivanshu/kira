@@ -59,7 +59,7 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 			}
 		}
 		for _, lt := range datamodel.LinkTypes {
-			if fl := core.FlagForLinkType(lt); c.Flags().Lookup(fl) != nil {
+			if fl := core.FlagForLinkType(string(lt)); c.Flags().Lookup(fl) != nil {
 				_ = c.RegisterFlagCompletionFunc(fl, items)
 			}
 		}

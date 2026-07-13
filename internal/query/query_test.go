@@ -30,7 +30,7 @@ func fixture() (items []*datamodel.Item, opts Options, cfg *datamodel.Config) {
 		Labels: []string{"bug"}, Epic: strp(epicID),
 		Subtype: strp("bug"), Rank: strp("aam"), Sprint: strp("2026-S14"),
 		Due: strp("2026-07-20"), Estimate: f64p(3),
-		BlockedBy: []string{it2ID}, Links: map[string][]string{datamodel.LinkRelates: {it3ID}},
+		BlockedBy: []string{it2ID}, Links: map[string][]string{string(datamodel.LinkRelates): {it3ID}},
 		Created: "2026-07-05T00:00:00Z", Updated: "2026-07-06T00:00:00Z",
 	}
 	it2 := &datamodel.Item{
@@ -251,5 +251,8 @@ func TestMatch(t *testing.T) {
 	}
 	if _, err := Match("created", "2026-01-01", opts); err == nil {
 		t.Errorf("Match on a date field should be rejected")
+	}
+	if _, err := Match("bogus", "x", opts); err == nil {
+		t.Errorf("Match on an unknown field should be rejected")
 	}
 }

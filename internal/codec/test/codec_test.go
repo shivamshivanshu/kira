@@ -102,8 +102,8 @@ func TestParseFields(t *testing.T) {
 		t.Errorf("resolution = %q, want absent", *it.Resolution)
 	}
 	wantLinks := map[string][]string{
-		datamodel.LinkRelates:     {"01J8XB3K9P0Q2R4S6T8V0W1X2Y"},
-		datamodel.LinkDuplicateOf: {"01J8XC4M0N1P2Q3R4S5T6U7V8W"},
+		string(datamodel.LinkRelates):     {"01J8XB3K9P0Q2R4S6T8V0W1X2Y"},
+		string(datamodel.LinkDuplicateOf): {"01J8XC4M0N1P2Q3R4S5T6U7V8W"},
 	}
 	if !reflect.DeepEqual(it.Links, wantLinks) {
 		t.Errorf("links = %v, want %v", it.Links, wantLinks)
@@ -186,7 +186,7 @@ func TestLinksCanonicalization(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	want := map[string][]string{datamodel.LinkDuplicateOf: {"01J8XC4M0N1P2Q3R4S5T6U7V8W"}}
+	want := map[string][]string{string(datamodel.LinkDuplicateOf): {"01J8XC4M0N1P2Q3R4S5T6U7V8W"}}
 	if !reflect.DeepEqual(it.Links, want) {
 		t.Fatalf("links = %v, want %v", it.Links, want)
 	}

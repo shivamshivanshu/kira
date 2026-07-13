@@ -18,7 +18,7 @@ import (
 
 type repoFixture struct {
 	root  string
-	store *storage.Store
+	store *storage.FS
 	repo  gitx.Repo
 }
 

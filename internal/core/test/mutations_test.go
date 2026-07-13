@@ -204,25 +204,25 @@ func TestLinkTyped(t *testing.T) {
 	a := mustCreate(t, s, cfg, "A")
 	b := mustCreate(t, s, cfg, "B")
 
-	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkTyped, Type: datamodel.LinkRelates, Ref: b.Number}); err != nil {
+	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkTyped, Type: string(datamodel.LinkRelates), Ref: b.Number}); err != nil {
 		t.Fatalf("link relates: %v", err)
 	}
-	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkTyped, Type: datamodel.LinkDuplicateOf, Ref: b.Number}); err != nil {
+	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkTyped, Type: string(datamodel.LinkDuplicateOf), Ref: b.Number}); err != nil {
 		t.Fatalf("link duplicate-of: %v", err)
 	}
 	show, _ := s.Show(cfg, a.Number, "")
-	if !slices.Equal(show.Links[datamodel.LinkRelates], []string{b.ID}) ||
-		!slices.Equal(show.Links[datamodel.LinkDuplicateOf], []string{b.ID}) {
+	if !slices.Equal(show.Links[string(datamodel.LinkRelates)], []string{b.ID}) ||
+		!slices.Equal(show.Links[string(datamodel.LinkDuplicateOf)], []string{b.ID}) {
 		t.Fatalf("links = %v, want %s in both types", show.Links, b.ID)
 	}
 
-	res, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkTyped, Type: datamodel.LinkRelates, Ref: b.Number})
+	res, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkTyped, Type: string(datamodel.LinkRelates), Ref: b.Number})
 	if err != nil || len(res.Changed) != 0 {
 		t.Fatalf("re-link: changed = %v, err = %v", res.Changed, err)
 	}
 
 	for _, typ := range datamodel.LinkTypes {
-		if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkTyped, Type: typ, Ref: b.Number, Remove: true}); err != nil {
+		if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkTyped, Type: string(typ), Ref: b.Number, Remove: true}); err != nil {
 			t.Fatalf("unlink %s: %v", typ, err)
 		}
 	}
@@ -234,10 +234,10 @@ func TestLinkTyped(t *testing.T) {
 		t.Fatalf("links key must be omitted once empty:\n%s", data)
 	}
 
-	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkTyped, Type: datamodel.LinkRelates, Ref: a.Number}); err == nil {
+	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkTyped, Type: string(datamodel.LinkRelates), Ref: a.Number}); err == nil {
 		t.Fatal("self relates-link: expected rejection")
 	}
-	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkTyped, Type: datamodel.LinkRelates, Ref: "KIRA-999"}); err == nil {
+	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkTyped, Type: string(datamodel.LinkRelates), Ref: "KIRA-999"}); err == nil {
 		t.Fatal("dangling relates-link: expected rejection")
 	}
 }

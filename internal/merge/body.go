@@ -49,20 +49,22 @@ func unionComments(groups ...[]datamodel.Comment) []datamodel.Comment {
 	for _, c := range byID {
 		out = append(out, c)
 	}
-	slices.SortFunc(out, func(a, b datamodel.Comment) int {
-		ta, ea := time.Parse(time.RFC3339, a.Ts)
-		tb, eb := time.Parse(time.RFC3339, b.Ts)
-		if ea == nil && eb == nil && !ta.Equal(tb) {
-			return ta.Compare(tb)
-		}
-		switch {
-		case a.ID < b.ID:
-			return -1
-		case a.ID > b.ID:
-			return 1
-		default:
-			return 0
-		}
-	})
+	slices.SortFunc(out, compareComments)
 	return out
+}
+
+func compareComments(a, b datamodel.Comment) int {
+	ta, ea := time.Parse(time.RFC3339, a.Ts)
+	tb, eb := time.Parse(time.RFC3339, b.Ts)
+	if ea == nil && eb == nil && !ta.Equal(tb) {
+		return ta.Compare(tb)
+	}
+	switch {
+	case a.ID < b.ID:
+		return -1
+	case a.ID > b.ID:
+		return 1
+	default:
+		return 0
+	}
 }

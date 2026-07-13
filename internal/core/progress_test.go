@@ -22,7 +22,7 @@ func ticket(id, state string, resolution *string) *datamodel.Item {
 	return &datamodel.Item{ID: id, Type: datamodel.TypeTicket, State: state, Resolution: resolution}
 }
 
-func TestAccumulateProgressDroppedExcludedFromNumerator(t *testing.T) {
+func TestEpicProgressDroppedExcludedFromNumerator(t *testing.T) {
 	dropped := datamodel.ResolutionDropped
 	children := map[string][]*datamodel.Item{
 		"E1": {
@@ -33,8 +33,7 @@ func TestAccumulateProgressDroppedExcludedFromNumerator(t *testing.T) {
 		},
 		"E2": {ticket("T4", "DONE", nil)},
 	}
-	var p datamodel.EpicProgress
-	accumulateProgress(progressCfg(), children, "E1", map[string]bool{}, &p)
+	p := epicProgress(progressCfg(), children, "E1")
 	if p.Total != 4 {
 		t.Errorf("total = %d, want 4 (dropped counts toward denominator)", p.Total)
 	}
@@ -43,13 +42,23 @@ func TestAccumulateProgressDroppedExcludedFromNumerator(t *testing.T) {
 	}
 }
 
-func TestAccumulateProgressCycleSafe(t *testing.T) {
+func TestEpicProgressDoesNotDescendNonEpicParent(t *testing.T) {
+	children := map[string][]*datamodel.Item{
+		"E1": {ticket("T1", "DONE", nil)},
+		"T1": {ticket("T2", "DONE", nil)},
+	}
+	p := epicProgress(progressCfg(), children, "E1")
+	if p.Total != 1 || p.Done != 1 {
+		t.Errorf("got %d/%d, want 1/1 (non-epic parent T1 must not be descended)", p.Done, p.Total)
+	}
+}
+
+func TestEpicProgressCycleSafe(t *testing.T) {
 	children := map[string][]*datamodel.Item{
 		"E1": {{ID: "E2", Type: datamodel.TypeEpic, State: "OPEN"}, ticket("T1", "DONE", nil)},
 		"E2": {{ID: "E1", Type: datamodel.TypeEpic, State: "OPEN"}},
 	}
-	var p datamodel.EpicProgress
-	accumulateProgress(progressCfg(), children, "E1", map[string]bool{}, &p)
+	p := epicProgress(progressCfg(), children, "E1")
 	if p.Total != 1 || p.Done != 1 {
 		t.Errorf("got %d/%d, want 1/1 without infinite recursion", p.Done, p.Total)
 	}

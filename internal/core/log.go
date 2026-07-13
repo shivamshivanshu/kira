@@ -10,23 +10,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
-var scalarFields = scalarFieldSet()
-
-func scalarFieldSet() map[string]bool {
-	list := map[string]bool{
-		datamodel.KeyAliases: true, datamodel.KeyLabels: true,
-		datamodel.KeyBlockedBy: true, datamodel.KeyLinks: true,
-		datamodel.KeyCreated: true, datamodel.KeyUpdated: true,
-	}
-	scalar := map[string]bool{}
-	for _, k := range datamodel.FrontmatterKeys {
-		if !list[k] {
-			scalar[k] = true
-		}
-	}
-	return scalar
-}
-
 func (s *Store) Log(cfg *datamodel.Config, ref string) (*datamodel.LogResult, error) {
 	ld, err := s.read(cfg, loadOpts{useIndex: true})
 	if err != nil {
@@ -42,59 +25,17 @@ func (s *Store) Log(cfg *datamodel.Config, ref string) (*datamodel.LogResult, er
 		return nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
 	}
 
-	events, links, err := index.LogEntries(s.fs(), ulid, s.fileHead(ulid), func() ([]datamodel.Event, error) {
-		return s.deriveEvents(ulid)
-	})
+	events, links, err := s.logEntries(ulid)
 	if err != nil {
 		return nil, err
 	}
 	return &datamodel.LogResult{ID: ulid, Number: it.Number, Entries: interleave(events, links)}, nil
 }
 
-func (s *Store) deriveEvents(ulid string) ([]datamodel.Event, error) {
-	out, err := s.repo().FileLog(s.fs().RelToRoot(s.itemPath(ulid)))
-	if err != nil {
-		if strings.Contains(err.Error(), "does not have any commits") {
-			return nil, nil
-		}
-		return nil, errx.User("%s", err)
-	}
-	var events []datamodel.Event
-	walkPatch(out, func(_ string, evs []datamodel.Event) {
-		events = append(events, evs...)
+func (s *Store) logEntries(ulid string) ([]datamodel.Event, []index.CommitLink, error) {
+	return index.LogEntries(s.fs(), ulid, s.fileHead(ulid), func() ([]datamodel.Event, error) {
+		return s.deriveEvents(ulid)
 	})
-	return events, nil
-}
-
-func fmEvents(created bool, minus, plus map[string]string, ts, sha string) []datamodel.Event {
-	if created {
-		return nil
-	}
-	var events []datamodel.Event
-	for _, field := range datamodel.FrontmatterKeys {
-		mv, hadMinus := minus[field]
-		pv, hadPlus := plus[field]
-		if (hadMinus || hadPlus) && mv != pv {
-			events = append(events, datamodel.Event{Ts: ts, Field: field, Old: mv, New: pv, CommitSHA: sha})
-		}
-	}
-	return events
-}
-
-func frontmatterField(line string) (key, value string, ok bool) {
-	colon := strings.IndexByte(line, ':')
-	if colon <= 0 {
-		return "", "", false
-	}
-	key = line[:colon]
-	if !scalarFields[key] {
-		return "", "", false
-	}
-	return key, unquoteScalar(strings.TrimSpace(line[colon+1:])), true
-}
-
-func unquoteScalar(v string) string {
-	return strings.Trim(strings.TrimSpace(v), `"'`)
 }
 
 func interleave(events []datamodel.Event, links []index.CommitLink) []datamodel.LogEntry {

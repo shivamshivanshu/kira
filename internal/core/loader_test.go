@@ -9,7 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
-func hasWarning(notes []datamodel.Warning, code string) bool {
+func hasWarning(notes []datamodel.Warning, code datamodel.WarnCode) bool {
 	for _, n := range notes {
 		if n.Code == code {
 			return true
@@ -27,7 +27,7 @@ func TestItemsIndexFallbackAndLinear(t *testing.T) {
 	cfg := config.Default()
 	cfg.Project.Key = "KIRA"
 	it := eventTicket()
-	if _, err := s.writeItem(it); err != nil {
+	if _, err := s.fs().WriteItem(it); err != nil {
 		t.Fatalf("writeItem: %v", err)
 	}
 

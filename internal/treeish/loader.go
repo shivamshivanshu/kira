@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	ticketsPrefix = ".kira/tickets"
-	configPath    = ".kira/config.yaml"
+	ticketsPrefix = storage.TicketsPrefix
+	configPath    = storage.ConfigRelPath
 )
 
 type Loaded struct {

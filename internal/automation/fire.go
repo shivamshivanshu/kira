@@ -17,12 +17,7 @@ func Fire(w io.Writer, root, cacheDir string, cfg *datamodel.Config, ev Event, a
 	if os.Getenv(RecursionGuardEnv) != "" {
 		return
 	}
-	var matched []datamodel.AutomationHook
-	for _, h := range cfg.Automation {
-		if h.IsEnabled() && Matches(h, ev) {
-			matched = append(matched, h)
-		}
-	}
+	matched := matchedHooks(cfg, ev)
 	if len(matched) == 0 {
 		return
 	}
@@ -38,6 +33,33 @@ func Fire(w io.Writer, root, cacheDir string, cfg *datamodel.Config, ev Event, a
 	env := append(os.Environ(), envMirror(ev, root)...)
 	for _, h := range matched {
 		runHook(w, root, h, stdin, env)
+	}
+}
+
+func matchedHooks(cfg *datamodel.Config, ev Event) []datamodel.AutomationHook {
+	var matched []datamodel.AutomationHook
+	for _, h := range cfg.Automation {
+		if h.IsEnabled() && Matches(h, ev) {
+			matched = append(matched, h)
+		}
+	}
+	return matched
+}
+
+func envMirror(ev Event, repo string) []string {
+	return []string{
+		RecursionGuardEnv + "=1",
+		"KIRA_EVENT=" + string(ev.Name),
+		"KIRA_ITEM=" + ev.ItemID,
+		"KIRA_NUMBER=" + ev.Number,
+		"KIRA_TYPE=" + ev.Type,
+		"KIRA_TITLE=" + ev.Title,
+		"KIRA_FROM=" + ev.From,
+		"KIRA_TO=" + ev.To,
+		"KIRA_TO_CATEGORY=" + ev.ToCategory,
+		"KIRA_SOURCE=" + string(ev.Source),
+		"KIRA_ROOT=" + repo,
+		"KIRA_COMMIT=" + ev.Commit,
 	}
 }
 
@@ -72,7 +94,7 @@ func hookName(h datamodel.AutomationHook) string {
 	if h.Name != "" {
 		return h.Name
 	}
-	return h.On
+	return string(h.On)
 }
 
 func emitPrefixed(w io.Writer, name string, out []byte) {

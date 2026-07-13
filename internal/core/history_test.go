@@ -39,7 +39,7 @@ func commitState(t *testing.T, s *Store, it *datamodel.Item, state, date string)
 	t.Helper()
 	it.State = state
 	it.Updated = date + "T10:00:00Z"
-	if _, err := s.writeItem(it); err != nil {
+	if _, err := s.fs().WriteItem(it); err != nil {
 		t.Fatal(err)
 	}
 	for _, args := range [][]string{{"add", "-A"}, {"commit", "-m", "state " + state}} {
@@ -136,7 +136,7 @@ func TestItemMetricsUncommittedFallsBackToUpdated(t *testing.T) {
 	it := eventTicket()
 	it.State = "DONE"
 	it.Updated = "2026-01-09T10:00:00Z"
-	if _, err := s.writeItem(it); err != nil {
+	if _, err := s.fs().WriteItem(it); err != nil {
 		t.Fatal(err)
 	}
 

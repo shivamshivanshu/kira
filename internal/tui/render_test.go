@@ -46,7 +46,7 @@ func newTestModel(w, h int, withData bool) model {
 	m.width, m.height = w, h
 	if withData {
 		nodes, fields, progress := sampleTree()
-		m.screens[viewTree].(*treeScreen).apply(&m, treeData{nodes: nodes, fields: fields, progress: progress})
+		m.screens[viewTree].(*treeScreen).setData(&m, treeData{nodes: nodes, fields: fields, progress: progress})
 	}
 	return m
 }
@@ -227,16 +227,16 @@ func TestDetailMemoServesCacheWithoutStore(t *testing.T) {
 	m := newTestModel(100, 12, true)
 	ts := m.screens[viewTree].(*treeScreen)
 	cached := &datamodel.ShowResult{ID: "E1", Title: "cached"}
-	ts.detailCache["E1"] = cached
+	ts.host.cache["E1"] = cached
 
 	ts.tree.cursor = 0
 	ts.syncDetail(&m)
-	if ts.detail != cached {
-		t.Fatalf("syncDetail did not serve the cache (store is nil, so a disk hit would have yielded nil): %+v", ts.detail)
+	if ts.host.detail != cached {
+		t.Fatalf("syncDetail did not serve the cache (store is nil, so a disk hit would have yielded nil): %+v", ts.host.detail)
 	}
 
-	ts.apply(&m, treeData{nodes: ts.tree.nodes, fields: ts.tree.fields, progress: ts.tree.progress})
-	if _, ok := ts.detailCache["E1"]; ok {
-		t.Fatal("apply did not invalidate the detail memo on reload")
+	ts.setData(&m, treeData{nodes: ts.tree.nodes, fields: ts.tree.fields, progress: ts.tree.progress})
+	if _, ok := ts.host.cache["E1"]; ok {
+		t.Fatal("setData did not invalidate the detail memo on reload")
 	}
 }

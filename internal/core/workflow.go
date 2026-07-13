@@ -29,6 +29,15 @@ func allowedTargets(wf datamodel.Workflow, from string) []string {
 	return out
 }
 
+func firstStateInCategory(wf datamodel.Workflow, cat datamodel.Category) (string, bool) {
+	for _, st := range wf.States {
+		if st.Category == cat {
+			return st.Key, true
+		}
+	}
+	return "", false
+}
+
 func stateKeys(wf datamodel.Workflow) []string {
 	out := make([]string, 0, len(wf.States))
 	for _, s := range wf.States {
@@ -64,4 +73,11 @@ func categoryOf(cfg *datamodel.Config, typ, state string) (datamodel.Category, b
 func isDoneState(cfg *datamodel.Config, typ, state string) bool {
 	cat, ok := categoryOf(cfg, typ, state)
 	return ok && cat == datamodel.CategoryDone
+}
+
+func categoryString(cfg *datamodel.Config, typ, state string) string {
+	if c, ok := categoryOf(cfg, typ, state); ok {
+		return string(c)
+	}
+	return ""
 }

@@ -1,4 +1,4 @@
-# Saved filters: config filters: feed `kira list --filter` and `kira filter list`.
+# Saved filters: config filters: feed `kira list --filter` and `kira config filters`.
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
@@ -8,7 +8,7 @@ exec git config user.name tester
 exec kira init --key KIRA
 
 # no filters configured yet
-exec kira filter list
+exec kira config filters
 stdout 'no filters configured'
 ! exec kira list --filter mine
 stderr 'unknown filter "mine" \(no filters configured\)'
@@ -20,11 +20,11 @@ exec kira create ticket --title alpha --owner shivam --no-edit
 exec kira create ticket --title beta --owner alice --sprint 2026-S14 --no-edit
 exec kira create ticket --title gamma --owner shivam --no-edit
 
-# filter list enumerates the configured names, sorted
-exec kira filter list
+# config filters enumerates the configured names, sorted
+exec kira config filters
 stdout 'blocked\s+blocked_by IS NOT EMPTY'
 stdout 'mine\s+owner=shivam'
-exec kira filter list --json
+exec kira config filters --json
 stdout '"name": "blocked"'
 stdout '"query": "owner=shivam"'
 

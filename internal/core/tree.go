@@ -59,6 +59,30 @@ func epicChildren(items []*datamodel.Item) map[string][]*datamodel.Item {
 	return children
 }
 
+func walkEpic(children map[string][]*datamodel.Item, root string, recurseInto func(*datamodel.Item) bool, visit func(*datamodel.Item)) error {
+	onPath := map[string]bool{root: true}
+	var firstCycle error
+	var walk func(string)
+	walk = func(parentID string) {
+		for _, c := range children[parentID] {
+			if onPath[c.ID] {
+				if firstCycle == nil {
+					firstCycle = errx.Conflict("epic cycle detected at %s", c.Number)
+				}
+				continue
+			}
+			visit(c)
+			if recurseInto(c) {
+				onPath[c.ID] = true
+				walk(c.ID)
+				delete(onPath, c.ID)
+			}
+		}
+	}
+	walk(root)
+	return firstCycle
+}
+
 type treeBuilder struct {
 	children map[string][]*datamodel.Item
 	onPath   map[string]bool

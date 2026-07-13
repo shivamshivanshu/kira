@@ -214,6 +214,78 @@ func TestCollisionsNoneWhenAliasIsOwnRetiredNumber(t *testing.T) {
 	}
 }
 
+func TestCollisionsAliasAlias(t *testing.T) {
+	a := valid(ulidA, "KIRA-8")
+	a.Aliases = []string{"KIRA-1"}
+	b := valid(ulidB, "KIRA-9")
+	b.Aliases = []string{"KIRA-1"}
+	findings := doctor.Collisions([]*datamodel.Item{a, b})
+	if len(findings) != 1 || findings[0].Collision.Kind != doctor.CollisionAliasAlias {
+		t.Fatalf("expected one alias-alias collision, got %+v", findings)
+	}
+	c := findings[0].Collision
+	if c.Keep != ulidA {
+		t.Errorf("expected earlier ULID %s to be the keeper, got %s", ulidA, c.Keep)
+	}
+	if len(c.LiveIDs) != 0 || !slices.Equal(c.AliasIDs, []string{ulidA, ulidB}) {
+		t.Errorf("expected no live holders and both alias holders, got live=%v alias=%v", c.LiveIDs, c.AliasIDs)
+	}
+}
+
+func TestCheckEmptyRankIsSchemaError(t *testing.T) {
+	it := valid(ulidA, "KIRA-1")
+	it.Rank = strp("")
+	findings := doctor.Check(config.Default(), resolver(it), it)
+	for _, f := range findings {
+		if f.Class == doctor.ClassSchema && f.Field == datamodel.KeyRank && f.Severity == doctor.SeverityError {
+			return
+		}
+	}
+	t.Fatalf("expected a schema error for an empty rank, got %+v", findings)
+}
+
+func TestNonEpicParentSkipsMissingParent(t *testing.T) {
+	child := valid(ulidA, "KIRA-1")
+	child.Epic = strp(ulidC)
+	items := []*datamodel.Item{child}
+	if f := doctor.NonEpicParents(items, resolver(items...)); len(f) != 0 {
+		t.Fatalf("a missing/unresolved parent must not raise an epic-kind finding, got %+v", f)
+	}
+}
+
+func TestEnvOptionalBinsAndHookFindings(t *testing.T) {
+	env := doctor.Env{
+		GitInstalled:        true,
+		InsideWorkTree:      true,
+		MissingOptionalBins: []string{"rg"},
+		TrackedHooks:        []string{"post-merge", "pre-commit"},
+		InstalledHooks:      []string{"post-merge"},
+	}
+	report := doctor.Run(config.Default(), nil, env)
+	var optionalBin, missingHook, mergeDriver, ticketAttr bool
+	for _, f := range report.Findings {
+		switch {
+		case f.Class == doctor.ClassEnv && strings.Contains(f.Message, "rg not found"):
+			optionalBin = true
+		case f.Class == doctor.ClassHooks && strings.Contains(f.Message, "pre-commit is not installed"):
+			missingHook = true
+		case f.Class == doctor.ClassHooks && strings.Contains(f.Message, "merge driver"):
+			mergeDriver = true
+		case f.Class == doctor.ClassHooks && strings.Contains(f.Message, "ticket merge attribute"):
+			ticketAttr = true
+		}
+	}
+	if !optionalBin {
+		t.Error("expected an optional-bin info finding for rg")
+	}
+	if !missingHook {
+		t.Error("expected an uninstalled-hook finding for pre-commit")
+	}
+	if !mergeDriver || !ticketAttr {
+		t.Errorf("expected merge-driver and ticket-attr findings, got %+v", report.Findings)
+	}
+}
+
 func TestEpicCycle(t *testing.T) {
 	a := valid(ulidA, "KIRA-1")
 	b := valid(ulidB, "KIRA-2")
@@ -284,8 +356,8 @@ func TestRefCycleIgnoresLinearAndSymmetric(t *testing.T) {
 	a := valid(ulidA, "KIRA-1")
 	b := valid(ulidB, "KIRA-2")
 	a.BlockedBy = []string{ulidB}
-	a.Links = map[string][]string{datamodel.LinkRelates: {ulidB}}
-	b.Links = map[string][]string{datamodel.LinkRelates: {ulidA}}
+	a.Links = map[string][]string{string(datamodel.LinkRelates): {ulidB}}
+	b.Links = map[string][]string{string(datamodel.LinkRelates): {ulidA}}
 	items := []*datamodel.Item{a, b}
 	if f := doctor.RefCycles(items, resolver(items...)); len(f) != 0 {
 		t.Fatalf("linear blocked_by and symmetric relates are not cycles, got %+v", f)

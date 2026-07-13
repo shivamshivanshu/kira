@@ -1,8 +1,6 @@
 package core
 
 import (
-	"slices"
-
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
@@ -201,46 +199,19 @@ func groupByEpic(rows []datamodel.ListItem, items []*datamodel.Item) []datamodel
 		ensureGroup(key)
 		buckets[key] = append(buckets[key], r.ID)
 	}
-	type dec struct {
-		key    string
-		k      id.SortKey
-		orphan bool
-	}
-	ds := make([]dec, len(order))
-	for i, key := range order {
+	sortByKey(order, func(key string) epicGroupKey {
 		if key == "" {
-			ds[i] = dec{orphan: true}
-			continue
+			return epicGroupKey{orphan: true}
 		}
-		ds[i] = dec{key: key, k: id.NewSortKey(numOf[key], key)}
-	}
-	slices.SortStableFunc(ds, func(a, b dec) int {
-		if a.orphan || b.orphan {
-			switch {
-			case !a.orphan:
-				return -1
-			case !b.orphan:
-				return 1
-			default:
-				return 0
-			}
-		}
-		switch {
-		case a.k.Less(b.k):
-			return -1
-		case b.k.Less(a.k):
-			return 1
-		default:
-			return 0
-		}
+		return epicGroupKey{k: id.NewSortKey(numOf[key], key)}
 	})
-	groups := make([]datamodel.TreeGroup, 0, len(ds))
-	for _, d := range ds {
-		g := datamodel.TreeGroup{Items: buckets[d.key]}
-		if !d.orphan {
-			epic := d.key
+	groups := make([]datamodel.TreeGroup, 0, len(order))
+	for _, key := range order {
+		g := datamodel.TreeGroup{Items: buckets[key]}
+		if key != "" {
+			epic := key
 			g.Epic = &epic
-			if num, ok := numOf[d.key]; ok {
+			if num, ok := numOf[key]; ok {
 				n := num
 				g.EpicNumber = &n
 			}
@@ -248,4 +219,33 @@ func groupByEpic(rows []datamodel.ListItem, items []*datamodel.Item) []datamodel
 		groups = append(groups, g)
 	}
 	return groups
+}
+
+type epicGroupKey struct {
+	orphan bool
+	k      id.SortKey
+}
+
+func (a epicGroupKey) Less(b epicGroupKey) bool {
+	if a.orphan != b.orphan {
+		return !a.orphan
+	}
+	return a.k.Less(b.k)
+}
+
+func listItemOf(cfg *datamodel.Config, it *datamodel.Item) datamodel.ListItem {
+	return datamodel.ListItem{
+		ID:       it.ID,
+		Number:   it.Number,
+		Title:    it.Title,
+		Type:     it.Type,
+		State:    it.State,
+		Category: categoryString(cfg, it.Type, it.State),
+		Owner:    it.Owner,
+		Labels:   nonNil(it.Labels),
+		Epic:     it.Epic,
+
+		Priority:   it.Priority,
+		Resolution: it.Resolution,
+	}
 }

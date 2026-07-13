@@ -82,7 +82,7 @@ func randLinks(r *rand.Rand) map[string][]string {
 		if links == nil {
 			links = map[string][]string{}
 		}
-		links[typ] = targets
+		links[string(typ)] = targets
 	}
 	return links
 }

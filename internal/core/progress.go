@@ -3,10 +3,7 @@ package core
 import "github.com/shivamshivanshu/kira/internal/datamodel"
 
 func indexByEpic(items []*datamodel.Item) (map[string]*datamodel.Item, map[string][]*datamodel.Item) {
-	byID := make(map[string]*datamodel.Item, len(items))
-	for _, it := range items {
-		byID[it.ID] = it
-	}
+	byID := byULID(items)
 	children := map[string][]*datamodel.Item{}
 	for _, it := range items {
 		if it.Epic != nil {
@@ -27,32 +24,25 @@ func (s *Store) EpicProgress(cfg *datamodel.Config) (map[string]datamodel.EpicPr
 	_, children := indexByEpic(items)
 	out := make(map[string]datamodel.EpicProgress)
 	for _, it := range items {
-		if it.Type != datamodel.TypeEpic {
-			continue
+		if it.Type == datamodel.TypeEpic {
+			out[it.ID] = epicProgress(cfg, children, it.ID)
 		}
-		var p datamodel.EpicProgress
-		accumulateProgress(cfg, children, it.ID, map[string]bool{}, &p)
-		out[it.ID] = p
 	}
 	return out, nil
 }
 
-func accumulateProgress(cfg *datamodel.Config, children map[string][]*datamodel.Item, epicID string, onPath map[string]bool, p *datamodel.EpicProgress) {
-	if onPath[epicID] {
-		return
-	}
-	onPath[epicID] = true
-	defer delete(onPath, epicID)
-	for _, c := range children[epicID] {
+func epicProgress(cfg *datamodel.Config, children map[string][]*datamodel.Item, epicID string) datamodel.EpicProgress {
+	var p datamodel.EpicProgress
+	walkEpic(children, epicID, func(c *datamodel.Item) bool { return c.Type == datamodel.TypeEpic }, func(c *datamodel.Item) {
 		if c.Type == datamodel.TypeEpic {
-			accumulateProgress(cfg, children, c.ID, onPath, p)
-			continue
+			return
 		}
 		p.Total++
 		if cat, ok := categoryOf(cfg, c.Type, c.State); ok && cat == datamodel.CategoryDone && !isDropped(c) {
 			p.Done++
 		}
-	}
+	})
+	return p
 }
 
 func isDropped(it *datamodel.Item) bool {

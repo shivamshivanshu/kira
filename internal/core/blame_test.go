@@ -64,7 +64,7 @@ func TestBlameNullFieldOmittedUnlessEvent(t *testing.T) {
 	commit := func(date string) {
 		t.Helper()
 		it.Updated = date
-		if _, err := s.writeItem(it); err != nil {
+		if _, err := s.fs().WriteItem(it); err != nil {
 			t.Fatal(err)
 		}
 		gitRun(t, s, date, "add", "-A")
@@ -109,7 +109,7 @@ func TestBlameMergeLossIsSyntheticDegraded(t *testing.T) {
 	gitRun(t, s, "2026-01-08T10:00:00Z", "merge", "--no-ff", "--no-edit", "side")
 
 	it.State = "DONE"
-	if _, err := s.writeItem(it); err != nil {
+	if _, err := s.fs().WriteItem(it); err != nil {
 		t.Fatal(err)
 	}
 	gitRun(t, s, "2026-01-08T10:00:00Z", "add", "-A")

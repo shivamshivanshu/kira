@@ -52,11 +52,11 @@ func (s *Store) Comment(cfg *datamodel.Config, ref string, opts CommentOpts) (*d
 		Ts:     time.Now().Format(time.RFC3339),
 		Body:   text,
 	}
-	path, err := s.writeItemRaw(orig.ID, codec.AppendComment(string(raw), c))
+	path, err := s.fs().WriteItemRaw(orig.ID, codec.AppendComment(string(raw), c))
 	if err != nil {
 		return nil, err
 	}
-	subject := "kira: " + orig.Number + " comment"
+	subject := subjectPrefix + orig.Number + " comment"
 	cs := &datamodel.ChangeSet{
 		Kind:    datamodel.ChangeCommented,
 		Before:  orig,

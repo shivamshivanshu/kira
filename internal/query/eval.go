@@ -2,6 +2,7 @@
 package query
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strings"
@@ -22,7 +23,7 @@ type Options struct {
 type Compiled struct {
 	Pred  Predicate
 	Order *Order
-	Notes []string
+	Notes []datamodel.WarnCode
 }
 
 type Error struct {
@@ -61,7 +62,7 @@ func Match(field, value string, opts Options) (Predicate, error) {
 
 type compiler struct {
 	opts  Options
-	notes []string
+	notes []datamodel.WarnCode
 }
 
 func (c *compiler) compile(e Expr) (Predicate, error) {
@@ -115,22 +116,9 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 	eq := n.op.kind == tokEq
 	want := n.value
 	switch n.field {
-	case fieldState:
-		return scalarPred(eq, want, func(it *datamodel.Item) string { return it.State }), nil
-	case fieldType:
-		return scalarPred(eq, want, func(it *datamodel.Item) string { return it.Type }), nil
-	case fieldPriority:
-		return scalarPred(eq, want, func(it *datamodel.Item) string { return ptr.Deref(it.Priority) }), nil
-	case fieldOwner:
-		return scalarPred(eq, want, func(it *datamodel.Item) string { return ptr.Deref(it.Owner) }), nil
-	case fieldReporter:
-		return scalarPred(eq, want, func(it *datamodel.Item) string { return ptr.Deref(it.Reporter) }), nil
-	case fieldSubtype:
-		return scalarPred(eq, want, func(it *datamodel.Item) string { return ptr.Deref(it.Subtype) }), nil
-	case fieldResolution:
-		return scalarPred(eq, want, func(it *datamodel.Item) string { return ptr.Deref(it.Resolution) }), nil
-	case fieldRank:
-		return scalarPred(eq, want, func(it *datamodel.Item) string { return ptr.Deref(it.Rank) }), nil
+	case fieldState, fieldType, fieldPriority, fieldOwner, fieldReporter,
+		fieldSubtype, fieldResolution, fieldRank, fieldCategory:
+		return scalarPred(eq, want, accessors[n.field]), nil
 	case fieldSprint:
 		if n.value == "active" {
 			if c.opts.ActiveSprint == "" {
@@ -139,39 +127,17 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 			}
 			want = c.opts.ActiveSprint
 		}
-		return scalarPred(eq, want, func(it *datamodel.Item) string { return ptr.Deref(it.Sprint) }), nil
-	case fieldCategory:
-		return func(it *datamodel.Item, cfg *datamodel.Config) bool {
-			return (categoryOf(cfg, it.Type, it.State) == want) == eq
-		}, nil
+		return scalarPred(eq, want, accessors[fieldSprint]), nil
 	case fieldLabel:
 		return func(it *datamodel.Item, _ *datamodel.Config) bool {
 			return slices.Contains(it.Labels, want) == eq
 		}, nil
 	case fieldEpic:
-		u, err := c.resolve(n.value, n.valuePos)
-		if err != nil {
-			return nil, err
-		}
-		return func(it *datamodel.Item, _ *datamodel.Config) bool {
-			return (it.Epic != nil && *it.Epic == u) == eq
-		}, nil
+		return c.compileRefPred(n, eq, func(it *datamodel.Item, u string) bool { return it.Epic != nil && *it.Epic == u })
 	case fieldBlockedBy:
-		u, err := c.resolve(n.value, n.valuePos)
-		if err != nil {
-			return nil, err
-		}
-		return func(it *datamodel.Item, _ *datamodel.Config) bool {
-			return slices.Contains(it.BlockedBy, u) == eq
-		}, nil
+		return c.compileRefPred(n, eq, func(it *datamodel.Item, u string) bool { return slices.Contains(it.BlockedBy, u) })
 	case fieldLinks:
-		u, err := c.resolve(n.value, n.valuePos)
-		if err != nil {
-			return nil, err
-		}
-		return func(it *datamodel.Item, _ *datamodel.Config) bool {
-			return anyLinkTargets(it.Links, u) == eq
-		}, nil
+		return c.compileRefPred(n, eq, func(it *datamodel.Item, u string) bool { return anyLinkTargets(it.Links, u) })
 	case fieldEstimate:
 		return estimatePred(n.op.kind, n.num), nil
 	case fieldCreated:
@@ -180,13 +146,20 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 		return datePred(n, func(it *datamodel.Item) string { return it.Updated }), nil
 	case fieldDue:
 		return datePred(n, func(it *datamodel.Item) string { return ptr.Deref(it.Due) }), nil
-	default:
-		return nil, &Error{Pos: n.op.pos, Msg: "unknown field " + n.field}
 	}
+	return nil, &Error{Pos: n.op.pos, Msg: "unknown field " + n.field}
+}
+
+func (c *compiler) compileRefPred(n *predExpr, eq bool, matches func(*datamodel.Item, string) bool) (Predicate, error) {
+	u, err := c.resolve(n.value, n.valuePos)
+	if err != nil {
+		return nil, err
+	}
+	return func(it *datamodel.Item, _ *datamodel.Config) bool { return matches(it, u) == eq }, nil
 }
 
 func (c *compiler) compileIn(n *inExpr) (Predicate, error) {
-	equalsAnyValue := make([]Predicate, len(n.values))
+	orPreds := make([]Predicate, len(n.values))
 	for i, v := range n.values {
 		p, err := c.compilePred(&predExpr{
 			field: n.field, op: token{kind: tokEq, text: "=", pos: n.fieldPos},
@@ -195,10 +168,10 @@ func (c *compiler) compileIn(n *inExpr) (Predicate, error) {
 		if err != nil {
 			return nil, err
 		}
-		equalsAnyValue[i] = p
+		orPreds[i] = p
 	}
 	return func(it *datamodel.Item, cfg *datamodel.Config) bool {
-		for _, p := range equalsAnyValue {
+		for _, p := range orPreds {
 			if p(it, cfg) {
 				return true
 			}
@@ -226,39 +199,28 @@ func compileIsEmpty(n *emptyExpr) Predicate {
 	return func(it *datamodel.Item, cfg *datamodel.Config) bool { return isEmpty(it, cfg) == want }
 }
 
+var accessors = map[string]func(*datamodel.Item, *datamodel.Config) string{
+	fieldState:      func(it *datamodel.Item, _ *datamodel.Config) string { return it.State },
+	fieldType:       func(it *datamodel.Item, _ *datamodel.Config) string { return it.Type },
+	fieldCategory:   func(it *datamodel.Item, cfg *datamodel.Config) string { return categoryOf(cfg, it.Type, it.State) },
+	fieldOwner:      func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Owner) },
+	fieldReporter:   func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Reporter) },
+	fieldSubtype:    func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Subtype) },
+	fieldResolution: func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Resolution) },
+	fieldPriority:   func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Priority) },
+	fieldRank:       func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Rank) },
+	fieldSprint:     func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Sprint) },
+	fieldDue:        func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Due) },
+	fieldEpic:       func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Epic) },
+	fieldCreated:    func(it *datamodel.Item, _ *datamodel.Config) string { return it.Created },
+	fieldUpdated:    func(it *datamodel.Item, _ *datamodel.Config) string { return it.Updated },
+}
+
 func scalarGet(field string) func(*datamodel.Item, *datamodel.Config) string {
-	switch field {
-	case fieldState:
-		return func(it *datamodel.Item, _ *datamodel.Config) string { return it.State }
-	case fieldType:
-		return func(it *datamodel.Item, _ *datamodel.Config) string { return it.Type }
-	case fieldCategory:
-		return func(it *datamodel.Item, cfg *datamodel.Config) string { return categoryOf(cfg, it.Type, it.State) }
-	case fieldOwner:
-		return func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Owner) }
-	case fieldReporter:
-		return func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Reporter) }
-	case fieldSubtype:
-		return func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Subtype) }
-	case fieldResolution:
-		return func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Resolution) }
-	case fieldPriority:
-		return func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Priority) }
-	case fieldRank:
-		return func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Rank) }
-	case fieldSprint:
-		return func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Sprint) }
-	case fieldDue:
-		return func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Due) }
-	case fieldEpic:
-		return func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Epic) }
-	case fieldCreated:
-		return func(it *datamodel.Item, _ *datamodel.Config) string { return it.Created }
-	case fieldUpdated:
-		return func(it *datamodel.Item, _ *datamodel.Config) string { return it.Updated }
-	default:
-		return func(*datamodel.Item, *datamodel.Config) string { return "" }
+	if get, ok := accessors[field]; ok {
+		return get
 	}
+	return func(*datamodel.Item, *datamodel.Config) string { return "" }
 }
 
 func PriorityIndex(priorities []string) map[string]int {
@@ -282,13 +244,19 @@ func (c *compiler) rankedPriorityPred(n *predExpr) (Predicate, error) {
 	op := n.op.kind
 	return func(it *datamodel.Item, _ *datamodel.Config) bool {
 		got, ok := index[ptr.Deref(it.Priority)]
-		return ok && cmpInts(op, got, want)
+		return ok && applyCmp(op, got, want)
 	}, nil
 }
 
-func (t token) isOrderedCmp() bool { return t.kind >= tokLt && t.kind <= tokGe }
+func (t token) isOrderedCmp() bool {
+	switch t.kind {
+	case tokLt, tokLe, tokGt, tokGe:
+		return true
+	}
+	return false
+}
 
-func cmpInts(op tokKind, a, b int) bool {
+func applyCmp[T cmp.Ordered](op tokKind, a, b T) bool {
 	switch op {
 	case tokEq:
 		return a == b
@@ -315,7 +283,7 @@ func (c *compiler) resolve(ref string, pos int) (string, error) {
 	return u, nil
 }
 
-func (c *compiler) note(msg string) {
+func (c *compiler) note(msg datamodel.WarnCode) {
 	if !slices.Contains(c.notes, msg) {
 		c.notes = append(c.notes, msg)
 	}
@@ -339,8 +307,8 @@ func anyLinkPresent(links map[string][]string) bool {
 	return false
 }
 
-func scalarPred(eq bool, want string, get func(*datamodel.Item) string) Predicate {
-	return func(it *datamodel.Item, _ *datamodel.Config) bool { return (get(it) == want) == eq }
+func scalarPred(eq bool, want string, get func(*datamodel.Item, *datamodel.Config) string) Predicate {
+	return func(it *datamodel.Item, cfg *datamodel.Config) bool { return (get(it, cfg) == want) == eq }
 }
 
 func categoryOf(cfg *datamodel.Config, typ, state string) string {
@@ -358,26 +326,7 @@ func categoryOf(cfg *datamodel.Config, typ, state string) string {
 
 func estimatePred(op tokKind, want float64) Predicate {
 	return func(it *datamodel.Item, _ *datamodel.Config) bool {
-		if it.Estimate == nil {
-			return false
-		}
-		got := *it.Estimate
-		switch op {
-		case tokEq:
-			return got == want
-		case tokNe:
-			return got != want
-		case tokLt:
-			return got < want
-		case tokLe:
-			return got <= want
-		case tokGt:
-			return got > want
-		case tokGe:
-			return got >= want
-		default:
-			return false
-		}
+		return it.Estimate != nil && applyCmp(op, *it.Estimate, want)
 	}
 }
 
@@ -389,21 +338,6 @@ func datePred(n *predExpr, get func(*datamodel.Item) string) Predicate {
 		if err != nil {
 			return false
 		}
-		switch op {
-		case tokEq:
-			return t.Equal(want)
-		case tokNe:
-			return !t.Equal(want)
-		case tokLt:
-			return t.Before(want)
-		case tokLe:
-			return t.Before(want) || t.Equal(want)
-		case tokGt:
-			return t.After(want)
-		case tokGe:
-			return t.After(want) || t.Equal(want)
-		default:
-			return false
-		}
+		return applyCmp(op, t.Compare(want), 0)
 	}
 }

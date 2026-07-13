@@ -1,15 +1,17 @@
 package datamodel
 
+type WarnCode string
+
 const (
-	WarnIndexFallback  = "index_fallback"
-	WarnNoActiveSprint = "no_active_sprint"
-	WarnCloseUnknown   = "close_unknown"
-	WarnCloseFailed    = "close_failed"
-	WarnLiteral        = "literal"
+	WarnIndexFallback  WarnCode = "index_fallback"
+	WarnNoActiveSprint WarnCode = "no_active_sprint"
+	WarnCloseUnknown   WarnCode = "close_unknown"
+	WarnCloseFailed    WarnCode = "close_failed"
+	WarnLiteral        WarnCode = "literal"
 )
 
 type Warning struct {
-	Code string
+	Code WarnCode
 	Args []string
 }
 
@@ -143,7 +145,7 @@ type DiffItem struct {
 	ID         string         `json:"id"`
 	Number     string         `json:"number"`
 	Title      string         `json:"title"`
-	Status     string         `json:"status"`
+	Status     DiffStatus     `json:"status"`
 	Renumbered *RenumberEvent `json:"renumbered,omitempty"`
 	Changes    []FieldChange  `json:"changes,omitempty"`
 }
@@ -159,10 +161,12 @@ type FieldChange struct {
 	To    string `json:"to"`
 }
 
+type DiffStatus string
+
 const (
-	DiffCreated = "created"
-	DiffDeleted = "deleted"
-	DiffChanged = "changed"
+	DiffCreated DiffStatus = "created"
+	DiffDeleted DiffStatus = "deleted"
+	DiffChanged DiffStatus = "changed"
 )
 
 type ChangesResult struct {
@@ -175,7 +179,7 @@ type ChangedItem struct {
 	ID     string     `json:"id"`
 	Number string     `json:"number"`
 	Title  string     `json:"title"`
-	Status string     `json:"status"`
+	Status DiffStatus `json:"status"`
 	Body   *BodyDelta `json:"body,omitempty"`
 	Events []Event    `json:"events"`
 }
@@ -242,7 +246,7 @@ type FilterListResult struct {
 	Filters []FilterView `json:"filters"`
 }
 
-type SprintJSON struct {
+type SprintView struct {
 	Key   string `json:"key"`
 	Name  string `json:"name"`
 	Start string `json:"start"`
@@ -251,7 +255,7 @@ type SprintJSON struct {
 
 type SprintCreateResult struct {
 	Created bool       `json:"created"`
-	Sprint  SprintJSON `json:"sprint"`
+	Sprint  SprintView `json:"sprint"`
 }
 
 type SprintItemCounts struct {
@@ -260,7 +264,7 @@ type SprintItemCounts struct {
 }
 
 type SprintListRow struct {
-	SprintJSON
+	SprintView
 	Active bool             `json:"active"`
 	Items  SprintItemCounts `json:"items"`
 }
@@ -316,15 +320,12 @@ type IndexResult struct {
 }
 
 type StatsResult struct {
-	Scope      *StatsScope     `json:"scope,omitempty"`
-	Completion *Completion     `json:"completion,omitempty"`
-	CycleTime  *Percentiles    `json:"cycle_time_days,omitempty"`
-	LeadTime   *Percentiles    `json:"lead_time_days,omitempty"`
-	Throughput []int           `json:"throughput_per_week,omitempty"`
-	Estimate   *EstimateRollup `json:"estimate,omitempty"`
-	Reopens    *Reopens        `json:"reopens,omitempty"`
-	Burndown   *Burndown       `json:"burndown,omitempty"`
-	Velocity   *Velocity       `json:"velocity,omitempty"`
+	Scope      *StatsScope  `json:"scope,omitempty"`
+	Completion *Completion  `json:"completion,omitempty"`
+	CycleTime  *Percentiles `json:"cycle_time_days,omitempty"`
+	LeadTime   *Percentiles `json:"lead_time_days,omitempty"`
+	Throughput []int        `json:"throughput_per_week,omitempty"`
+	Reopens    *Reopens     `json:"reopens,omitempty"`
 }
 
 type StatsScope struct {
@@ -349,42 +350,9 @@ type Percentiles struct {
 	DegradedN int     `json:"degraded_n,omitempty"`
 }
 
-type EstimateRollup struct {
-	Total          float64  `json:"total"`
-	Unit           string   `json:"unit"`
-	ActualRatioP50 *float64 `json:"actual_ratio_p50,omitempty"`
-}
-
 type Reopens struct {
 	Count int      `json:"count"`
 	Items []string `json:"items"`
-}
-
-type BurndownDay struct {
-	Date      string  `json:"date"`
-	Remaining float64 `json:"remaining"`
-	Ideal     float64 `json:"ideal"`
-}
-
-type Burndown struct {
-	Sprint      string        `json:"sprint"`
-	Start       string        `json:"start"`
-	End         string        `json:"end"`
-	Unit        string        `json:"unit"`
-	Days        []BurndownDay `json:"days"`
-	Unestimated int           `json:"unestimated"`
-	DegradedN   int           `json:"degraded_n"`
-}
-
-type VelocitySprint struct {
-	Key       string  `json:"key"`
-	Completed float64 `json:"completed"`
-}
-
-type Velocity struct {
-	Unit      string           `json:"unit"`
-	Sprints   []VelocitySprint `json:"sprints"`
-	Trailing3 float64          `json:"trailing_3"`
 }
 
 type BlameField struct {
@@ -409,4 +377,64 @@ type VersionResult struct {
 	JSONContract int    `json:"json_contract"`
 	Go           string `json:"go"`
 	Commit       string `json:"commit,omitempty"`
+}
+
+type BoardColumn struct {
+	State    string     `json:"state"`
+	Category string     `json:"category"`
+	Wip      int        `json:"wip"`
+	Count    int        `json:"count"`
+	Items    []ListItem `json:"items"`
+}
+
+type BoardResult struct {
+	Type    string        `json:"type"`
+	Columns []BoardColumn `json:"columns"`
+}
+
+func (r *BoardResult) Empty() bool {
+	for _, c := range r.Columns {
+		if len(c.Items) > 0 {
+			return false
+		}
+	}
+	return true
+}
+
+type HookStatus struct {
+	Name      string `json:"name"`
+	Installed bool   `json:"installed"`
+	Chained   bool   `json:"chained"`
+}
+
+type HooksInstallResult struct {
+	Hooks       []HookStatus `json:"hooks"`
+	MergeDriver bool         `json:"merge_driver"`
+}
+
+type HooksValidateResult struct {
+	Hooks       []HookStatus `json:"hooks"`
+	MergeDriver bool         `json:"merge_driver"`
+	OK          bool         `json:"ok"`
+}
+
+type WorkonResult struct {
+	ID            string `json:"id"`
+	Number        string `json:"number"`
+	Branch        string `json:"branch"`
+	BranchCreated bool   `json:"branch_created"`
+	Worktree      string `json:"worktree,omitempty"`
+	Moved         bool   `json:"moved"`
+	From          string `json:"from,omitempty"`
+	To            string `json:"to,omitempty"`
+}
+
+type Renumbering struct {
+	ID   string `json:"id"`
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
+type ReconcileResult struct {
+	Renumbered []Renumbering `json:"renumbered"`
 }

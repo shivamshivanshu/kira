@@ -44,6 +44,10 @@ func (r Repo) StatusPorcelain(pathspec string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parsePorcelainPaths(out), nil
+}
+
+func parsePorcelainPaths(out string) []string {
 	var paths []string
 	for _, line := range strings.Split(out, "\n") {
 		if len(line) < 4 {
@@ -55,7 +59,7 @@ func (r Repo) StatusPorcelain(pathspec string) ([]string, error) {
 		}
 		paths = append(paths, unquotePath(rest))
 	}
-	return paths, nil
+	return paths
 }
 
 func (r Repo) DiffNameStatus(from, to, pathspec string) ([]string, error) {

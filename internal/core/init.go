@@ -1,7 +1,6 @@
 package core
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,11 +9,12 @@ import (
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/gitx"
 )
 
 const gitattributesLine = ".kira/** text eol=lf"
 
-func Init(startDir, key string, force bool, opts ...Option) (*datamodel.InitResult, error) {
+func Init(startDir, key string, force bool, prompter ...Prompter) (*datamodel.InitResult, error) {
 	root := startDir
 	if root == "" {
 		cwd, err := os.Getwd()
@@ -28,7 +28,7 @@ func Init(startDir, key string, force bool, opts ...Option) (*datamodel.InitResu
 		return nil, errx.Env("resolving %q: %v", root, err)
 	}
 	s := newStore(abs)
-	s.applyOptions(opts)
+	s.prompter = firstPrompter(prompter)
 	if err := s.requireRepo(); err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func Init(startDir, key string, force bool, opts ...Option) (*datamodel.InitResu
 		return nil, err
 	}
 
-	if _, err := s.finalize(datamodel.CommitAuto, "", "kira: init", "", dirName, ".gitattributes"); err != nil {
+	if _, err := s.finalize(datamodel.CommitAuto, commitSpec{subject: "kira: init"}, dirName, ".gitattributes"); err != nil {
 		return nil, err
 	}
 
@@ -83,22 +83,8 @@ func Init(startDir, key string, force bool, opts ...Option) (*datamodel.InitResu
 }
 
 func ensureGitattributes(path string) error {
-	existing, err := os.ReadFile(path)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return errx.User("reading .gitattributes: %v", err)
-	}
-	content := string(existing)
-	for _, line := range strings.Split(content, "\n") {
-		if strings.TrimSpace(line) == gitattributesLine {
-			return nil
-		}
-	}
-	if content != "" && !strings.HasSuffix(content, "\n") {
-		content += "\n"
-	}
-	content += gitattributesLine + "\n"
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		return errx.User("writing .gitattributes: %v", err)
+	if err := gitx.AppendLineIfMissing(path, gitattributesLine); err != nil {
+		return errx.User("updating .gitattributes: %v", err)
 	}
 	return nil
 }

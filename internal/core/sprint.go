@@ -23,8 +23,8 @@ func (s *Store) ActiveSprintKey() string {
 	return strings.TrimSpace(string(b))
 }
 
-func sprintJSON(sp datamodel.Sprint) datamodel.SprintJSON {
-	return datamodel.SprintJSON{Key: sp.Key, Name: sp.Name, Start: sp.Start, End: sp.End}
+func sprintView(sp datamodel.Sprint) datamodel.SprintView {
+	return datamodel.SprintView{Key: sp.Key, Name: sp.Name, Start: sp.Start, End: sp.End}
 }
 
 func (s *Store) ResolveSprintKey(cfg *datamodel.Config, key string) (string, error) {
@@ -64,15 +64,15 @@ func (s *Store) SprintCreate(cfg *datamodel.Config, sp datamodel.Sprint) (*datam
 	if err := os.WriteFile(fs.ConfigPath(), out, 0o644); err != nil {
 		return nil, errx.User("writing config: %v", err)
 	}
-	subject := "kira: sprint create " + sp.Key
-	if _, err := s.finalize(cfg.Commit.Mode, cfg.Commit.Trailer, subject, "", fs.RelToRoot(fs.ConfigPath())); err != nil {
+	subject := subjectPrefix + "sprint create " + sp.Key
+	if _, err := s.finalize(cfg.Commit.Mode, commitSpec{trailerKey: cfg.Commit.Trailer, subject: subject}, fs.RelToRoot(fs.ConfigPath())); err != nil {
 		return nil, err
 	}
-	return &datamodel.SprintCreateResult{Created: true, Sprint: sprintJSON(sp)}, nil
+	return &datamodel.SprintCreateResult{Created: true, Sprint: sprintView(sp)}, nil
 }
 
 func (s *Store) SprintList(cfg *datamodel.Config) (*datamodel.SprintListResult, error) {
-	items, _, err := s.LoadAll()
+	ld, err := s.read(cfg, loadOpts{})
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (s *Store) SprintList(cfg *datamodel.Config) (*datamodel.SprintListResult, 
 	rows := make([]datamodel.SprintListRow, 0, len(cfg.Sprints))
 	for _, sp := range cfg.Sprints {
 		counts := datamodel.SprintItemCounts{}
-		for _, it := range items {
+		for _, it := range ld.items {
 			if !inSprint(it, sp.Key) {
 				continue
 			}
@@ -89,7 +89,7 @@ func (s *Store) SprintList(cfg *datamodel.Config) (*datamodel.SprintListResult, 
 				counts.Done++
 			}
 		}
-		rows = append(rows, datamodel.SprintListRow{SprintJSON: sprintJSON(sp), Active: sp.Key == active, Items: counts})
+		rows = append(rows, datamodel.SprintListRow{SprintView: sprintView(sp), Active: sp.Key == active, Items: counts})
 	}
 	return &datamodel.SprintListResult{Sprints: rows}, nil
 }
@@ -121,13 +121,13 @@ func (s *Store) SprintClose(cfg *datamodel.Config, key, moveTo string) (*datamod
 			return nil, errx.User("--move-to: %q is not a key in the configured sprints", moveTo)
 		}
 	}
-	items, _, err := s.LoadAll()
+	ld, err := s.read(cfg, loadOpts{})
 	if err != nil {
 		return nil, err
 	}
 	var unfinished []*datamodel.Item
 	res := &datamodel.SprintCloseResult{Closed: key, Unfinished: []string{}}
-	for _, it := range items {
+	for _, it := range ld.items {
 		if inSprint(it, key) && !isDoneState(cfg, it.Type, it.State) {
 			unfinished = append(unfinished, it)
 			res.Unfinished = append(res.Unfinished, it.Number)
@@ -140,7 +140,7 @@ func (s *Store) SprintClose(cfg *datamodel.Config, key, moveTo string) (*datamod
 			return nil, nil
 		}
 		subjectOf := func(orig *datamodel.Item) string {
-			return fmt.Sprintf("kira: %s sprint %s -> %s", orig.Number, key, moveTo)
+			return fmt.Sprintf(subjectPrefix+"%s sprint %s -> %s", orig.Number, key, moveTo)
 		}
 		for _, it := range unfinished {
 			if _, _, err := s.mutate(cfg, it.ID, false, apply, subjectOf, datamodel.SourceCLI); err != nil {

@@ -12,26 +12,12 @@ import (
 
 func sampleStats() *datamodel.StatsResult {
 	return &datamodel.StatsResult{
-		Burndown: &datamodel.Burndown{
-			Sprint: "S-1", Start: "2026-07-06", End: "2026-07-17", Unit: "points",
-			Days: []datamodel.BurndownDay{
-				{Date: "2026-07-06", Remaining: 20, Ideal: 20},
-				{Date: "2026-07-07", Remaining: 18, Ideal: 18},
-				{Date: "2026-07-08", Remaining: 15, Ideal: 16},
-				{Date: "2026-07-09", Remaining: 15, Ideal: 14},
-				{Date: "2026-07-10", Remaining: 9, Ideal: 12},
-			},
-			Unestimated: 2,
-		},
-		Velocity: &datamodel.Velocity{
-			Unit: "points",
-			Sprints: []datamodel.VelocitySprint{
-				{Key: "S-prev-2", Completed: 12},
-				{Key: "S-prev-1", Completed: 18},
-				{Key: "S-prev-0", Completed: 9},
-			},
-			Trailing3: 13,
-		},
+		Scope:      &datamodel.StatsScope{Sprint: "2026-S1", Weeks: 8},
+		Completion: &datamodel.Completion{Done: 5, Total: 10, Dropped: 1, Pct: 0.5},
+		CycleTime:  &datamodel.Percentiles{P50: 5, P90: 8.8, N: 4},
+		LeadTime:   &datamodel.Percentiles{P50: 5, P90: 9.4, N: 5},
+		Throughput: []int{0, 1, 3, 2, 0, 4, 1, 2},
+		Reopens:    &datamodel.Reopens{Count: 3, Items: []string{"KIRA-3", "KIRA-4"}},
 	}
 }
 
@@ -52,7 +38,7 @@ func TestStatsScreenRender(t *testing.T) {
 func TestStatsScreenEmptyState(t *testing.T) {
 	m, ss := statsScreenWith(nil)
 	got := ss.view(&m, 100, 18)
-	if !strings.Contains(got, "No sprint data") {
+	if !strings.Contains(got, "No metrics yet") {
 		t.Fatalf("empty stats should teach; got:\n%s", got)
 	}
 	golden.RequireEqual(t, []byte(got))
@@ -65,7 +51,7 @@ func TestStatsScreenSwitchViaKey(t *testing.T) {
 	tm.Type("q")
 	tm.WaitFinished(t)
 	got := tm.FinalModel(t).(model).View()
-	for _, want := range []string{"Burndown", "Velocity", "3:stats"} {
+	for _, want := range []string{"Completion", "throughput", "3:stats"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("switching to stats should render %q; got:\n%s", want, got)
 		}

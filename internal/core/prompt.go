@@ -12,18 +12,9 @@ func (silentPrompter) Interactive() bool             { return false }
 func (silentPrompter) Confirm(string) bool           { return false }
 func (silentPrompter) ReadLine(_, def string) string { return def }
 
-type Option func(*Store)
-
-func WithPrompter(p Prompter) Option {
-	return func(s *Store) {
-		if p != nil {
-			s.prompter = p
-		}
+func firstPrompter(prompter []Prompter) Prompter {
+	if len(prompter) > 0 && prompter[0] != nil {
+		return prompter[0]
 	}
-}
-
-func (s *Store) applyOptions(opts []Option) {
-	for _, o := range opts {
-		o(s)
-	}
+	return silentPrompter{}
 }

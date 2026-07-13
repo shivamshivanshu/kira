@@ -9,14 +9,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-func Filters(cfg *datamodel.Config) *datamodel.FilterListResult {
-	views := make([]datamodel.FilterView, 0, len(cfg.Filters))
-	for _, name := range filterNames(cfg) {
-		views = append(views, datamodel.FilterView{Name: name, Query: cfg.Filters[name]})
-	}
-	return &datamodel.FilterListResult{Filters: views}
-}
-
 func filterNames(cfg *datamodel.Config) []string {
 	return slices.Sorted(maps.Keys(cfg.Filters))
 }

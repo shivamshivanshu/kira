@@ -6,15 +6,17 @@ import (
 	"strings"
 )
 
+type ExitCode int
+
 const (
-	ExitUser     = 1
-	ExitConflict = 2
-	ExitEnv      = 3
-	ExitCrash    = 4
+	ExitUser     ExitCode = 1
+	ExitConflict ExitCode = 2
+	ExitEnv      ExitCode = 3
+	ExitCrash    ExitCode = 4
 )
 
 type Error struct {
-	Code int
+	Code ExitCode
 	Err  error
 	Hint string
 }

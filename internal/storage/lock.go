@@ -9,7 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-func (s *Store) Lock() (func(), error) {
+func (s *FS) Lock() (func(), error) {
 	if err := os.MkdirAll(s.CacheDir(), 0o755); err != nil {
 		return nil, errx.User("creating cache dir: %v", err)
 	}

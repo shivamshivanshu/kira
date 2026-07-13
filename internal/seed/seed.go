@@ -26,7 +26,7 @@ func (s Summary) Items() int { return s.Epics + s.Tickets }
 
 var seedEpoch = time.Date(2025, 1, 1, 9, 0, 0, 0, time.UTC)
 
-type materializer func(i int, sp Spec, parentNumber string) (number string, err error)
+type materializer func(i int, sp Spec, parentNumber string) (number string, counts Summary, err error)
 
 func Run(root string, cfg *datamodel.Config, opts Opts) (Summary, error) {
 	store := storage.New(root)
@@ -37,8 +37,8 @@ func Run(root string, cfg *datamodel.Config, opts Opts) (Summary, error) {
 	baseN := id.Allocate(storage.Snapshot(cfg.Project.Key, existing)).N
 
 	specs := Recipe(opts.Size, opts.Seed)
-	var sum Summary
-	if err := walk(specs, rawSink(store, cfg, baseN, &sum)); err != nil {
+	sum, err := walk(specs, rawSink(store, cfg, baseN))
+	if err != nil {
 		return sum, err
 	}
 
@@ -52,25 +52,29 @@ func Run(root string, cfg *datamodel.Config, opts Opts) (Summary, error) {
 	return sum, nil
 }
 
-func walk(specs []Spec, m materializer) error {
+func walk(specs []Spec, m materializer) (Summary, error) {
 	numbers := make([]string, len(specs))
+	var sum Summary
 	for i, sp := range specs {
 		parent := ""
 		if sp.Parent >= 0 {
 			parent = numbers[sp.Parent]
 		}
-		n, err := m(i, sp, parent)
+		n, counts, err := m(i, sp, parent)
 		if err != nil {
-			return err
+			return sum, err
 		}
 		numbers[i] = n
+		sum.Epics += counts.Epics
+		sum.Tickets += counts.Tickets
+		sum.Comments += counts.Comments
 	}
-	return nil
+	return sum, nil
 }
 
-func rawSink(st *storage.Store, cfg *datamodel.Config, baseN int, sum *Summary) materializer {
+func rawSink(st *storage.FS, cfg *datamodel.Config, baseN int) materializer {
 	hashStyle := cfg.ID.Style == datamodel.IDStyleHash
-	return func(i int, sp Spec, parent string) (string, error) {
+	return func(i int, sp Spec, parent string) (string, Summary, error) {
 		u := id.Mint()
 		number := id.AllocFor(hashStyle, cfg.Project.Key, baseN+i, u)
 		ts := seedEpoch.Add(time.Duration(i) * time.Hour)
@@ -79,6 +83,7 @@ func rawSink(st *storage.Store, cfg *datamodel.Config, baseN int, sum *Summary) 
 			it.Epic = ptr(parent)
 		}
 		content := codec.Serialize(it)
+		var counts Summary
 		for j, body := range sp.Comments {
 			content = codec.AppendComment(content, datamodel.Comment{
 				ID:     id.Mint().String(),
@@ -86,17 +91,17 @@ func rawSink(st *storage.Store, cfg *datamodel.Config, baseN int, sum *Summary) 
 				Ts:     ts.Add(time.Duration(j+1) * time.Minute).Format(time.RFC3339),
 				Body:   body,
 			})
-			sum.Comments++
+			counts.Comments++
 		}
 		if _, err := st.WriteItemRaw(it.ID, content); err != nil {
-			return "", err
+			return "", Summary{}, err
 		}
 		if sp.Type == datamodel.TypeEpic {
-			sum.Epics++
+			counts.Epics++
 		} else {
-			sum.Tickets++
+			counts.Tickets++
 		}
-		return number, nil
+		return number, counts, nil
 	}
 }
 
@@ -116,18 +121,10 @@ func buildItem(cfg *datamodel.Config, sp Spec, ulid, number string, ts time.Time
 		Updated:   stamp,
 		Body:      sp.Body,
 	}
-	if sp.Subtype != "" {
-		it.Subtype = ptr(sp.Subtype)
-	}
-	if sp.Priority != "" {
-		it.Priority = ptr(sp.Priority)
-	}
-	if sp.Owner != "" {
-		it.Owner = ptr(sp.Owner)
-	}
-	if r := doneResolution(cfg, sp.Type, state); r != "" {
-		it.Resolution = ptr(r)
-	}
+	it.Subtype = ptrIfSet(sp.Subtype)
+	it.Priority = ptrIfSet(sp.Priority)
+	it.Owner = ptrIfSet(sp.Owner)
+	it.Resolution = ptrIfSet(doneResolution(cfg, sp.Type, state))
 	return it
 }
 
@@ -158,3 +155,10 @@ func doneResolution(cfg *datamodel.Config, typ, state string) string {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+func ptrIfSet(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}

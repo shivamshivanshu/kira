@@ -10,6 +10,11 @@ import (
 	"github.com/shivamshivanshu/kira/internal/hooks"
 )
 
+const (
+	dirPerm  = 0o755
+	execPerm = 0o755
+)
+
 type HooksInstallOpts struct {
 	WithPreCommit bool
 }
@@ -57,14 +62,14 @@ func (s *Store) InstallHooks(cfg *datamodel.Config, opts HooksInstallOpts) (*dat
 
 func (s *Store) materializeTrackedHook(name, script string) (string, error) {
 	dir := filepath.Join(s.fs().KiraDir(), "hooks")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, dirPerm); err != nil {
 		return "", errx.User("creating %s: %v", s.fs().RelToRoot(dir), err)
 	}
 	path := filepath.Join(dir, name)
 	if existing, err := os.ReadFile(path); err == nil && string(existing) == script {
 		return path, nil
 	}
-	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+	if err := os.WriteFile(path, []byte(script), execPerm); err != nil {
 		return "", errx.User("writing %s: %v", s.fs().RelToRoot(path), err)
 	}
 	return path, nil
@@ -76,7 +81,7 @@ func (s *Store) installGitHook(repo gitx.Repo, name, script string) (datamodel.H
 	if err != nil {
 		return status, err
 	}
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dst), dirPerm); err != nil {
 		return status, errx.User("creating %s: %v", filepath.Dir(dst), err)
 	}
 
@@ -115,10 +120,10 @@ func (s *Store) gitHookPath(repo gitx.Repo, name string) (string, error) {
 }
 
 func writeExecutable(path, content string) error {
-	if err := os.WriteFile(path, []byte(content), 0o755); err != nil {
+	if err := os.WriteFile(path, []byte(content), execPerm); err != nil {
 		return errx.User("writing %s: %v", path, err)
 	}
-	return os.Chmod(path, 0o755)
+	return os.Chmod(path, execPerm)
 }
 
 func (s *Store) commitTrackedHooks(cfg *datamodel.Config, repo gitx.Repo, tracked []string) error {
@@ -129,7 +134,7 @@ func (s *Store) commitTrackedHooks(cfg *datamodel.Config, repo gitx.Repo, tracke
 	if len(dirty) == 0 {
 		return nil
 	}
-	_, err = s.finalize(cfg.Commit.Mode, "", "kira: install hooks", "", tracked...)
+	_, err = s.finalize(cfg.Commit.Mode, commitSpec{subject: subjectPrefix + "install hooks"}, tracked...)
 	return err
 }
 

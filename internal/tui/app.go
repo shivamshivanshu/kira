@@ -84,7 +84,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.loadErr = nil
 		if ts, ok := m.screens[viewTree].(*treeScreen); ok {
-			ts.apply(&m, msg.data)
+			ts.setData(&m, msg.data)
 		}
 		if ss, ok := m.screens[viewStats].(*statsScreen); ok {
 			ss.invalidate()

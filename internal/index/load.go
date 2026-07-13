@@ -6,16 +6,16 @@ import (
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
-func Load(store *storage.Store, repo gitx.Repo, opts Options) ([]*datamodel.Item, Result, error) {
+func Load(store *storage.FS, repo gitx.Repo, opts Options) ([]*datamodel.Item, Result, error) {
 	return loadRetry(store, repo, opts, false)
 }
 
-func Refresh(store *storage.Store, repo gitx.Repo, opts Options, full bool) (Result, error) {
+func Refresh(store *storage.FS, repo gitx.Repo, opts Options, full bool) (Result, error) {
 	_, res, err := loadRetry(store, repo, opts, full)
 	return res, err
 }
 
-func loadRetry(store *storage.Store, repo gitx.Repo, opts Options, force bool) ([]*datamodel.Item, Result, error) {
+func loadRetry(store *storage.FS, repo gitx.Repo, opts Options, force bool) ([]*datamodel.Item, Result, error) {
 	items, res, err := loadOnce(store, repo, opts, force)
 	if err == nil {
 		return items, res, nil
@@ -27,7 +27,7 @@ func loadRetry(store *storage.Store, repo gitx.Repo, opts Options, force bool) (
 	return loadOnce(store, repo, opts, true)
 }
 
-func loadOnce(store *storage.Store, repo gitx.Repo, opts Options, force bool) ([]*datamodel.Item, Result, error) {
+func loadOnce(store *storage.FS, repo gitx.Repo, opts Options, force bool) ([]*datamodel.Item, Result, error) {
 	idx, err := Open(store.CacheDir())
 	if err != nil {
 		return nil, Result{}, err

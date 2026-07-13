@@ -5,8 +5,10 @@ import (
 	"strings"
 )
 
+const infoAttributesPath = "info/attributes"
+
 func (r Repo) InfoAttributeHasLine(line string) bool {
-	path, err := r.GitPath("info/attributes")
+	path, err := r.GitPath(infoAttributesPath)
 	if err != nil {
 		return false
 	}

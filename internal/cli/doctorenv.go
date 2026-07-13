@@ -48,7 +48,7 @@ func gitDir(repo gitx.Repo, root string) string {
 }
 
 type indexFreshness struct {
-	store *storage.Store
+	store *storage.FS
 	repo  gitx.Repo
 }
 

@@ -25,7 +25,6 @@ workon:
 
 estimate:
   unit: points                # points | hours
-  hours_per_day: 8            # working hours per day
 
 # git: relate items to commits. docs: docs/design/07-git-integration.md
 #git: {}
@@ -55,7 +54,6 @@ func TestSetScalarPreservesEveryOtherLine(t *testing.T) {
 	}{
 		{"commit.mode", "manual", "  mode: manual                  # auto | manual | prompt"},
 		{"sync.push", "true", "  push: true                 # true | false"},
-		{"estimate.hours_per_day", "7.5", "  hours_per_day: 7.5            # working hours per day"},
 		{"workon.branch_pattern", "kira/{number}", "  branch_pattern: kira/{number}   # tokens: {key} {number} {slug}"},
 		{"project.name", "my proj", "  name: my proj"},
 	}

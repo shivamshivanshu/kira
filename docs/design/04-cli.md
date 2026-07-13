@@ -199,15 +199,17 @@ No `-m` → opens `$EDITOR`. Appends an anchored HTML-comment-delimited block to
 
 ```
 kira list [--type T] [--state S] [--category C] [--owner U] [--label L] [--epic ID]
-          [--priority P] [--sprint KEY] [--filter NAME] [--tree] [--json]
+          [--priority P] [--sprint KEY] [--filter NAME] [--query "<expr>"] [--tree] [--json]
 ```
 
-Behavior: filters are ANDed. Reads the index if fresh; pre-M2 or on index failure, falls back to a linear scan of `.kira/tickets/*.md` (same result, slower — the index is a cache, not a dependency). `--tree` groups by epic (same renderer as `query`'s default).
+Behavior: filters are ANDed. Reads the index if fresh; pre-M2 or on index failure, falls back to a linear scan of `.kira/tickets/*.md` (same result, slower — the index is a cache, not a dependency). The default render is a linear list; `--tree` groups by epic in a collapsible-in-TUI tree, adding a `"tree"` key to the JSON.
 
-`--filter NAME` runs a **named saved query** from config `filters:` ([02-data-model.md §9](02-data-model.md#9-example-config)) — `kira list --filter blocked` expands to `kira query "<the stored expression>"`. Any additional `--state`/`--owner`/etc. flags AND onto the expanded filter. `--sprint KEY` accepts `active` (resolves via the active-sprint pointer). Unknown filter name → exit 1 listing the configured names. `kira filter list` enumerates configured filters:
+`--query "<expr>"` filters by a query expression (see [§4 Query grammar](#4-query-expression-grammar)), ANDed with the flag filters.
+
+`--filter NAME` runs a **named saved query** from config `filters:` ([02-data-model.md §9](02-data-model.md#9-example-config)) — `kira list --filter blocked` expands to `kira list --query "<the stored expression>"`. Any additional `--state`/`--owner`/etc. flags AND onto the expanded filter. `--sprint KEY` accepts `active` (resolves via the active-sprint pointer). Unknown filter name → exit 1 listing the configured names. `kira config filters` enumerates configured filters:
 
 ```json
-// kira filter list --json
+// kira config filters --json
 {"filters": [{"name": "mine-active", "query": "owner=shivam AND category=doing"},
              {"name": "blocked", "query": "blocked_by IS NOT EMPTY"}]}
 ```
@@ -216,17 +218,7 @@ Behavior: filters are ANDed. Reads the index if fresh; pre-M2 or on index failur
 {"items": [{"id": "01J8X8Q7...", "number": "KIRA-142", "title": "...", "type": "ticket",
             "state": "IN_PROGRESS", "category": "doing", "owner": "shivam", "labels": ["bug"], "epic": "01J8X7B1..."}],
  "count": 1}
-```
-
-### `kira query`
-
-```
-kira query "<expr>" [--tree|--flat] [--json]
-```
-
-See [§4 Query grammar](#4-query-expression-grammar). `--tree` (default) groups results by epic in a collapsible-in-TUI tree; `--flat` is a linear list. Index-backed (falls back to linear scan pre-M2, same as `list`). Output shape identical to `list`'s `{"items": [...]}`, plus a `"tree"` key when tree-rendered:
-
-```json
+// with --tree:
 {"items": [...], "tree": [{"epic": "01J8X7B1...", "epic_number": "KIRA-100", "items": ["01J8X8Q7..."]}]}
 ```
 
@@ -248,7 +240,7 @@ Thin wrapper over `rg` scoped to `.kira/tickets/`, passing through `-i`/`-w`/`-C
 kira discover [--action show|edit] [--fzf]
 ```
 
-fzf picker over item titles/numbers with a `kira show <id>` preview binding (fzf `--preview`). No `rg`/rg detection here — falls back to a bubbles in-process fuzzy list when `fzf` is absent. No `--json`: this is an interactive selector, not a scriptable read command — its candidate source is the same data `list --json` exposes, so scripts use `list`/`query` directly instead.
+fzf picker over item titles/numbers with a `kira show <id>` preview binding (fzf `--preview`). No `rg`/rg detection here — falls back to printing the plain candidate list when `fzf` is absent. No `--json`: this is an interactive selector, not a scriptable read command — its candidate source is the same data `list --json` exposes, so scripts use `list`/`list --query` directly instead.
 
 ### `kira tree`
 
@@ -305,14 +297,6 @@ Manages the sprint entities in config `sprints:` ([02-data-model.md §9](02-data
 
 These shapes are new commands, so they are additive to the frozen v1 contract by construction (§7).
 
-### `kira filter`
-
-```
-kira filter list [--json]
-```
-
-Enumerates the named saved queries in config `filters:`; the sole `filter` verb in v1 (filters are authored by editing config, not via a `filter create` command). Consumed by `kira list --filter <name>` and the board quick-filter chips. JSON shape is shown under [`kira list`](#kira-list).
-
 ### `kira log`
 
 ```
@@ -335,10 +319,10 @@ Behavior: `git log -p -- .kira/tickets/<ulid>.md` (live shell-out; no `--follow`
 ### `kira stats`
 
 ```
-kira stats [<epic-id>] [--since DATE] [--weeks N] [--sprint KEY] [--velocity] [--json]
+kira stats [<epic-id>] [--since DATE] [--weeks N] [--sprint KEY] [--json]
 ```
 
-`--sprint KEY` (accepts `active`) scopes the metrics to a sprint and adds the **burndown** series for its window; `--velocity` reports per-closed-sprint completed-estimate and its trailing-3 average. Full metric and `--json` definitions for both in [08-telemetry.md §2](08-telemetry.md#2-metric-definitions).
+`--sprint KEY` (accepts `active`) scopes the metrics to a sprint's items. Full metric and `--json` definitions in [08-telemetry.md §2](08-telemetry.md#2-metric-definitions).
 
 Full metric definitions in [08-telemetry.md](08-telemetry.md). Reads the index's cached transition-event stream (populated incrementally during reindex, not a live per-item `git log --follow` — that would be O(items × history) and too slow for `stats` over a large project). Recursive epic-subtree rollup keeps a visited-set and reports (never loops) if an unrepaired `epic` cycle survives to read time — same guard as `kira tree`.
 
@@ -420,9 +404,10 @@ kira commit [-m "msg"]
 kira config get <key>
 kira config set <key> <value>
 kira config edit [--json]
+kira config filters [--json]
 ```
 
-`get`/`set` are dotted-path accessors into `.kira/config.yaml` (e.g. `commit.mode`), scriptable, no `$EDITOR`. `edit` opens `$EDITOR` on the full file, validates on save (same parse-validate-retry loop as tickets). All three commit under the active `commit.mode` (config changes are kira-tracked mutations too). `get` on a **non-leaf** key returns the whole subtree as nested JSON mirroring the YAML structure, rather than erroring — e.g. `kira config get workflows --json` returns every type's full workflow block (this is the shape the nvim plugin's `:KiraCreate` field completion consumes, see [06-nvim-plugin.md](06-nvim-plugin.md)):
+`get`/`set` are dotted-path accessors into `.kira/config.yaml` (e.g. `commit.mode`), scriptable, no `$EDITOR`. `edit` opens `$EDITOR` on the full file, validates on save (same parse-validate-retry loop as tickets). All three commit under the active `commit.mode` (config changes are kira-tracked mutations too). `filters` is a read-only inspection of the named saved queries in config `filters:` — consumed by `kira list --filter <name>` and the board quick-filter chips; JSON shape shown under [`kira list`](#kira-list). `get` on a **non-leaf** key returns the whole subtree as nested JSON mirroring the YAML structure, rather than erroring — e.g. `kira config get workflows --json` returns every type's full workflow block (this is the shape the nvim plugin's `:KiraCreate` field completion consumes, see [06-nvim-plugin.md](06-nvim-plugin.md)):
 
 ```json
 {"key": "commit.mode", "value": "auto"}
@@ -557,14 +542,14 @@ Default render is the epic-grouped tree (`kira tree`'s renderer); `--flat` gives
 
 ## 5. `find` / `discover` and the external-tool policy
 
-**Founder constraint, enforced structurally:** `rg` and `fzf` are optional accelerators for *interactive, unstructured text search only* — `kira find` and `kira discover`. Every structured lookup (`query`, `list`, `board`, `stats`) parses frontmatter (or reads the index) and never shells out to `rg`/`grep`/`awk`/`sed`. Reason: a text match on the literal string `label` would false-positive inside prose in the ticket body — structured fields must go through the parser, not pattern matching. No `awk`/`sed` invocation exists anywhere in the system.
+**Founder constraint, enforced structurally:** `rg` and `fzf` are optional accelerators for *interactive, unstructured text search only* — `kira find` and `kira discover`. Every structured lookup (`list`, `list --query`, `board`, `stats`) parses frontmatter (or reads the index) and never shells out to `rg`/`grep`/`awk`/`sed`. Reason: a text match on the literal string `label` would false-positive inside prose in the ticket body — structured fields must go through the parser, not pattern matching. No `awk`/`sed` invocation exists anywhere in the system.
 
 `find` and `discover` detect their optional binary via `exec.LookPath` at call time (not at startup) and degrade rather than fail:
 
 | Tool | Present | Absent |
 |---|---|---|
 | `rg` | passthrough exec, full flag support | pure-Go regex scan over `.kira/tickets/*.md`, no `-C` context |
-| `fzf` | subprocess picker, `kira show` preview | bubbles in-process fuzzy list, no live preview pane |
+| `fzf` | subprocess picker, `kira show` preview | plain candidate list printed to stdout, no picker |
 
 `kira doctor` checks both on `PATH` and emits an install hint if missing — a degraded `find`/`discover` is a warning, not a broken build.
 
@@ -582,7 +567,7 @@ Default render is the epic-grouped tree (`kira tree`'s renderer); `--flat` gives
 - All JSON goes to **stdout only**; all diagnostics, progress, and human-readable errors go to **stderr**, even in `--json` mode (a script piping stdout to `jq` never sees a diagnostic corrupt the JSON).
 - **Failure output in `--json` mode** *(ratified 2026-07-12)*: failures emit a structured `{error, hint, code}` object on **stderr**; stdout remains empty — scripts distinguish failure by empty stdout + exit code, and that silence is part of the contract. Emitting an error object on stdout would require an explicit ratified amendment to this section with new goldens in the same change.
 - **Deterministic ordering** *(proposed)*: list-shaped results follow the default sort precedence in [§4](#4-query-expression-grammar) — `rank` → `priority` (config order) → display number ascending, ties broken by ULID (and degrading to number-then-ULID when `rank`/`priorities` are unused). Stable across repeated invocations with no intervening writes, which is what golden-file tests in [09-testing.md](09-testing.md) depend on.
-- **Additive-only parity extensions**: the M1.5 JIRA-parity fields and commands (`subtype`, `resolution`, `priority` validation, `rank`, `links`, `sprint`, `due`; the `sprint`/`filter` commands; `ORDER BY`/`IN`/`IS EMPTY`; `move` `warnings`; `stats --sprint`/`--velocity`) are **additive extensions to the frozen v1 contract** — new keys and new commands only, no existing key retyped or removed. They regenerate goldens without breaking the freeze.
+- **Additive-only parity extensions**: the M1.5 JIRA-parity fields and commands (`subtype`, `resolution`, `priority` validation, `rank`, `links`, `sprint`, `due`; the `sprint` command; `ORDER BY`/`IN`/`IS EMPTY`; `move` `warnings`; `stats --sprint`) are **additive extensions to the frozen v1 contract** — new keys and new commands only, no existing key retyped or removed. They regenerate goldens without breaking the freeze.
 
 ### Write-command result shapes
 

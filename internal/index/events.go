@@ -6,7 +6,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
-func LogEntries(store *storage.Store, itemID, fileHead string, derive func() ([]datamodel.Event, error)) ([]datamodel.Event, []CommitLink, error) {
+func LogEntries(store *storage.FS, itemID, fileHead string, derive func() ([]datamodel.Event, error)) ([]datamodel.Event, []CommitLink, error) {
 	idx, err := Open(store.CacheDir())
 	if err != nil {
 		return nil, nil, err

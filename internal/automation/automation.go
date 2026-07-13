@@ -21,8 +21,8 @@ type Change struct {
 }
 
 type Event struct {
-	Name         string
-	Source       string
+	Name         datamodel.EventName
+	Source       datamodel.ChangeSource
 	Item         *datamodel.ShowResult
 	Changes      map[string]Change
 	From         string

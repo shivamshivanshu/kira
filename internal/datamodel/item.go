@@ -50,14 +50,16 @@ func ValidType(t string) bool { return t == TypeTicket || t == TypeEpic }
 
 const ResolutionDropped = "dropped"
 
+type LinkType string
+
 const (
-	LinkRelates     = "relates"
-	LinkDuplicateOf = "duplicate_of"
+	LinkRelates     LinkType = "relates"
+	LinkDuplicateOf LinkType = "duplicate_of"
 )
 
-var LinkTypes = []string{LinkRelates, LinkDuplicateOf}
+var LinkTypes = []LinkType{LinkRelates, LinkDuplicateOf}
 
-func ValidLinkType(t string) bool { return slices.Contains(LinkTypes, t) }
+func ValidLinkType(t string) bool { return slices.Contains(LinkTypes, LinkType(t)) }
 
 func ValidDate(s string) bool {
 	_, err := time.Parse(time.DateOnly, s)
@@ -128,3 +130,15 @@ func (e *ParseError) Error() string {
 }
 
 func (e *ParseError) Unwrap() []error { return e.Errs }
+
+type Comment struct {
+	ID     string
+	Author string
+	Ts     string
+	Body   string
+}
+
+type EpicProgress struct {
+	Done  int
+	Total int
+}

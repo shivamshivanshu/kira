@@ -9,6 +9,8 @@ import (
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
+const treeEmptyMessage = "No tickets yet — n create · : command · ? keys"
+
 type treeItem struct {
 	node   datamodel.TreeNode
 	fields datamodel.ListItem

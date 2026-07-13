@@ -80,28 +80,8 @@ func fieldChange(repo gitx.Repo, from, to *datamodel.Item, field string) datamod
 	return datamodel.FieldChange{Field: field, From: fieldString(from, field), To: fieldString(to, field)}
 }
 
-func byULID(items []*datamodel.Item) map[string]*datamodel.Item {
-	m := make(map[string]*datamodel.Item, len(items))
-	for _, it := range items {
-		m[it.ID] = it
-	}
-	return m
-}
-
 func sortDiffItems(items []datamodel.DiffItem) {
-	keys := make(map[string]id.SortKey, len(items))
-	for _, it := range items {
-		keys[it.ID] = id.NewSortKey(it.Number, it.ID)
-	}
-	slices.SortStableFunc(items, func(a, b datamodel.DiffItem) int {
-		ka, kb := keys[a.ID], keys[b.ID]
-		switch {
-		case ka.Less(kb):
-			return -1
-		case kb.Less(ka):
-			return 1
-		default:
-			return 0
-		}
+	sortByKey(items, func(it datamodel.DiffItem) id.SortKey {
+		return id.NewSortKey(it.Number, it.ID)
 	})
 }

@@ -32,20 +32,24 @@ func newDiffCmd(g *globalFlags) *cobra.Command {
 	}
 }
 
+func renderDiffHeader(w io.Writer, status datamodel.DiffStatus, number, title string) {
+	switch status {
+	case datamodel.DiffCreated:
+		fmt.Fprintf(w, "created %s  %s\n", number, title)
+	case datamodel.DiffDeleted:
+		fmt.Fprintf(w, "deleted %s  %s\n", number, title)
+	default:
+		fmt.Fprintf(w, "%s  %s\n", number, title)
+	}
+}
+
 func renderDiff(w io.Writer, res *datamodel.DiffResult) {
 	if len(res.Items) == 0 {
 		fmt.Fprintln(w, "no backlog differences")
 		return
 	}
 	for _, it := range res.Items {
-		switch it.Status {
-		case datamodel.DiffCreated:
-			fmt.Fprintf(w, "created %s  %s\n", it.Number, it.Title)
-		case datamodel.DiffDeleted:
-			fmt.Fprintf(w, "deleted %s  %s\n", it.Number, it.Title)
-		default:
-			fmt.Fprintf(w, "%s  %s\n", it.Number, it.Title)
-		}
+		renderDiffHeader(w, it.Status, it.Number, it.Title)
 		if it.Renumbered != nil {
 			fmt.Fprintf(w, "  renumbered %s -> %s\n", it.Renumbered.From, it.Renumbered.To)
 		}

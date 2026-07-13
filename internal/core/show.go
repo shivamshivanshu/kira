@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/index"
@@ -34,9 +35,7 @@ func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResu
 	res := showResultOf(cfg, it)
 	res.StderrNotes = ld.notes
 
-	events, links, err := index.LogEntries(s.fs(), ulid, s.fileHead(ulid), func() ([]datamodel.Event, error) {
-		return s.deriveEvents(ulid)
-	})
+	events, links, err := s.logEntries(ulid)
 	if err != nil {
 		return nil, err
 	}
@@ -69,4 +68,49 @@ func strOrNil(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+func showResultOf(cfg *datamodel.Config, it *datamodel.Item) datamodel.ShowResult {
+	comments := codec.ParseComments(it.Body)
+	views := make([]datamodel.CommentView, len(comments))
+	for i, c := range comments {
+		views[i] = datamodel.CommentView{ID: c.ID, Author: c.Author, Ts: c.Ts, Text: c.Body}
+	}
+	return datamodel.ShowResult{
+		ID:            it.ID,
+		Number:        it.Number,
+		Aliases:       nonNil(it.Aliases),
+		Type:          it.Type,
+		Subtype:       it.Subtype,
+		Title:         it.Title,
+		State:         it.State,
+		Category:      categoryString(cfg, it.Type, it.State),
+		Resolution:    it.Resolution,
+		Priority:      it.Priority,
+		Rank:          it.Rank,
+		Sprint:        it.Sprint,
+		Due:           it.Due,
+		Owner:         it.Owner,
+		Reporter:      it.Reporter,
+		Labels:        nonNil(it.Labels),
+		Epic:          it.Epic,
+		BlockedBy:     nonNil(it.BlockedBy),
+		Links:         linksView(it.Links),
+		Blocks:        []string{},
+		Estimate:      it.Estimate,
+		Created:       it.Created,
+		Updated:       it.Updated,
+		Body:          it.Body,
+		Comments:      views,
+		LinkedCommits: []datamodel.CommitLink{},
+		HistoryTail:   []datamodel.HistoryEvent{},
+	}
+}
+
+func linksView(links map[string][]string) map[string][]string {
+	view := make(map[string][]string, len(datamodel.LinkTypes))
+	for _, typ := range datamodel.LinkTypes {
+		view[string(typ)] = nonNil(links[string(typ)])
+	}
+	return view
 }

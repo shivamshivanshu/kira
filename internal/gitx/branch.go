@@ -7,14 +7,7 @@ func (r Repo) CurrentBranch() (string, error) {
 }
 
 func (r Repo) Branches() ([]string, error) {
-	out, err := r.Output("for-each-ref", "--format=%(refname:short)", "refs/heads")
-	if err != nil {
-		return nil, err
-	}
-	if out == "" {
-		return nil, nil
-	}
-	return strings.Split(out, "\n"), nil
+	return r.splitLines("for-each-ref", "--format=%(refname:short)", "refs/heads")
 }
 
 func (r Repo) HasBranch(name string) bool {

@@ -84,7 +84,7 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 
 func (s *Store) writeResolvedFile(path string, it *datamodel.Item) error {
 	abs := filepath.Join(s.root, filepath.FromSlash(path))
-	if err := os.WriteFile(abs, []byte(codec.Serialize(it)), 0o644); err != nil {
+	if err := os.WriteFile(abs, []byte(codec.Serialize(it)), itemFileMode); err != nil {
 		return errx.User("writing %s: %v", path, err)
 	}
 	return nil
@@ -117,20 +117,18 @@ func fieldString(it *datamodel.Item, field string) string {
 	return ""
 }
 
-func applySide(dst, src *datamodel.Item, field string) {
-	if d, ok := datamodel.Field(field); ok {
-		d.Copy(dst, src)
-	}
-}
-
 func (s *Store) pickFields(target, ours, theirs *datamodel.Item, fields []string) {
 	for _, f := range fields {
 		prompt := f + ": [o]urs=" + fieldString(ours, f) + " [t]heirs=" + fieldString(theirs, f) + " (default: auto) "
 		switch strings.ToLower(s.prompter.ReadLine(prompt, "")) {
 		case "o":
-			applySide(target, ours, f)
+			if d, ok := datamodel.Field(f); ok {
+				d.Copy(target, ours)
+			}
 		case "t":
-			applySide(target, theirs, f)
+			if d, ok := datamodel.Field(f); ok {
+				d.Copy(target, theirs)
+			}
 		}
 	}
 }

@@ -18,7 +18,7 @@ exec kira list --json
 cp stdout want-list.json
 exec kira show KIRA-1 --json
 cp stdout want-show.json
-exec kira query type=ticket --json
+exec kira list --query type=ticket --tree --json
 cp stdout want-query.json
 
 # the index command reports state and forces a rebuild
@@ -36,7 +36,7 @@ exec kira list --json
 cmp stdout want-list.json
 exec kira show KIRA-1 --json
 cmp stdout want-show.json
-exec kira query type=ticket --json
+exec kira list --query type=ticket --tree --json
 cmp stdout want-query.json
 
 # a corrupted index.db auto-rebuilds rather than failing, on both the

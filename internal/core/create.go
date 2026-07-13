@@ -10,6 +10,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 type CreateOpts struct {
@@ -66,14 +67,7 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 		return nil, err
 	}
 
-	u := id.Mint()
-	sys := systemFields{
-		ulid:    u.String(),
-		number:  allocateNumber(cfg, snap, u),
-		typ:     opts.Type,
-		state:   wf.Initial,
-		created: time.Now().Format(time.RFC3339),
-	}
+	sys := newSystemFields(cfg, snap, opts.Type, wf.Initial)
 	finalItem := itemFromDraft(d, sys)
 	hard, warns := validateAssembled(cfg, finalItem, resolver, opts.Force)
 	if len(hard) == 0 {
@@ -83,11 +77,11 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 		return nil, errx.Invalid(hard)
 	}
 
-	path, err := s.writeItem(finalItem)
+	path, err := s.fs().WriteItem(finalItem)
 	if err != nil {
 		return nil, err
 	}
-	subject := "kira: create " + finalItem.Number + " " + quoteTitle(finalItem.Title)
+	subject := subjectPrefix + "create " + finalItem.Number + " " + quoteTitle(finalItem.Title)
 	cs := &datamodel.ChangeSet{
 		Kind:    datamodel.ChangeCreated,
 		After:   finalItem,
@@ -127,23 +121,14 @@ func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, initialSt
 		if err != nil {
 			return draft{}, err
 		}
-		u := id.Mint()
-		sys := systemFields{
-			ulid:    u.String(),
-			number:  allocateNumber(cfg, snap, u),
-			typ:     opts.Type,
-			state:   initialState,
-			created: time.Now().Format(time.RFC3339),
-		}
-		content, err := runEditor(serializeDraft(base), func(c string) []error {
+		sys := newSystemFields(cfg, snap, opts.Type, initialState)
+		content, err := runEditor(serializeDraft(base), validateBuffer(cfg, resolver, opts.Force, func(c string) (*datamodel.Item, []error) {
 			d, perr := parseDraft(c)
 			if perr != nil {
-				return []error{perr}
+				return nil, []error{perr}
 			}
-			it := itemFromDraft(d, sys)
-			hard, _ := validateAssembled(cfg, it, resolver, opts.Force)
-			return hard
-		})
+			return itemFromDraft(d, sys), nil
+		}))
 		if err != nil {
 			return draft{}, err
 		}
@@ -160,24 +145,35 @@ type systemFields struct {
 	created string
 }
 
+func newSystemFields(cfg *datamodel.Config, snap id.Snapshot, typ, state string) systemFields {
+	u := id.Mint()
+	return systemFields{
+		ulid:    u.String(),
+		number:  allocateNumber(cfg, snap, u),
+		typ:     typ,
+		state:   state,
+		created: time.Now().Format(time.RFC3339),
+	}
+}
+
 func itemFromDraft(d draft, sys systemFields) *datamodel.Item {
 	return &datamodel.Item{
 		ID:        sys.ulid,
 		Number:    sys.number,
 		Aliases:   []string{},
 		Type:      sys.typ,
-		Subtype:   nonEmptyPtr(d.Subtype),
+		Subtype:   ptrOrNil(ptr.Deref(d.Subtype)),
 		Title:     d.Title,
 		State:     sys.state,
-		Priority:  nonEmptyPtr(d.Priority),
-		Rank:      nonEmptyPtr(d.Rank),
-		Owner:     nonEmptyPtr(d.Owner),
-		Reporter:  nonEmptyPtr(d.Reporter),
+		Priority:  ptrOrNil(ptr.Deref(d.Priority)),
+		Rank:      ptrOrNil(ptr.Deref(d.Rank)),
+		Owner:     ptrOrNil(ptr.Deref(d.Owner)),
+		Reporter:  ptrOrNil(ptr.Deref(d.Reporter)),
 		Labels:    nonNil(d.Labels),
-		Epic:      nonEmptyPtr(d.Epic),
+		Epic:      ptrOrNil(ptr.Deref(d.Epic)),
 		BlockedBy: []string{},
-		Sprint:    nonEmptyPtr(d.Sprint),
-		Due:       nonEmptyPtr(d.Due),
+		Sprint:    ptrOrNil(ptr.Deref(d.Sprint)),
+		Due:       ptrOrNil(ptr.Deref(d.Due)),
 		Estimate:  d.Estimate,
 		Created:   sys.created,
 		Updated:   sys.created,
@@ -264,13 +260,6 @@ func readSource(src string) (string, error) {
 		return "", errx.User("reading %s: %v", src, err)
 	}
 	return string(data), nil
-}
-
-func nonEmptyPtr(p *string) *string {
-	if p == nil || *p == "" {
-		return nil
-	}
-	return p
 }
 
 func quoteTitle(title string) string {

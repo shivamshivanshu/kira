@@ -3,7 +3,6 @@ package tui
 import (
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/charmbracelet/x/ansi"
 	"github.com/yuin/goldmark"
@@ -15,39 +14,16 @@ import (
 
 const mdMargin = 2
 
-var (
-	mdMu     sync.Mutex
-	mdCache  = map[int]*mdRenderer{}
-	mdParser = goldmark.New(goldmark.WithExtensions(extension.GFM)).Parser()
-)
+var mdParser = goldmark.New(goldmark.WithExtensions(extension.GFM)).Parser()
 
 func renderMarkdown(body string, width int) string {
 	body = strings.TrimRight(body, "\n")
 	if width <= 0 || body == "" {
 		return body
 	}
-	return markdownRenderer(width).render(body)
-}
-
-func markdownRenderer(width int) *mdRenderer {
-	mdMu.Lock()
-	defer mdMu.Unlock()
-	if r, ok := mdCache[width]; ok {
-		return r
-	}
-	r := &mdRenderer{width: width}
-	mdCache[width] = r
-	return r
-}
-
-type mdRenderer struct {
-	width int
-}
-
-func (r *mdRenderer) render(body string) string {
 	src := []byte(body)
 	doc := mdParser.Parse(text.NewReader(src))
-	w := &mdWalk{src: src, width: r.width}
+	w := &mdWalk{src: src, width: width}
 	lines := w.blocks(doc, mdMargin)
 	if hasTopMargin(doc.FirstChild()) {
 		lines = append([]string{""}, lines...)

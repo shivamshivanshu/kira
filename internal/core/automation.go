@@ -12,7 +12,7 @@ import (
 
 func (s *Store) AutomationList(cfg *datamodel.Config) *datamodel.AutomationListResult {
 	return &datamodel.AutomationListResult{
-		Hooks:   hookViews(cfg),
+		Hooks:   automationViews(cfg),
 		Trusted: automation.Trusted(s.fs().CacheDir(), cfg),
 	}
 }
@@ -22,10 +22,10 @@ func (s *Store) AutomationTrust(cfg *datamodel.Config) (*datamodel.AutomationTru
 	if err != nil {
 		return nil, errx.User("recording automation trust: %v", err)
 	}
-	return &datamodel.AutomationTrustResult{Hooks: hookViews(cfg), Hash: hash}, nil
+	return &datamodel.AutomationTrustResult{Hooks: automationViews(cfg), Hash: hash}, nil
 }
 
-func hookViews(cfg *datamodel.Config) []datamodel.AutomationHookView {
+func automationViews(cfg *datamodel.Config) []datamodel.AutomationHookView {
 	views := make([]datamodel.AutomationHookView, len(cfg.Automation))
 	for i, h := range cfg.Automation {
 		views[i] = datamodel.AutomationHookView{Name: h.Name, On: h.On, Run: h.Run, Enabled: h.IsEnabled()}
@@ -75,11 +75,11 @@ func (s *Store) eventFor(cfg *datamodel.Config, cs *datamodel.ChangeSet) (automa
 	return automation.Event{}, false
 }
 
-func (s *Store) baseEvent(cfg *datamodel.Config, name string, source datamodel.ChangeSource, it *datamodel.Item) automation.Event {
+func (s *Store) baseEvent(cfg *datamodel.Config, name datamodel.EventName, source datamodel.ChangeSource, it *datamodel.Item) automation.Event {
 	snapshot := showResultOf(cfg, it)
 	return automation.Event{
 		Name:   name,
-		Source: string(source),
+		Source: source,
 		Item:   &snapshot,
 		ItemID: it.ID,
 		Number: it.Number,

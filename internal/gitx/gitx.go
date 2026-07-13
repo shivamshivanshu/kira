@@ -1,3 +1,4 @@
+// Package gitx wraps the git CLI: command execution, index and staging, branches, trailers, and sync.
 package gitx
 
 import (
@@ -37,6 +38,17 @@ func (r Repo) OutputRaw(args ...string) (string, error) {
 		return "", &CmdError{msg: fmt.Sprintf("git %s: %s", strings.Join(args, " "), msg)}
 	}
 	return stdout.String(), nil
+}
+
+func (r Repo) splitLines(args ...string) ([]string, error) {
+	out, err := r.Output(args...)
+	if err != nil {
+		return nil, err
+	}
+	if out == "" {
+		return nil, nil
+	}
+	return strings.Split(out, "\n"), nil
 }
 
 func (r Repo) InsideWorkTree() error {
@@ -82,7 +94,7 @@ func (r Repo) LastCommits(pathspec string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	heads := map[string]string{}
+	shaByPath := map[string]string{}
 	var sha string
 	for _, line := range strings.Split(out, "\n") {
 		if strings.HasPrefix(line, nul) {
@@ -92,11 +104,11 @@ func (r Repo) LastCommits(pathspec string) (map[string]string, error) {
 		if line == "" {
 			continue
 		}
-		if _, seen := heads[line]; !seen {
-			heads[line] = sha
+		if _, seen := shaByPath[line]; !seen {
+			shaByPath[line] = sha
 		}
 	}
-	return heads, nil
+	return shaByPath, nil
 }
 
 func (r Repo) FileCommitMeta(relPath string) (string, error) {
@@ -115,10 +127,17 @@ func (r Repo) GitPath(rel string) (string, error) {
 }
 
 func (r Repo) AppendInfoAttribute(line string) error {
-	path, err := r.GitPath("info/attributes")
+	path, err := r.GitPath(infoAttributesPath)
 	if err != nil {
 		return err
 	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return AppendLineIfMissing(path, line)
+}
+
+func AppendLineIfMissing(path, line string) error {
 	existing, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("reading %s: %w", path, err)
@@ -127,9 +146,6 @@ func (r Repo) AppendInfoAttribute(line string) error {
 		if strings.TrimSpace(l) == line {
 			return nil
 		}
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
 	}
 	body := string(existing)
 	if body != "" && !strings.HasSuffix(body, "\n") {
@@ -152,14 +168,7 @@ func (r Repo) RebaseInProgress() bool {
 }
 
 func (r Repo) UnmergedPaths() ([]string, error) {
-	out, err := r.Output("diff", "--name-only", "--diff-filter=U")
-	if err != nil {
-		return nil, err
-	}
-	if out == "" {
-		return nil, nil
-	}
-	return strings.Split(out, "\n"), nil
+	return r.splitLines("diff", "--name-only", "--diff-filter=U")
 }
 
 func (r Repo) SetConfig(key, val string) error {

@@ -120,65 +120,6 @@
       ],
       "type": "object"
     },
-    "Burndown": {
-      "additionalProperties": false,
-      "properties": {
-        "days": {
-          "items": {
-            "$ref": "#/$defs/BurndownDay"
-          },
-          "type": "array"
-        },
-        "degraded_n": {
-          "type": "integer"
-        },
-        "end": {
-          "type": "string"
-        },
-        "sprint": {
-          "type": "string"
-        },
-        "start": {
-          "type": "string"
-        },
-        "unestimated": {
-          "type": "integer"
-        },
-        "unit": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "sprint",
-        "start",
-        "end",
-        "unit",
-        "days",
-        "unestimated",
-        "degraded_n"
-      ],
-      "type": "object"
-    },
-    "BurndownDay": {
-      "additionalProperties": false,
-      "properties": {
-        "date": {
-          "type": "string"
-        },
-        "ideal": {
-          "type": "number"
-        },
-        "remaining": {
-          "type": "number"
-        }
-      },
-      "required": [
-        "date",
-        "remaining",
-        "ideal"
-      ],
-      "type": "object"
-    },
     "ChangedItem": {
       "additionalProperties": false,
       "properties": {
@@ -443,28 +384,6 @@
         "from",
         "to",
         "items"
-      ],
-      "type": "object"
-    },
-    "EstimateRollup": {
-      "additionalProperties": false,
-      "properties": {
-        "actual_ratio_p50": {
-          "type": [
-            "number",
-            "null"
-          ]
-        },
-        "total": {
-          "type": "number"
-        },
-        "unit": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "total",
-        "unit"
       ],
       "type": "object"
     },
@@ -1197,7 +1116,7 @@
           "type": "boolean"
         },
         "sprint": {
-          "$ref": "#/$defs/SprintJSON"
+          "$ref": "#/$defs/SprintView"
         }
       },
       "required": [
@@ -1219,30 +1138,6 @@
       "required": [
         "total",
         "done"
-      ],
-      "type": "object"
-    },
-    "SprintJSON": {
-      "additionalProperties": false,
-      "properties": {
-        "end": {
-          "type": "string"
-        },
-        "key": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "start": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "key",
-        "name",
-        "start",
-        "end"
       ],
       "type": "object"
     },
@@ -1293,19 +1188,33 @@
       ],
       "type": "object"
     },
+    "SprintView": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "start": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "start",
+        "end"
+      ],
+      "type": "object"
+    },
     "StatsResult": {
       "additionalProperties": false,
       "properties": {
-        "burndown": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Burndown"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "completion": {
           "anyOf": [
             {
@@ -1320,16 +1229,6 @@
           "anyOf": [
             {
               "$ref": "#/$defs/Percentiles"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "estimate": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/EstimateRollup"
             },
             {
               "type": "null"
@@ -1371,16 +1270,6 @@
             "type": "integer"
           },
           "type": "array"
-        },
-        "velocity": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Velocity"
-            },
-            {
-              "type": "null"
-            }
-          ]
         }
       },
       "type": "object"
@@ -1485,45 +1374,6 @@
       },
       "required": [
         "nodes"
-      ],
-      "type": "object"
-    },
-    "Velocity": {
-      "additionalProperties": false,
-      "properties": {
-        "sprints": {
-          "items": {
-            "$ref": "#/$defs/VelocitySprint"
-          },
-          "type": "array"
-        },
-        "trailing_3": {
-          "type": "number"
-        },
-        "unit": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "unit",
-        "sprints",
-        "trailing_3"
-      ],
-      "type": "object"
-    },
-    "VelocitySprint": {
-      "additionalProperties": false,
-      "properties": {
-        "completed": {
-          "type": "number"
-        },
-        "key": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "key",
-        "completed"
       ],
       "type": "object"
     },

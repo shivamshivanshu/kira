@@ -82,10 +82,6 @@ func closeTargetState(cfg *datamodel.Config, typ string) string {
 	if wf.CloseTarget != "" {
 		return wf.CloseTarget
 	}
-	for _, st := range wf.States {
-		if st.Category == datamodel.CategoryDone {
-			return st.Key
-		}
-	}
-	return ""
+	key, _ := firstStateInCategory(wf, datamodel.CategoryDone)
+	return key
 }

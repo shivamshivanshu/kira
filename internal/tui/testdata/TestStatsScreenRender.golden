@@ -1,10 +1,6 @@
-Burndown  S-1  2026-07-06 -> 2026-07-17 (points)                                                    
-  remaining @#**=  9                                                                                
-  ideal     @##*+                                                                                   
-  2 unestimated item(s) burn nothing                                                                
-                                                                                                    
-Velocity (points)                                                                                   
-  S-prev-2  ########      12                                                                        
-  S-prev-1  ############  18                                                                        
-  S-prev-0  ######        9                                                                         
-  trailing-3  13                                                                                    
+Sprint  2026-S1                                                                                     
+Completion  5/10 done (50%), 1 dropped                                                              
+  cycle time  p50 5  p90 8.8  n=4                                                                   
+  lead time   p50 5  p90 9.4  n=5                                                                   
+  throughput  .-*+.@-+  13/wk                                                                       
+  reopens     KIRA-3, KIRA-4                                                                        

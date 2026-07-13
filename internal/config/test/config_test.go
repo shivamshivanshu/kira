@@ -51,7 +51,7 @@ func TestMinimalYieldsDefaults(t *testing.T) {
 }
 
 func TestParseAppliesOverrides(t *testing.T) {
-	got, err := config.Parse([]byte("version: 1\ncommit:\n  mode: manual\nestimate:\n  unit: hours\n  hours_per_day: 6\n"))
+	got, err := config.Parse([]byte("version: 1\ncommit:\n  mode: manual\nestimate:\n  unit: hours\n"))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -61,8 +61,8 @@ func TestParseAppliesOverrides(t *testing.T) {
 	if got.Commit.Trailer != "Kira-Ticket" {
 		t.Errorf("commit.trailer = %q, want default preserved alongside the override", got.Commit.Trailer)
 	}
-	if got.Estimate.Unit != datamodel.EstimateHours || got.Estimate.HoursPerDay != 6 {
-		t.Errorf("estimate = %+v, want {hours 6}", got.Estimate)
+	if got.Estimate.Unit != datamodel.EstimateHours {
+		t.Errorf("estimate.unit = %q, want hours", got.Estimate.Unit)
 	}
 }
 
@@ -137,16 +137,6 @@ func TestValidationRejections(t *testing.T) {
 			name:    "invalid estimate.unit",
 			yaml:    "version: 1\nestimate:\n  unit: bananas\n",
 			wantKey: "estimate.unit",
-		},
-		{
-			name:    "non-positive hours_per_day",
-			yaml:    "version: 1\nestimate:\n  hours_per_day: 0\n",
-			wantKey: "estimate.hours_per_day",
-		},
-		{
-			name:    "negative hours_per_day",
-			yaml:    "version: 1\nestimate:\n  hours_per_day: -3\n",
-			wantKey: "estimate.hours_per_day",
 		},
 		{
 			name:    "empty workflow",
@@ -232,6 +222,36 @@ func TestValidationRejections(t *testing.T) {
 			name:    "sprint start not before end",
 			yaml:    "version: 1\nsprints:\n  - {key: S1, name: a, start: 2026-01-14, end: 2026-01-14}\n",
 			wantKey: "sprints[S1]",
+		},
+		{
+			name:    "invalid ui.background",
+			yaml:    "version: 1\nui:\n  background: chartreuse\n",
+			wantKey: "ui.background",
+		},
+		{
+			name:    "invalid workon.casing",
+			yaml:    "version: 1\nworkon:\n  casing: WeIrD\n",
+			wantKey: "workon.casing",
+		},
+		{
+			name:    "branch_pattern missing number token",
+			yaml:    "version: 1\nworkon:\n  branch_pattern: feature/foo\n",
+			wantKey: "workon.branch_pattern",
+		},
+		{
+			name:    "automation invalid event",
+			yaml:    "version: 1\nautomation:\n  - {on: bogus.event, run: \"true\"}\n",
+			wantKey: "automation[0].on",
+		},
+		{
+			name:    "automation empty run",
+			yaml:    "version: 1\nautomation:\n  - {on: item.created, run: \"  \"}\n",
+			wantKey: "automation[0].run",
+		},
+		{
+			name:    "automation invalid timeout",
+			yaml:    "version: 1\nautomation:\n  - {on: item.created, run: \"true\", timeout: not-a-duration}\n",
+			wantKey: "automation[0].timeout",
 		},
 	}
 

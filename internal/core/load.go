@@ -34,7 +34,7 @@ func (s *Store) read(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
 	}
 	if opts.useIndex {
 		if items, res, err := index.Load(s.fs(), s.repo(), indexOptions(cfg)); err == nil {
-			_, resolver := resolverFor(cfg.Project.Key, items)
+			_, resolver := snapshotAndResolver(cfg.Project.Key, items)
 			return &loaded{items: items, resolver: resolver, cfg: cfg, notes: literalWarnings(res.Warnings)}, nil
 		}
 	}
@@ -51,7 +51,7 @@ func (s *Store) read(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
 
 func (s *Store) resolveAtRef(at string) (string, error) {
 	repo := s.repo()
-	if isDate(at) {
+	if datamodel.ValidDate(at) {
 		sha, err := repo.ResolveAtDate(at, "HEAD")
 		if err != nil {
 			return "", errx.User("resolving --at %s: %v", at, err)
@@ -63,10 +63,6 @@ func (s *Store) resolveAtRef(at string) (string, error) {
 		return "", errx.User("resolving --at %s: %v", at, err)
 	}
 	return sha, nil
-}
-
-func isDate(s string) bool {
-	return datamodel.ValidDate(s)
 }
 
 func (s *Store) skew(cfg *datamodel.Config, ref, atULID, at string) *datamodel.Skew {

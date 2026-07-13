@@ -25,10 +25,10 @@ func newLinkCmd(g *globalFlags) *cobra.Command {
 	}
 	for _, typ := range datamodel.LinkTypes {
 		edges = append(edges, edge{
-			flag:     core.FlagForLinkType(typ),
+			flag:     core.FlagForLinkType(string(typ)),
 			usage:    fmt.Sprintf("item to add to links.%s (or remove with --remove)", typ),
 			target:   core.LinkTyped,
-			linkType: typ,
+			linkType: string(typ),
 			value:    new(string),
 		})
 	}

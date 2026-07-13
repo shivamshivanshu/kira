@@ -13,29 +13,29 @@ import (
 func fieldPresent(it *datamodel.Item, field string) bool {
 	set := func(p *string) bool { return p != nil && *p != "" }
 	switch field {
-	case "title":
+	case datamodel.KeyTitle:
 		return it.Title != ""
-	case "subtype":
+	case datamodel.KeySubtype:
 		return set(it.Subtype)
-	case "resolution":
+	case datamodel.KeyResolution:
 		return set(it.Resolution)
-	case "priority":
+	case datamodel.KeyPriority:
 		return set(it.Priority)
-	case "rank":
+	case datamodel.KeyRank:
 		return set(it.Rank)
-	case "owner":
+	case datamodel.KeyOwner:
 		return set(it.Owner)
-	case "reporter":
+	case datamodel.KeyReporter:
 		return set(it.Reporter)
-	case "labels":
+	case datamodel.KeyLabels:
 		return len(it.Labels) > 0
-	case "epic":
+	case datamodel.KeyEpic:
 		return set(it.Epic)
-	case "sprint":
+	case datamodel.KeySprint:
 		return set(it.Sprint)
-	case "due":
+	case datamodel.KeyDue:
 		return set(it.Due)
-	case "estimate":
+	case datamodel.KeyEstimate:
 		return it.Estimate != nil
 	default:
 		return false
@@ -44,15 +44,15 @@ func fieldPresent(it *datamodel.Item, field string) bool {
 
 func validateItem(cfg *datamodel.Config, it *datamodel.Item, force bool) (errs, warns []error) {
 	if it.Title == "" {
-		errs = append(errs, fmt.Errorf("field %q: required, missing", "title"))
+		errs = append(errs, fmt.Errorf("field %q: required, missing", datamodel.KeyTitle))
 	}
 	if !datamodel.ValidType(it.Type) {
-		errs = append(errs, fmt.Errorf("field %q: must be %s or %s, got %q", "type", datamodel.TypeTicket, datamodel.TypeEpic, it.Type))
+		errs = append(errs, fmt.Errorf("field %q: must be %s or %s, got %q", datamodel.KeyType, datamodel.TypeTicket, datamodel.TypeEpic, it.Type))
 	}
 
 	if wf, ok := cfg.Workflows[it.Type]; ok {
 		if _, defined := stateIn(wf, it.State); !defined {
-			errs = append(errs, fmt.Errorf("field %q: %q is not a state in the %s workflow", "state", it.State, it.Type))
+			errs = append(errs, fmt.Errorf("field %q: %q is not a state in the %s workflow", datamodel.KeyState, it.State, it.Type))
 		}
 	}
 
@@ -68,10 +68,10 @@ func validateItem(cfg *datamodel.Config, it *datamodel.Item, force bool) (errs, 
 		}
 	}
 	if it.Owner != nil {
-		vocabCheck("owner", *it.Owner, cfg.People)
+		vocabCheck(datamodel.KeyOwner, *it.Owner, cfg.People)
 	}
 	if it.Reporter != nil {
-		vocabCheck("reporter", *it.Reporter, cfg.People)
+		vocabCheck(datamodel.KeyReporter, *it.Reporter, cfg.People)
 	}
 	for _, l := range it.Labels {
 		vocabCheck("label", l, cfg.Labels)
@@ -82,26 +82,37 @@ func validateItem(cfg *datamodel.Config, it *datamodel.Item, force bool) (errs, 
 			vocabCheck(field, *value, datamodel.Vocab{Known: known, Strict: cfg.Labels.Strict})
 		}
 	}
-	enumCheck("priority", it.Priority)
-	enumCheck("subtype", it.Subtype)
-	enumCheck("resolution", it.Resolution)
+	enumCheck(datamodel.KeyPriority, it.Priority)
+	enumCheck(datamodel.KeySubtype, it.Subtype)
+	enumCheck(datamodel.KeyResolution, it.Resolution)
 
 	if it.Rank != nil && *it.Rank == "" {
-		errs = append(errs, fmt.Errorf("field %q: must be a non-empty string when present", "rank"))
+		errs = append(errs, fmt.Errorf("field %q: must be a non-empty string when present", datamodel.KeyRank))
 	}
 	if it.Sprint != nil && !cfg.HasSprint(*it.Sprint) {
-		errs = append(errs, errx.User("field %q: %q is not a key in the configured sprints", "sprint", *it.Sprint).WithHint("%s", sprintHint(cfg, *it.Sprint)))
+		errs = append(errs, errx.User("field %q: %q is not a key in the configured sprints", datamodel.KeySprint, *it.Sprint).WithHint("%s", sprintHint(cfg, *it.Sprint)))
 	}
 	if it.Due != nil && !datamodel.ValidDate(*it.Due) {
-		errs = append(errs, fmt.Errorf("field %q: invalid RFC3339 date %q", "due", *it.Due))
+		errs = append(errs, fmt.Errorf("field %q: invalid RFC3339 date %q", datamodel.KeyDue, *it.Due))
 	}
 	return errs, warns
 }
 
 func validateAssembled(cfg *datamodel.Config, it *datamodel.Item, resolver *id.Resolver, force bool) (hard, warns []error) {
-	hard = normalizeRefs(it, resolver)
+	hard = normalizeAndCheckRefs(it, resolver)
 	v, w := validateItem(cfg, it, force)
 	return append(hard, v...), w
+}
+
+func validateBuffer(cfg *datamodel.Config, resolver *id.Resolver, force bool, build func(string) (*datamodel.Item, []error)) func(string) []error {
+	return func(c string) []error {
+		it, errs := build(c)
+		if len(errs) > 0 {
+			return errs
+		}
+		hard, _ := validateAssembled(cfg, it, resolver, force)
+		return hard
+	}
 }
 
 func validateGraph(updated *datamodel.Item, items []*datamodel.Item) []error {
@@ -148,7 +159,7 @@ func numberOrID(it *datamodel.Item, ulid string) string {
 	return ulid
 }
 
-func normalizeRefs(it *datamodel.Item, resolver *id.Resolver) []error {
+func normalizeAndCheckRefs(it *datamodel.Item, resolver *id.Resolver) []error {
 	var errs []error
 	resolve := func(label, ref string) (string, bool) {
 		ulid, err := resolver.Resolve(ref)
@@ -175,7 +186,7 @@ func normalizeRefs(it *datamodel.Item, resolver *id.Resolver) []error {
 	}
 	for typ, targets := range it.Links {
 		for i, ref := range targets {
-			if ulid, ok := resolve(fmt.Sprintf("field %q: %s", "links", typ), ref); ok {
+			if ulid, ok := resolve(fmt.Sprintf("field %q: %s", datamodel.KeyLinks, typ), ref); ok {
 				targets[i] = ulid
 			}
 		}

@@ -29,7 +29,7 @@ func Script(name string) (string, bool) {
 	return string(data), true
 }
 
-func HasMarker(content string) bool {
+func hasMarker(content string) bool {
 	return strings.Contains(content, marker)
 }
 
@@ -43,7 +43,7 @@ func Invokes(content, name string) bool {
 // Classify derives an installed hook's state from its content: whether it runs
 // kira at all, and whether kira is chained after a pre-existing hook.
 func Classify(content, name string) (installed, chained bool) {
-	chained = HasMarker(content)
+	chained = hasMarker(content)
 	return chained || Invokes(content, name), chained
 }
 
@@ -69,7 +69,7 @@ func IsShellScript(content string) bool {
 }
 
 func Chain(content, name string) string {
-	if HasMarker(content) {
+	if hasMarker(content) {
 		return content
 	}
 	if content != "" && !strings.HasSuffix(content, "\n") {

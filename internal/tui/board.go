@@ -100,18 +100,7 @@ func renderColumn(t theme.Theme, ic iconSet, col datamodel.BoardColumn, w, heigh
 	capacity := height - len(lines)
 	start, cardSlots, hidden := cardWindow(len(col.Items), capacity, focusRow)
 	for i := start; i < start+cardSlots; i++ {
-		it := col.Items[i]
-		priority := deref(it.Priority)
-		glyph := ic.categoryGlyph(cat, it.Resolution)
-		prio := ic.priorityCell(priority)
-		body := prio + " " + glyph + " " + it.Number + "  "
-		title := fitWidth(it.Title, w-2-lipgloss.Width(body))
-		selected := focused && i == focusRow
-		lead := " "
-		if selected {
-			lead = t.Accent.Render("▌")
-		}
-		lines = append(lines, fit.Render(lead+styleText(t.PriorityStyle(priority), prio, selected)+" "+styleText(t.CategoryStyle(cat), glyph, selected)+" "+styleText(t.Dim, it.Number, selected)+"  "+styleText(t.Text, title, selected)))
+		lines = append(lines, fit.Render(renderCard(t, ic, cat, col.Items[i], w, focused && i == focusRow)))
 	}
 	if hidden > 0 {
 		lines = append(lines, fit.Render(t.Dim.Render("+"+strconv.Itoa(hidden)+" more")))
@@ -120,6 +109,23 @@ func renderColumn(t theme.Theme, ic iconSet, col datamodel.BoardColumn, w, heigh
 		lines = append(lines, fit.Render(""))
 	}
 	return strings.Join(lines, "\n")
+}
+
+func renderCard(t theme.Theme, ic iconSet, cat datamodel.Category, it datamodel.ListItem, w int, selected bool) string {
+	priority := deref(it.Priority)
+	glyph := ic.categoryGlyph(cat, it.Resolution)
+	prio := ic.priorityCell(priority)
+	prefix := prio + " " + glyph + " " + it.Number + "  "
+	title := fitWidth(it.Title, w-2-lipgloss.Width(prefix))
+	lead := " "
+	if selected {
+		lead = t.Accent.Render("▌")
+	}
+	return lead +
+		styleText(t.PriorityStyle(priority), prio, selected) + " " +
+		styleText(t.CategoryStyle(cat), glyph, selected) + " " +
+		styleText(t.Dim, it.Number, selected) + "  " +
+		styleText(t.Text, title, selected)
 }
 
 func cardWindow(total, capacity, focusRow int) (start, slots, hidden int) {
@@ -168,9 +174,11 @@ func columnHeaderStyle(t theme.Theme, col datamodel.BoardColumn, focused bool) l
 	}
 }
 
+const boardEmptyMessage = "No tickets on the board yet."
+
 func renderBoardEmpty(t theme.Theme, res *datamodel.BoardResult, width, height int) string {
 	var b strings.Builder
-	b.WriteString(t.Dim.Render("No tickets on the board yet."))
+	b.WriteString(t.Dim.Render(boardEmptyMessage))
 	if res != nil && len(res.Columns) > 0 {
 		names := make([]string, len(res.Columns))
 		for i, c := range res.Columns {

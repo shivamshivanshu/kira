@@ -16,6 +16,11 @@ import (
 	"github.com/shivamshivanshu/kira/internal/tui"
 )
 
+const (
+	msgPrefix  = "kira:"
+	msgNoItems = "no items"
+)
+
 func Main() int {
 	root, g := newRootCmd()
 	if err := root.Execute(); err != nil {
@@ -27,7 +32,7 @@ func Main() int {
 func renderError(w io.Writer, err error, jsonMode bool) int {
 	var crash *tui.CrashError
 	if errors.As(err, &crash) {
-		return errx.ExitCrash
+		return int(errx.ExitCrash)
 	}
 	code := errx.ExitUser
 	hint := ""
@@ -42,14 +47,14 @@ func renderError(w io.Writer, err error, jsonMode bool) int {
 			Error string `json:"error"`
 			Hint  string `json:"hint"`
 			Code  int    `json:"code"`
-		}{err.Error(), hint, code})
-		return code
+		}{err.Error(), hint, int(code)})
+		return int(code)
 	}
-	fmt.Fprintln(w, "kira:", err)
+	fmt.Fprintln(w, msgPrefix, err)
 	if hint != "" {
 		fmt.Fprintln(w, "  hint:", hint)
 	}
-	return code
+	return int(code)
 }
 
 type globalFlags struct {
@@ -89,8 +94,6 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 		newLinkCmd(g),
 		newCommentCmd(g),
 		newListCmd(g),
-		newQueryCmd(g),
-		newFilterCmd(g),
 		newTreeCmd(g),
 		newFindCmd(g),
 		newDiscoverCmd(g),
@@ -118,7 +121,7 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 }
 
 func openStore(g *globalFlags) (*core.Store, *datamodel.Config, error) {
-	s, err := core.Discover(g.chdir, core.WithPrompter(terminalPrompter{}))
+	s, err := core.Discover(g.chdir, terminalPrompter{})
 	if err != nil {
 		return nil, nil, err
 	}

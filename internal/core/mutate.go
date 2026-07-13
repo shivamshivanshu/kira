@@ -61,7 +61,7 @@ func (s *Store) commitMutation(cfg *datamodel.Config, before, updated *datamodel
 	}
 	updated.Updated = time.Now().Format(time.RFC3339)
 
-	path, err := s.writeItem(updated)
+	path, err := s.fs().WriteItem(updated)
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func (s *Store) commitMutation(cfg *datamodel.Config, before, updated *datamodel
 
 func (s *Store) commit(cfg *datamodel.Config, cs *datamodel.ChangeSet, warns []error) error {
 	emitWarnings(warns)
-	sha, err := s.finalize(cfg.Commit.Mode, cfg.Commit.Trailer, cs.Subject, cs.After.Number, cs.Paths...)
+	sha, err := s.finalize(cfg.Commit.Mode, commitSpec{trailerKey: cfg.Commit.Trailer, subject: cs.Subject, trailerNumber: cs.After.Number}, cs.Paths...)
 	if err != nil {
 		return err
 	}

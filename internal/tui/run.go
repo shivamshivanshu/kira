@@ -46,7 +46,7 @@ func Run(store *core.Store, cfg *datamodel.Config, opts Options) error {
 			if data, e := loadTreeData(store, cfg); e != nil {
 				m.loadErr = e
 			} else if ts, ok := m.screens[viewTree].(*treeScreen); ok {
-				ts.apply(&m, data)
+				ts.setData(&m, data)
 			}
 		}
 

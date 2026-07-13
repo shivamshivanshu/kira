@@ -21,8 +21,7 @@ func Check(cfg *datamodel.Config, resolver *id.Resolver, it *datamodel.Item) []F
 func stateFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 	wf, ok := cfg.Workflows[it.Type]
 	if !ok {
-		return []Finding{{Class: ClassSchema, Severity: SeverityError, Field: datamodel.KeyType,
-			Message: fmt.Sprintf("no workflow configured for type %q", it.Type)}}
+		return []Finding{schemaErr(datamodel.KeyType, fmt.Sprintf("no workflow configured for type %q", it.Type))}
 	}
 	for _, st := range wf.States {
 		if st.Key == it.State {
@@ -35,11 +34,16 @@ func stateFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 
 func vocabFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 	var out []Finding
-	if it.Owner != nil && *it.Owner != "" && !slices.Contains(cfg.People.Known, *it.Owner) {
-		out = append(out, vocabFinding(datamodel.KeyOwner, *it.Owner, vocabSeverity(cfg.People.Strict)))
-	}
-	if it.Reporter != nil && *it.Reporter != "" && !slices.Contains(cfg.People.Known, *it.Reporter) {
-		out = append(out, vocabFinding(datamodel.KeyReporter, *it.Reporter, vocabSeverity(cfg.People.Strict)))
+	for _, p := range []struct {
+		field string
+		value *string
+	}{
+		{datamodel.KeyOwner, it.Owner},
+		{datamodel.KeyReporter, it.Reporter},
+	} {
+		if p.value != nil && *p.value != "" && !slices.Contains(cfg.People.Known, *p.value) {
+			out = append(out, vocabFinding(p.field, *p.value, vocabSeverity(cfg.People.Strict)))
+		}
 	}
 	for _, l := range it.Labels {
 		if !slices.Contains(cfg.Labels.Known, l) {
@@ -70,18 +74,19 @@ func vocabFinding(field, value string, sev Severity) Finding {
 func scalarFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 	var out []Finding
 	if it.Rank != nil && *it.Rank == "" {
-		out = append(out, Finding{Class: ClassSchema, Severity: SeverityError, Field: datamodel.KeyRank,
-			Message: "must be a non-empty string when present"})
+		out = append(out, schemaErr(datamodel.KeyRank, "must be a non-empty string when present"))
 	}
 	if it.Sprint != nil && *it.Sprint != "" && !cfg.HasSprint(*it.Sprint) {
-		out = append(out, Finding{Class: ClassSchema, Severity: SeverityError, Field: datamodel.KeySprint,
-			Message: fmt.Sprintf("%q is not a key in the configured sprints", *it.Sprint)})
+		out = append(out, schemaErr(datamodel.KeySprint, fmt.Sprintf("%q is not a key in the configured sprints", *it.Sprint)))
 	}
 	if it.Due != nil && *it.Due != "" && !datamodel.ValidDate(*it.Due) {
-		out = append(out, Finding{Class: ClassSchema, Severity: SeverityError, Field: datamodel.KeyDue,
-			Message: fmt.Sprintf("invalid RFC3339 date %q", *it.Due)})
+		out = append(out, schemaErr(datamodel.KeyDue, fmt.Sprintf("invalid RFC3339 date %q", *it.Due)))
 	}
 	return out
+}
+
+func schemaErr(field, msg string) Finding {
+	return Finding{Class: ClassSchema, Severity: SeverityError, Field: field, Message: msg}
 }
 
 func refFindings(resolver *id.Resolver, it *datamodel.Item) []Finding {

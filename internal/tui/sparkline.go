@@ -35,15 +35,3 @@ func sparkLevel(v, maxV float64, levels int) int {
 	}
 	return clamp(int(math.Round(v/maxV*float64(levels-1))), 0, levels-1)
 }
-
-func hbar(v, maxV float64, cells int, rich bool) string {
-	fill := "█"
-	if !rich {
-		fill = "#"
-	}
-	filled := 0
-	if maxV > 0 {
-		filled = clamp(int(math.Round(v/maxV*float64(cells))), 0, cells)
-	}
-	return strings.Repeat(fill, filled) + strings.Repeat(" ", cells-filled)
-}

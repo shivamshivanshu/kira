@@ -77,7 +77,7 @@ func TestDetailPanelEnterNoStoreNoCmd(t *testing.T) {
 func TestTreeDetailPanelShowsLinkedData(t *testing.T) {
 	m := newTestModel(100, 40, true)
 	ts := m.screens[viewTree].(*treeScreen)
-	ts.detailCache["E1"] = sampleDetail()
+	ts.host.cache["E1"] = sampleDetail()
 	ts.focus = paneDetail
 	ts.syncDetail(&m)
 	got := ts.view(&m, 100, 40)

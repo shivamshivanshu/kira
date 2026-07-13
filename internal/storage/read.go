@@ -26,7 +26,7 @@ func ULIDFromFilename(name string) (string, bool) {
 	if !isItemFilename(name) {
 		return "", false
 	}
-	return strings.TrimSuffix(name, ".md"), true
+	return strings.TrimSuffix(name, itemExt), true
 }
 
 func ULIDFromPath(p string) string {
@@ -34,7 +34,7 @@ func ULIDFromPath(p string) string {
 	return ulid
 }
 
-func (s *Store) LoadAll() ([]*datamodel.Item, []string, error) {
+func (s *FS) LoadAll() ([]*datamodel.Item, []string, error) {
 	entries, err := os.ReadDir(s.ItemsDir())
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

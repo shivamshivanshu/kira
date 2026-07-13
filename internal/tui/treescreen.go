@@ -1,12 +1,7 @@
 package tui
 
 import (
-	"strings"
-
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-
-	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
 type pane int
@@ -27,23 +22,21 @@ var treeKeys = []KeyBinding{
 func init() { registerScreen(viewTree, func() screen { return newTreeScreen() }) }
 
 type treeScreen struct {
-	tree        treeModel
-	detail      *datamodel.ShowResult
-	detailCache map[string]*datamodel.ShowResult
-	panel       *detailPanel
-	focus       pane
-	pendingG    bool
+	tree     treeModel
+	host     detailHost
+	focus    pane
+	pendingG bool
 }
 
 func newTreeScreen() *treeScreen {
-	return &treeScreen{tree: newTreeModel(), detailCache: map[string]*datamodel.ShowResult{}, panel: newDetailPanel()}
+	return &treeScreen{tree: newTreeModel(), host: newDetailHost()}
 }
 
 func (s *treeScreen) keys() []KeyBinding { return treeKeys }
 
-func (s *treeScreen) apply(m *model, data treeData) {
+func (s *treeScreen) setData(m *model, data treeData) {
 	(&s.tree).load(data.nodes, data.fields, data.progress)
-	s.detailCache = map[string]*datamodel.ShowResult{}
+	s.host.resetCache()
 	m.jumps.dropMissing(func(id string) bool { _, ok := data.fields[id]; return ok })
 	s.syncDetail(m)
 }
@@ -61,7 +54,7 @@ func (s *treeScreen) update(m *model, key string) tea.Cmd {
 	if s.focus == paneDetail {
 		switch key {
 		case "j", "down", "k", "up", "[", "]", "enter":
-			return s.panel.update(m, s.detail, key)
+			return s.host.update(m, key)
 		}
 	}
 	switch key {
@@ -115,15 +108,13 @@ func (s *treeScreen) focusItem(m *model, id string) {
 func (s *treeScreen) view(m *model, width, height int) string {
 	if !splitDetail(width) {
 		if s.focus == paneDetail {
-			return s.panel.render(m.theme, s.detail, width, height)
+			return s.host.render(m.theme, width, height)
 		}
 		return s.tree.render(m.theme, m.icons, width, height, true, false)
 	}
-	tw := treeWidth(width)
-	left := s.tree.render(m.theme, m.icons, tw, height, s.focus == paneTree, true)
-	sep := strings.TrimRight(strings.Repeat(m.theme.Border.Render("│")+"\n", height), "\n")
-	right := s.panel.render(m.theme, s.detail, width-tw-1, height)
-	return lipgloss.JoinHorizontal(lipgloss.Top, left, sep, right)
+	return splitPane(m.theme, width, height,
+		func(w int) string { return s.tree.render(m.theme, m.icons, w, height, s.focus == paneTree, true) },
+		func(w int) string { return s.host.render(m.theme, w, height) })
 }
 
 func (s *treeScreen) toggleFocus() {
@@ -139,25 +130,6 @@ func (s *treeScreen) jumpFrom(m *model) {
 }
 
 func (s *treeScreen) syncDetail(m *model) {
-	s.panel.reset()
-	id := s.tree.selectedID()
-	if id == "" {
-		s.detail = nil
-		return
-	}
-	if cached, ok := s.detailCache[id]; ok {
-		s.detail = cached
-		return
-	}
-	if m.store == nil {
-		s.detail = nil
-		return
-	}
-	res, err := loadDetail(m.store, m.cfg, id)
-	if err != nil {
-		s.detail = nil
-		return
-	}
-	s.detailCache[id] = res
-	s.detail = res
+	s.host.panel.reset()
+	s.host.sync(m, s.tree.selectedID())
 }

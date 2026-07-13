@@ -1,3 +1,4 @@
+// Package codec parses and serializes kira items to and from their on-disk Markdown-with-frontmatter form.
 package codec
 
 import (

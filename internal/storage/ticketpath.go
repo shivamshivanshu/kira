@@ -6,9 +6,9 @@ import (
 )
 
 func IsItemPath(rel string) bool {
-	return strings.HasPrefix(rel, dirName+"/tickets/") && isItemFilename(path.Base(rel))
+	return strings.HasPrefix(rel, TicketsPrefix+"/") && isItemFilename(path.Base(rel))
 }
 
 func isItemFilename(base string) bool {
-	return strings.HasSuffix(base, ".md") && !strings.HasPrefix(base, ".")
+	return strings.HasSuffix(base, itemExt) && !strings.HasPrefix(base, ".")
 }

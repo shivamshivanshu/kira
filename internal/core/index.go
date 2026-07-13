@@ -7,7 +7,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
-func resolverFor(key string, items []*datamodel.Item) (id.Snapshot, *id.Resolver) {
+func snapshotAndResolver(key string, items []*datamodel.Item) (id.Snapshot, *id.Resolver) {
 	snap := storage.Snapshot(key, items)
 	return snap, id.NewResolver(snap)
 }

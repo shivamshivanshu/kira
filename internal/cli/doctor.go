@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"cmp"
 	"fmt"
 	"io"
 	"os"
@@ -77,13 +78,7 @@ func renderReport(w io.Writer, report *doctor.Report, asJSON bool) error {
 }
 
 func findingLocation(f doctor.Finding) string {
-	loc := f.Number
-	if loc == "" {
-		loc = f.ItemID
-	}
-	if loc == "" {
-		loc = f.Path
-	}
+	loc := cmp.Or(f.Number, f.ItemID, f.Path)
 	if loc == "" {
 		return ""
 	}

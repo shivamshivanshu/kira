@@ -1,6 +1,7 @@
 package index
 
 import (
+	"maps"
 	"regexp"
 	"strings"
 	"time"
@@ -43,7 +44,10 @@ const (
 )
 
 func (i *Index) scanTrailers(root gitx.Repo, opts Options, head string, prev meta, numbers map[string]string) ([]gitx.Commit, map[string]string, error) {
-	wm := cloneWatermarks(prev.TrailerWatermarks)
+	wm := maps.Clone(prev.TrailerWatermarks)
+	if wm == nil {
+		wm = map[string]string{}
+	}
 	if opts.TrailerKey == "" || head == "" || wm[trailerRef] == head {
 		return nil, wm, nil
 	}
@@ -87,6 +91,11 @@ func (i *Index) collectCloses(root gitx.Repo, opts Options, prev meta, numbers m
 		}
 	}
 
+	cs.Candidates, cs.Unknown = latestCloses(commits, numbers)
+	return cs, nil
+}
+
+func latestCloses(commits []gitx.Commit, numbers map[string]string) (candidates []CloseCandidate, unknown []string) {
 	type acc struct {
 		ts  time.Time
 		raw string
@@ -101,7 +110,7 @@ func (i *Index) collectCloses(root gitx.Repo, opts Options, prev meta, numbers m
 			if !ok {
 				if !unknownSeen[value] {
 					unknownSeen[value] = true
-					cs.Unknown = append(cs.Unknown, value)
+					unknown = append(unknown, value)
 				}
 				continue
 			}
@@ -115,9 +124,9 @@ func (i *Index) collectCloses(root gitx.Repo, opts Options, prev meta, numbers m
 		}
 	}
 	for _, ulid := range order {
-		cs.Candidates = append(cs.Candidates, CloseCandidate{ULID: ulid, CommitterTs: latest[ulid].raw})
+		candidates = append(candidates, CloseCandidate{ULID: ulid, CommitterTs: latest[ulid].raw})
 	}
-	return cs, nil
+	return candidates, unknown
 }
 
 func PersistLandedWatermark(cacheDir, landedRef, landedHead string) error {
@@ -264,12 +273,4 @@ func (i *Index) CommitLinks(itemID string) ([]CommitLink, error) {
 		links = append(links, l)
 	}
 	return links, rows.Err()
-}
-
-func cloneWatermarks(src map[string]string) map[string]string {
-	dst := make(map[string]string, len(src))
-	for k, v := range src {
-		dst[k] = v
-	}
-	return dst
 }

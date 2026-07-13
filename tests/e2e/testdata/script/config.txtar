@@ -25,10 +25,6 @@ grep 'name: My Project' .kira/config.yaml
 exec kira config set sync.push true
 grep 'push: true' .kira/config.yaml
 
-# float
-exec kira config set estimate.hours_per_day 7.5
-grep 'hours_per_day: 7.5' .kira/config.yaml
-
 # absent (commented-out) block is created in place; its doc comment is kept
 exec kira config set git.landed_ref origin/main
 grep 'landed_ref: origin/main' .kira/config.yaml

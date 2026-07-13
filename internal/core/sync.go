@@ -11,6 +11,8 @@ import (
 	"github.com/shivamshivanshu/kira/internal/syncx"
 )
 
+const maxRebaseIterations = 100
+
 type SyncOpts struct {
 	Push   bool
 	Dirty  syncx.DirtyPolicy
@@ -113,18 +115,20 @@ func (s *Store) prepareTree(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts
 		}
 		policy = syncx.DirtyCommit
 	}
-	if policy == syncx.DirtyStash {
+	switch policy {
+	case syncx.DirtyStash:
 		if err := repo.Stash(); err != nil {
 			return false, errx.User("%v", err)
 		}
 		report.Add("prepare", syncx.StepDone, fmt.Sprintf("stashed %d paths", len(dirty)))
 		return true, nil
+	default:
+		if _, err := s.finalize(datamodel.CommitAuto, commitSpec{trailerKey: cfg.Commit.Trailer, subject: subjectPrefix + "sync checkpoint"}, dirty...); err != nil {
+			return false, err
+		}
+		report.Add("prepare", syncx.StepDone, fmt.Sprintf("committed %d paths", len(dirty)))
+		return false, nil
 	}
-	if _, err := s.finalize(datamodel.CommitAuto, cfg.Commit.Trailer, "kira: sync checkpoint", "", dirty...); err != nil {
-		return false, err
-	}
-	report.Add("prepare", syncx.StepDone, fmt.Sprintf("committed %d paths", len(dirty)))
-	return false, nil
 }
 
 func (s *Store) pullRebase(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts, report *syncx.Report) error {
@@ -142,8 +146,9 @@ func (s *Store) pullRebase(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts,
 		report.Add("pull", syncx.StepFailed, "merge.policy manual: conflicts left for you")
 		return errx.Conflict("rebase halted with conflicts (merge.policy: manual)")
 	}
-	for range 100 {
-		if _, err := s.Resolve(nil, false); err != nil {
+	for range maxRebaseIterations {
+		unmerged, err := s.autoResolve(repo)
+		if err != nil {
 			repo.RebaseAbort()
 			return err
 		}
@@ -151,7 +156,7 @@ func (s *Store) pullRebase(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts,
 		// anything still unmerged (a non-kira path, or a kira file the engine
 		// could not parse/apply) is terminal — abort at once naming it rather
 		// than spinning until the iteration cap on unchanging state.
-		if unmerged, _ := repo.UnmergedPaths(); len(unmerged) > 0 {
+		if len(unmerged) > 0 {
 			repo.RebaseAbort()
 			report.Add("pull", syncx.StepFailed, "unresolved conflicts: "+strings.Join(unmerged, ", "))
 			return errx.Conflict("rebase halted, could not auto-resolve: %s", strings.Join(unmerged, ", "))
@@ -180,14 +185,23 @@ func (s *Store) popStash(cfg *datamodel.Config, repo gitx.Repo, report *syncx.Re
 		report.Add("stash-pop", syncx.StepFailed, "conflicts on pop; resolve then `git stash drop`")
 		return errx.Conflict("stash pop conflicted (merge.policy: manual); resolve, then `git stash drop`")
 	}
-	if _, err := s.Resolve(nil, false); err != nil {
+	unmerged, err := s.autoResolve(repo)
+	if err != nil {
 		report.Add("stash-pop", syncx.StepFailed, err.Error())
 		return errx.Conflict("stash pop conflicted and auto-resolve failed: %v", err)
 	}
-	if unmerged, _ := repo.UnmergedPaths(); len(unmerged) > 0 {
+	if len(unmerged) > 0 {
 		report.Add("stash-pop", syncx.StepFailed, "unresolved: "+strings.Join(unmerged, ", "))
 		return errx.Conflict("stash pop left unresolved conflicts: %s (resolve, then `git stash drop`)", strings.Join(unmerged, ", "))
 	}
 	report.Add("stash-pop", syncx.StepDone, "auto-resolved conflicts")
 	return nil
+}
+
+func (s *Store) autoResolve(repo gitx.Repo) ([]string, error) {
+	if _, err := s.Resolve(nil, false); err != nil {
+		return nil, err
+	}
+	unmerged, _ := repo.UnmergedPaths()
+	return unmerged, nil
 }

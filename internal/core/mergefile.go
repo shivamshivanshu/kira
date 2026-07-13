@@ -10,6 +10,8 @@ import (
 	"github.com/shivamshivanshu/kira/internal/merge"
 )
 
+const itemFileMode = 0o644
+
 func MergeFile(repo gitx.Repo, basePath, oursPath, theirsPath string) (*datamodel.MergeResult, error) {
 	store, err := Discover(repo.Dir)
 	if err != nil {
@@ -46,7 +48,7 @@ func MergeFile(repo gitx.Repo, basePath, oursPath, theirsPath string) (*datamode
 		return nil, err
 	}
 	res := merge.Merge(parseOrNil(string(baseData)), ours, theirs, remoteSide(repo), gitTextMerge)
-	if err := os.WriteFile(oursPath, []byte(codec.Serialize(res.Item)), 0o644); err != nil {
+	if err := os.WriteFile(oursPath, []byte(codec.Serialize(res.Item)), itemFileMode); err != nil {
 		return nil, errx.User("writing merge result: %v", err)
 	}
 	out := mergeResultOf(res)
@@ -58,7 +60,7 @@ func manualMergeFile(oursPath, base, ours, theirs string) (*datamodel.MergeResul
 	if err != nil {
 		return nil, errx.Conflict("merge.policy=manual text merge: %v", err)
 	}
-	if err := os.WriteFile(oursPath, []byte(merged), 0o644); err != nil {
+	if err := os.WriteFile(oursPath, []byte(merged), itemFileMode); err != nil {
 		return nil, errx.User("writing merge result: %v", err)
 	}
 	if conflict {

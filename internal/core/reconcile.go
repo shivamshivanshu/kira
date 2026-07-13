@@ -35,12 +35,12 @@ func (s *Store) Reconcile(cfg *datamodel.Config) (*datamodel.ReconcileResult, er
 		if !slices.Contains(it.Aliases, r.From) {
 			it.Aliases = append(it.Aliases, r.From)
 		}
-		path, err := s.writeItem(it)
+		path, err := s.fs().WriteItem(it)
 		if err != nil {
 			return nil, err
 		}
-		subject := fmt.Sprintf("kira: doctor renumbered %s -> %s", r.From, r.To)
-		if _, err := s.finalize(datamodel.CommitAuto, cfg.Commit.Trailer, subject, r.To, path); err != nil {
+		subject := fmt.Sprintf(subjectPrefix+"doctor renumbered %s -> %s", r.From, r.To)
+		if _, err := s.finalize(datamodel.CommitAuto, commitSpec{trailerKey: cfg.Commit.Trailer, subject: subject, trailerNumber: r.To}, path); err != nil {
 			return nil, err
 		}
 		result.Renumbered = append(result.Renumbered, datamodel.Renumbering{ID: it.ID, From: r.From, To: r.To})

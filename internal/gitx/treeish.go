@@ -31,14 +31,7 @@ func (r Repo) MergeBase(a, b string) (string, error) {
 
 func (r Repo) LsTreeNames(treeish string, pathspecs ...string) ([]string, error) {
 	args := append([]string{"ls-tree", "-r", "--name-only", treeish, "--"}, pathspecs...)
-	out, err := r.Output(args...)
-	if err != nil {
-		return nil, err
-	}
-	if out == "" {
-		return nil, nil
-	}
-	return strings.Split(out, "\n"), nil
+	return r.splitLines(args...)
 }
 
 func (r Repo) NumstatNoIndex(a, b string) (added, removed int, err error) {

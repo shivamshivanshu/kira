@@ -24,7 +24,7 @@ func (s *Store) Assign(cfg *datamodel.Config, ref, user string, opts AssignOpts)
 		return nil, nil
 	}
 	subjectOf := func(orig *datamodel.Item) string {
-		return "kira: " + orig.Number + " assign " + field + " " + user
+		return subjectPrefix + orig.Number + " assign " + field + " " + user
 	}
 
 	updated, changed, err := s.mutate(cfg, ref, opts.Force, apply, subjectOf, datamodel.SourceCLI)

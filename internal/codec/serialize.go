@@ -73,7 +73,7 @@ func writeOptFloat(b *strings.Builder, key string, v *float64) {
 func writeLinks(b *strings.Builder, links map[string][]string) {
 	first := true
 	for _, typ := range datamodel.LinkTypes {
-		targets := links[typ]
+		targets := links[string(typ)]
 		if len(targets) == 0 {
 			continue
 		}
@@ -82,7 +82,7 @@ func writeLinks(b *strings.Builder, links map[string][]string) {
 			first = false
 		}
 		b.WriteString("  ")
-		writeLine(b, typ, EmitList(targets))
+		writeLine(b, string(typ), EmitList(targets))
 	}
 }
 

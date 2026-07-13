@@ -12,7 +12,7 @@ func TestValidateGraph(t *testing.T) {
 	epic := &datamodel.Item{ID: "E", Number: "KIRA-1", Type: datamodel.TypeEpic}
 	ticket := &datamodel.Item{ID: "T", Number: "KIRA-2", Type: datamodel.TypeTicket}
 	dupLinks := func(target string) map[string][]string {
-		return map[string][]string{datamodel.LinkDuplicateOf: {target}}
+		return map[string][]string{string(datamodel.LinkDuplicateOf): {target}}
 	}
 
 	t.Run("epic parent allowed", func(t *testing.T) {
@@ -53,7 +53,7 @@ func TestValidateGraph(t *testing.T) {
 	})
 	t.Run("symmetric relates not a cycle", func(t *testing.T) {
 		rel := func(target string) map[string][]string {
-			return map[string][]string{datamodel.LinkRelates: {target}}
+			return map[string][]string{string(datamodel.LinkRelates): {target}}
 		}
 		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, Links: rel("B")}
 		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket, Links: rel("A")}

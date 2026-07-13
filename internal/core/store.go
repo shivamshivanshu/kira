@@ -13,7 +13,7 @@ import (
 
 type Store struct {
 	root     string
-	store    *storage.Store
+	store    *storage.FS
 	prompter Prompter
 }
 
@@ -21,17 +21,15 @@ func newStore(root string) *Store {
 	return &Store{root: root, store: storage.New(root), prompter: silentPrompter{}}
 }
 
-func Discover(startDir string, opts ...Option) (*Store, error) {
+func Discover(startDir string, prompter ...Prompter) (*Store, error) {
 	store, err := storage.Discover(startDir)
 	if err != nil {
 		return nil, err
 	}
-	s := &Store{root: store.Root(), store: store, prompter: silentPrompter{}}
-	s.applyOptions(opts)
-	return s, nil
+	return &Store{root: store.Root(), store: store, prompter: firstPrompter(prompter)}, nil
 }
 
-func (s *Store) fs() *storage.Store { return s.store }
+func (s *Store) fs() *storage.FS { return s.store }
 
 func (s *Store) Root() string { return s.root }
 
@@ -47,18 +45,12 @@ func (s *Store) LoadAll() ([]*datamodel.Item, []string, error) { return s.fs().L
 
 func (s *Store) itemPath(ulid string) string { return s.fs().ItemPath(ulid) }
 
-func (s *Store) writeItem(it *datamodel.Item) (string, error) { return s.fs().WriteItem(it) }
-
-func (s *Store) writeItemRaw(ulid, content string) (string, error) {
-	return s.fs().WriteItemRaw(ulid, content)
-}
-
 func (s *Store) load(cfg *datamodel.Config) ([]*datamodel.Item, id.Snapshot, *id.Resolver, []string, error) {
 	items, warnings, err := s.LoadAll()
 	if err != nil {
 		return nil, id.Snapshot{}, nil, nil, err
 	}
-	snap, resolver := resolverFor(cfg.Project.Key, items)
+	snap, resolver := snapshotAndResolver(cfg.Project.Key, items)
 	return items, snap, resolver, warnings, nil
 }
 
@@ -93,6 +85,14 @@ func guardWritable(items ...*datamodel.Item) error {
 		}
 	}
 	return nil
+}
+
+func byULID(items []*datamodel.Item) map[string]*datamodel.Item {
+	m := make(map[string]*datamodel.Item, len(items))
+	for _, it := range items {
+		m[it.ID] = it
+	}
+	return m
 }
 
 func findByULID(items []*datamodel.Item, ulid string) *datamodel.Item {

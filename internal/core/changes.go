@@ -5,7 +5,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/id"
-	"github.com/shivamshivanshu/kira/internal/storage"
 	"github.com/shivamshivanshu/kira/internal/treeish"
 )
 
@@ -40,24 +39,6 @@ func (s *Store) Changes(ref string) (*datamodel.ChangesResult, error) {
 	return &datamodel.ChangesResult{Since: sinceSHA, Head: headSHA, Items: items}, nil
 }
 
-func (s *Store) rangeEvents(repo gitx.Repo, sinceSHA, headSHA string, tracked map[string]*datamodel.Item) (map[string][]datamodel.Event, error) {
-	fs := s.fs()
-	out, err := repo.RangePatch(sinceSHA+".."+headSHA, fs.RelToRoot(fs.ItemsDir()))
-	if err != nil {
-		return nil, errx.User("%s", err)
-	}
-	events := map[string][]datamodel.Event{}
-	walkPatch(out, func(path string, evs []datamodel.Event) {
-		if len(evs) == 0 {
-			return
-		}
-		if ulid := storage.ULIDFromPath(path); tracked[ulid] != nil {
-			events[ulid] = append(events[ulid], evs...)
-		}
-	})
-	return events, nil
-}
-
 func changedItems(repo gitx.Repo, fromByID, toByID map[string]*datamodel.Item, events map[string][]datamodel.Event) []datamodel.ChangedItem {
 	items := []datamodel.ChangedItem{}
 	for ulid, t := range toByID {
@@ -90,7 +71,7 @@ func bodyDelta(repo gitx.Repo, from, to *datamodel.Item) *datamodel.BodyDelta {
 	return &datamodel.BodyDelta{Added: added, Removed: removed}
 }
 
-func newChangedItem(it *datamodel.Item, status string, events []datamodel.Event, body *datamodel.BodyDelta) datamodel.ChangedItem {
+func newChangedItem(it *datamodel.Item, status datamodel.DiffStatus, events []datamodel.Event, body *datamodel.BodyDelta) datamodel.ChangedItem {
 	if events == nil {
 		events = []datamodel.Event{}
 	}

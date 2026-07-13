@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/index"
-	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
@@ -38,13 +36,6 @@ func (s *Store) fileHeads() map[string]string {
 	return heads
 }
 
-func (s *Store) cachedEvents(ulid, fileHead string) (events []datamodel.Event, committed bool, err error) {
-	events, _, err = index.LogEntries(s.fs(), ulid, fileHead, func() ([]datamodel.Event, error) {
-		return s.deriveEvents(ulid)
-	})
-	return events, fileHead != "", err
-}
-
 func (s *Store) cachedStateEvents(ulid, fileHead string) (events []stateTransition, committed bool, err error) {
 	all, committed, err := s.cachedEvents(ulid, fileHead)
 	if err != nil {
@@ -65,19 +56,17 @@ func (s *Store) cachedStateEvents(ulid, fileHead string) (events []stateTransiti
 }
 
 type metricItem struct {
-	number    string
-	created   time.Time
-	doingAt   time.Time
-	doneAt    time.Time
-	hasDoing  bool
-	hasDone   bool
-	doneDay   string
-	degraded  bool
-	dropped   bool
-	category  datamodel.Category
-	estimate  float64
-	estimated bool
-	reopens   int
+	number   string
+	created  time.Time
+	doingAt  time.Time
+	doneAt   time.Time
+	hasDoing bool
+	hasDone  bool
+	doneDay  string
+	degraded bool
+	dropped  bool
+	category datamodel.Category
+	reopens  int
 }
 
 func (s *Store) itemMetrics(cfg *datamodel.Config, it *datamodel.Item, fileHead string) (metricItem, error) {
@@ -85,11 +74,13 @@ func (s *Store) itemMetrics(cfg *datamodel.Config, it *datamodel.Item, fileHead 
 	if err != nil {
 		return metricItem{}, err
 	}
+	return metricsFrom(cfg, it, evs, committed), nil
+}
+
+func metricsFrom(cfg *datamodel.Config, it *datamodel.Item, evs []stateTransition, committed bool) metricItem {
 	mi := metricItem{
-		number:    it.Number,
-		estimate:  ptr.Deref(it.Estimate),
-		estimated: it.Estimate != nil,
-		dropped:   isDropped(it),
+		number:  it.Number,
+		dropped: isDropped(it),
 	}
 	mi.category, _ = categoryOf(cfg, it.Type, it.State)
 	if c, cerr := it.CreatedTime(); cerr == nil {
@@ -135,5 +126,5 @@ func (s *Store) itemMetrics(cfg *datamodel.Config, it *datamodel.Item, fileHead 
 			}
 		}
 	}
-	return mi, nil
+	return mi
 }

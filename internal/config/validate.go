@@ -36,9 +36,6 @@ func Validate(c *datamodel.Config) error {
 	if !strings.Contains(c.Workon.BranchPattern, "{number}") {
 		return fmt.Errorf("config: workon.branch_pattern: must contain {number}, got %q", c.Workon.BranchPattern)
 	}
-	if c.Estimate.HoursPerDay <= 0 {
-		return fmt.Errorf("config: estimate.hours_per_day: must be > 0, got %v", c.Estimate.HoursPerDay)
-	}
 	if len(c.Workflows) == 0 {
 		return fmt.Errorf("config: workflows: at least one workflow is required")
 	}
@@ -47,14 +44,17 @@ func Validate(c *datamodel.Config) error {
 			return err
 		}
 	}
-	if err := validateVocabList("priorities", c.Priorities); err != nil {
-		return err
-	}
-	if err := validateVocabList("subtypes", c.Subtypes); err != nil {
-		return err
-	}
-	if err := validateVocabList("resolutions", c.Resolutions); err != nil {
-		return err
+	for _, vl := range []struct {
+		key  string
+		list []string
+	}{
+		{"priorities", c.Priorities},
+		{"subtypes", c.Subtypes},
+		{"resolutions", c.Resolutions},
+	} {
+		if err := validateVocabList(vl.key, vl.list); err != nil {
+			return err
+		}
 	}
 	if err := validateFilters(c); err != nil {
 		return err

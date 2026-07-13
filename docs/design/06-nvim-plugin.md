@@ -47,7 +47,7 @@ Floor: **nvim ≥ 0.10** (`vim.system` availability). Rejected `plenary.job`: it
 
 ### `:KiraDiscover` / `:KiraQuery`
 
-- Candidate source is `kira list --json` / `kira query "<expr>" --json` (never `kira discover`, which has no `--json` — it's an interactive fzf selector in its own right, see [04-cli.md `kira discover`](04-cli.md#kira-discover)).
+- Candidate source is `kira list --json` / `kira list --query "<expr>" --json` (never `kira discover`, which has no `--json` — it's an interactive fzf selector in its own right, see [04-cli.md `kira discover`](04-cli.md#kira-discover)).
 - Telescope picker (custom finder + `kira show <id> --json`-backed previewer) if `pcall(require, 'telescope')` succeeds; otherwise `vim.ui.select` over item `"KIRA-142  Fix race in ..."` labels, no preview.
 - Selecting an entry opens the `gk` float (view) by default; a picker action (telescope `<C-e>` or a second `vim.ui.select` prompt) routes to `:KiraEdit` instead.
 

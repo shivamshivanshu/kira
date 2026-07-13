@@ -54,6 +54,22 @@ func TestMatchesTypeAndFrom(t *testing.T) {
 	}
 }
 
+func TestMatchesFromByCategoryDistinctFromStateKey(t *testing.T) {
+	ev := automation.Event{Name: datamodel.EventItemStateChanged, From: "in_progress", FromCategory: "doing"}
+	byKey := datamodel.AutomationHook{On: datamodel.EventItemStateChanged, Match: &datamodel.AutomationMatch{From: "in_progress"}}
+	byCat := datamodel.AutomationHook{On: datamodel.EventItemStateChanged, Match: &datamodel.AutomationMatch{From: "doing"}}
+	miss := datamodel.AutomationHook{On: datamodel.EventItemStateChanged, Match: &datamodel.AutomationMatch{From: "todo"}}
+	if !automation.Matches(byKey, ev) {
+		t.Fatal("from should match the state key")
+	}
+	if !automation.Matches(byCat, ev) {
+		t.Fatal("from should match the category when it differs from the state key")
+	}
+	if automation.Matches(miss, ev) {
+		t.Fatal("from should not match an unrelated value")
+	}
+}
+
 func TestHashChangesWithConfigAndIsStable(t *testing.T) {
 	a := &datamodel.Config{Automation: []datamodel.AutomationHook{{On: datamodel.EventItemCreated, Run: "true"}}}
 	b := &datamodel.Config{Automation: []datamodel.AutomationHook{{On: datamodel.EventItemCreated, Run: "false"}}}
@@ -92,7 +108,7 @@ func TestTrustRoundTripAndRevokeOnEdit(t *testing.T) {
 func TestPayloadShapeForStateChanged(t *testing.T) {
 	ev := automation.Event{
 		Name:       datamodel.EventItemStateChanged,
-		Source:     string(datamodel.SourceCLI),
+		Source:     datamodel.SourceCLI,
 		Item:       &datamodel.ShowResult{ID: "01ABC", Number: "KIRA-1", State: "done"},
 		Changes:    map[string]automation.Change{"state": {Old: "todo", New: "done"}},
 		From:       "todo",
@@ -115,7 +131,7 @@ func TestPayloadShapeForStateChanged(t *testing.T) {
 			t.Fatalf("payload missing key %q: %s", k, raw)
 		}
 	}
-	if got["event"] != datamodel.EventItemStateChanged {
+	if got["event"] != string(datamodel.EventItemStateChanged) {
 		t.Fatalf("event = %v", got["event"])
 	}
 	item := got["item"].(map[string]any)

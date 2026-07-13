@@ -13,7 +13,7 @@ type Relation struct {
 func CycleRelations() []Relation {
 	return []Relation{
 		{Field: KeyBlockedBy, Edges: func(it *Item) []string { return it.BlockedBy }},
-		{Field: LinkDuplicateOf, Edges: func(it *Item) []string { return it.Links[LinkDuplicateOf] }},
+		{Field: string(LinkDuplicateOf), Edges: func(it *Item) []string { return it.Links[string(LinkDuplicateOf)] }},
 	}
 }
 

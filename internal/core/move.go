@@ -47,27 +47,11 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 			it.Resolution = &opts.Resolution
 		}
 		if tr != nil {
-			var missing []string
-			for _, f := range tr.Require {
-				if !fieldPresent(it, f) {
-					missing = append(missing, f)
-				}
+			h, w := applyTransitionEffects(it, tr, from, state, opts)
+			if len(h) > 0 {
+				return h, nil
 			}
-			if len(missing) > 0 {
-				fields := strings.Join(missing, ", ")
-				if !opts.Force {
-					return []error{errx.User("%s -> %s requires %s to be set", from, state, fields).WithHint("set %s first, or use `--force` to override", fields)}, nil
-				}
-				warns = append(warns, fmt.Errorf("forced past require guard: %s not set", fields))
-			}
-			for _, f := range slices.Sorted(maps.Keys(tr.Set)) {
-				if f == "resolution" && opts.Resolution != "" {
-					continue
-				}
-				if err := applyFieldEdit(it, f, tr.Set[f]); err != nil {
-					return []error{err}, nil
-				}
-			}
+			warns = append(warns, w...)
 		}
 
 		if target.Category == datamodel.CategoryDone {
@@ -95,7 +79,7 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 		return nil, warns
 	}
 	subjectOf := func(orig *datamodel.Item) string {
-		return fmt.Sprintf("kira: %s state %s -> %s", orig.Number, orig.State, state)
+		return fmt.Sprintf(subjectPrefix+"%s state %s -> %s", orig.Number, orig.State, state)
 	}
 
 	source := opts.Source
@@ -119,6 +103,31 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 		Activated: opts.Activate,
 		Warnings:  wipWarnings,
 	}, nil
+}
+
+func applyTransitionEffects(it *datamodel.Item, tr *datamodel.Transition, from, state string, opts MoveOpts) (hard, warns []error) {
+	var missing []string
+	for _, f := range tr.Require {
+		if !fieldPresent(it, f) {
+			missing = append(missing, f)
+		}
+	}
+	if len(missing) > 0 {
+		fields := strings.Join(missing, ", ")
+		if !opts.Force {
+			return []error{errx.User("%s -> %s requires %s to be set", from, state, fields).WithHint("set %s first, or use `--force` to override", fields)}, nil
+		}
+		warns = append(warns, fmt.Errorf("forced past require guard: %s not set", fields))
+	}
+	for _, f := range slices.Sorted(maps.Keys(tr.Set)) {
+		if f == "resolution" && opts.Resolution != "" {
+			continue
+		}
+		if err := applyFieldEdit(it, f, tr.Set[f]); err != nil {
+			return []error{err}, nil
+		}
+	}
+	return nil, warns
 }
 
 func (s *Store) setActive(ulid string) error {

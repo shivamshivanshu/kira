@@ -33,7 +33,7 @@ func newShowCmd(g *globalFlags) *cobra.Command {
 			}
 			emitStderrNotes(cmd.ErrOrStderr(), res.StderrNotes)
 			if res.Skew != nil {
-				fmt.Fprintln(cmd.ErrOrStderr(), "kira:", renderSkew(res.Skew))
+				fmt.Fprintln(cmd.ErrOrStderr(), msgPrefix, renderSkew(res.Skew))
 			}
 			if format != "" {
 				out, err := showfmt.Format(showfmt.Form(format), showfmt.Item{ID: res.ID, Number: res.Number, Title: res.Title})

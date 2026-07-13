@@ -4,10 +4,8 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/shivamshivanshu/kira/internal/core"
-	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
 type peekMode int
@@ -29,17 +27,15 @@ var boardKeys = []KeyBinding{
 func init() { registerScreen(viewBoard, func() screen { return newBoardScreen() }) }
 
 type boardScreen struct {
-	board       boardModel
-	panel       *detailPanel
-	detail      *datamodel.ShowResult
-	detailCache map[string]*datamodel.ShowResult
-	notice      string
-	loaded      bool
-	peek        peekMode
+	board  boardModel
+	host   detailHost
+	notice string
+	loaded bool
+	peek   peekMode
 }
 
 func newBoardScreen() *boardScreen {
-	return &boardScreen{panel: newDetailPanel(), detailCache: map[string]*datamodel.ShowResult{}}
+	return &boardScreen{host: newDetailHost()}
 }
 
 func (s *boardScreen) keys() []KeyBinding {
@@ -68,13 +64,13 @@ func (s *boardScreen) reload(m *model) {
 		return
 	}
 	s.board.load(res)
-	s.detailCache = map[string]*datamodel.ShowResult{}
+	s.host.resetCache()
 }
 
 func (s *boardScreen) update(m *model, key string) tea.Cmd {
 	s.ensureLoaded(m)
 	if s.peek == peekOverlay {
-		return s.panel.update(m, s.detail, key)
+		return s.host.update(m, key)
 	}
 	switch key {
 	case "j", "down":
@@ -96,11 +92,11 @@ func (s *boardScreen) update(m *model, key string) tea.Cmd {
 	case "tab", "shift+tab":
 		if s.peek == peekDocked {
 			s.peek = peekOverlay
-			s.panel.reset()
+			s.host.panel.reset()
 		}
 	case "enter":
 		s.syncDetail(m)
-		s.panel.reset()
+		s.host.panel.reset()
 		s.peek = peekOverlay
 	case "p":
 		if s.peek == peekOff {
@@ -116,7 +112,7 @@ func (s *boardScreen) update(m *model, key string) tea.Cmd {
 func (s *boardScreen) syncPeek(m *model) {
 	if s.peek != peekOff {
 		s.syncDetail(m)
-		s.panel.reset()
+		s.host.panel.reset()
 	}
 }
 
@@ -155,26 +151,8 @@ func (s *boardScreen) moveCard(m *model, dir int) {
 }
 
 func (s *boardScreen) syncDetail(m *model) {
-	card, ok := s.board.selected()
-	if !ok {
-		s.detail = nil
-		return
-	}
-	if cached, ok := s.detailCache[card.ID]; ok {
-		s.detail = cached
-		return
-	}
-	if m.store == nil {
-		s.detail = nil
-		return
-	}
-	res, err := loadDetail(m.store, m.cfg, card.ID)
-	if err != nil {
-		s.detail = nil
-		return
-	}
-	s.detailCache[card.ID] = res
-	s.detail = res
+	card, _ := s.board.selected()
+	s.host.sync(m, card.ID)
 }
 
 func (s *boardScreen) back(m *model) bool {
@@ -206,14 +184,14 @@ func (s *boardScreen) view(m *model, width, height int) string {
 
 func (s *boardScreen) renderMain(m *model, width, height int) string {
 	if s.peek == peekOverlay || (s.peek == peekDocked && !splitDetail(width)) {
-		return s.panel.render(m.theme, s.detail, width, height)
+		return s.host.render(m.theme, width, height)
 	}
 	if s.peek == peekDocked {
-		bw := treeWidth(width)
-		left := renderBoard(m.theme, m.icons, s.board.result, bw, height, s.board.col, s.board.row)
-		sep := verticalRule(m.theme.Border.Render("│"), height)
-		right := s.panel.render(m.theme, s.detail, width-bw-1, height)
-		return lipgloss.JoinHorizontal(lipgloss.Top, left, sep, right)
+		return splitPane(m.theme, width, height,
+			func(w int) string {
+				return renderBoard(m.theme, m.icons, s.board.result, w, height, s.board.col, s.board.row)
+			},
+			func(w int) string { return s.host.render(m.theme, w, height) })
 	}
 	return renderBoard(m.theme, m.icons, s.board.result, width, height, s.board.col, s.board.row)
 }

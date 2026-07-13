@@ -50,18 +50,15 @@ func Default() *datamodel.Config {
 		Resolutions: []string{"done", "dropped", "duplicate", "cannot-reproduce"},
 		// deliberately empty, unlike the 02-data-model §9 example: its filter
 		// and sprint entries are illustrations, not defaults
-		Filters: map[string]string{},
-		Sprints: nil,
-		Commit:  datamodel.Commit{Mode: datamodel.CommitAuto, Trailer: "Kira-Ticket", CloseTrailer: "Kira-Closes"},
-		Merge:   datamodel.Merge{Policy: datamodel.MergeAuto},
-		Sync:    datamodel.Sync{Push: false},
-		Workon:  datamodel.Workon{BranchPattern: "{key}/{number}-{slug}", Casing: datamodel.CasingKebab},
-		UI:      datamodel.UI{Icons: datamodel.IconAuto, Background: datamodel.BackgroundAuto},
-		Git:     datamodel.Git{},
-		Estimate: datamodel.Estimate{
-			Unit:        datamodel.EstimatePoints,
-			HoursPerDay: 8,
-		},
-		Fields: map[string]any{},
+		Filters:  map[string]string{},
+		Sprints:  nil,
+		Commit:   datamodel.Commit{Mode: datamodel.CommitAuto, Trailer: "Kira-Ticket", CloseTrailer: "Kira-Closes"},
+		Merge:    datamodel.Merge{Policy: datamodel.MergeAuto},
+		Sync:     datamodel.Sync{Push: false},
+		Workon:   datamodel.Workon{BranchPattern: "{key}/{number}-{slug}", Casing: datamodel.CasingKebab},
+		UI:       datamodel.UI{Icons: datamodel.IconAuto, Background: datamodel.BackgroundAuto},
+		Git:      datamodel.Git{},
+		Estimate: datamodel.Estimate{Unit: datamodel.EstimatePoints},
+		Fields:   map[string]any{},
 	}
 }

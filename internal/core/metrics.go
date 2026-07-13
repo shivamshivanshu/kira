@@ -82,36 +82,6 @@ func computeThroughput(items []metricItem, weeks int, today time.Time) []int {
 	return buckets
 }
 
-func computeEstimate(items []metricItem, unit string, hoursPerDay float64) *datamodel.EstimateRollup {
-	e := &datamodel.EstimateRollup{Unit: unit}
-	for _, it := range items {
-		if it.estimated {
-			e.Total += it.estimate
-		}
-	}
-	e.Total = round1(e.Total)
-	if unit == string(datamodel.EstimateHours) {
-		if hoursPerDay <= 0 {
-			hoursPerDay = 8
-		}
-		var ratios []float64
-		for _, it := range items {
-			if !it.estimated || it.dropped || !it.hasDoing || !it.hasDone {
-				continue
-			}
-			actual := (it.doneAt.Sub(it.doingAt).Hours() / 24) * hoursPerDay
-			if actual > 0 {
-				ratios = append(ratios, it.estimate/actual)
-			}
-		}
-		if len(ratios) > 0 {
-			v := percentiles(ratios, 0).P50
-			e.ActualRatioP50 = &v
-		}
-	}
-	return e
-}
-
 func computeReopens(items []metricItem) *datamodel.Reopens {
 	r := &datamodel.Reopens{Items: []string{}}
 	for _, it := range items {
@@ -144,3 +114,5 @@ func percentile(sorted []float64, q float64) float64 {
 }
 
 func round2(x float64) float64 { return math.Round(x*100) / 100 }
+
+func round1(x float64) float64 { return math.Round(x*10) / 10 }

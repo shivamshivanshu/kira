@@ -1,15 +1,13 @@
 // Package syncx defines the report shape, dirty-tree policy, and seam interfaces
 // composed by `kira sync`. The reindex step is a seam: core injects a real
-// reindexer backed by the index; the no-op stays for callers that run without
-// one and reports the step as skipped.
+// reindexer backed by the index.
 package syncx
 
 type StepStatus string
 
 const (
-	StepDone    StepStatus = "done"
-	StepSkipped StepStatus = "skipped"
-	StepFailed  StepStatus = "failed"
+	StepDone   StepStatus = "done"
+	StepFailed StepStatus = "failed"
 )
 
 type Step struct {
@@ -35,13 +33,7 @@ const (
 )
 
 // Reindexer rebuilds the derived index after a pull. Its own Step reports how
-// the step went, so a no-op can honestly declare itself skipped.
+// the step went.
 type Reindexer interface {
 	Reindex() Step
-}
-
-type noopReindexer struct{}
-
-func (noopReindexer) Reindex() Step {
-	return Step{Name: "reindex", Status: StepSkipped, Detail: "no reindexer configured"}
 }

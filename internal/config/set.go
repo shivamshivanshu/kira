@@ -17,19 +17,18 @@ const (
 )
 
 var setKeys = map[string]setKind{
-	"project.name":           kindStr,
-	"commit.mode":            kindLiteral,
-	"commit.trailer":         kindStr,
-	"commit.close_trailer":   kindStr,
-	"merge.policy":           kindLiteral,
-	"sync.push":              kindLiteral,
-	"ui.icons":               kindLiteral,
-	"ui.background":          kindLiteral,
-	"workon.branch_pattern":  kindStr,
-	"workon.casing":          kindLiteral,
-	"git.landed_ref":         kindStr,
-	"estimate.unit":          kindLiteral,
-	"estimate.hours_per_day": kindLiteral,
+	"project.name":          kindStr,
+	"commit.mode":           kindLiteral,
+	"commit.trailer":        kindStr,
+	"commit.close_trailer":  kindStr,
+	"merge.policy":          kindLiteral,
+	"sync.push":             kindLiteral,
+	"ui.icons":              kindLiteral,
+	"ui.background":         kindLiteral,
+	"workon.branch_pattern": kindStr,
+	"workon.casing":         kindLiteral,
+	"git.landed_ref":        kindStr,
+	"estimate.unit":         kindLiteral,
 }
 
 func SetKeys() []string {

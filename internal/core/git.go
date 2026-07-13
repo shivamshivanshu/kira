@@ -2,15 +2,20 @@ package core
 
 import (
 	"fmt"
+	"os/exec"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 )
 
+const subjectPrefix = "kira: "
+
 func (s *Store) repo() gitx.Repo {
 	return gitx.Repo{Dir: s.root}
 }
+
+func (s *Store) CommitShowCmd(sha string) *exec.Cmd { return s.repo().ShowCmd(sha) }
 
 func (s *Store) requireRepo() error {
 	if !gitx.Installed() {
@@ -22,7 +27,13 @@ func (s *Store) requireRepo() error {
 	return nil
 }
 
-func (s *Store) finalize(mode datamodel.CommitMode, trailerKey, subject, trailerNumber string, paths ...string) (string, error) {
+type commitSpec struct {
+	trailerKey    string
+	subject       string
+	trailerNumber string
+}
+
+func (s *Store) finalize(mode datamodel.CommitMode, spec commitSpec, paths ...string) (string, error) {
 	if err := s.repo().Stage(paths...); err != nil {
 		return "", errx.User("%s", err)
 	}
@@ -33,12 +44,12 @@ func (s *Store) finalize(mode datamodel.CommitMode, trailerKey, subject, trailer
 		if !s.prompter.Interactive() {
 			return "", nil
 		}
-		if !s.prompter.Confirm(fmt.Sprintf("commit %q? [y/N] ", subject)) {
+		if !s.prompter.Confirm(fmt.Sprintf("commit %q? [y/N] ", spec.subject)) {
 			return "", nil
 		}
 		fallthrough
 	default:
-		if err := s.repo().Commit(subject, trailerKey, trailerNumber); err != nil {
+		if err := s.repo().Commit(spec.subject, spec.trailerKey, spec.trailerNumber); err != nil {
 			return "", errx.User("%s", err)
 		}
 		sha, _ := s.repo().Output("rev-parse", "HEAD")

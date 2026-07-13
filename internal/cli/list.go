@@ -51,7 +51,7 @@ func newListCmd(g *globalFlags) *cobra.Command {
 
 func emitStderrNotes(w io.Writer, notes []datamodel.Warning) {
 	for _, n := range notes {
-		fmt.Fprintln(w, "kira:", renderWarning(n))
+		fmt.Fprintln(w, msgPrefix, renderWarning(n))
 	}
 }
 
@@ -65,7 +65,7 @@ func renderListResult(w io.Writer, res *datamodel.ListResult) {
 
 func renderList(w io.Writer, res *datamodel.ListResult) {
 	if res.Count == 0 {
-		fmt.Fprintln(w, "no items")
+		fmt.Fprintln(w, msgNoItems)
 		return
 	}
 	tw := newTabWriter(w)

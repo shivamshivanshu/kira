@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -11,10 +12,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
-const (
-	statsEmptyMessage = "No sprint data yet — add a sprint and estimates to see burndown and velocity."
-	velocityBarCells  = 12
-)
+const statsEmptyMessage = "No metrics yet — create and move some tickets to see completion, cycle time, and throughput."
 
 var statsKeys = []KeyBinding{{"j/k", "scroll"}}
 
@@ -83,67 +81,53 @@ func (s *statsScreen) contentLines(t theme.Theme, rich bool) []string {
 }
 
 func loadStats(store *core.Store, cfg *datamodel.Config) (*datamodel.StatsResult, error) {
-	if res, err := store.Stats(cfg, core.StatsOpts{Sprint: "active", Velocity: true}); err == nil {
+	if res, err := store.Stats(cfg, core.StatsOpts{Sprint: "active"}); err == nil {
 		return res, nil
 	}
-	return store.Stats(cfg, core.StatsOpts{Velocity: true})
+	return store.Stats(cfg, core.StatsOpts{})
 }
 
 func statsLines(t theme.Theme, rich bool, res *datamodel.StatsResult) []string {
-	if res == nil {
+	if res == nil || res.Completion == nil || res.Completion.Total == 0 {
 		return nil
 	}
 	var lines []string
-	if b := res.Burndown; b != nil && len(b.Days) > 0 {
-		lines = append(lines, burndownLines(t, rich, b)...)
+	if s := res.Scope; s != nil && s.Sprint != "" {
+		lines = append(lines, t.Accent.Render("Sprint")+"  "+s.Sprint)
 	}
-	if v := res.Velocity; v != nil && len(v.Sprints) > 0 {
-		if len(lines) > 0 {
-			lines = append(lines, "")
+	c := res.Completion
+	head := fmt.Sprintf("%d/%d done (%.0f%%)", c.Done, c.Total, c.Pct*100)
+	if c.Dropped > 0 {
+		head += fmt.Sprintf(", %d dropped", c.Dropped)
+	}
+	lines = append(lines, t.Accent.Render("Completion")+"  "+head)
+	lines = append(lines, percentileLine(t, "cycle time", res.CycleTime))
+	lines = append(lines, percentileLine(t, "lead time", res.LeadTime))
+	if len(res.Throughput) > 0 {
+		vals := make([]float64, len(res.Throughput))
+		total := 0
+		for i, n := range res.Throughput {
+			vals[i] = float64(n)
+			total += n
 		}
-		lines = append(lines, velocityLines(t, rich, v)...)
+		lines = append(lines, sparkRow(t, "throughput", sparkline(vals, rich), fmt.Sprintf("%d/wk", total)))
+	}
+	if r := res.Reopens; r != nil && r.Count > 0 {
+		lines = append(lines, t.Dim.Render(fmt.Sprintf("  %-12s", "reopens"))+strings.Join(r.Items, ", "))
 	}
 	return lines
 }
 
-func burndownLines(t theme.Theme, rich bool, b *datamodel.Burndown) []string {
-	remaining := make([]float64, len(b.Days))
-	ideal := make([]float64, len(b.Days))
-	for i, d := range b.Days {
-		remaining[i], ideal[i] = d.Remaining, d.Ideal
+func percentileLine(t theme.Theme, label string, p *datamodel.Percentiles) string {
+	if p == nil || p.N == 0 {
+		return t.Dim.Render(fmt.Sprintf("  %-12s", label)) + "no data"
 	}
-	last := codec.EmitFloat(b.Days[len(b.Days)-1].Remaining)
-	lines := []string{
-		t.Accent.Render("Burndown") + "  " + b.Sprint + "  " + b.Start + " -> " + b.End + " (" + b.Unit + ")",
-		sparkRow(t, "remaining", sparkline(remaining, rich), last),
-		sparkRow(t, "ideal", sparkline(ideal, rich), ""),
-	}
-	if b.Unestimated > 0 {
-		lines = append(lines, t.Dim.Render(fmt.Sprintf("  %d unestimated item(s) burn nothing", b.Unestimated)))
-	}
-	if b.DegradedN > 0 {
-		lines = append(lines, t.Dim.Render(fmt.Sprintf("  %d item(s) with lossy history", b.DegradedN)))
-	}
-	return lines
-}
-
-func velocityLines(t theme.Theme, rich bool, v *datamodel.Velocity) []string {
-	var maxV float64
-	for _, sp := range v.Sprints {
-		if sp.Completed > maxV {
-			maxV = sp.Completed
-		}
-	}
-	lines := []string{t.Accent.Render("Velocity") + " (" + v.Unit + ")"}
-	for _, sp := range v.Sprints {
-		row := t.Dim.Render(fmt.Sprintf("  %-10s", sp.Key)) + hbar(sp.Completed, maxV, velocityBarCells, rich) + "  " + codec.EmitFloat(sp.Completed)
-		lines = append(lines, row)
-	}
-	return append(lines, t.Dim.Render("  trailing-3  ")+codec.EmitFloat(v.Trailing3))
+	return t.Dim.Render(fmt.Sprintf("  %-12s", label)) +
+		fmt.Sprintf("p50 %s  p90 %s  n=%d", codec.EmitFloat(p.P50), codec.EmitFloat(p.P90), p.N)
 }
 
 func sparkRow(t theme.Theme, label, spark, suffix string) string {
-	row := t.Dim.Render(fmt.Sprintf("  %-10s", label)) + spark
+	row := t.Dim.Render(fmt.Sprintf("  %-12s", label)) + spark
 	if suffix != "" {
 		row += "  " + suffix
 	}

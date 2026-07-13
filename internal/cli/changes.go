@@ -44,14 +44,7 @@ func renderChanges(w io.Writer, res *datamodel.ChangesResult) {
 		return
 	}
 	for _, it := range res.Items {
-		switch it.Status {
-		case datamodel.DiffCreated:
-			fmt.Fprintf(w, "created %s  %s\n", it.Number, it.Title)
-		case datamodel.DiffDeleted:
-			fmt.Fprintf(w, "deleted %s  %s\n", it.Number, it.Title)
-		default:
-			fmt.Fprintf(w, "%s  %s\n", it.Number, it.Title)
-		}
+		renderDiffHeader(w, it.Status, it.Number, it.Title)
 		for _, e := range it.Events {
 			fmt.Fprintf(w, "  %s  %s: %s -> %s\n", e.Ts, e.Field, e.Old, e.New)
 		}

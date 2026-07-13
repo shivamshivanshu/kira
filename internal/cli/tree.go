@@ -43,7 +43,7 @@ func newTreeCmd(g *globalFlags) *cobra.Command {
 
 func renderTree(w io.Writer, res *datamodel.TreeResult) {
 	if len(res.Nodes) == 0 {
-		fmt.Fprintln(w, "no items")
+		fmt.Fprintln(w, msgNoItems)
 		return
 	}
 	tw := newTabWriter(w)
@@ -63,7 +63,7 @@ func renderTreeNode(w io.Writer, n datamodel.TreeNode, depth int) {
 
 func renderTreeGroups(w io.Writer, res *datamodel.ListResult) {
 	if res.Count == 0 {
-		fmt.Fprintln(w, "no items")
+		fmt.Fprintln(w, msgNoItems)
 		return
 	}
 	byID := make(map[string]datamodel.ListItem, len(res.Items))

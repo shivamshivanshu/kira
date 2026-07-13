@@ -3,7 +3,7 @@
 Git-native, local-first, terminal-first project management for software repos. JIRA's data model with git's storage model: tickets are files in your repo, history is `git log`, sync is `git push`.
 
 **Status:** draft for founder review. Produced from a 5-way independent design fan-out + consensus synthesis (2026-07-12).
-**Detailed specs:** [docs/design/](docs/design/) · **Execution plan:** [ROADMAP.md](ROADMAP.md)
+**Detailed specs:** [docs/design/](docs/design/) · **Execution plan:** [ROADMAP.md](docs/ROADMAP.md)
 
 ## 1. Problem
 
@@ -100,7 +100,7 @@ Stated up front: (a) JIRA-style last-writer-wins auto-resolution (the default `m
 
 ## 6. Verification
 
-- Every milestone gates on named green test suites ([ROADMAP.md](ROADMAP.md)); M3's two-branch merge regression matrix must be green before any multi-user recommendation.
+- Every milestone gates on named green test suites ([ROADMAP.md](docs/ROADMAP.md)); M3's two-branch merge regression matrix must be green before any multi-user recommendation.
 - The `--json` golden files are the frontend contract; nvim work does not start until they are stable (M1 exit).
 - Dogfooding: kira tracks its own development in its own `.kira/` from M0 onward; CI runs `kira doctor` against it from M2 (when `doctor` lands).
 - Risk table with mitigations lives in the synthesis and is folded per-doc; top three: ID reconciliation bugs (property/fuzz-tested, repairs are visible commits), missing hooks (loud degradation), index staleness (content-hash invalidation + auto-rebuild, cache never authoritative).

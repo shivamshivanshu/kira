@@ -16,8 +16,8 @@ import (
 func newStatsCmd(g *globalFlags) *cobra.Command {
 	var opts core.StatsOpts
 	cmd := &cobra.Command{
-		Use:   "stats [epic-id] [--since DATE] [--weeks N] [--sprint KEY] [--velocity]",
-		Short: "Project and sprint metrics: completion, cycle/lead time, throughput, burndown, velocity",
+		Use:   "stats [epic-id] [--since DATE] [--weeks N] [--sprint KEY]",
+		Short: "Project and sprint metrics: completion, cycle/lead time, throughput",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
@@ -41,8 +41,7 @@ func newStatsCmd(g *globalFlags) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&opts.Since, "since", "", "include only items created on or after this date (YYYY-MM-DD)")
 	f.IntVar(&opts.Weeks, "weeks", 0, "trailing weeks in the throughput series (default 8)")
-	f.StringVar(&opts.Sprint, "sprint", "", "scope metrics to a sprint and add its burndown ('active' resolves the local active sprint)")
-	f.BoolVar(&opts.Velocity, "velocity", false, "add completed estimate per closed sprint and the trailing-3 average")
+	f.StringVar(&opts.Sprint, "sprint", "", "scope metrics to a sprint ('active' resolves the local active sprint)")
 	return cmd
 }
 
@@ -80,34 +79,8 @@ func renderStats(out io.Writer, res *datamodel.StatsResult) {
 		}
 		fmt.Fprintf(out, "  throughput/week: %s\n", strings.Join(nums, " "))
 	}
-	if e := res.Estimate; e != nil {
-		fmt.Fprintf(out, "  estimate: %s %s", codec.EmitFloat(e.Total), e.Unit)
-		if e.ActualRatioP50 != nil {
-			fmt.Fprintf(out, " (est/actual p50 %s)", codec.EmitFloat(*e.ActualRatioP50))
-		}
-		fmt.Fprintln(out)
-	}
 	if r := res.Reopens; r != nil && r.Count > 0 {
 		fmt.Fprintf(out, "  reopens: %d across %s\n", r.Count, strings.Join(r.Items, ", "))
-	}
-	if b := res.Burndown; b != nil {
-		fmt.Fprintf(out, "Burndown %s  %s -> %s (%s)\n", b.Sprint, b.Start, b.End, b.Unit)
-		for _, d := range b.Days {
-			fmt.Fprintf(out, "  %s  remaining %s  ideal %s\n", d.Date, codec.EmitFloat(d.Remaining), codec.EmitFloat(d.Ideal))
-		}
-		if b.Unestimated > 0 {
-			fmt.Fprintf(out, "  unestimated items (burn nothing): %d\n", b.Unestimated)
-		}
-		if b.DegradedN > 0 {
-			fmt.Fprintf(out, "  items with lossy history (best-effort done day): %d\n", b.DegradedN)
-		}
-	}
-	if v := res.Velocity; v != nil {
-		fmt.Fprintf(out, "Velocity (%s)\n", v.Unit)
-		for _, sp := range v.Sprints {
-			fmt.Fprintf(out, "  %s  %s\n", sp.Key, codec.EmitFloat(sp.Completed))
-		}
-		fmt.Fprintf(out, "  trailing-3 average: %s\n", codec.EmitFloat(v.Trailing3))
 	}
 }
 

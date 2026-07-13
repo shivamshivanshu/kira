@@ -17,30 +17,28 @@ func at(t *testing.T, s string) time.Time {
 	return ts
 }
 
-func done(t *testing.T, num, created, doing, doneAt string, est float64, degraded bool, reopens int) metricItem {
+func done(t *testing.T, num, created, doing, doneAt string, degraded bool, reopens int) metricItem {
 	t.Helper()
 	return metricItem{
-		number:    num,
-		created:   at(t, created+"T10:00:00Z"),
-		doingAt:   at(t, doing+"T10:00:00Z"),
-		doneAt:    at(t, doneAt+"T10:00:00Z"),
-		hasDoing:  true,
-		hasDone:   true,
-		doneDay:   doneAt,
-		degraded:  degraded,
-		category:  datamodel.CategoryDone,
-		estimate:  est,
-		estimated: est > 0,
-		reopens:   reopens,
+		number:   num,
+		created:  at(t, created+"T10:00:00Z"),
+		doingAt:  at(t, doing+"T10:00:00Z"),
+		doneAt:   at(t, doneAt+"T10:00:00Z"),
+		hasDoing: true,
+		hasDone:  true,
+		doneDay:  doneAt,
+		degraded: degraded,
+		category: datamodel.CategoryDone,
+		reopens:  reopens,
 	}
 }
 
 func statsFixture(t *testing.T) []metricItem {
 	return []metricItem{
-		done(t, "KIRA-1", "2025-12-31", "2026-01-01", "2026-01-03", 3, false, 0),
-		done(t, "KIRA-2", "2025-12-31", "2026-01-01", "2026-01-05", 5, false, 0),
-		done(t, "KIRA-3", "2025-12-31", "2026-01-01", "2026-01-07", 2, false, 1),
-		done(t, "KIRA-4", "2025-12-31", "2026-01-01", "2026-01-11", 7, true, 2),
+		done(t, "KIRA-1", "2025-12-31", "2026-01-01", "2026-01-03", false, 0),
+		done(t, "KIRA-2", "2025-12-31", "2026-01-01", "2026-01-05", false, 0),
+		done(t, "KIRA-3", "2025-12-31", "2026-01-01", "2026-01-07", false, 1),
+		done(t, "KIRA-4", "2025-12-31", "2026-01-01", "2026-01-11", true, 2),
 		{
 			number: "KIRA-5", category: datamodel.CategoryDone, dropped: true,
 			hasDoing: true, hasDone: true,
@@ -87,28 +85,6 @@ func TestComputeThroughputFixture(t *testing.T) {
 	want := []int{0, 4, 1}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("throughput = %v, want %v", got, want)
-	}
-}
-
-func TestComputeEstimatePointsFixture(t *testing.T) {
-	got := computeEstimate(statsFixture(t), "points", 8)
-	if got.Total != 17 || got.Unit != "points" || got.ActualRatioP50 != nil {
-		t.Errorf("estimate = %+v, want total 17 points, no ratio", got)
-	}
-}
-
-func TestComputeEstimateHoursRatio(t *testing.T) {
-	items := []metricItem{
-		done(t, "H1", "2026-01-01", "2026-01-01", "2026-01-03", 8, false, 0),
-		done(t, "H2", "2026-01-01", "2026-01-01", "2026-01-03", 16, false, 0),
-		done(t, "H3", "2026-01-01", "2026-01-01", "2026-01-03", 24, false, 0),
-	}
-	got := computeEstimate(items, "hours", 8)
-	if got.Total != 48 || got.Unit != "hours" {
-		t.Errorf("estimate = %+v, want total 48 hours", got)
-	}
-	if got.ActualRatioP50 == nil || *got.ActualRatioP50 != 1.0 {
-		t.Errorf("actual_ratio_p50 = %v, want 1.0", got.ActualRatioP50)
 	}
 }
 

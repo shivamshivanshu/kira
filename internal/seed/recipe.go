@@ -21,7 +21,13 @@ type Spec struct {
 	Body     string
 }
 
-const itemsPerEpic = 15
+const (
+	itemsPerEpic    = 15
+	ticketParentPct = 85
+	maxLabels       = 3
+	commentPct      = 30
+	maxComments     = 3
+)
 
 var (
 	owners      = []string{"shivam", "alice"}
@@ -74,7 +80,7 @@ func epicSpec(rng *rand.Rand, i int) Spec {
 
 func ticketSpec(rng *rand.Rand, epicCount int) Spec {
 	parent := -1
-	if rng.Intn(100) < 85 {
+	if rng.Intn(100) < ticketParentPct {
 		parent = rng.Intn(epicCount)
 	}
 	return Spec{
@@ -92,7 +98,7 @@ func ticketSpec(rng *rand.Rand, epicCount int) Spec {
 }
 
 func pickLabels(rng *rand.Rand) []string {
-	n := rng.Intn(3)
+	n := rng.Intn(maxLabels)
 	out := make([]string, 0, n)
 	for range n {
 		out = append(out, labelVocab[rng.Intn(len(labelVocab))])
@@ -101,10 +107,10 @@ func pickLabels(rng *rand.Rand) []string {
 }
 
 func pickComments(rng *rand.Rand) []string {
-	if rng.Intn(100) >= 30 {
+	if rng.Intn(100) >= commentPct {
 		return nil
 	}
-	n := 1 + rng.Intn(3)
+	n := 1 + rng.Intn(maxComments)
 	out := make([]string, 0, n)
 	for range n {
 		out = append(out, commentPool[rng.Intn(len(commentPool))])

@@ -7,17 +7,19 @@ import (
 
 const DefaultAutomationTimeout = 30 * time.Second
 
+type EventName string
+
 const (
-	EventItemCreated      = "item.created"
-	EventItemStateChanged = "item.state_changed"
-	EventSyncCompleted    = "sync.completed"
+	EventItemCreated      EventName = "item.created"
+	EventItemStateChanged EventName = "item.state_changed"
+	EventSyncCompleted    EventName = "sync.completed"
 )
 
-var AutomationEvents = []string{EventItemCreated, EventItemStateChanged, EventSyncCompleted}
+var AutomationEvents = []EventName{EventItemCreated, EventItemStateChanged, EventSyncCompleted}
 
 type AutomationHook struct {
 	Name    string           `yaml:"name"`
-	On      string           `yaml:"on"`
+	On      EventName        `yaml:"on"`
 	Run     string           `yaml:"run"`
 	Enabled *bool            `yaml:"enabled"`
 	Timeout string           `yaml:"timeout"`
@@ -44,10 +46,10 @@ func (h AutomationHook) TimeoutDuration() (time.Duration, error) {
 }
 
 type AutomationHookView struct {
-	Name    string `json:"name"`
-	On      string `json:"on"`
-	Run     string `json:"run"`
-	Enabled bool   `json:"enabled"`
+	Name    string    `json:"name"`
+	On      EventName `json:"on"`
+	Run     string    `json:"run"`
+	Enabled bool      `json:"enabled"`
 }
 
 type AutomationListResult struct {

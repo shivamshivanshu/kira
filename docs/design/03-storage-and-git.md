@@ -50,7 +50,7 @@ Rejected alternatives:
 | Alternative | Rejection reason |
 |---|---|
 | sqlite as canonical store | A binary blob defeats "git is our database" literally: no 3-way merge, no `rg`/grep, no reviewable PR diffs. Every edit becomes an opaque binary diff. |
-| Plain files only, no index | Fine to ~1k items (linear scan), but query patterns (`kira query`, `kira stats`, label/state filters) degrade linearly past that — see [§8](#8-scale-expectations). The cache exists purely to make those queries fast without changing what's canonical. |
+| Plain files only, no index | Fine to ~1k items (linear scan), but query patterns (`kira list --query`, `kira stats`, label/state filters) degrade linearly past that — see [§8](#8-scale-expectations). The cache exists purely to make those queries fast without changing what's canonical. |
 
 ## 3. Writer format invariants
 

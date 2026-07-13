@@ -90,7 +90,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 	}
 
 	changed := datamodel.ChangedFields(orig, updated)
-	subject := "kira: " + updated.Number + " edit " + strings.Join(changed, ",")
+	subject := subjectPrefix + updated.Number + " edit " + strings.Join(changed, ",")
 	if err := s.commitMutation(cfg, orig, updated, changed, warns, subject, datamodel.SourceCLI); err != nil {
 		return nil, err
 	}
@@ -105,15 +105,14 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 	if err := guardWritable(orig); err != nil {
 		return "", err
 	}
-	return runEditor(codec.Serialize(orig), func(c string) []error {
+	return runEditor(codec.Serialize(orig), validateBuffer(cfg, resolver, opts.Force, func(c string) (*datamodel.Item, []error) {
 		it, errs := parseFullItem(c)
 		if len(errs) > 0 {
-			return errs
+			return nil, errs
 		}
 		restoreImmutable(it, orig)
-		hard, _ := validateAssembled(cfg, it, resolver, opts.Force)
-		return hard
-	})
+		return it, nil
+	}))
 }
 
 func parseFullItem(content string) (*datamodel.Item, []error) {
@@ -141,29 +140,29 @@ func restoreImmutable(it, orig *datamodel.Item) {
 
 func applyFieldEdit(it *datamodel.Item, key, value string) error {
 	switch key {
-	case "title":
+	case datamodel.KeyTitle:
 		it.Title = value
-	case "state":
+	case datamodel.KeyState:
 		it.State = value
-	case "subtype":
+	case datamodel.KeySubtype:
 		it.Subtype = ptrOrNil(value)
-	case "resolution":
+	case datamodel.KeyResolution:
 		it.Resolution = ptrOrNil(value)
-	case "priority":
+	case datamodel.KeyPriority:
 		it.Priority = ptrOrNil(value)
-	case "rank":
+	case datamodel.KeyRank:
 		it.Rank = ptrOrNil(value)
-	case "sprint":
+	case datamodel.KeySprint:
 		it.Sprint = ptrOrNil(value)
-	case "due":
+	case datamodel.KeyDue:
 		it.Due = ptrOrNil(value)
-	case "owner":
+	case datamodel.KeyOwner:
 		it.Owner = ptrOrNil(value)
-	case "reporter":
+	case datamodel.KeyReporter:
 		it.Reporter = ptrOrNil(value)
-	case "epic":
+	case datamodel.KeyEpic:
 		it.Epic = ptrOrNil(value)
-	case "estimate":
+	case datamodel.KeyEstimate:
 		if value == "" {
 			it.Estimate = nil
 			return nil
@@ -173,7 +172,7 @@ func applyFieldEdit(it *datamodel.Item, key, value string) error {
 			return fmt.Errorf("--field estimate: invalid number %q", value)
 		}
 		it.Estimate = &f
-	case "labels":
+	case datamodel.KeyLabels:
 		it.Labels = splitList(value)
 	default:
 		return errx.User("--field: unknown or immutable field %q", key).WithHint("%s", fieldHint(key))

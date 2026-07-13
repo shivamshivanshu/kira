@@ -22,6 +22,11 @@ const (
 	RowSeparator
 )
 
+const (
+	scannerInitialBuffer = 64 * 1024
+	scannerMaxLineSize   = 4 * 1024 * 1024
+)
+
 type FindRow struct {
 	Kind   RowKind
 	ID     string
@@ -92,21 +97,18 @@ func ParseFindArgs(args, dropExact []string) FindArgs {
 }
 
 func (s *Store) Find(cfg *datamodel.Config, args FindArgs) ([]FindRow, error) {
-	items, _, err := s.LoadAll()
+	ld, err := s.read(cfg, loadOpts{})
 	if err != nil {
 		return nil, err
 	}
 	if rgx.Installed() {
-		return s.findRipgrep(args, items)
+		return s.findRipgrep(args, ld.items)
 	}
-	return s.findFallback(args, items)
+	return s.findFallback(args, ld.items)
 }
 
 func (s *Store) findRipgrep(args FindArgs, items []*datamodel.Item) ([]FindRow, error) {
-	byULID := make(map[string]*datamodel.Item, len(items))
-	for _, it := range items {
-		byULID[it.ID] = it
-	}
+	byID := byULID(items)
 
 	fs := s.fs()
 	rgArgs := make([]string, 0, len(args.Passthru)+2)
@@ -128,7 +130,7 @@ func (s *Store) findRipgrep(args FindArgs, items []*datamodel.Item) ([]FindRow, 
 			continue
 		}
 		number, itemID := l.Path, ""
-		if it := byULID[storage.ULIDFromPath(l.Path)]; it != nil {
+		if it := byID[storage.ULIDFromPath(l.Path)]; it != nil {
 			number, itemID = it.Number, it.ID
 		}
 		if l.IsMatch {
@@ -157,7 +159,7 @@ func (s *Store) findFallback(args FindArgs, items []*datamodel.Item) ([]FindRow,
 	}
 
 	var rows []FindRow
-	buf := make([]byte, 0, 64*1024)
+	buf := make([]byte, 0, scannerInitialBuffer)
 	fs := s.fs()
 	for _, it := range items {
 		data, err := os.ReadFile(fs.ItemPath(it.ID))
@@ -166,7 +168,7 @@ func (s *Store) findFallback(args FindArgs, items []*datamodel.Item) ([]FindRow,
 		}
 		lineNo := 0
 		scanner := bufio.NewScanner(bytes.NewReader(data))
-		scanner.Buffer(buf, 4*1024*1024)
+		scanner.Buffer(buf, scannerMaxLineSize)
 		for scanner.Scan() {
 			lineNo++
 			line := scanner.Text()
