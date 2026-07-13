@@ -11,7 +11,7 @@ func loadFilteredTree(store *core.Store, cfg *datamodel.Config, expr string) (tr
 	if strings.TrimSpace(expr) == "" {
 		return loadTreeData(store, cfg)
 	}
-	tr, err := store.Tree(cfg, "")
+	tr, err := store.Tree(cfg, "", "")
 	if err != nil {
 		return treeData{}, err
 	}

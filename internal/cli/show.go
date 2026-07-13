@@ -27,13 +27,13 @@ func newShowCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			res, skew, err := s.ShowView(cfg, args[0], at)
+			res, err := s.Show(cfg, args[0], at)
 			if err != nil {
 				return err
 			}
 			emitStderrNotes(cmd.ErrOrStderr(), res.StderrNotes)
-			if skew != "" {
-				fmt.Fprintln(cmd.ErrOrStderr(), "kira:", skew)
+			if res.Skew != nil {
+				fmt.Fprintln(cmd.ErrOrStderr(), "kira:", renderSkew(res.Skew))
 			}
 			if format != "" {
 				out, err := showfmt.Format(showfmt.Form(format), showfmt.Item{ID: res.ID, Number: res.Number, Title: res.Title})
@@ -53,6 +53,10 @@ func newShowCmd(g *globalFlags) *cobra.Command {
 	cmd.Flags().StringVar(&at, "at", "", "read state at a git ref or date (YYYY-MM-DD), anchored on HEAD")
 	cmd.Flags().StringVar(&format, "format", "", "print a single reference form: "+strings.Join(showfmt.Names(), "|"))
 	return cmd
+}
+
+func renderSkew(sk *datamodel.Skew) string {
+	return fmt.Sprintf("%s at %s is %s; currently it is a different item (%s)", sk.Ref, sk.At, sk.AtID, sk.NowID)
 }
 
 func renderShow(w io.Writer, r *datamodel.ShowResult) {

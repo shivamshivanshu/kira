@@ -8,16 +8,19 @@ import (
 	"github.com/shivamshivanshu/kira/internal/index"
 )
 
-func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed, notes []string, err error) {
+func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed []string, notes []datamodel.Warning, err error) {
 	for _, value := range scan.Unknown {
-		notes = append(notes, fmt.Sprintf("unknown ticket %s in %s", value, cfg.Commit.CloseTrailer))
+		notes = append(notes, datamodel.Warning{Code: datamodel.WarnCloseUnknown, Args: []string{value, cfg.Commit.CloseTrailer}})
 	}
 	failed := false
+	closeFailed := func(ref string, cause error) {
+		failed = true
+		notes = append(notes, datamodel.Warning{Code: datamodel.WarnCloseFailed, Args: []string{ref, cause.Error()}})
+	}
 	for _, cand := range scan.Candidates {
 		it, _, _, resErr := s.resolveRef(cfg, cand.ULID)
 		if resErr != nil {
-			failed = true
-			notes = append(notes, fmt.Sprintf("failed to close %s: %v", cand.ULID, resErr))
+			closeFailed(cand.ULID, resErr)
 			continue
 		}
 		if isDoneState(cfg, it.Type, it.State) {
@@ -25,8 +28,7 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 		}
 		reopened, tsErr := reopenedSince(cand.CommitterTs, it.Updated)
 		if tsErr != nil {
-			failed = true
-			notes = append(notes, fmt.Sprintf("failed to close %s: %v", it.Number, tsErr))
+			closeFailed(it.Number, tsErr)
 			continue
 		}
 		if reopened {
@@ -37,8 +39,7 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 			continue
 		}
 		if _, mvErr := s.Move(cfg, cand.ULID, target, MoveOpts{Force: true, Source: datamodel.SourceTrailer}); mvErr != nil {
-			failed = true
-			notes = append(notes, fmt.Sprintf("failed to close %s: %v", it.Number, mvErr))
+			closeFailed(it.Number, mvErr)
 			continue
 		}
 		closed = append(closed, it.Number)

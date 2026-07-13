@@ -147,7 +147,7 @@ func TestEditFromFileRoundTrip(t *testing.T) {
 	if len(r.Changed) != 1 || r.Changed[0] != "title" {
 		t.Fatalf("changed = %v, want [title]", r.Changed)
 	}
-	show, err := s.Show(cfg, res.Number)
+	show, err := s.Show(cfg, res.Number, "")
 	if err != nil {
 		t.Fatalf("Show: %v", err)
 	}
@@ -196,7 +196,7 @@ func TestEditEditorRepresentsSoftError(t *testing.T) {
 	if strings.TrimSpace(string(n)) != "2" {
 		t.Fatalf("editor invoked %s times, want 2 (invalid then valid)", strings.TrimSpace(string(n)))
 	}
-	show, _ := s.Show(cfg, res.Number)
+	show, _ := s.Show(cfg, res.Number, "")
 	if show.Estimate == nil || *show.Estimate != 5 {
 		t.Fatalf("estimate = %v, want 5", show.Estimate)
 	}

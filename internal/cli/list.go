@@ -49,9 +49,9 @@ func newListCmd(g *globalFlags) *cobra.Command {
 	return cmd
 }
 
-func emitStderrNotes(w io.Writer, notes []string) {
+func emitStderrNotes(w io.Writer, notes []datamodel.Warning) {
 	for _, n := range notes {
-		fmt.Fprintln(w, "kira:", n)
+		fmt.Fprintln(w, "kira:", renderWarning(n))
 	}
 }
 

@@ -57,7 +57,7 @@ func mustCreate(t *testing.T, s *core.Store, cfg *datamodel.Config, title string
 
 func stateOf(t *testing.T, s *core.Store, cfg *datamodel.Config, ref string) string {
 	t.Helper()
-	show, err := s.Show(cfg, ref)
+	show, err := s.Show(cfg, ref, "")
 	if err != nil {
 		t.Fatalf("Show %s: %v", ref, err)
 	}

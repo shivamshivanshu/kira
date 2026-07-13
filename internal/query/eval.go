@@ -32,8 +32,6 @@ type Error struct {
 
 func (e *Error) Error() string { return fmt.Sprintf("query: %s at position %d", e.Msg, e.Pos) }
 
-const NoActiveSprintNote = "no active sprint set; sprint=active matches nothing (run `kira sprint activate <key>`)"
-
 func Compile(input string, opts Options) (*Compiled, error) {
 	q, err := Parse(input)
 	if err != nil {
@@ -136,7 +134,7 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 	case fieldSprint:
 		if n.value == "active" {
 			if c.opts.ActiveSprint == "" {
-				c.note(NoActiveSprintNote)
+				c.note(datamodel.WarnNoActiveSprint)
 				return func(*datamodel.Item, *datamodel.Config) bool { return !eq }, nil
 			}
 			want = c.opts.ActiveSprint

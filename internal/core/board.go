@@ -14,11 +14,11 @@ type BoardOpts struct {
 func (s *Store) Board(cfg *datamodel.Config, opts BoardOpts) (*datamodel.BoardResult, error) {
 	wfCfg := cfg
 	if opts.At != "" {
-		_, _, atCfg, err := s.listView(cfg, opts.At)
+		ld, err := s.read(cfg, loadOpts{at: opts.At})
 		if err != nil {
 			return nil, err
 		}
-		wfCfg = atCfg
+		wfCfg = ld.cfg
 	}
 	typ := opts.Type
 	if typ == "" {

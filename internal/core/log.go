@@ -28,10 +28,11 @@ func scalarFieldSet() map[string]bool {
 }
 
 func (s *Store) Log(cfg *datamodel.Config, ref string) (*datamodel.LogResult, error) {
-	items, _, resolver, _, err := s.indexedLoad(cfg)
+	ld, err := s.read(cfg, loadOpts{useIndex: true})
 	if err != nil {
 		return nil, err
 	}
+	items, resolver := ld.items, ld.resolver
 	ulid, err := resolveID(resolver, ref)
 	if err != nil {
 		return nil, err

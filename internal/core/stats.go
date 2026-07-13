@@ -20,10 +20,11 @@ type StatsOpts struct {
 }
 
 func (s *Store) Stats(cfg *datamodel.Config, opts StatsOpts) (*datamodel.StatsResult, error) {
-	items, _, resolver, _, err := s.indexedLoad(cfg)
+	ld, err := s.read(cfg, loadOpts{useIndex: true})
 	if err != nil {
 		return nil, err
 	}
+	items, resolver := ld.items, ld.resolver
 	now := time.Now().Local()
 	today := now.Format(time.DateOnly)
 	unit := string(cfg.Estimate.Unit)

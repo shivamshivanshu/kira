@@ -12,8 +12,6 @@ func resolverFor(key string, items []*datamodel.Item) (id.Snapshot, *id.Resolver
 	return snap, id.NewResolver(snap)
 }
 
-const indexFallbackNote = "index unavailable, using linear scan"
-
 func indexOptions(cfg *datamodel.Config) index.Options {
 	return index.Options{
 		ProjectKey:   cfg.Project.Key,
@@ -25,16 +23,6 @@ func indexOptions(cfg *datamodel.Config) index.Options {
 
 func (s *Store) CachedItems() ([]*datamodel.Item, error) {
 	return index.ReadCached(s.fs().CacheDir())
-}
-
-func (s *Store) indexedLoad(cfg *datamodel.Config) ([]*datamodel.Item, id.Snapshot, *id.Resolver, []string, error) {
-	items, res, err := index.Load(s.fs(), s.repo(), indexOptions(cfg))
-	if err != nil {
-		items, snap, resolver, warnings, loadErr := s.load(cfg)
-		return items, snap, resolver, append([]string{indexFallbackNote}, warnings...), loadErr
-	}
-	snap, resolver := resolverFor(cfg.Project.Key, items)
-	return items, snap, resolver, res.Warnings, nil
 }
 
 func (s *Store) Index(cfg *datamodel.Config, full, closes bool) (*datamodel.IndexResult, error) {

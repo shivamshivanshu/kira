@@ -40,7 +40,7 @@ func safeCmd(cmd tea.Cmd) tea.Cmd {
 }
 
 func loadTreeData(store *core.Store, cfg *datamodel.Config) (treeData, error) {
-	tr, err := store.Tree(cfg, "")
+	tr, err := store.Tree(cfg, "", "")
 	if err != nil {
 		return treeData{}, err
 	}
@@ -70,5 +70,5 @@ func loadDetail(store *core.Store, cfg *datamodel.Config, id string) (*datamodel
 	if id == "" {
 		return nil, nil
 	}
-	return store.Show(cfg, id)
+	return store.Show(cfg, id, "")
 }

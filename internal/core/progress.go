@@ -19,10 +19,11 @@ func indexByEpic(items []*datamodel.Item) (map[string]*datamodel.Item, map[strin
 }
 
 func (s *Store) EpicProgress(cfg *datamodel.Config) (map[string]datamodel.EpicProgress, error) {
-	items, _, _, _, err := s.indexedLoad(cfg)
+	ld, err := s.read(cfg, loadOpts{useIndex: true})
 	if err != nil {
 		return nil, err
 	}
+	items := ld.items
 	_, children := indexByEpic(items)
 	out := make(map[string]datamodel.EpicProgress)
 	for _, it := range items {

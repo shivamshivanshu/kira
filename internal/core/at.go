@@ -1,28 +1,52 @@
 package core
 
 import (
-	"fmt"
-
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/index"
 	"github.com/shivamshivanshu/kira/internal/treeish"
 )
 
-func (s *Store) listView(cfg *datamodel.Config, at string) ([]*datamodel.Item, *id.Resolver, *datamodel.Config, error) {
-	if at == "" {
-		items, _, resolver, _, err := s.load(cfg)
-		return items, resolver, cfg, err
+type loadOpts struct {
+	at       string
+	useIndex bool
+}
+
+type loaded struct {
+	items    []*datamodel.Item
+	resolver *id.Resolver
+	cfg      *datamodel.Config
+	notes    []datamodel.Warning
+}
+
+func (s *Store) read(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
+	if opts.at != "" {
+		sha, err := s.resolveAtRef(opts.at)
+		if err != nil {
+			return nil, err
+		}
+		tl, err := treeish.Load(s.repo(), sha)
+		if err != nil {
+			return nil, errx.User("%v", err)
+		}
+		return &loaded{items: tl.Items, resolver: tl.Resolver, cfg: tl.Config}, nil
 	}
-	sha, err := s.resolveAtRef(at)
+	if opts.useIndex {
+		if items, res, err := index.Load(s.fs(), s.repo(), indexOptions(cfg)); err == nil {
+			_, resolver := resolverFor(cfg.Project.Key, items)
+			return &loaded{items: items, resolver: resolver, cfg: cfg, notes: literalWarnings(res.Warnings)}, nil
+		}
+	}
+	items, _, resolver, warnings, err := s.load(cfg)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
-	loaded, err := treeish.Load(s.repo(), sha)
-	if err != nil {
-		return nil, nil, nil, errx.User("%v", err)
+	notes := literalWarnings(warnings)
+	if opts.useIndex {
+		notes = append([]datamodel.Warning{{Code: datamodel.WarnIndexFallback}}, notes...)
 	}
-	return loaded.Items, loaded.Resolver, loaded.Config, nil
+	return &loaded{items: items, resolver: resolver, cfg: cfg, notes: notes}, nil
 }
 
 func (s *Store) resolveAtRef(at string) (string, error) {
@@ -45,43 +69,14 @@ func isDate(s string) bool {
 	return datamodel.ValidDate(s)
 }
 
-func (s *Store) ShowView(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResult, string, error) {
-	if at == "" {
-		res, err := s.Show(cfg, ref)
-		return res, "", err
-	}
-	return s.ShowAt(cfg, ref, at)
-}
-
-func (s *Store) ShowAt(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResult, string, error) {
-	sha, err := s.resolveAtRef(at)
+func (s *Store) skew(cfg *datamodel.Config, ref, atULID, at string) *datamodel.Skew {
+	ld, err := s.read(cfg, loadOpts{})
 	if err != nil {
-		return nil, "", err
+		return nil
 	}
-	loaded, err := treeish.Load(s.repo(), sha)
-	if err != nil {
-		return nil, "", errx.User("%v", err)
-	}
-	ulid, err := resolveID(loaded.Resolver, ref)
-	if err != nil {
-		return nil, "", err
-	}
-	it := findByULID(loaded.Items, ulid)
-	if it == nil {
-		return nil, "", errx.User("%s resolved to %s, which is absent at %s", ref, ulid, at)
-	}
-	res := showResultOf(loaded.Config, it)
-	return &res, s.skewNote(cfg, ref, ulid, at), nil
-}
-
-func (s *Store) skewNote(cfg *datamodel.Config, ref, atULID, at string) string {
-	_, _, resolver, _, err := s.load(cfg)
-	if err != nil {
-		return ""
-	}
-	nowULID, err := resolver.Resolve(ref)
+	nowULID, err := ld.resolver.Resolve(ref)
 	if err != nil || nowULID == atULID {
-		return ""
+		return nil
 	}
-	return fmt.Sprintf("%s at %s is %s; currently it is a different item (%s)", ref, at, atULID, nowULID)
+	return &datamodel.Skew{Ref: ref, At: at, AtID: atULID, NowID: nowULID}
 }

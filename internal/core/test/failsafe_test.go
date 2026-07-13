@@ -56,7 +56,7 @@ func TestReadsSucceedWithUnknowns(t *testing.T) {
 	res := mustCreate(t, s, cfg, "Has future fields")
 	overwriteItem(t, s, res.ID, withUnknownLink(withUnknownKey(mustReadItem(t, s, res.ID))))
 
-	if _, err := s.Show(cfg, "KIRA-1"); err != nil {
+	if _, err := s.Show(cfg, "KIRA-1", ""); err != nil {
 		t.Fatalf("show must succeed on unknown-carrying item: %v", err)
 	}
 	list, err := s.List(cfg, core.ListOpts{})
@@ -112,7 +112,7 @@ func TestWriteVerbsRefuseOnCRLF(t *testing.T) {
 	crlf := strings.ReplaceAll(mustReadItem(t, s, res.ID), "\n", "\r\n")
 	overwriteItem(t, s, res.ID, crlf)
 
-	if _, err := s.Show(cfg, "KIRA-1"); err != nil {
+	if _, err := s.Show(cfg, "KIRA-1", ""); err != nil {
 		t.Fatalf("show must tolerate CRLF for reads: %v", err)
 	}
 

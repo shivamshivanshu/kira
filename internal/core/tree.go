@@ -6,11 +6,12 @@ import (
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
-func (s *Store) Tree(cfg *datamodel.Config, ref string) (*datamodel.TreeResult, error) {
-	items, _, resolver, idxNotes, err := s.indexedLoad(cfg)
+func (s *Store) Tree(cfg *datamodel.Config, ref, at string) (*datamodel.TreeResult, error) {
+	ld, err := s.read(cfg, loadOpts{at: at, useIndex: true})
 	if err != nil {
 		return nil, err
 	}
+	items, resolver, idxNotes := ld.items, ld.resolver, ld.notes
 
 	byID, children := indexByEpic(items)
 	roots := make([]*datamodel.Item, 0)

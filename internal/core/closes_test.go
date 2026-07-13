@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/config"
@@ -55,7 +54,7 @@ func TestApplyClosesWatermark(t *testing.T) {
 		if len(closed) != 0 {
 			t.Fatalf("failed close reported closed=%v", closed)
 		}
-		if len(notes) != 1 || !strings.Contains(notes[0], "failed to close") {
+		if len(notes) != 1 || notes[0].Code != datamodel.WarnCloseFailed {
 			t.Fatalf("want a single failure note, got %v", notes)
 		}
 		if wm := landedWatermark(t, s); wm == scan.LandedHead {
@@ -71,7 +70,7 @@ func TestApplyClosesWatermark(t *testing.T) {
 		if len(closed) != 0 {
 			t.Fatalf("unknown ticket reported closed=%v", closed)
 		}
-		if len(notes) != 1 || !strings.Contains(notes[0], "unknown ticket KIRA-404") {
+		if len(notes) != 1 || notes[0].Code != datamodel.WarnCloseUnknown || notes[0].Args[0] != "KIRA-404" {
 			t.Fatalf("want an unknown-ticket note, got %v", notes)
 		}
 	})

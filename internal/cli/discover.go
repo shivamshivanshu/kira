@@ -108,7 +108,7 @@ func dispatchAction(cmd *cobra.Command, s *core.Store, cfg *datamodel.Config, ac
 		_, err := s.Edit(cfg, ref, core.EditOpts{})
 		return err
 	default:
-		res, err := s.Show(cfg, ref)
+		res, err := s.Show(cfg, ref, "")
 		if err != nil {
 			return err
 		}

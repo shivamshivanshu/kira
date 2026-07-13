@@ -1,5 +1,25 @@
 package datamodel
 
+const (
+	WarnIndexFallback  = "index_fallback"
+	WarnNoActiveSprint = "no_active_sprint"
+	WarnCloseUnknown   = "close_unknown"
+	WarnCloseFailed    = "close_failed"
+	WarnLiteral        = "literal"
+)
+
+type Warning struct {
+	Code string
+	Args []string
+}
+
+type Skew struct {
+	Ref   string `json:"ref"`
+	At    string `json:"at"`
+	AtID  string `json:"at_id"`
+	NowID string `json:"now_id"`
+}
+
 type CreateResult struct {
 	ID     string `json:"id"`
 	Number string `json:"number"`
@@ -26,7 +46,7 @@ type ListResult struct {
 	Count int         `json:"count"`
 	Tree  []TreeGroup `json:"tree,omitempty"`
 
-	StderrNotes []string `json:"-"`
+	StderrNotes []Warning `json:"-"`
 }
 
 type TreeGroup struct {
@@ -47,7 +67,7 @@ type TreeResult struct {
 	Root  *string    `json:"root"`
 	Nodes []TreeNode `json:"nodes"`
 
-	StderrNotes []string `json:"-"`
+	StderrNotes []Warning `json:"-"`
 }
 
 type CommentView struct {
@@ -99,8 +119,9 @@ type ShowResult struct {
 	Comments      []CommentView       `json:"comments"`
 	LinkedCommits []CommitLink        `json:"linked_commits"`
 	HistoryTail   []HistoryEvent      `json:"history_tail"`
+	Skew          *Skew               `json:"skew,omitempty"`
 
-	StderrNotes []string `json:"-"`
+	StderrNotes []Warning `json:"-"`
 }
 
 type MutationResult struct {
@@ -268,7 +289,7 @@ type IndexResult struct {
 	Items  int      `json:"items"`
 	Closed []string `json:"closed"`
 
-	StderrNotes []string `json:"-"`
+	StderrNotes []Warning `json:"-"`
 }
 
 type StatsResult struct {

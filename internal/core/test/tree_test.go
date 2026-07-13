@@ -67,7 +67,7 @@ func TestListTreeGrouping(t *testing.T) {
 
 func TestTreeHierarchy(t *testing.T) {
 	s, cfg, epicID := treeFixture(t)
-	res, err := s.Tree(cfg, "")
+	res, err := s.Tree(cfg, "", "")
 	if err != nil {
 		t.Fatalf("Tree: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestTreeHierarchy(t *testing.T) {
 
 func TestTreeScoped(t *testing.T) {
 	s, cfg, epicID := treeFixture(t)
-	res, err := s.Tree(cfg, "KIRA-1")
+	res, err := s.Tree(cfg, "KIRA-1", "")
 	if err != nil {
 		t.Fatalf("Tree KIRA-1: %v", err)
 	}
@@ -123,7 +123,7 @@ func TestTreeCycleReported(t *testing.T) {
 	if _, err := s.Edit(cfg, b.Number, core.EditOpts{Fields: []core.FieldEdit{{Key: "epic", Value: a.ID}}}); err != nil {
 		t.Fatalf("edit B: %v", err)
 	}
-	_, err := s.Tree(cfg, a.Number)
+	_, err := s.Tree(cfg, a.Number, "")
 	if err == nil {
 		t.Fatalf("Tree over a cycle returned no error")
 	}

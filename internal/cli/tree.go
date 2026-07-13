@@ -11,7 +11,8 @@ import (
 )
 
 func newTreeCmd(g *globalFlags) *cobra.Command {
-	return &cobra.Command{
+	var at string
+	cmd := &cobra.Command{
 		Use:   "tree [<id>]",
 		Short: "Render the epic hierarchy",
 		Args:  cobra.MaximumNArgs(1),
@@ -24,7 +25,7 @@ func newTreeCmd(g *globalFlags) *cobra.Command {
 			if len(args) == 1 {
 				ref = args[0]
 			}
-			res, err := s.Tree(cfg, ref)
+			res, err := s.Tree(cfg, ref, at)
 			if err != nil {
 				return err
 			}
@@ -36,6 +37,8 @@ func newTreeCmd(g *globalFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&at, "at", "", "read state at a git ref or date (YYYY-MM-DD), anchored on HEAD")
+	return cmd
 }
 
 func renderTree(w io.Writer, res *datamodel.TreeResult) {

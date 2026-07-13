@@ -219,7 +219,7 @@ func TestBoardPeekMountsDetailComponent(t *testing.T) {
 
 func stateOnDisk(t *testing.T, s *core.Store, cfg *datamodel.Config, id string) string {
 	t.Helper()
-	show, err := s.Show(cfg, id)
+	show, err := s.Show(cfg, id, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -21,10 +21,11 @@ type commitMeta struct {
 }
 
 func (s *Store) Blame(cfg *datamodel.Config, ref string) (*datamodel.BlameResult, error) {
-	items, _, resolver, _, err := s.indexedLoad(cfg)
+	ld, err := s.read(cfg, loadOpts{useIndex: true})
 	if err != nil {
 		return nil, err
 	}
+	items, resolver := ld.items, ld.resolver
 	ulid, err := resolveID(resolver, ref)
 	if err != nil {
 		return nil, err

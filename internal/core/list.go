@@ -25,18 +25,12 @@ type ListOpts struct {
 }
 
 func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResult, error) {
-	var items []*datamodel.Item
-	var resolver *id.Resolver
-	var idxNotes []string
-	var err error
-	if opts.At != "" {
-		items, resolver, cfg, err = s.listView(cfg, opts.At)
-	} else {
-		items, _, resolver, idxNotes, err = s.indexedLoad(cfg)
-	}
+	ld, err := s.read(cfg, loadOpts{at: opts.At, useIndex: true})
 	if err != nil {
 		return nil, err
 	}
+	cfg = ld.cfg
+	items, resolver, idxNotes := ld.items, ld.resolver, ld.notes
 
 	pred, order, notes, err := opts.compile(cfg, s.queryOptions(cfg, resolver))
 	if err != nil {
@@ -115,10 +109,10 @@ func (a orderedKey) Less(b orderedKey) bool {
 	return a.tie.Less(b.tie)
 }
 
-func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.Predicate, *query.Order, []string, error) {
+func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.Predicate, *query.Order, []datamodel.Warning, error) {
 	var preds []query.Predicate
 	var order *query.Order
-	var notes []string
+	var notes []datamodel.Warning
 	flat := []struct{ field, value string }{
 		{"type", opts.Type}, {"state", opts.State}, {"category", opts.Category},
 		{"owner", opts.Owner}, {"label", opts.Label}, {"epic", opts.Epic},
@@ -135,7 +129,7 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 		preds = append(preds, p)
 	}
 	if opts.Sprint == "active" && qopts.ActiveSprint == "" {
-		notes = append(notes, query.NoActiveSprintNote)
+		notes = append(notes, datamodel.Warning{Code: datamodel.WarnNoActiveSprint})
 	}
 
 	exprs := make([]string, 0, 2)
@@ -161,7 +155,9 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 			order = c.Order
 		}
 		preds = append(preds, c.Pred)
-		notes = append(notes, c.Notes...)
+		for _, n := range c.Notes {
+			notes = append(notes, datamodel.Warning{Code: n})
+		}
 	}
 
 	if len(preds) == 0 {

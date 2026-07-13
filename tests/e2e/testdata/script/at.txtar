@@ -34,6 +34,12 @@ stdout 'KIRA-3'
 exec kira show KIRA-1 --at HEAD~2
 stdout '\[TODO\]'
 
+# tree --at reflects the historical hierarchy (KIRA-3 not yet created)
+exec kira tree --at HEAD~2
+stdout 'KIRA-1'
+stdout 'KIRA-2'
+! stdout 'KIRA-3'
+
 # date form: a date between the two batches sees only the early state
 exec kira list --at 2026-03-01
 stdout 'KIRA-1\s+TODO'

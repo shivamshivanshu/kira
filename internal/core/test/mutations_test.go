@@ -163,7 +163,7 @@ func TestLinkTouchesOneFile(t *testing.T) {
 	if string(bBefore) != string(bAfter) {
 		t.Fatal("blocker's file changed; storage is not single-sided")
 	}
-	show, _ := s.Show(cfg, a.Number)
+	show, _ := s.Show(cfg, a.Number, "")
 	if !slices.Contains(show.BlockedBy, b.ID) {
 		t.Fatalf("A.blocked_by = %v, want to contain %s", show.BlockedBy, b.ID)
 	}
@@ -171,7 +171,7 @@ func TestLinkTouchesOneFile(t *testing.T) {
 	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkBlockedBy, Ref: b.Number, Remove: true}); err != nil {
 		t.Fatalf("Link remove: %v", err)
 	}
-	show, _ = s.Show(cfg, a.Number)
+	show, _ = s.Show(cfg, a.Number, "")
 	if len(show.BlockedBy) != 0 {
 		t.Fatalf("A.blocked_by after remove = %v, want empty", show.BlockedBy)
 	}
@@ -210,7 +210,7 @@ func TestLinkTyped(t *testing.T) {
 	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkTyped, Type: datamodel.LinkDuplicateOf, Ref: b.Number}); err != nil {
 		t.Fatalf("link duplicate-of: %v", err)
 	}
-	show, _ := s.Show(cfg, a.Number)
+	show, _ := s.Show(cfg, a.Number, "")
 	if !slices.Equal(show.Links[datamodel.LinkRelates], []string{b.ID}) ||
 		!slices.Equal(show.Links[datamodel.LinkDuplicateOf], []string{b.ID}) {
 		t.Fatalf("links = %v, want %s in both types", show.Links, b.ID)
@@ -247,7 +247,7 @@ func TestEditPathSelfLinkRejected(t *testing.T) {
 	a := mustCreate(t, s, cfg, "A")
 
 	editWith := func(mutate func(*datamodel.Item)) error {
-		show, err := s.Show(cfg, a.Number)
+		show, err := s.Show(cfg, a.Number, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -278,7 +278,7 @@ func TestMoveRecordsResolution(t *testing.T) {
 	if _, err := s.Move(cfg, res.Number, "WONT_DO", core.MoveOpts{Resolution: "duplicate"}); err != nil {
 		t.Fatalf("Move --resolution: %v", err)
 	}
-	show, _ := s.Show(cfg, res.Number)
+	show, _ := s.Show(cfg, res.Number, "")
 	if show.Resolution == nil || *show.Resolution != "duplicate" {
 		t.Fatalf("resolution = %v, want duplicate (--resolution outranks the state tag)", show.Resolution)
 	}
@@ -303,7 +303,7 @@ func TestMoveRequireGuard(t *testing.T) {
 	if _, err := s.Move(cfg, res.Number, "DONE", core.MoveOpts{Resolution: "duplicate"}); err != nil {
 		t.Fatalf("REVIEW -> DONE --resolution: %v", err)
 	}
-	show, _ := s.Show(cfg, res.Number)
+	show, _ := s.Show(cfg, res.Number, "")
 	if show.Resolution == nil || *show.Resolution != "duplicate" {
 		t.Fatalf("resolution = %v, want duplicate (--resolution outranks set:)", show.Resolution)
 	}
@@ -317,7 +317,7 @@ func TestMoveRequireForceBypass(t *testing.T) {
 	if _, err := s.Move(cfg, res.Number, "DONE", core.MoveOpts{Force: true}); err != nil {
 		t.Fatalf("forced REVIEW -> DONE: %v", err)
 	}
-	show, _ := s.Show(cfg, res.Number)
+	show, _ := s.Show(cfg, res.Number, "")
 	if show.State != "DONE" {
 		t.Fatalf("state = %s, want DONE", show.State)
 	}
@@ -364,7 +364,7 @@ func TestMoveSetApplied(t *testing.T) {
 	if _, err := s.Move(cfg, res.Number, "IN_PROGRESS", core.MoveOpts{}); err != nil {
 		t.Fatalf("move with set:: %v", err)
 	}
-	show, _ := s.Show(cfg, res.Number)
+	show, _ := s.Show(cfg, res.Number, "")
 	if show.Owner == nil || *show.Owner != "alice" {
 		t.Errorf("owner = %v, want alice", show.Owner)
 	}
@@ -399,7 +399,7 @@ func TestMoveResolutionLifecycle(t *testing.T) {
 
 	wantResolution := func(step string, want string) {
 		t.Helper()
-		show, err := s.Show(cfg, res.Number)
+		show, err := s.Show(cfg, res.Number, "")
 		if err != nil {
 			t.Fatalf("%s: Show: %v", step, err)
 		}
@@ -521,14 +521,14 @@ func TestAssignStrictBypass(t *testing.T) {
 	if _, err := s.Assign(cfg, res.Number, "mallory", core.AssignOpts{Force: true}); err != nil {
 		t.Fatalf("forced assign: %v", err)
 	}
-	if show, _ := s.Show(cfg, res.Number); show.Owner == nil || *show.Owner != "mallory" {
+	if show, _ := s.Show(cfg, res.Number, ""); show.Owner == nil || *show.Owner != "mallory" {
 		t.Fatalf("owner = %v, want mallory", show.Owner)
 	}
 	fresh := mustCreate(t, s, cfg, "reporter")
 	if _, err := s.Assign(cfg, fresh.Number, "alice", core.AssignOpts{Reporter: true}); err != nil {
 		t.Fatalf("assign reporter: %v", err)
 	}
-	if show, _ := s.Show(cfg, fresh.Number); show.Reporter == nil || *show.Reporter != "alice" {
+	if show, _ := s.Show(cfg, fresh.Number, ""); show.Reporter == nil || *show.Reporter != "alice" {
 		t.Fatalf("reporter = %v, want alice", show.Reporter)
 	}
 }

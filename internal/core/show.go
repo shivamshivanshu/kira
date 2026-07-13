@@ -9,21 +9,30 @@ import (
 
 const historyTailLimit = 10
 
-func (s *Store) Show(cfg *datamodel.Config, ref string) (*datamodel.ShowResult, error) {
-	_, _, resolver, idxNotes, err := s.indexedLoad(cfg)
+func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResult, error) {
+	ld, err := s.read(cfg, loadOpts{at: at, useIndex: true})
 	if err != nil {
 		return nil, err
 	}
-	ulid, err := resolveID(resolver, ref)
+	ulid, err := resolveID(ld.resolver, ref)
 	if err != nil {
 		return nil, err
+	}
+	if at != "" {
+		it := findByULID(ld.items, ulid)
+		if it == nil {
+			return nil, errx.User("%s resolved to %s, which is absent at %s", ref, ulid, at)
+		}
+		res := showResultOf(ld.cfg, it)
+		res.Skew = s.skew(cfg, ref, ulid, at)
+		return &res, nil
 	}
 	it, err := storage.ReadItem(s.itemPath(ulid))
 	if err != nil {
 		return nil, errx.User("reading %s: %v", ref, err)
 	}
 	res := showResultOf(cfg, it)
-	res.StderrNotes = idxNotes
+	res.StderrNotes = ld.notes
 
 	events, links, err := index.LogEntries(s.fs(), ulid, s.fileHead(ulid), func() ([]datamodel.Event, error) {
 		return s.deriveEvents(ulid)

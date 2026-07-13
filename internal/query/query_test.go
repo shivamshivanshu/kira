@@ -179,7 +179,7 @@ func TestEvalSprintActive(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(c.Notes) != 1 || c.Notes[0] != NoActiveSprintNote {
+	if len(c.Notes) != 1 || c.Notes[0] != datamodel.WarnNoActiveSprint {
 		t.Errorf("notes = %v, want the no-active-sprint note once", c.Notes)
 	}
 }
