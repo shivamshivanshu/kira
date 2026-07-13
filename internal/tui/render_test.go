@@ -42,7 +42,7 @@ func sampleTree() ([]datamodel.TreeNode, map[string]datamodel.ListItem, map[stri
 func strptr(s string) *string { return &s }
 
 func newTestModel(w, h int, withData bool) model {
-	m := newModel(nil, nil, asciiTheme(), iconSet{nerd: false}, false)
+	m := newModel(nil, nil, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
 	m.width, m.height = w, h
 	if withData {
 		nodes, fields, progress := sampleTree()
@@ -90,13 +90,17 @@ func TestIconsAsciiVsNerd(t *testing.T) {
 	tm := newTreeModel()
 	(&tm).load(nodes, fields, progress)
 
-	ascii := tm.render(th, iconSet{nerd: false}, 100, 6, true, true)
+	ascii := tm.render(th, iconSet{mode: datamodel.IconText}, 100, 6, true, true)
 	if !strings.Contains(ascii, "[E]") || strings.Contains(ascii, glyphEpic.nerd) {
 		t.Errorf("ascii render must use [E], not the PUA glyph:\n%s", ascii)
 	}
-	nerd := tm.render(th, iconSet{nerd: true}, 100, 6, true, true)
+	nerd := tm.render(th, iconSet{mode: datamodel.IconNerd}, 100, 6, true, true)
 	if !strings.Contains(nerd, glyphEpic.nerd) || strings.Contains(nerd, "[E]") {
 		t.Errorf("nerd render must use the PUA glyph, not [E]:\n%s", nerd)
+	}
+	emoji := tm.render(th, iconSet{mode: datamodel.IconEmoji}, 100, 6, true, true)
+	if !strings.Contains(emoji, glyphEpic.emoji) || strings.Contains(emoji, "[E]") {
+		t.Errorf("emoji render must use the emoji glyph, not [E]:\n%s", emoji)
 	}
 }
 
@@ -104,23 +108,33 @@ func TestTreeNerdIconsSnapshot(t *testing.T) {
 	nodes, fields, progress := sampleTree()
 	tm := newTreeModel()
 	(&tm).load(nodes, fields, progress)
-	golden.RequireEqual(t, []byte(tm.render(asciiTheme(), iconSet{nerd: true}, 100, 6, true, true)))
+	golden.RequireEqual(t, []byte(tm.render(asciiTheme(), iconSet{mode: datamodel.IconNerd}, 100, 6, true, true)))
+}
+
+func TestTreeEmojiIconsSnapshot(t *testing.T) {
+	nodes, fields, progress := sampleTree()
+	tm := newTreeModel()
+	(&tm).load(nodes, fields, progress)
+	golden.RequireEqual(t, []byte(tm.render(asciiTheme(), iconSet{mode: datamodel.IconEmoji}, 100, 6, true, true)))
 }
 
 func TestPriorityGlyph(t *testing.T) {
-	nerd := iconSet{nerd: true}
-	ascii := iconSet{nerd: false}
-	for _, p := range []string{"P0", "P1"} {
-		if nerd.priorityGlyph(p) != glyphPriority.nerd {
-			t.Errorf("nerd priority glyph for %s = %q, want the PUA marker", p, nerd.priorityGlyph(p))
-		}
-		if ascii.priorityGlyph(p) != "!" {
-			t.Errorf("ascii priority glyph for %s = %q, want !", p, ascii.priorityGlyph(p))
-		}
+	want := map[datamodel.IconMode]string{
+		datamodel.IconNerd:  glyphPriority.nerd,
+		datamodel.IconEmoji: glyphPriority.emoji,
+		datamodel.IconText:  "!",
 	}
-	for _, p := range []string{"P2", "P3", ""} {
-		if got := nerd.priorityGlyph(p); got != "" {
-			t.Errorf("priority %q must have no marker, got %q", p, got)
+	for mode, marker := range want {
+		ic := iconSet{mode: mode}
+		for _, p := range []string{"P0", "P1"} {
+			if got := ic.priorityGlyph(p); got != marker {
+				t.Errorf("%s priority glyph for %s = %q, want %q", mode, p, got, marker)
+			}
+		}
+		for _, p := range []string{"P2", "P3", ""} {
+			if got := ic.priorityGlyph(p); got != "" {
+				t.Errorf("%s priority %q must have no marker, got %q", mode, p, got)
+			}
 		}
 	}
 }
@@ -130,18 +144,78 @@ func TestIconWidthsUniformPerMode(t *testing.T) {
 		"type":     {glyphEpic, glyphTicket},
 		"category": {glyphTodo, glyphDoing, glyphDone, glyphDropped},
 	}
-	for _, nerd := range []bool{false, true} {
+	cellWidth := map[datamodel.IconMode]int{
+		datamodel.IconNerd:  1,
+		datamodel.IconEmoji: 2,
+	}
+	for _, mode := range []datamodel.IconMode{datamodel.IconNerd, datamodel.IconEmoji, datamodel.IconText} {
 		for name, gs := range groups {
-			want := lipgloss.Width(gs[0].pick(nerd))
+			want := lipgloss.Width(gs[0].pick(mode))
 			for _, g := range gs[1:] {
-				if got := lipgloss.Width(g.pick(nerd)); got != want {
-					t.Errorf("%s glyphs misaligned (nerd=%v): width %d != %d for %q", name, nerd, got, want, g.pick(nerd))
+				if got := lipgloss.Width(g.pick(mode)); got != want {
+					t.Errorf("%s glyphs misaligned (%s): width %d != %d for %q", name, mode, got, want, g.pick(mode))
 				}
 			}
-			if nerd && want != 1 {
-				t.Errorf("%s PUA glyphs must be single-cell, got width %d", name, want)
+			if exp, ok := cellWidth[mode]; ok && want != exp {
+				t.Errorf("%s %s glyphs must be %d-cell, got width %d", name, mode, exp, want)
 			}
 		}
+	}
+}
+
+func TestPriorityCellFixedGutter(t *testing.T) {
+	for _, mode := range []datamodel.IconMode{datamodel.IconNerd, datamodel.IconEmoji, datamodel.IconText} {
+		ic := iconSet{mode: mode}
+		gutter := lipgloss.Width(glyphPriority.pick(mode))
+		for _, p := range []string{"P0", "P1", "P2", "P3", ""} {
+			if got := lipgloss.Width(ic.priorityCell(p)); got != gutter {
+				t.Errorf("%s priorityCell(%q) width = %d, want fixed gutter %d", mode, p, got, gutter)
+			}
+		}
+		if got := ic.priorityCell("P2"); got != strings.Repeat(" ", gutter) {
+			t.Errorf("%s low-priority cell must be a blank gutter, got %q", mode, got)
+		}
+		if got := ic.priorityCell("P0"); got != glyphPriority.pick(mode) {
+			t.Errorf("%s P0 cell must be the marker, got %q", mode, got)
+		}
+	}
+}
+
+func TestCategoryGlyphDroppedVsDone(t *testing.T) {
+	dropped := datamodel.ResolutionDropped
+	other := "fixed"
+	for _, mode := range []datamodel.IconMode{datamodel.IconNerd, datamodel.IconEmoji, datamodel.IconText} {
+		ic := iconSet{mode: mode}
+		if got := ic.categoryGlyph(datamodel.CategoryDone, &dropped); got != glyphDropped.pick(mode) {
+			t.Errorf("%s done+dropped must render dropped glyph, got %q", mode, got)
+		}
+		if got := ic.categoryGlyph(datamodel.CategoryDone, &other); got != glyphDone.pick(mode) {
+			t.Errorf("%s done+non-dropped resolution must render done glyph, got %q", mode, got)
+		}
+		if got := ic.categoryGlyph(datamodel.CategoryDone, nil); got != glyphDone.pick(mode) {
+			t.Errorf("%s done+nil resolution must render done glyph, got %q", mode, got)
+		}
+	}
+}
+
+func TestTreeRowPlumbsPriorityAndResolution(t *testing.T) {
+	p0 := "P0"
+	dropped := datamodel.ResolutionDropped
+	nodes := []datamodel.TreeNode{{ID: "T1", Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "Dropped work"}}
+	fields := map[string]datamodel.ListItem{
+		"T1": {ID: "T1", Number: "KIRA-1", State: "WONT_DO", Category: "done", Type: datamodel.TypeTicket, Priority: &p0, Resolution: &dropped},
+	}
+	tm := newTreeModel()
+	(&tm).load(nodes, fields, map[string]datamodel.EpicProgress{})
+	out := tm.render(asciiTheme(), iconSet{mode: datamodel.IconText}, 100, 3, true, false)
+	if !strings.Contains(out, "!") {
+		t.Errorf("P0 priority marker missing from row:\n%s", out)
+	}
+	if !strings.Contains(out, "[-]") {
+		t.Errorf("dropped glyph missing from row:\n%s", out)
+	}
+	if strings.Contains(out, "[x]") {
+		t.Errorf("dropped ticket must not render the done glyph:\n%s", out)
 	}
 }
 

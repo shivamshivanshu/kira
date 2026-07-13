@@ -1,4 +1,4 @@
->▾  KIRA-100  Order book hardening                                              [OPEN] ▰▰▰▱▱▱▱ 1/2
+▌▾  KIRA-100  Order book hardening                                              [OPEN] ▰▰▰▱▱▱▱ 1/2
       KIRA-140  Fix snapshot dedup                                                          [TODO]
       KIRA-142  Fix race in order-book snapshot merge                                [IN_PROGRESS]
 

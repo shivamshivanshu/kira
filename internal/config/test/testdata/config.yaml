@@ -70,7 +70,7 @@ sync:
   push: false                 # true: `kira sync` (no flags) also pushes after a clean doctor pass
 
 ui:
-  icons: auto                 # auto | always | never
+  icons: auto                 # auto | nerd | emoji | text — if glyphs render as boxes, set emoji or text (nerd font not installed)
 
 # git:
 #   scan_since: ...            # (proposed) bound the first trailer scan on a large pre-existing history

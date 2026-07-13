@@ -59,7 +59,7 @@ func buildEmptyBoard() *datamodel.BoardResult {
 }
 
 func newBoardTestModel(w, h int, cfg *datamodel.Config, res *datamodel.BoardResult) (model, *boardScreen) {
-	m := newModel(nil, cfg, asciiTheme(), iconSet{nerd: false}, false)
+	m := newModel(nil, cfg, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
 	m.width, m.height = w, h
 	m.view = viewBoard
 	bs := m.screens[viewBoard].(*boardScreen)
@@ -101,10 +101,14 @@ func TestBoardTeatestSnapshot(t *testing.T) {
 func TestColumnHeaderTintReflectsWipPressure(t *testing.T) {
 	th := colorTheme()
 	over := datamodel.BoardColumn{State: "IN_PROGRESS", Wip: 3, Count: 4}
+	atLimit := datamodel.BoardColumn{State: "IN_PROGRESS", Wip: 3, Count: 3}
 	within := datamodel.BoardColumn{State: "TODO"}
 	const probe = "x"
 	if columnHeaderStyle(th, over, false).Render(probe) != th.Heat.Hot.Render(probe) {
 		t.Error("column over its WIP limit must tint with Heat.Hot")
+	}
+	if columnHeaderStyle(th, atLimit, false).Render(probe) != th.Heat.Warm.Render(probe) {
+		t.Error("column at its WIP limit must tint with Heat.Warm")
 	}
 	if columnHeaderStyle(th, within, false).Render(probe) != th.Dim.Render(probe) {
 		t.Error("unfocused within-limit column must render Dim")
@@ -153,7 +157,7 @@ func TestBoardMoveHitsCoreMovePath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m := newModel(s, cfg, asciiTheme(), iconSet{nerd: false}, false)
+	m := newModel(s, cfg, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
 	m.width, m.height = 100, 12
 	m.view = viewBoard
 	bs := m.screens[viewBoard].(*boardScreen)
@@ -181,7 +185,7 @@ func TestBoardMoveGreyedTargetDoesNotMutate(t *testing.T) {
 	if _, err := s.Edit(cfg, cr.ID, core.EditOpts{Fields: []core.FieldEdit{{Key: "state", Value: "DONE"}}}); err != nil {
 		t.Fatal(err)
 	}
-	m := newModel(s, cfg, asciiTheme(), iconSet{nerd: false}, false)
+	m := newModel(s, cfg, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
 	m.width, m.height = 100, 12
 	m.view = viewBoard
 	bs := m.screens[viewBoard].(*boardScreen)
@@ -234,4 +238,24 @@ func gitOutput(t *testing.T, dir string, args ...string) string {
 		t.Fatalf("git %v: %v\n%s", args, err, out)
 	}
 	return string(out)
+}
+
+func TestBoardCardPlumbsPriorityAndResolution(t *testing.T) {
+	p0 := "P0"
+	dropped := datamodel.ResolutionDropped
+	res := &datamodel.BoardResult{Type: datamodel.TypeTicket, Columns: []datamodel.BoardColumn{
+		{State: "WONT_DO", Category: "done", Count: 1, Items: []datamodel.ListItem{
+			{ID: "d1", Number: "KIRA-9", Title: "Dropped work", Type: datamodel.TypeTicket, State: "WONT_DO", Category: "done", Priority: &p0, Resolution: &dropped},
+		}},
+	}}
+	out := renderBoard(asciiTheme(), iconSet{mode: datamodel.IconText}, res, 40, 4, -1, -1)
+	if !strings.Contains(out, "!") {
+		t.Errorf("P0 priority marker missing from card:\n%s", out)
+	}
+	if !strings.Contains(out, "[-]") {
+		t.Errorf("dropped glyph missing from card:\n%s", out)
+	}
+	if strings.Contains(out, "[x]") {
+		t.Errorf("dropped card must not render the done glyph:\n%s", out)
+	}
 }

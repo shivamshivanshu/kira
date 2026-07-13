@@ -6,17 +6,17 @@ import (
 )
 
 var (
-	sparkNerd  = []rune("▁▂▃▄▅▆▇█")
+	sparkRich  = []rune("▁▂▃▄▅▆▇█")
 	sparkAscii = []rune(".:-=+*#@")
 )
 
-func sparkline(vals []float64, nerd bool) string {
+func sparkline(vals []float64, rich bool) string {
 	if len(vals) == 0 {
 		return ""
 	}
 	ramp := sparkAscii
-	if nerd {
-		ramp = sparkNerd
+	if rich {
+		ramp = sparkRich
 	}
 	var maxV float64
 	for _, v := range vals {
@@ -36,9 +36,9 @@ func sparkLevel(v, maxV float64, levels int) int {
 	return clamp(int(math.Round(v/maxV*float64(levels-1))), 0, levels-1)
 }
 
-func hbar(v, maxV float64, cells int, nerd bool) string {
+func hbar(v, maxV float64, cells int, rich bool) string {
 	fill := "█"
-	if !nerd {
+	if !rich {
 		fill = "#"
 	}
 	filled := 0

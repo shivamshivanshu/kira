@@ -97,18 +97,21 @@ func renderColumn(t theme.Theme, ic iconSet, col datamodel.BoardColumn, w, heigh
 	}
 
 	cat := datamodel.Category(col.Category)
-	glyph := ic.categoryGlyph(cat, nil)
 	capacity := height - len(lines)
 	start, cardSlots, hidden := cardWindow(len(col.Items), capacity, focusRow)
 	for i := start; i < start+cardSlots; i++ {
 		it := col.Items[i]
-		body := glyph + " " + it.Number + "  "
+		priority := deref(it.Priority)
+		glyph := ic.categoryGlyph(cat, it.Resolution)
+		prio := ic.priorityCell(priority)
+		body := prio + " " + glyph + " " + it.Number + "  "
 		title := fitWidth(it.Title, w-2-lipgloss.Width(body))
-		if focused && i == focusRow {
-			lines = append(lines, fit.Reverse(true).Render(">"+body+title))
-		} else {
-			lines = append(lines, fit.Render(" "+t.CategoryStyle(cat).Render(glyph)+" "+t.Dim.Render(it.Number)+"  "+t.Text.Render(title)))
+		selected := focused && i == focusRow
+		lead := " "
+		if selected {
+			lead = t.Accent.Render("▌")
 		}
+		lines = append(lines, fit.Render(lead+styleText(t.PriorityStyle(priority), prio, selected)+" "+styleText(t.CategoryStyle(cat), glyph, selected)+" "+styleText(t.Dim, it.Number, selected)+"  "+styleText(t.Text, title, selected)))
 	}
 	if hidden > 0 {
 		lines = append(lines, fit.Render(t.Dim.Render("+"+strconv.Itoa(hidden)+" more")))
@@ -147,14 +150,19 @@ func columnLabel(col datamodel.BoardColumn) string {
 }
 
 func columnHeaderStyle(t theme.Theme, col datamodel.BoardColumn, focused bool) lipgloss.Style {
+	heat := func(s lipgloss.Style) lipgloss.Style {
+		if focused {
+			return s.Bold(true)
+		}
+		return s
+	}
 	switch {
 	case col.Wip > 0 && col.Count > col.Wip:
-		if focused {
-			return t.Heat.Hot.Bold(true)
-		}
-		return t.Heat.Hot
+		return heat(t.Heat.Hot)
+	case col.Wip > 0 && col.Count == col.Wip:
+		return heat(t.Heat.Warm)
 	case focused:
-		return t.Accent.Bold(true)
+		return heat(t.Accent)
 	default:
 		return t.Dim
 	}
@@ -204,7 +212,7 @@ func splitWidth(total, n int) []int {
 
 func RenderBoardPlain(w io.Writer, cfg *datamodel.Config, res *datamodel.BoardResult, width int, noColor bool) error {
 	th := theme.For(w, cfg.UI, noColor)
-	out := renderBoard(th, detectIcons(cfg.UI.Icons, osEnv), res, width, plainHeight(res), -1, -1)
+	out := renderBoard(th, detectIcons(cfg.UI.Icons, osEnv, writerIsTTY(w)), res, width, plainHeight(res), -1, -1)
 	_, err := io.WriteString(w, out+"\n")
 	return err
 }

@@ -32,11 +32,14 @@ type IconMode string
 
 const (
 	IconAuto   IconMode = "auto"
+	IconNerd   IconMode = "nerd"
+	IconEmoji  IconMode = "emoji"
+	IconText   IconMode = "text"
 	IconAlways IconMode = "always"
 	IconNever  IconMode = "never"
 )
 
-var IconModes = []IconMode{IconAuto, IconAlways, IconNever}
+var IconModes = []IconMode{IconAuto, IconNerd, IconEmoji, IconText, IconAlways, IconNever}
 
 type Background string
 

@@ -23,6 +23,9 @@ func listItemOf(cfg *datamodel.Config, it *datamodel.Item) datamodel.ListItem {
 		Owner:    it.Owner,
 		Labels:   nonNil(it.Labels),
 		Epic:     it.Epic,
+
+		Priority:   it.Priority,
+		Resolution: it.Resolution,
 	}
 }
 

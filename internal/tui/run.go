@@ -38,7 +38,7 @@ func Run(store *core.Store, cfg *datamodel.Config, opts Options) error {
 		out = os.Stdout
 	}
 	return guardRun(store.Root(), os.Stderr, func() error {
-		m := newModel(store, cfg, theme.For(out, cfg.UI, opts.NoColor), detectIcons(cfg.UI.Icons, osEnv), opts.InjectPanic)
+		m := newModel(store, cfg, theme.For(out, cfg.UI, opts.NoColor), detectIcons(cfg.UI.Icons, osEnv, writerIsTTY(out)), opts.InjectPanic)
 		m.bar.run = opts.RunCommand
 		m.view = opts.InitialView
 		m.clip = clipx.System(out)

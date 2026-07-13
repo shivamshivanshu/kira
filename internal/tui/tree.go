@@ -158,17 +158,19 @@ func (tm *treeModel) renderRow(t theme.Theme, ic iconSet, ti treeItem, width int
 	}
 	cat := datamodel.Category(ti.fields.Category)
 	indent := strings.Repeat("  ", ti.depth)
+	priority := deref(ti.fields.Priority)
 
 	fixed := []rowSegment{
 		{marker, t.Dim}, {" ", t.Text}, {indent, t.Text},
-		{ic.typeGlyph(ti.node.Type), t.Accent}, {" ", t.Text}, {ti.node.Number, t.Dim}, {"  ", t.Text},
+		{ic.typeGlyph(ti.node.Type), t.Dim}, {" ", t.Text}, {ti.node.Number, t.Dim}, {"  ", t.Text},
 	}
 	right := []rowSegment{
-		{" ", t.Text}, {ic.categoryGlyph(cat, nil), t.CategoryStyle(cat)},
+		{" ", t.Text}, {ic.priorityCell(priority), t.PriorityStyle(priority)},
+		{" ", t.Text}, {ic.categoryGlyph(cat, ti.fields.Resolution), t.CategoryStyle(cat)},
 		{" ", t.Text}, {"[" + ti.fields.State + "]", t.CategoryStyle(cat)},
 	}
 	if showProgress && ti.isEpic() {
-		if bar, label := progressParts(ic.nerd, tm.progress[ti.node.ID]); bar != "" {
+		if bar, label := progressParts(ic.rich(), tm.progress[ti.node.ID]); bar != "" {
 			right = append(right, rowSegment{" ", t.Text}, rowSegment{bar, t.CategoryStyle(datamodel.CategoryDone)}, rowSegment{label, t.Dim})
 		}
 	}
@@ -181,9 +183,9 @@ func (tm *treeModel) renderRow(t theme.Theme, ic iconSet, ti treeItem, width int
 
 	fit := t.Renderer().NewStyle().Width(width).MaxWidth(width)
 	if selected {
-		return fit.Reverse(true).Render(">" + segmentsText(segments))
+		return fit.Render(t.Accent.Render("▌") + renderSegments(segments, true))
 	}
-	return fit.Render(" " + segmentsStyled(segments))
+	return fit.Render(" " + renderSegments(segments, false))
 }
 
 func segmentsWidth(segs []rowSegment) int {
@@ -194,18 +196,10 @@ func segmentsWidth(segs []rowSegment) int {
 	return w
 }
 
-func segmentsText(segs []rowSegment) string {
+func renderSegments(segs []rowSegment, bold bool) string {
 	var b strings.Builder
 	for _, s := range segs {
-		b.WriteString(s.text)
-	}
-	return b.String()
-}
-
-func segmentsStyled(segs []rowSegment) string {
-	var b strings.Builder
-	for _, s := range segs {
-		b.WriteString(s.style.Render(s.text))
+		b.WriteString(styleText(s.style, s.text, bold))
 	}
 	return b.String()
 }

@@ -39,6 +39,9 @@ type ListItem struct {
 	Owner    *string  `json:"owner"`
 	Labels   []string `json:"labels"`
 	Epic     *string  `json:"epic"`
+
+	Priority   *string `json:"-"`
+	Resolution *string `json:"-"`
 }
 
 type ListResult struct {

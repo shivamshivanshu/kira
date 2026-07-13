@@ -69,7 +69,7 @@ workon:
   casing: kebab               # kebab | snake: casing of {slug} in the branch name
 
 ui:
-  icons: auto                 # auto | always | never
+  icons: auto                 # auto | nerd | emoji | text — if glyphs render as boxes, set emoji or text (nerd font not installed)
   background: auto            # auto | dark | light: palette the TUI and board assume
 
 estimate:

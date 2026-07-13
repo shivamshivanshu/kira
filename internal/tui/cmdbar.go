@@ -19,6 +19,7 @@ type bar struct {
 	mode   barMode
 	input  textinput.Model
 	msg    string
+	msgErr bool
 	filter string
 	run    func([]string) (string, error)
 }
@@ -26,6 +27,7 @@ type bar struct {
 type commandResultMsg struct {
 	text    string
 	refresh bool
+	isError bool
 }
 
 func newBar() bar { return bar{input: textinput.New()} }
@@ -59,6 +61,7 @@ func (m *model) barRoute(msg tea.KeyMsg) (tea.Cmd, bool) {
 func (b *bar) open(mode barMode, value string) {
 	b.mode = mode
 	b.msg = ""
+	b.msgErr = false
 	if mode == barFilter {
 		b.input.Prompt = "/"
 	} else {
@@ -73,6 +76,11 @@ func (b *bar) close() {
 	b.mode = barClosed
 	b.input.Blur()
 	b.input.SetValue("")
+}
+
+func (b *bar) setError(text string) {
+	b.msg = text
+	b.msgErr = true
 }
 
 func (m *model) barSubmit() tea.Cmd {
@@ -93,18 +101,18 @@ func (m *model) runCommand(line string) tea.Cmd {
 		return nil
 	}
 	if argv[0] == "tui" {
-		m.bar.msg = "cannot launch the tui from the command bar"
+		m.bar.setError("cannot launch the tui from the command bar")
 		return nil
 	}
 	run := m.bar.run
 	if run == nil {
-		m.bar.msg = "command bar unavailable"
+		m.bar.setError("command bar unavailable")
 		return nil
 	}
 	return safeCmd(func() tea.Msg {
 		out, err := run(argv)
 		if err != nil {
-			return commandResultMsg{text: firstNonEmptyLine(err.Error())}
+			return commandResultMsg{text: firstNonEmptyLine(err.Error()), isError: true}
 		}
 		return commandResultMsg{text: firstNonEmptyLine(out), refresh: true}
 	})
@@ -113,7 +121,7 @@ func (m *model) runCommand(line string) tea.Cmd {
 func (m *model) applyFilter(expr string) tea.Cmd {
 	m.bar.close()
 	if m.store == nil {
-		m.bar.msg = "filter unavailable"
+		m.bar.setError("filter unavailable")
 		return nil
 	}
 	m.bar.filter = expr
@@ -153,7 +161,11 @@ func (m model) footer() string {
 	case m.bar.mode != barClosed:
 		return style.Render(m.bar.input.View())
 	case m.bar.msg != "":
-		return m.theme.Dim.Render(style.Render(m.bar.msg))
+		msgStyle := m.theme.Dim
+		if m.bar.msgErr {
+			msgStyle = m.theme.Heat.Hot
+		}
+		return msgStyle.Render(style.Render(m.bar.msg))
 	case m.bar.filter != "":
 		return m.theme.Dim.Render(style.Render("filter: " + m.bar.filter + "  (/ change · : command)"))
 	default:

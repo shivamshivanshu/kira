@@ -15,7 +15,7 @@ stdout '"key": "ui.icons"'
 stdout '"value": "never"'
 grep 'icons: never' .kira/config.yaml
 # the inline doc comment on that line survives the edit
-grep 'icons: never.*# auto \| always \| never' .kira/config.yaml
+grep 'icons: never.*# auto \| nerd \| emoji \| text' .kira/config.yaml
 
 # string
 exec kira config set project.name 'My Project'

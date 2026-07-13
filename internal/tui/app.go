@@ -92,6 +92,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case commandResultMsg:
 		m.bar.msg = msg.text
+		m.bar.msgErr = msg.isError
 		if msg.refresh {
 			return m, refreshCmd(m.store, m.cfg, m.bar.filter)
 		}

@@ -21,8 +21,8 @@ var (
 	priorityP0    = lipgloss.AdaptiveColor{Light: "#d70000", Dark: "#f7768e"}
 	priorityP1    = lipgloss.AdaptiveColor{Light: "#d75f00", Dark: "#ff9e64"}
 	priorityP2    = lipgloss.AdaptiveColor{Light: "#268bd2", Dark: "#7aa2f7"}
-	heatWarm      = lipgloss.AdaptiveColor{Light: "#b58900", Dark: "#e0af68"}
-	heatHot       = lipgloss.AdaptiveColor{Light: "#d70000", Dark: "#f7768e"}
+	heatWarm      = categoryDoing
+	heatHot       = priorityP0
 )
 
 type Heat struct {
