@@ -136,14 +136,20 @@ func TestCheckVocabStrictVsWarn(t *testing.T) {
 	}
 }
 
-func TestCheckEnumVocabAlwaysErrors(t *testing.T) {
+func TestCheckEnumVocabFollowsStrict(t *testing.T) {
 	it := valid(ulidA, "KIRA-1")
 	it.Priority = strp("P9")
-	cfg := config.Default()
-	cfg.Labels.Strict = false
-	findings := doctor.Check(cfg, resolver(it), it)
-	if classes(findings)[doctor.ClassVocab] != doctor.SeverityError {
-		t.Fatalf("priority/subtype/resolution are always-strict; expected an error even under non-strict labels, got %+v", findings)
+
+	lenient := config.Default()
+	lenient.Labels.Strict = false
+	if classes(doctor.Check(lenient, resolver(it), it))[doctor.ClassVocab] != doctor.SeverityWarning {
+		t.Fatalf("expected enum vocab warning under non-strict labels, matching create")
+	}
+
+	strict := config.Default()
+	strict.Labels.Strict = true
+	if classes(doctor.Check(strict, resolver(it), it))[doctor.ClassVocab] != doctor.SeverityError {
+		t.Fatalf("expected enum vocab error under strict labels, matching create")
 	}
 }
 

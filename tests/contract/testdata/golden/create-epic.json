@@ -4,5 +4,12 @@
   "type": "epic",
   "title": "New epic",
   "state": "PLANNED",
+  "category": "todo",
+  "owner": null,
+  "labels": [],
+  "epic": null,
+  "epic_number": null,
+  "priority": null,
+  "resolution": null,
   "path": ".kira/tickets/<ULID-1>.md"
 }

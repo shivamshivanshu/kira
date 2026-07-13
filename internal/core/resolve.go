@@ -14,6 +14,9 @@ import (
 )
 
 func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResult, error) {
+	if interactive && !s.prompter.Interactive() {
+		return nil, errx.User("--interactive needs a terminal; rerun without it to auto-resolve").WithHint("run in an interactive shell to pick fields by hand")
+	}
 	repo := s.repo()
 	unmerged, err := repo.UnmergedPaths()
 	if err != nil {

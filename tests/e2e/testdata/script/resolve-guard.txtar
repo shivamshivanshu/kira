@@ -1,0 +1,10 @@
+# resolve --interactive refuses when stdin is not a terminal instead of hanging.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+! exec kira resolve --interactive
+stderr 'needs a terminal'

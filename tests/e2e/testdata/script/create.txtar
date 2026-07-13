@@ -30,3 +30,19 @@ stdout '"blocks": \[\]'
 stdout '"linked_commits":'
 stdout 'kira: create KIRA-1'
 stdout '"history_tail": \[\]'
+
+# create --json emits the shared item schema (category/owner/epic_number/priority), not just id/number/path
+exec kira create epic --title 'Parent' --no-edit --json
+stdout '"number": "KIRA-3"'
+exec kira create ticket --title 'Child' --no-edit --parent KIRA-3 --json
+stdout '"category": "todo"'
+stdout '"epic_number": "KIRA-3"'
+stdout '"priority": null'
+
+# a positional title works in addition to --title
+exec kira create ticket 'Positional title' --no-edit --json
+stdout '"title": "Positional title"'
+
+# positional title and --title together is an error
+! exec kira create ticket 'X' --title 'Y' --no-edit
+stderr 'not both'

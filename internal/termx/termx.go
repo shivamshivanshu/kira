@@ -5,11 +5,21 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/charmbracelet/x/term"
 )
 
 func IsTerminal(f *os.File) bool {
 	fi, err := f.Stat()
 	return err == nil && fi.Mode()&os.ModeCharDevice != 0
+}
+
+func Width(f *os.File) (int, bool) {
+	w, _, err := term.GetSize(f.Fd())
+	if err != nil || w <= 0 {
+		return 0, false
+	}
+	return w, true
 }
 
 func IsInteractive() bool {

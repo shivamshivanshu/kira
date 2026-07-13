@@ -12,7 +12,10 @@
         "bug",
         "perf"
       ],
-      "epic": "<ULID-2>"
+      "epic": "<ULID-2>",
+      "epic_number": "KIRA-1",
+      "priority": "P1",
+      "resolution": null
     },
     {
       "id": "<ULID-2>",
@@ -23,7 +26,10 @@
       "category": "todo",
       "owner": null,
       "labels": [],
-      "epic": null
+      "epic": null,
+      "epic_number": null,
+      "priority": null,
+      "resolution": null
     },
     {
       "id": "<ULID-3>",
@@ -34,7 +40,10 @@
       "category": "todo",
       "owner": null,
       "labels": [],
-      "epic": null
+      "epic": null,
+      "epic_number": null,
+      "priority": null,
+      "resolution": null
     }
   ],
   "count": 3,

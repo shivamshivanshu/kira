@@ -11,7 +11,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/treeish"
 )
 
-func (s *Store) Diff(ref string) (*datamodel.DiffResult, error) {
+func (s *Store) Diff(ref string, incoming bool) (*datamodel.DiffResult, error) {
 	repo := s.repo()
 	target, err := repo.ResolveTreeish(ref)
 	if err != nil {
@@ -21,15 +21,22 @@ func (s *Store) Diff(ref string) (*datamodel.DiffResult, error) {
 	if err != nil {
 		return nil, errx.User("merge-base HEAD %s: %v", ref, err)
 	}
+	toSHA := target
+	if !incoming {
+		toSHA, err = repo.ResolveTreeish("HEAD")
+		if err != nil {
+			return nil, errx.User("resolving HEAD: %v", err)
+		}
+	}
 	from, err := treeish.Load(repo, baseSHA)
 	if err != nil {
 		return nil, errx.User("%v", err)
 	}
-	to, err := treeish.Load(repo, target)
+	to, err := treeish.Load(repo, toSHA)
 	if err != nil {
 		return nil, errx.User("%v", err)
 	}
-	return diffSnapshots(repo, from, to, baseSHA, target), nil
+	return diffSnapshots(repo, from, to, baseSHA, toSHA), nil
 }
 
 func diffSnapshots(repo gitx.Repo, from, to *treeish.Loaded, fromSHA, toSHA string) *datamodel.DiffResult {

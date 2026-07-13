@@ -37,3 +37,12 @@ grep '[0-9A-Z]{26}' .kira/.cache/active
 # init + 2 creates + 3 successful moves = 6 commits (rejected moves never commit)
 exec git rev-list --count HEAD
 stdout '^6$'
+
+# bulk: the last positional is the state, the rest are ids
+exec kira create ticket --title 'C' --no-edit
+exec kira create ticket --title 'D' --no-edit
+exec kira move KIRA-3 KIRA-4 IN_PROGRESS
+exec kira show KIRA-3 --json
+stdout '"state": "IN_PROGRESS"'
+exec kira show KIRA-4 --json
+stdout '"state": "IN_PROGRESS"'

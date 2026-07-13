@@ -48,7 +48,7 @@ func TestDiffDeletedAndBody(t *testing.T) {
 		t.Fatalf("checkout back: %v", err)
 	}
 
-	res, err := s.Diff("later")
+	res, err := s.Diff("later", true)
 	if err != nil {
 		t.Fatalf("Diff: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestDiffNonAliasNumberChangeVisible(t *testing.T) {
 	repo.Output("commit", "-m", "hand-edited number, no alias")
 	repo.Output("checkout", mainBranch)
 
-	res, err := s.Diff("later")
+	res, err := s.Diff("later", true)
 	if err != nil {
 		t.Fatalf("Diff: %v", err)
 	}
@@ -109,5 +109,47 @@ func TestDiffNonAliasNumberChangeVisible(t *testing.T) {
 	}
 	if len(d.Changes) != 1 || d.Changes[0].Field != datamodel.KeyNumber || d.Changes[0].To != "KIRA-99" {
 		t.Fatalf("changes = %+v, want a visible number field change to KIRA-99", d.Changes)
+	}
+}
+
+func TestDiffDefaultIsMyChangesVsIncoming(t *testing.T) {
+	root := initGitRepo(t)
+	initStore(t, root)
+	repo := gitx.Repo{Dir: root}
+	s, _ := core.Discover(root)
+	cfg, _ := s.Config()
+
+	it, err := s.Create(cfg, core.CreateOpts{Type: datamodel.TypeTicket, Title: "Mine", NoEdit: true})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	mainBranch, _ := repo.Output("branch", "--show-current")
+	if _, err := repo.Output("checkout", "-b", "later"); err != nil {
+		t.Fatalf("checkout: %v", err)
+	}
+
+	path := filepath.Join(root, filepath.FromSlash(it.Path))
+	body, _ := os.ReadFile(path)
+	os.WriteFile(path, append(body, []byte("\nan added description line\n")...), 0o644)
+	repo.Output("add", "-A")
+	repo.Output("commit", "-m", "edit body on later")
+
+	mine, err := s.Diff(mainBranch, false)
+	if err != nil {
+		t.Fatalf("Diff default: %v", err)
+	}
+	if len(mine.Items) != 1 || mine.Items[0].Status != datamodel.DiffChanged {
+		t.Fatalf("default items = %+v, want one changed item (HEAD vs merge-base)", mine.Items)
+	}
+	if c := mine.Items[0].Changes; len(c) != 1 || c[0].Field != datamodel.KeyBody {
+		t.Fatalf("default changes = %+v, want one body change", c)
+	}
+
+	incoming, err := s.Diff(mainBranch, true)
+	if err != nil {
+		t.Fatalf("Diff incoming: %v", err)
+	}
+	if len(incoming.Items) != 0 {
+		t.Fatalf("incoming items = %+v, want none (%s has nothing new vs merge-base)", incoming.Items, mainBranch)
 	}
 }

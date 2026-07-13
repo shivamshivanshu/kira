@@ -1,0 +1,28 @@
+# @me refuses with a clear error (not a silent "unknown") when git identity is unset.
+# Commits still work via GIT_AUTHOR/COMMITTER env, but `git config user.*` is empty.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env GIT_AUTHOR_NAME=ci
+env GIT_AUTHOR_EMAIL=ci@example.com
+env GIT_COMMITTER_NAME=ci
+env GIT_COMMITTER_EMAIL=ci@example.com
+env EDITOR=true
+exec git init
+exec kira init --key KIRA
+exec kira create ticket --title 'X' --no-edit
+
+# assign @me refuses
+! exec kira assign KIRA-1 @me
+stderr 'cannot resolve @me'
+
+# edit --owner @me refuses
+! exec kira edit KIRA-1 --owner @me
+stderr 'cannot resolve @me'
+
+# owner filter @me refuses (flag form)
+! exec kira list --owner @me
+stderr 'cannot resolve @me'
+
+# owner filter @me refuses (query form)
+! exec kira list --query 'owner=@me'
+stderr 'cannot resolve @me'

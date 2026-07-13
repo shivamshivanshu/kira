@@ -6,31 +6,35 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
 func newMoveCmd(g *globalFlags) *cobra.Command {
 	var opts core.MoveOpts
 	cmd := &cobra.Command{
-		Use:   "move <id> <state>",
-		Short: "Transition a ticket or epic to a new state",
-		Args:  cobra.ExactArgs(2),
+		Use:   "move <id>... <state>",
+		Short: "Transition one or more tickets or epics to a new state",
+		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ids, state := args[:len(args)-1], args[len(args)-1]
 			s, cfg, err := openStore(g)
 			if err != nil {
 				return err
 			}
-			res, err := s.Move(cfg, args[0], args[1], opts)
-			if err != nil {
-				return err
+			apply := func(id string) (*datamodel.MoveResult, error) { return s.Move(cfg, id, state, opts) }
+			out := cmd.OutOrStdout()
+			if len(ids) == 1 {
+				res, err := apply(ids[0])
+				if err != nil {
+					return err
+				}
+				if g.json {
+					return emitJSON(out, res)
+				}
+				fmt.Fprintln(out, moveLine(res))
+				return nil
 			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Moved %s: %s -> %s\n", res.Number, res.From, res.To)
-			if res.Activated {
-				fmt.Fprintf(cmd.OutOrStdout(), "Activated %s\n", res.Number)
-			}
-			return nil
+			return runBulk(out, cmd.ErrOrStderr(), g.json, ids, apply, moveLine)
 		},
 	}
 	f := cmd.Flags()
@@ -38,4 +42,12 @@ func newMoveCmd(g *globalFlags) *cobra.Command {
 	f.BoolVar(&opts.Force, "force", false, "bypass the transition adjacency check and require: guards")
 	f.BoolVar(&opts.Activate, "activate", false, "set this item as the active ticket")
 	return cmd
+}
+
+func moveLine(res *datamodel.MoveResult) string {
+	line := fmt.Sprintf("Moved %s: %s -> %s", res.Number, res.From, res.To)
+	if res.Activated {
+		line += fmt.Sprintf("\nActivated %s", res.Number)
+	}
+	return line
 }

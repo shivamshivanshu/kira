@@ -27,3 +27,30 @@ exec kira edit KIRA-1 --field state=IN_PROGRESS
 stdout 'no changes'
 exec git rev-list --count HEAD
 stdout '^3$'
+
+# typed flags --title/--owner/--label mirror the --field pipeline
+exec kira edit KIRA-1 --title 'Renamed' --owner dan --label x --label y --json
+stdout 'title'
+stdout 'owner'
+stdout 'labels'
+exec kira show KIRA-1 --json
+stdout '"title": "Renamed"'
+stdout '"owner": "dan"'
+stdout '"x"'
+stdout '"y"'
+
+# bulk: one set of flags applies to every id
+exec kira create ticket --title 'Second' --no-edit
+exec kira edit KIRA-1 KIRA-2 --priority P1
+exec kira show KIRA-1 --json
+stdout '"priority": "P1"'
+exec kira show KIRA-2 --json
+stdout '"priority": "P1"'
+
+# bulk edit refuses --from-file (one file cannot round-trip onto every id)
+! exec kira edit KIRA-1 KIRA-2 --from-file whatever.md
+stderr 'from-file cannot be combined with multiple ids'
+
+# bulk edit refuses editor mode (needs field flags)
+! exec kira edit KIRA-1 KIRA-2
+stderr 'editor mode is single-id only'

@@ -44,9 +44,10 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 	}
 	sortMatched(cfg, matched, order)
 
+	epicNumbers := epicNumberMap(items)
 	rows := make([]datamodel.ListItem, len(matched))
 	for i, it := range matched {
-		rows[i] = listItemOf(cfg, it)
+		rows[i] = listItemOf(cfg, it, epicNumbers)
 	}
 	res := &datamodel.ListResult{Items: rows, Count: len(rows), StderrNotes: append(idxNotes, notes...)}
 	if opts.Tree {
@@ -56,7 +57,8 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 }
 
 func (s *Store) queryOptions(cfg *datamodel.Config, resolver *id.Resolver) query.Options {
-	return query.Options{Resolver: resolver, Priorities: cfg.Priorities, ActiveSprint: s.ActiveSprintKey()}
+	me, _ := s.gitIdentity()
+	return query.Options{Resolver: resolver, Priorities: cfg.Priorities, ActiveSprint: s.ActiveSprintKey(), Me: me}
 }
 
 func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel.ListItem, map[string]bool, error) {
@@ -68,10 +70,11 @@ func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel
 	if err != nil {
 		return nil, nil, errx.User("%v", err)
 	}
+	epicNumbers := epicNumberMap(items)
 	rows := make([]datamodel.ListItem, len(items))
 	matched := make(map[string]bool, len(items))
 	for i, it := range items {
-		rows[i] = listItemOf(cfg, it)
+		rows[i] = listItemOf(cfg, it, epicNumbers)
 		if pred == nil || pred(it, cfg) {
 			matched[it.ID] = true
 		}
@@ -233,19 +236,34 @@ func (a epicGroupKey) Less(b epicGroupKey) bool {
 	return a.k.Less(b.k)
 }
 
-func listItemOf(cfg *datamodel.Config, it *datamodel.Item) datamodel.ListItem {
-	return datamodel.ListItem{
-		ID:       it.ID,
-		Number:   it.Number,
-		Title:    it.Title,
-		Type:     it.Type,
-		State:    it.State,
-		Category: categoryString(cfg, it.Type, it.State),
-		Owner:    it.Owner,
-		Labels:   nonNil(it.Labels),
-		Epic:     it.Epic,
+func epicNumberMap(items []*datamodel.Item) map[string]string {
+	m := make(map[string]string)
+	for _, it := range items {
+		if it.Type == datamodel.TypeEpic {
+			m[it.ID] = it.Number
+		}
+	}
+	return m
+}
 
+func listItemOf(cfg *datamodel.Config, it *datamodel.Item, epicNumbers map[string]string) datamodel.ListItem {
+	li := datamodel.ListItem{
+		ID:         it.ID,
+		Number:     it.Number,
+		Title:      it.Title,
+		Type:       it.Type,
+		State:      it.State,
+		Category:   categoryString(cfg, it.Type, it.State),
+		Owner:      it.Owner,
+		Labels:     nonNil(it.Labels),
+		Epic:       it.Epic,
 		Priority:   it.Priority,
 		Resolution: it.Resolution,
 	}
+	if it.Epic != nil {
+		if num, ok := epicNumbers[*it.Epic]; ok {
+			li.EpicNumber = &num
+		}
+	}
+	return li
 }

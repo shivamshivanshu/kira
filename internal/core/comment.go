@@ -48,7 +48,7 @@ func (s *Store) Comment(cfg *datamodel.Config, ref string, opts CommentOpts) (*d
 
 	c := datamodel.Comment{
 		ID:     id.Mint().String(),
-		Author: s.commentAuthorToken(),
+		Author: s.currentUser(),
 		Ts:     time.Now().Format(time.RFC3339),
 		Body:   text,
 	}
@@ -90,13 +90,20 @@ func (s *Store) commentText(opts CommentOpts) (string, error) {
 	return strings.TrimRight(content, "\n"), nil
 }
 
-func (s *Store) commentAuthorToken() string {
+func (s *Store) gitIdentity() (string, bool) {
 	for _, key := range []string{"user.name", "user.email"} {
 		if v, err := s.repo().Output("config", key); err == nil {
 			if f := strings.Fields(v); len(f) > 0 {
-				return strings.Join(f, "-")
+				return strings.Join(f, "-"), true
 			}
 		}
+	}
+	return "", false
+}
+
+func (s *Store) currentUser() string {
+	if id, ok := s.gitIdentity(); ok {
+		return id
 	}
 	return "unknown"
 }

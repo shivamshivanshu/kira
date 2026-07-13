@@ -19,3 +19,30 @@ stdout '"owner": "shivam"'
 exec kira assign KIRA-1 alice --reporter
 exec kira show KIRA-1 --json
 stdout '"reporter": "alice"'
+
+# --owner is an alternative to the positional user
+exec kira assign KIRA-1 --owner carol
+exec kira show KIRA-1 --json
+stdout '"owner": "carol"'
+
+# no owner at all is an error, not a silent no-op
+! exec kira assign KIRA-1
+stderr 'provide an owner'
+
+# bulk: --owner assigns the same owner to every id (positionals are all ids)
+exec kira create ticket --title 'B' --no-edit
+exec kira assign KIRA-1 KIRA-2 --owner dana
+exec kira show KIRA-1 --json
+stdout '"owner": "dana"'
+exec kira show KIRA-2 --json
+stdout '"owner": "dana"'
+
+# a failing item reports per-item and exits nonzero, others still applied
+! exec kira assign KIRA-1 NOPE-9 --owner frank
+stderr 'NOPE-9'
+exec kira show KIRA-1 --json
+stdout '"owner": "frank"'
+
+# grammar footgun: two positionals without --owner (the 2nd resolves to an item) is refused
+! exec kira assign KIRA-1 KIRA-2
+stderr 'resolves to an existing item'

@@ -311,7 +311,7 @@ func TestJSONContract(t *testing.T) {
 		{"tree", seededRepo, []string{"tree"}, true},
 		{"tree-epic", seededRepo, []string{"tree", "KIRA-1"}, true},
 		{"find", seededRepo, []string{"find", "Blocker"}, true},
-		{"diff", diffFixture, []string{"diff", "later"}, true},
+		{"diff", diffFixture, []string{"diff", "later", "--incoming"}, true},
 		{"changes", changesFixture, []string{"changes", "--since", "base"}, true},
 		{"sprint-create", kiraRepo, []string{"sprint", "create", "--key", "2026-S15", "--name", "Sprint 15", "--start", "2026-07-27", "--end", "2026-08-09"}, false},
 		{"sprint-list", seededRepo, []string{"sprint", "list"}, true},

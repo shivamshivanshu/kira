@@ -6,9 +6,10 @@ import (
 )
 
 type BoardOpts struct {
-	Type string
-	Epic string
-	At   string
+	Type  string
+	Epic  string
+	Owner string
+	At    string
 }
 
 func (s *Store) Board(cfg *datamodel.Config, opts BoardOpts) (*datamodel.BoardResult, error) {
@@ -29,13 +30,13 @@ func (s *Store) Board(cfg *datamodel.Config, opts BoardOpts) (*datamodel.BoardRe
 		return nil, errx.User("no workflow configured for type %q", typ)
 	}
 
-	global, err := s.List(cfg, ListOpts{Type: typ, At: opts.At})
+	global, err := s.List(cfg, ListOpts{Type: typ, Owner: opts.Owner, At: opts.At})
 	if err != nil {
 		return nil, err
 	}
 	shown := global
 	if opts.Epic != "" {
-		if shown, err = s.List(cfg, ListOpts{Type: typ, Epic: opts.Epic, At: opts.At}); err != nil {
+		if shown, err = s.List(cfg, ListOpts{Type: typ, Epic: opts.Epic, Owner: opts.Owner, At: opts.At}); err != nil {
 			return nil, err
 		}
 	}

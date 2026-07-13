@@ -120,6 +120,22 @@
       ],
       "type": "object"
     },
+    "BulkOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "ref": {
+          "type": "string"
+        },
+        "result": {}
+      },
+      "required": [
+        "ref"
+      ],
+      "type": "object"
+    },
     "ChangedItem": {
       "additionalProperties": false,
       "properties": {
@@ -295,14 +311,53 @@
     "CreateResult": {
       "additionalProperties": false,
       "properties": {
+        "category": {
+          "type": "string"
+        },
+        "epic": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "epic_number": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "id": {
           "type": "string"
+        },
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         "number": {
           "type": "string"
         },
+        "owner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "path": {
           "type": "string"
+        },
+        "priority": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resolution": {
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "state": {
           "type": "string"
@@ -320,6 +375,8 @@
         "type",
         "title",
         "state",
+        "category",
+        "labels",
         "path"
       ],
       "type": "object"
@@ -568,6 +625,12 @@
             "null"
           ]
         },
+        "epic_number": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "id": {
           "type": "string"
         },
@@ -581,6 +644,18 @@
           "type": "string"
         },
         "owner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "priority": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resolution": {
           "type": [
             "string",
             "null"

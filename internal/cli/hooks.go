@@ -79,7 +79,7 @@ func newHooksPostMergeCmd(g *globalFlags) *cobra.Command {
 				return err
 			}
 			for _, r := range res.Renumbered {
-				fmt.Fprintf(cmd.ErrOrStderr(), "kira: renumbered %s -> %s\n", r.From, r.To)
+				fmt.Fprintf(cmd.ErrOrStderr(), "%s renumbered %s -> %s\n", msgPrefix, r.From, r.To)
 			}
 			return nil
 		},

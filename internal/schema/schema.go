@@ -20,6 +20,7 @@ func topLevelTypes() []reflect.Type {
 		reflect.TypeFor[datamodel.TreeResult](),
 		reflect.TypeFor[datamodel.ShowResult](),
 		reflect.TypeFor[datamodel.MutationResult](),
+		reflect.TypeFor[datamodel.BulkOutcome](),
 		reflect.TypeFor[datamodel.DiffResult](),
 		reflect.TypeFor[datamodel.ChangesResult](),
 		reflect.TypeFor[datamodel.FindResult](),

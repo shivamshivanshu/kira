@@ -53,7 +53,7 @@ func vocabFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 	enum := func(field string, value *string) {
 		known, _ := cfg.VocabFor(field)
 		if value != nil && *value != "" && len(known) > 0 && !slices.Contains(known, *value) {
-			out = append(out, vocabFinding(field, *value, SeverityError))
+			out = append(out, vocabFinding(field, *value, vocabSeverity(cfg.Labels.Strict)))
 		}
 	}
 	enum(datamodel.KeyPriority, it.Priority)

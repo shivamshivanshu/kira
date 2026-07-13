@@ -11,6 +11,10 @@ type AssignOpts struct {
 }
 
 func (s *Store) Assign(cfg *datamodel.Config, ref, user string, opts AssignOpts) (*datamodel.MutationResult, error) {
+	user, err := s.resolveMe(user)
+	if err != nil {
+		return nil, err
+	}
 	field := "owner"
 	if opts.Reporter {
 		field = "reporter"

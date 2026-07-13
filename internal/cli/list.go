@@ -37,7 +37,7 @@ func newListCmd(g *globalFlags) *cobra.Command {
 	f.StringVar(&opts.Type, "type", "", "filter by type (ticket|epic)")
 	f.StringVar(&opts.State, "state", "", "filter by state")
 	f.StringVar(&opts.Category, "category", "", "filter by category (todo|doing|done)")
-	f.StringVar(&opts.Owner, "owner", "", "filter by owner")
+	f.StringVar(&opts.Owner, "owner", "", "filter by owner ('@me' resolves to the git user)")
 	f.StringVar(&opts.Label, "label", "", "filter by label")
 	f.StringVar(&opts.Epic, "epic", "", "filter by parent epic")
 	f.StringVar(&opts.Priority, "priority", "", "filter by priority")
@@ -69,6 +69,7 @@ func renderList(w io.Writer, res *datamodel.ListResult) {
 		return
 	}
 	tw := newTabWriter(w)
+	fmt.Fprintln(tw, "NUMBER\tSTATE\tTYPE\tPRIORITY\tTITLE")
 	for _, it := range res.Items {
 		fmt.Fprintln(tw, formatItemRow(it))
 	}
@@ -76,5 +77,12 @@ func renderList(w io.Writer, res *datamodel.ListResult) {
 }
 
 func formatItemRow(it datamodel.ListItem) string {
-	return fmt.Sprintf("%s\t%s\t%s\t%s", it.Number, it.State, it.Type, it.Title)
+	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s", it.Number, it.State, it.Type, priorityCell(it.Priority), it.Title)
+}
+
+func priorityCell(p *string) string {
+	if p == nil || *p == "" {
+		return "-"
+	}
+	return *p
 }

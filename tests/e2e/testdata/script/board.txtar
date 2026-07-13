@@ -2,6 +2,8 @@
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
+# stdout is not a TTY under testscript, so the plain board honors COLUMNS then falls back to 80.
+env COLUMNS=100
 exec git init
 exec git config user.email test@example.com
 exec git config user.name tester
@@ -41,3 +43,10 @@ stdout 'KIRA-1'
 # the live board sees the later ticket
 exec kira board --plain
 stdout 'KIRA-2'
+
+# a narrow width budget truncates long titles with an ellipsis instead of wrapping
+env COLUMNS=40
+exec kira create ticket --title 'A very long ticket title that will not fit' --no-edit
+exec kira board --plain
+stdout '…'
+! stdout 'will not fit'

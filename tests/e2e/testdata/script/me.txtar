@@ -1,0 +1,34 @@
+# @me resolves to the git user for assign and for owner filters (list/query/board).
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'Mine' --no-edit
+exec kira create ticket --title 'Theirs' --owner alice --no-edit
+
+# assign @me sets owner to the git user token
+exec kira assign KIRA-1 @me
+exec kira show KIRA-1 --json
+stdout '"owner": "tester"'
+
+# list --owner @me matches only my item
+exec kira list --owner @me --json
+stdout '"count": 1'
+stdout '"number": "KIRA-1"'
+
+# query owner=@me resolves the same way
+exec kira list --query 'owner=@me' --json
+stdout '"count": 1'
+
+# board --owner @me filters the cards to the git user
+exec kira board --plain --owner @me
+stdout 'KIRA-1'
+! stdout 'KIRA-2'
+
+# edit --owner @me resolves to the git user too (not stored literally)
+exec kira edit KIRA-2 --owner @me
+exec kira show KIRA-2 --json
+stdout '"owner": "tester"'

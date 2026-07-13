@@ -9,6 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/query"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
@@ -68,6 +69,34 @@ func (s *Store) resolveRef(cfg *datamodel.Config, ref string) (*datamodel.Item, 
 		return it, items, resolver, nil
 	}
 	return nil, nil, nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
+}
+
+func (s *Store) resolveMe(value string) (string, error) {
+	if value != query.MeToken {
+		return value, nil
+	}
+	if id, ok := s.gitIdentity(); ok {
+		return id, nil
+	}
+	return "", errx.User("cannot resolve @me: set git user.name or user.email")
+}
+
+func (s *Store) RefExists(cfg *datamodel.Config, ref string) bool {
+	_, _, _, err := s.resolveRef(cfg, ref)
+	return err == nil
+}
+
+func (s *Store) ResolveItemFile(cfg *datamodel.Config, ref string) (string, string, error) {
+	it, _, _, err := s.resolveRef(cfg, ref)
+	if err != nil {
+		return "", "", err
+	}
+	path := s.itemPath(it.ID)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", "", errx.User("reading %s: %v", ref, err)
+	}
+	return path, string(data), nil
 }
 
 func guardWritable(items ...*datamodel.Item) error {

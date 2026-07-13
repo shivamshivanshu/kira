@@ -92,14 +92,26 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 	if err := s.commit(cfg, cs, warns); err != nil {
 		return nil, err
 	}
-	return &datamodel.CreateResult{
-		ID:     finalItem.ID,
-		Number: finalItem.Number,
-		Type:   finalItem.Type,
-		Title:  finalItem.Title,
-		State:  finalItem.State,
-		Path:   path,
-	}, nil
+	res := &datamodel.CreateResult{
+		ID:         finalItem.ID,
+		Number:     finalItem.Number,
+		Type:       finalItem.Type,
+		Title:      finalItem.Title,
+		State:      finalItem.State,
+		Category:   categoryString(cfg, finalItem.Type, finalItem.State),
+		Owner:      finalItem.Owner,
+		Labels:     nonNil(finalItem.Labels),
+		Epic:       finalItem.Epic,
+		Priority:   finalItem.Priority,
+		Resolution: finalItem.Resolution,
+		Path:       path,
+	}
+	if finalItem.Epic != nil {
+		if num, ok := epicNumberMap(items)[*finalItem.Epic]; ok {
+			res.EpicNumber = &num
+		}
+	}
+	return res, nil
 }
 
 func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, initialState string, base draft) (draft, error) {

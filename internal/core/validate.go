@@ -10,6 +10,14 @@ import (
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
+type vocabWarning struct {
+	field, value string
+}
+
+func (w *vocabWarning) Error() string {
+	return fmt.Sprintf("field %q: %q is not in the known %s vocabulary", w.field, w.value, w.field)
+}
+
 func fieldPresent(it *datamodel.Item, field string) bool {
 	set := func(p *string) bool { return p != nil && *p != "" }
 	switch field {
@@ -56,7 +64,7 @@ func validateItem(cfg *datamodel.Config, it *datamodel.Item, force bool) (errs, 
 		if value == "" || slices.Contains(v.Known, value) {
 			return
 		}
-		e := fmt.Errorf("field %q: %q is not in the known %s vocabulary", field, value, field)
+		e := &vocabWarning{field: field, value: value}
 		if v.Strict && !force {
 			errs = append(errs, e)
 		} else {
@@ -70,7 +78,7 @@ func validateItem(cfg *datamodel.Config, it *datamodel.Item, force bool) (errs, 
 		vocabCheck(datamodel.KeyReporter, *it.Reporter, cfg.People)
 	}
 	for _, l := range it.Labels {
-		vocabCheck("label", l, cfg.Labels)
+		vocabCheck(datamodel.KeyLabels, l, cfg.Labels)
 	}
 
 	enumCheck := func(field string, value *string) {

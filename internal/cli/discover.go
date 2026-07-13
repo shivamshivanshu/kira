@@ -42,7 +42,7 @@ func newDiscoverCmd(g *globalFlags) *cobra.Command {
 				return err
 			}
 			if len(cands) == 0 {
-				fmt.Fprintln(cmd.ErrOrStderr(), "kira: no items to pick from")
+				fmt.Fprintln(cmd.ErrOrStderr(), msgPrefix, "no items to pick from")
 				return nil
 			}
 

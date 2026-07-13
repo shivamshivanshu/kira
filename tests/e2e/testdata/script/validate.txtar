@@ -22,6 +22,23 @@ stdout 'problems found'
 ! exec kira validate --json bad.md
 stdout '"ok": false'
 
+# a ticket number resolves to its file and validates
+exec kira validate KIRA-90
+stdout 'ok: 0 error'
+
+# a ulid prefix resolves to the same file
+exec kira validate 01HZZZZZZZZ
+stdout 'ok: 0 error'
+
+# an arg that is neither a file nor a resolvable id is rejected
+! exec kira validate KIRA-99999
+stderr 'neither a file nor a resolvable ticket id'
+
+# the project config is not a ticket file; validate refuses with a clear pointer to doctor
+! exec kira validate .kira/config.yaml
+stderr 'is the project config, not a ticket file'
+stderr 'kira doctor'
+
 -- good.md --
 ---
 id: 01HZZZZZZZZZZZZZZZZZZZZZZZA

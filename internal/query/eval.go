@@ -14,10 +14,13 @@ import (
 
 type Predicate func(it *datamodel.Item, cfg *datamodel.Config) bool
 
+const MeToken = "@me"
+
 type Options struct {
 	Resolver     *id.Resolver
 	Priorities   []string
 	ActiveSprint string
+	Me           string
 }
 
 type Compiled struct {
@@ -118,6 +121,12 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 	switch n.field {
 	case fieldState, fieldType, fieldPriority, fieldOwner, fieldReporter,
 		fieldSubtype, fieldResolution, fieldRank, fieldCategory:
+		if (n.field == fieldOwner || n.field == fieldReporter) && want == MeToken {
+			if c.opts.Me == "" {
+				return nil, &Error{Pos: n.valuePos, Msg: "cannot resolve @me: set git user.name or user.email"}
+			}
+			want = c.opts.Me
+		}
 		return scalarPred(eq, want, accessors[n.field]), nil
 	case fieldSprint:
 		if n.value == "active" {

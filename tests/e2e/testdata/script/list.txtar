@@ -41,3 +41,11 @@ stdout '"count": 1'
 # a malformed query is a user error (exit 1)
 ! exec kira list --query 'state='
 stderr 'query:'
+
+# human list carries a header row and a priority column (JSON stays untouched)
+exec kira edit KIRA-1 --priority P2
+exec kira list
+stdout 'NUMBER'
+stdout 'PRIORITY'
+stdout 'TITLE'
+stdout 'P2'

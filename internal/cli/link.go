@@ -75,6 +75,6 @@ func newLinkCmd(g *globalFlags) *cobra.Command {
 		f.StringVar(e.value, e.flag, "", e.usage)
 	}
 	f.BoolVar(&opts.Remove, "remove", false, "remove the given edge instead of adding it")
-	f.BoolVar(&opts.Force, "force", false, "bypass strict-vocabulary rejection")
+	f.BoolVar(&opts.Force, "force", false, "accept field values outside the configured vocabulary")
 	return cmd
 }

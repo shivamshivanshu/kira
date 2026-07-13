@@ -11,6 +11,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 func newCreateCmd(g *globalFlags) *cobra.Command {
@@ -69,11 +70,17 @@ func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {
 		aliasType     string
 	)
 	cmd := &cobra.Command{
-		Use:   typ,
+		Use:   typ + " [<title>]",
 		Short: "Create a " + typ,
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Type = typ
+			if len(args) == 1 {
+				if cmd.Flags().Changed("title") {
+					return errx.User("provide the title positionally or via --title, not both")
+				}
+				opts.Title = args[0]
+			}
 			if opts.Subtype == "" {
 				opts.Subtype = aliasType
 			}
@@ -122,7 +129,7 @@ func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {
 	f.Float64Var(&estimate, "estimate", 0, "estimate, in the configured unit")
 	f.BoolVar(&opts.NoEdit, "no-edit", false, "create from flags only, no $EDITOR")
 	f.StringVar(&opts.FromFile, "from-file", "", "read a complete item from a file (or - for stdin)")
-	f.BoolVar(&opts.Force, "force", false, "bypass strict-vocabulary rejection")
+	f.BoolVar(&opts.Force, "force", false, "accept field values outside the configured vocabulary")
 	f.BoolVar(&printTemplate, "print-template", false, "print the resolved template and exit")
 	return cmd
 }

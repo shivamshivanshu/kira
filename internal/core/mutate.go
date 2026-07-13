@@ -1,6 +1,8 @@
 package core
 
 import (
+	"errors"
+	"slices"
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -60,6 +62,7 @@ func (s *Store) commitMutation(cfg *datamodel.Config, before, updated *datamodel
 		return nil
 	}
 	updated.Updated = time.Now().Format(time.RFC3339)
+	warns = scopeVocabWarnings(warns, changed)
 
 	path, err := s.fs().WriteItem(updated)
 	if err != nil {
@@ -74,6 +77,18 @@ func (s *Store) commitMutation(cfg *datamodel.Config, before, updated *datamodel
 		Subject: subject,
 		Source:  source,
 	}, warns)
+}
+
+func scopeVocabWarnings(warns []error, changed []string) []error {
+	out := warns[:0:0]
+	for _, w := range warns {
+		var vw *vocabWarning
+		if errors.As(w, &vw) && !slices.Contains(changed, vw.field) {
+			continue
+		}
+		out = append(out, w)
+	}
+	return out
 }
 
 func (s *Store) commit(cfg *datamodel.Config, cs *datamodel.ChangeSet, warns []error) error {

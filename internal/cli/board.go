@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"strconv"
 
 	"github.com/spf13/cobra"
 
@@ -10,11 +11,22 @@ import (
 	"github.com/shivamshivanshu/kira/internal/tui"
 )
 
-const plainBoardWidth = 100
+const fallbackBoardWidth = 80
+
+func boardWidth() int {
+	if w, ok := termx.Width(os.Stdout); ok {
+		return w
+	}
+	if w, err := strconv.Atoi(os.Getenv("COLUMNS")); err == nil && w > 0 {
+		return w
+	}
+	return fallbackBoardWidth
+}
 
 func newBoardCmd(g *globalFlags) *cobra.Command {
 	var plain bool
 	var at string
+	var owner string
 	cmd := &cobra.Command{
 		Use:   "board [<epic-id>]",
 		Short: "Kanban board of tickets grouped by workflow state",
@@ -28,20 +40,21 @@ func newBoardCmd(g *globalFlags) *cobra.Command {
 			if len(args) == 1 {
 				epic = args[0]
 			}
-			if !plain && !g.json && epic == "" && at == "" && termx.IsTerminal(os.Stdout) {
+			if !plain && !g.json && epic == "" && at == "" && owner == "" && termx.IsTerminal(os.Stdout) {
 				return tui.Run(s, cfg, tui.Options{NoColor: g.noColor, RunCommand: commandRunner(g), InitialView: tui.ViewBoard})
 			}
-			res, err := s.Board(cfg, core.BoardOpts{Epic: epic, At: at})
+			res, err := s.Board(cfg, core.BoardOpts{Epic: epic, Owner: owner, At: at})
 			if err != nil {
 				return err
 			}
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			return tui.RenderBoardPlain(cmd.OutOrStdout(), cfg, res, plainBoardWidth, g.noColor)
+			return tui.RenderBoardPlain(cmd.OutOrStdout(), cfg, res, boardWidth(), g.noColor)
 		},
 	}
 	f := cmd.Flags()
+	f.StringVar(&owner, "owner", "", "filter to one owner ('@me' resolves to the git user)")
 	f.BoolVar(&plain, "plain", false, "force the static table instead of launching the interactive board")
 	f.StringVar(&at, "at", "", "render the board as of a git ref (static, read-only)")
 	return cmd

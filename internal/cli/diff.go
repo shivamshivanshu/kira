@@ -10,16 +10,17 @@ import (
 )
 
 func newDiffCmd(g *globalFlags) *cobra.Command {
-	return &cobra.Command{
+	var incoming bool
+	cmd := &cobra.Command{
 		Use:   "diff <ref>",
-		Short: "Show the semantic backlog change from merge-base to <ref>",
+		Short: "Show your changes vs the merge-base with <ref>",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s, _, err := openStore(g)
 			if err != nil {
 				return err
 			}
-			res, err := s.Diff(args[0])
+			res, err := s.Diff(args[0], incoming)
 			if err != nil {
 				return err
 			}
@@ -30,6 +31,8 @@ func newDiffCmd(g *globalFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&incoming, "incoming", false, "show incoming changes on <ref> relative to the merge-base")
+	return cmd
 }
 
 func renderDiffHeader(w io.Writer, status datamodel.DiffStatus, number, title string) {

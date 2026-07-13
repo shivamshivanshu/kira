@@ -61,7 +61,13 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		it := cloneItem(orig)
 		var errs []error
 		for _, fe := range opts.Fields {
-			if err := applyFieldEdit(it, fe.Key, fe.Value); err != nil {
+			value := fe.Value
+			if fe.Key == datamodel.KeyOwner || fe.Key == datamodel.KeyReporter {
+				if value, err = s.resolveMe(fe.Value); err != nil {
+					return nil, err
+				}
+			}
+			if err := applyFieldEdit(it, fe.Key, value); err != nil {
 				errs = append(errs, err)
 			}
 		}

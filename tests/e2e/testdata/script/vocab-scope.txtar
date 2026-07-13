@@ -1,0 +1,20 @@
+# vocab warnings fire only for the field being changed, not on every unrelated edit.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# creating with an unknown priority warns (create sets the field)
+exec kira create ticket --title 'T' --priority P9 --no-edit
+stderr 'priority'
+
+# editing an unrelated field (title) must not re-warn about the pre-existing bad priority
+exec kira edit KIRA-1 --title 'renamed'
+! stderr 'priority'
+
+# editing the offending field itself warns again
+exec kira edit KIRA-1 --priority P8
+stderr 'priority'

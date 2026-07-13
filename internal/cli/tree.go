@@ -76,7 +76,7 @@ func renderTreeGroups(w io.Writer, res *datamodel.ListResult) {
 		case "":
 			fmt.Fprintln(tw, "(no epic)")
 		default:
-			fmt.Fprintf(tw, "%s\t\t\t(epic)\n", label)
+			fmt.Fprintf(tw, "%s\t\t\t\t(epic)\n", label)
 		}
 		for _, ulid := range grp.Items {
 			fmt.Fprintln(tw, "  "+formatItemRow(byID[ulid]))
