@@ -1,0 +1,53 @@
+# board gains --label, --query and --filter with the same semantics as list.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+env COLUMNS=100
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+cp filters.yaml .kira/config.yaml
+exec kira create ticket --title 'Backend work' --no-edit --label backend --owner shivam
+exec kira create ticket --title 'Frontend work' --no-edit --label frontend --owner alice
+
+# --label filters the board pool like list --label
+exec kira board --plain --label backend
+stdout 'KIRA-1'
+! stdout 'KIRA-2'
+
+# --query filters by expression
+exec kira board --plain --query 'label=frontend'
+stdout 'KIRA-2'
+! stdout 'KIRA-1'
+
+# --filter resolves a named saved query from config filters
+exec kira board --plain --filter mine
+stdout 'KIRA-1'
+! stdout 'KIRA-2'
+
+# --query ANDs with the flags, matching list precedence
+exec kira board --plain --filter mine --query 'label=frontend'
+! stdout 'KIRA-1'
+! stdout 'KIRA-2'
+
+# --json keeps the BoardResult shape, just filtered
+exec kira board --json --label backend
+stdout '"state": "TODO"'
+stdout 'KIRA-1'
+! stdout 'KIRA-2'
+
+-- filters.yaml --
+version: 1
+
+project:
+  key: KIRA
+  name: kira
+
+labels:
+  known: [backend, frontend]
+  strict: false
+
+filters:
+  mine: "owner=shivam"

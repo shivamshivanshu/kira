@@ -9,6 +9,7 @@ import (
 
 type ListOpts struct {
 	Type     string
+	Subtype  string
 	State    string
 	Category string
 	Owner    string
@@ -115,7 +116,7 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 	var order *query.Order
 	var notes []datamodel.Warning
 	flat := []struct{ field, value string }{
-		{"type", opts.Type}, {"state", opts.State}, {"category", opts.Category},
+		{"type", opts.Type}, {"subtype", opts.Subtype}, {"state", opts.State}, {"category", opts.Category},
 		{"owner", opts.Owner}, {"label", opts.Label}, {"epic", opts.Epic},
 		{"priority", opts.Priority}, {"sprint", opts.Sprint},
 	}

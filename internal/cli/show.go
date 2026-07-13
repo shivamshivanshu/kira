@@ -68,6 +68,7 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 	}
 	line("id", r.ID)
 	line("type", r.Type)
+	line("subtype", ptr.Deref(r.Subtype))
 	line("category", r.Category)
 	line("priority", ptr.Deref(r.Priority))
 	line("owner", ptr.Deref(r.Owner))

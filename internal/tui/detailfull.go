@@ -124,6 +124,9 @@ func detailLines(t theme.Theme, res *datamodel.ShowResult, width int, body strin
 
 func detailMeta(t theme.Theme, res *datamodel.ShowResult) string {
 	parts := []string{t.CategoryStyle(datamodel.Category(res.Category)).Render("[" + res.State + "]")}
+	if res.Subtype != nil && *res.Subtype != "" {
+		parts = append(parts, t.Dim.Render("subtype ")+*res.Subtype)
+	}
 	if res.Owner != nil {
 		parts = append(parts, t.Dim.Render("owner ")+*res.Owner)
 	}

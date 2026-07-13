@@ -1,0 +1,92 @@
+# kira label manages the config label vocabulary and per-item labels.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# empty or whitespace-only names are refused before any write
+! exec kira label create ''
+stderr 'label name cannot be empty'
+
+# create registers labels in the config vocabulary and auto-commits through the config seam
+exec kira label create backend frontend
+stdout 'Created label backend'
+stdout 'Created label frontend'
+exec git log --oneline
+stdout 'kira: label create backend,frontend'
+grep 'known: \[backend, frontend\]' .kira/config.yaml
+
+# create is idempotent: an already-known label is reported and exits 0
+exec kira label create backend
+stdout 'Label backend already exists'
+
+# --json emits non-nil arrays (schema declares created/already_known required)
+exec kira label create backend --json
+stdout '"created": \[\]'
+stdout '"already_known": \[\s*"backend"\s*\]'
+
+# label list unions the known vocabulary with in-use labels and counts items
+exec kira create ticket --title A --no-edit --label backend
+exec kira create ticket --title B --no-edit --label backend
+exec kira label list
+stdout 'backend\s+2'
+stdout 'frontend\s+0'
+exec kira label list --json
+stdout '"name": "backend"'
+stdout '"count": 2'
+
+# a forgotten label leaves the last positional resolving to an item ref, which is refused
+! exec kira label add KIRA-1 KIRA-2
+stderr 'resolves to an existing item, not a label'
+
+# add appends one label without replacing the set
+exec kira label add KIRA-1 frontend
+stdout 'Added frontend to KIRA-1'
+exec kira show KIRA-1 --json
+stdout '"backend"'
+stdout '"frontend"'
+
+# add is idempotent: re-adding an existing label is a no-op and makes no commit
+exec git rev-list --count HEAD
+stdout '^5$'
+exec kira label add KIRA-1 backend
+stdout 'KIRA-1: already labelled backend'
+exec git rev-list --count HEAD
+stdout '^5$'
+
+# rm removes one label without touching the rest; rm of an absent label is a no-op
+exec kira label rm KIRA-1 frontend
+stdout 'Removed frontend from KIRA-1'
+exec kira label rm KIRA-1 nope
+stdout 'KIRA-1: not labelled nope'
+
+# multi-id add follows the bulk pattern: one ChangeSet commit per item
+exec kira label add KIRA-1 KIRA-2 frontend
+stdout 'Added frontend to KIRA-1'
+stdout 'Added frontend to KIRA-2'
+exec git rev-list --count HEAD
+stdout '^8$'
+
+# under a strict vocabulary an unknown label is refused; --force overrides
+cp strict.yaml .kira/config.yaml
+exec git add .kira/config.yaml
+exec git commit -m 'strict labels'
+! exec kira label add KIRA-1 orphan
+stderr 'not in the known'
+exec kira label add KIRA-1 orphan --force
+stdout 'Added orphan to KIRA-1'
+
+-- strict.yaml --
+version: 1
+project:
+  key: KIRA
+  name: kira
+labels:
+  known: [backend, frontend]
+  strict: true
+people:
+  known: []
+  strict: false

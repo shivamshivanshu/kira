@@ -44,7 +44,7 @@ func SetScalar(src []byte, dottedKey, value string) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("config: unknown key %q; valid keys: %s", dottedKey, strings.Join(SetKeys(), ", "))
 	}
-	token, err := renderToken(kind, value)
+	token, err := renderToken(kind, dottedKey, value)
 	if err != nil {
 		return nil, err
 	}
@@ -147,9 +147,9 @@ func marshalScalar(n *yaml.Node) string {
 	return strings.TrimRight(string(b), "\n")
 }
 
-func renderToken(kind setKind, value string) (string, error) {
+func renderToken(kind setKind, dottedKey, value string) (string, error) {
 	if kind == kindStr {
-		return singleLineScalar(value)
+		return singleLineScalar(dottedKey, value)
 	}
 	if strings.ContainsAny(value, "\n\r") {
 		return "", fmt.Errorf("config: value %q does not fit on one line", value)

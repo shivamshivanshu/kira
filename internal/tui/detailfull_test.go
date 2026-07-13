@@ -41,6 +41,18 @@ func TestDetailPanelNarrowGuard(t *testing.T) {
 	golden.RequireEqual(t, []byte(got))
 }
 
+func TestDetailPanelRendersSubtypeWhenSet(t *testing.T) {
+	res := sampleDetail()
+	res.Subtype = strptr("bug")
+	got := newDetailPanel().render(asciiTheme(), res, 100, 40)
+	if !strings.Contains(got, "subtype bug") {
+		t.Fatalf("detail should render the subtype:\n%s", got)
+	}
+	if strings.Contains(newDetailPanel().render(asciiTheme(), sampleDetail(), 100, 40), "subtype") {
+		t.Fatal("detail should omit subtype when unset")
+	}
+}
+
 func TestDetailPanelNil(t *testing.T) {
 	if got := newDetailPanel().render(asciiTheme(), nil, 100, 40); got == "" {
 		t.Fatal("nil result should render a placeholder")

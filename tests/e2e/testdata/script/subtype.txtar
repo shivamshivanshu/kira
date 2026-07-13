@@ -1,0 +1,26 @@
+# subtype is filterable via kira list --subtype and rendered by show when set.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create ticket --title 'A defect' --no-edit --subtype bug
+exec kira create ticket --title 'A narrative' --no-edit --subtype story
+exec kira create ticket --title 'Unclassified' --no-edit
+
+# --subtype filters like --label/--owner
+exec kira list --subtype bug
+stdout 'KIRA-1'
+! stdout 'KIRA-2'
+! stdout 'KIRA-3'
+
+# show renders subtype in the human field block when set
+exec kira show KIRA-1
+stdout 'subtype:\s+bug'
+
+# a ticket without a subtype omits the line
+exec kira show KIRA-3
+! stdout 'subtype'

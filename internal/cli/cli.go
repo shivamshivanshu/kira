@@ -112,6 +112,7 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 		newResolveCmd(g),
 		newDiffCmd(g),
 		newBoardCmd(g),
+		newLabelCmd(g),
 		newConfigCmd(g),
 		newChangesCmd(g),
 		newSchemaCmd(g),

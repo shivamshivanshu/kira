@@ -225,6 +225,20 @@ type ConfigSetResult struct {
 	Value string `json:"value"`
 }
 
+type LabelCreateResult struct {
+	Created      []string `json:"created"`
+	AlreadyKnown []string `json:"already_known"`
+}
+
+type LabelCount struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+
+type LabelListResult struct {
+	Labels []LabelCount `json:"labels"`
+}
+
 type MergeResult struct {
 	ID         string   `json:"id"`
 	Number     string   `json:"number"`

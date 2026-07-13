@@ -88,7 +88,7 @@ func appendToBlockList(lines []string, val *yaml.Node, entry string) []string {
 func inlineSprintEntry(sp datamodel.Sprint) (string, error) {
 	fields := [4]string{}
 	for i, v := range []string{sp.Key, sp.Name, sp.Start, sp.End} {
-		s, err := singleLineScalar(v)
+		s, err := singleLineScalar("sprints", v)
 		if err != nil {
 			return "", err
 		}
@@ -98,14 +98,14 @@ func inlineSprintEntry(sp datamodel.Sprint) (string, error) {
 		fields[0], fields[1], fields[2], fields[3]), nil
 }
 
-func singleLineScalar(v string) (string, error) {
+func singleLineScalar(subsystem, v string) (string, error) {
 	b, err := yaml.Marshal(v)
 	if err != nil {
-		return "", fmt.Errorf("config: sprints: %w", err)
+		return "", fmt.Errorf("config: %s: %w", subsystem, err)
 	}
 	s := strings.TrimSpace(string(b))
 	if strings.ContainsAny(s, "\n\r") {
-		return "", fmt.Errorf("config: sprints: field value %q does not fit on one line", v)
+		return "", fmt.Errorf("config: %s: field value %q does not fit on one line", subsystem, v)
 	}
 	return s, nil
 }

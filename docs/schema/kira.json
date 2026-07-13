@@ -613,6 +613,59 @@
       ],
       "type": "object"
     },
+    "LabelCount": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "count"
+      ],
+      "type": "object"
+    },
+    "LabelCreateResult": {
+      "additionalProperties": false,
+      "properties": {
+        "already_known": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "created": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "created",
+        "already_known"
+      ],
+      "type": "object"
+    },
+    "LabelListResult": {
+      "additionalProperties": false,
+      "properties": {
+        "labels": {
+          "items": {
+            "$ref": "#/$defs/LabelCount"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "labels"
+      ],
+      "type": "object"
+    },
     "ListItem": {
       "additionalProperties": false,
       "properties": {

@@ -35,6 +35,7 @@ func newListCmd(g *globalFlags) *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.StringVar(&opts.Type, "type", "", "filter by type (ticket|epic)")
+	f.StringVar(&opts.Subtype, "subtype", "", "filter by subtype")
 	f.StringVar(&opts.State, "state", "", "filter by state")
 	f.StringVar(&opts.Category, "category", "", "filter by category (todo|doing|done)")
 	f.StringVar(&opts.Owner, "owner", "", "filter by owner ('@me' resolves to the git user)")
