@@ -16,6 +16,9 @@ func printHookLines(w io.Writer, hooks []datamodel.AutomationHookView) {
 			name = "(unnamed)"
 		}
 		line := fmt.Sprintf("hook %s on %s: %s", name, h.On, h.Run)
+		if h.Source == datamodel.AutomationSourceUser {
+			line += " (user)"
+		}
 		if !h.Enabled {
 			line += " [disabled]"
 		}

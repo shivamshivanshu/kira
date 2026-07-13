@@ -1,0 +1,101 @@
+# user config tier: XDG resolution, config.yaml prefs partition, separate hooks file, auto-trust, trust isolation.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp repo-config.yaml .kira/config.yaml
+env XDG_CONFIG_HOME=$WORK/xdg
+
+exec kira create ticket --title 'First' --no-edit
+
+# repo hook untrusted → must not fire; user hook (from hooks.yaml) auto-fires.
+# config.yaml carries a repo-authoritative key and a misplaced automation block — both warn.
+exec kira move KIRA-1 WONT_DO
+stderr 'not trusted'
+stderr 'key "priorities" is repo-authoritative; ignored'
+stderr 'personal hooks belong in hooks.yaml; ignored'
+! exists repo-marker
+exists user-marker
+
+# list shows repo and user hooks tagged by provenance, repo tier still untrusted.
+exec kira automation list
+stdout 'hook onrepo on item.state_changed: bash repohook.sh'
+stdout 'hook onuser on item.state_changed: bash userhook.sh \(user\)'
+stdout 'trust: not trusted'
+
+# trusting the repo tier lets repo hooks fire alongside the user hook.
+exec kira automation trust
+rm user-marker
+exec kira create ticket --title 'Second' --no-edit
+exec kira move KIRA-2 WONT_DO
+exists repo-marker
+exists user-marker
+
+# a hooks.json beside hooks.yaml is ignored (yaml wins) with a warning.
+cp userhooks.json xdg/kira/hooks.json
+exec kira automation list
+stderr 'hooks.json: shadowed by hooks.yaml; ignored'
+stdout 'hook onuser on item.state_changed: bash userhook.sh \(user\)'
+! stdout 'fromjson'
+rm xdg/kira/hooks.json
+
+# editing the USER hooks file must not revoke repo trust.
+cp userhooks2.yaml xdg/kira/hooks.yaml
+exec kira automation list
+stdout 'trust: trusted'
+
+# editing the REPO tier revokes trust (hash changes) — isolation holds the other way.
+cp repo-config2.yaml .kira/config.yaml
+exec kira automation list
+stdout 'trust: not trusted'
+
+-- repo-config.yaml --
+version: 1
+project:
+  key: KIRA
+automation:
+  - name: onrepo
+    on: item.state_changed
+    match:
+      to: done
+    run: bash repohook.sh
+-- repo-config2.yaml --
+version: 1
+project:
+  key: KIRA
+automation:
+  - name: onrepo
+    on: item.state_changed
+    match:
+      to: done
+    run: bash repohook2.sh
+-- xdg/kira/config.yaml --
+ui:
+  icons: text
+priorities:
+  - X
+automation:
+  - name: misplaced
+    on: item.created
+    run: bash nope.sh
+-- xdg/kira/hooks.yaml --
+- name: onuser
+  on: item.state_changed
+  match:
+    to: done
+  run: bash userhook.sh
+-- userhooks2.yaml --
+- name: onuser
+  on: item.state_changed
+  match:
+    to: done
+  run: bash userhook2.sh
+-- userhooks.json --
+[{"name": "fromjson", "on": "item.state_changed", "match": {"to": "done"}, "run": "bash userhook.sh"}]
+-- repohook.sh --
+echo repo > "$KIRA_ROOT/repo-marker"
+-- userhook.sh --
+echo user > "$KIRA_ROOT/user-marker"

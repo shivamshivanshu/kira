@@ -300,3 +300,27 @@ fields: {}                    # reserved: per-type extra-field declarations (v2)
 | Comment blocks well-formed (matching open/close markers, valid `id`/`ts`) | warn |
 
 `doctor` additionally checks index freshness and installed-hooks presence — those are cross-cutting concerns, covered in [03-storage-and-git.md](03-storage-and-git.md) and [07-git-integration.md](07-git-integration.md).
+
+## 11. Configuration tiers
+
+kira reads config from two sources and merges them per key, not as a blind overlay. The repo file (`.kira/config.yaml`) stays authoritative for everything that must agree across clones; a user tier under `~/.config/kira/` carries only per-machine presentation and personal automation, split by topic across a small set of files:
+
+- `config.yaml` — a preferences overlay. Only the `ui` block is honored.
+- `hooks.yaml` or `hooks.json` — a bare top-level list of personal automation hooks. Both extensions are accepted (the `.json` variant is read through the same YAML decoder, since YAML ⊇ JSON); if both files exist, `hooks.yaml` wins and the `.json` is ignored with a warning.
+- `entities/` — reserved for future user-level type definitions; not yet consumed.
+
+The user config directory is `$XDG_CONFIG_HOME/kira` when `XDG_CONFIG_HOME` is set, else `$HOME/.config/kira`. With neither variable set (e.g. a sandbox), there is no user tier — this is silent, never an error. The tier is read on every command as a stat plus optional parse per file. A missing or malformed user file is warned about once and ignored, never fatal: a broken personal config must not brick a repo.
+
+Effective value per key class:
+
+| Key class | builtin | user tier | repo tier |
+|---|---|---|---|
+| `ui.*` (icons, background) | default | `config.yaml` overrides builtin | overrides user (repo wins) |
+| automation hooks | — | `hooks.{yaml,json}`, kept separate (see below) | repo `automation` |
+| everything else (project, id, workflows, vocabularies, sprints, …) | default | **ignored** with a one-line stderr warning per key | authoritative |
+
+Precedence for `ui.*` is builtin < user < repo. Any other key in `config.yaml` is repo-authoritative: it is read, dropped, and warned (`<path>: key "X" is repo-authoritative; ignored`) so silent cross-clone divergence stays impossible. An `automation` block placed in `config.yaml` is a misfiling and is warned specifically (`personal hooks belong in hooks.yaml; ignored`).
+
+Personal hooks from `hooks.{yaml,json}` are: validated with the same rules as repo hooks; **auto-trusted** (the user's own machine — they run without a repo trust grant); provenance-tagged (`kira automation list` marks them `(user)`, and the `--json` view carries an additive `source` field); and **excluded from the repo trust hash**. The trust hash covers only repo-tier hooks, so editing a personal hook never revokes repo trust and editing a repo hook never disturbs personal hooks. When an event fires, repo hooks run first (trust permitting) then user hooks, through the same match/payload/runner path.
+
+The tier loader reads all of these in one pass into a single structure, so the reserved `entities/` slot plugs in later without reopening the precedence question.

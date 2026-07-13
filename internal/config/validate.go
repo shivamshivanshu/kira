@@ -21,10 +21,7 @@ func Validate(c *datamodel.Config) error {
 	if err := validateEnum("merge.policy", c.Merge.Policy, datamodel.MergePolicies...); err != nil {
 		return err
 	}
-	if err := validateEnum("ui.icons", c.UI.Icons, datamodel.IconModes...); err != nil {
-		return err
-	}
-	if err := validateEnum("ui.background", c.UI.Background, datamodel.Backgrounds...); err != nil {
+	if err := validateUISection(c.UI); err != nil {
 		return err
 	}
 	if err := validateEnum("estimate.unit", c.Estimate.Unit, datamodel.EstimateUnits...); err != nil {
@@ -65,17 +62,28 @@ func Validate(c *datamodel.Config) error {
 	return validateSprints(c)
 }
 
+func validateUISection(ui datamodel.UI) error {
+	if err := validateEnum("ui.icons", ui.Icons, datamodel.IconModes...); err != nil {
+		return err
+	}
+	return validateEnum("ui.background", ui.Background, datamodel.Backgrounds...)
+}
+
 func validateAutomation(c *datamodel.Config) error {
-	for i, h := range c.Automation {
-		where := fmt.Sprintf("automation[%d]", i)
+	return validateAutomationHooks("automation", c.Automation)
+}
+
+func validateAutomationHooks(where string, hooks []datamodel.AutomationHook) error {
+	for i, h := range hooks {
+		at := fmt.Sprintf("%s[%d]", where, i)
 		if !slices.Contains(datamodel.AutomationEvents, h.On) {
-			return fmt.Errorf("config: %s.on: invalid event %q, want one of %v", where, h.On, datamodel.AutomationEvents)
+			return fmt.Errorf("config: %s.on: invalid event %q, want one of %v", at, h.On, datamodel.AutomationEvents)
 		}
 		if strings.TrimSpace(h.Run) == "" {
-			return fmt.Errorf("config: %s.run: required", where)
+			return fmt.Errorf("config: %s.run: required", at)
 		}
 		if _, err := h.TimeoutDuration(); err != nil {
-			return fmt.Errorf("config: %s.timeout: invalid duration %q", where, h.Timeout)
+			return fmt.Errorf("config: %s.timeout: invalid duration %q", at, h.Timeout)
 		}
 	}
 	return nil

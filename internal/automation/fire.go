@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,12 +18,17 @@ func Fire(w io.Writer, root, cacheDir string, cfg *datamodel.Config, ev Event, a
 	if os.Getenv(RecursionGuardEnv) != "" {
 		return
 	}
-	matched := matchedHooks(cfg, ev)
-	if len(matched) == 0 {
+	repo := matchedHooks(cfg.Automation, ev)
+	user := matchedHooks(cfg.UserAutomation, ev)
+	if len(repo) == 0 && len(user) == 0 {
 		return
 	}
-	if !Trusted(cacheDir, cfg) {
+	repoMayFire := len(repo) == 0 || Trusted(cacheDir, cfg)
+	if len(repo) > 0 && !repoMayFire {
 		fmt.Fprintf(w, "kira: %d automation hooks defined but not trusted — run `kira automation trust`\n", len(cfg.Automation))
+	}
+	run := firingSet(repoMayFire, repo, user)
+	if len(run) == 0 {
 		return
 	}
 	stdin, err := Payload(ev, root, time.Now().Format(time.RFC3339), actor())
@@ -31,14 +37,21 @@ func Fire(w io.Writer, root, cacheDir string, cfg *datamodel.Config, ev Event, a
 		return
 	}
 	env := append(os.Environ(), envMirror(ev, root)...)
-	for _, h := range matched {
+	for _, h := range run {
 		runHook(w, root, h, stdin, env)
 	}
 }
 
-func matchedHooks(cfg *datamodel.Config, ev Event) []datamodel.AutomationHook {
+func firingSet(repoMayFire bool, repo, user []datamodel.AutomationHook) []datamodel.AutomationHook {
+	if repoMayFire {
+		return append(slices.Clone(repo), user...)
+	}
+	return user
+}
+
+func matchedHooks(hooks []datamodel.AutomationHook, ev Event) []datamodel.AutomationHook {
 	var matched []datamodel.AutomationHook
-	for _, h := range cfg.Automation {
+	for _, h := range hooks {
 		if h.IsEnabled() && Matches(h, ev) {
 			matched = append(matched, h)
 		}
@@ -46,7 +59,7 @@ func matchedHooks(cfg *datamodel.Config, ev Event) []datamodel.AutomationHook {
 	return matched
 }
 
-func envMirror(ev Event, repo string) []string {
+func envMirror(ev Event, root string) []string {
 	return []string{
 		RecursionGuardEnv + "=1",
 		"KIRA_EVENT=" + string(ev.Name),
@@ -58,7 +71,7 @@ func envMirror(ev Event, repo string) []string {
 		"KIRA_TO=" + ev.To,
 		"KIRA_TO_CATEGORY=" + ev.ToCategory,
 		"KIRA_SOURCE=" + string(ev.Source),
-		"KIRA_ROOT=" + repo,
+		"KIRA_ROOT=" + root,
 		"KIRA_COMMIT=" + ev.Commit,
 	}
 }

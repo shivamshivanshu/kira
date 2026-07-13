@@ -11,8 +11,10 @@ import (
 )
 
 func (s *Store) AutomationList(cfg *datamodel.Config) *datamodel.AutomationListResult {
+	views := automationViews(cfg.Automation, datamodel.AutomationSourceRepo)
+	views = append(views, automationViews(cfg.UserAutomation, datamodel.AutomationSourceUser)...)
 	return &datamodel.AutomationListResult{
-		Hooks:   automationViews(cfg),
+		Hooks:   views,
 		Trusted: automation.Trusted(s.fs().CacheDir(), cfg),
 	}
 }
@@ -22,13 +24,13 @@ func (s *Store) AutomationTrust(cfg *datamodel.Config) (*datamodel.AutomationTru
 	if err != nil {
 		return nil, errx.User("recording automation trust: %v", err)
 	}
-	return &datamodel.AutomationTrustResult{Hooks: automationViews(cfg), Hash: hash}, nil
+	return &datamodel.AutomationTrustResult{Hooks: automationViews(cfg.Automation, datamodel.AutomationSourceRepo), Hash: hash}, nil
 }
 
-func automationViews(cfg *datamodel.Config) []datamodel.AutomationHookView {
-	views := make([]datamodel.AutomationHookView, len(cfg.Automation))
-	for i, h := range cfg.Automation {
-		views[i] = datamodel.AutomationHookView{Name: h.Name, On: h.On, Run: h.Run, Enabled: h.IsEnabled()}
+func automationViews(hooks []datamodel.AutomationHook, source datamodel.AutomationSource) []datamodel.AutomationHookView {
+	views := make([]datamodel.AutomationHookView, len(hooks))
+	for i, h := range hooks {
+		views[i] = datamodel.AutomationHookView{Name: h.Name, On: h.On, Run: h.Run, Enabled: h.IsEnabled(), Source: source}
 	}
 	return views
 }
@@ -47,7 +49,7 @@ func (s *Store) fireAutomation(cfg *datamodel.Config, cs *datamodel.ChangeSet, s
 }
 
 func (s *Store) fireSyncCompleted(cfg *datamodel.Config, report *syncx.Report) {
-	if len(cfg.Automation) == 0 {
+	if len(cfg.Automation) == 0 && len(cfg.UserAutomation) == 0 {
 		return
 	}
 	s.fire(cfg, automation.Event{Name: datamodel.EventSyncCompleted, Source: "sync", Sync: report})

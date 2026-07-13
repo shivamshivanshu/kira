@@ -1,6 +1,7 @@
 package core
 
 import (
+	"os"
 	"slices"
 	"strings"
 
@@ -34,7 +35,7 @@ func (s *Store) fs() *storage.FS { return s.store }
 func (s *Store) Root() string { return s.root }
 
 func (s *Store) Config() (*datamodel.Config, error) {
-	cfg, err := config.Load(s.root)
+	cfg, err := config.LoadWithUser(s.root, os.Getenv, os.Stderr)
 	if err != nil {
 		return nil, errx.User("%v", err)
 	}

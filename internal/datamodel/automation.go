@@ -45,11 +45,19 @@ func (h AutomationHook) TimeoutDuration() (time.Duration, error) {
 	return d, nil
 }
 
+type AutomationSource string
+
+const (
+	AutomationSourceRepo AutomationSource = ""
+	AutomationSourceUser AutomationSource = "user"
+)
+
 type AutomationHookView struct {
-	Name    string    `json:"name"`
-	On      EventName `json:"on"`
-	Run     string    `json:"run"`
-	Enabled bool      `json:"enabled"`
+	Name    string           `json:"name"`
+	On      EventName        `json:"on"`
+	Run     string           `json:"run"`
+	Enabled bool             `json:"enabled"`
+	Source  AutomationSource `json:"source,omitempty"`
 }
 
 type AutomationListResult struct {

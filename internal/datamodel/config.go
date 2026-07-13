@@ -21,6 +21,8 @@ type Config struct {
 	Estimate    Estimate            `yaml:"estimate"`
 	Automation  []AutomationHook    `yaml:"automation"`
 	Fields      map[string]any      `yaml:"fields"`
+
+	UserAutomation []AutomationHook `yaml:"-" json:"-"`
 }
 
 type Project struct {
