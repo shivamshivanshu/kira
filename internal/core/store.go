@@ -52,8 +52,8 @@ func (s *Store) load(cfg *datamodel.Config) ([]*datamodel.Item, id.Snapshot, *id
 	if err != nil {
 		return nil, id.Snapshot{}, nil, err
 	}
-	snap := storage.Snapshot(cfg.Project.Key, items)
-	return items, snap, id.NewResolver(snap), nil
+	snap, resolver := resolverFor(cfg.Project.Key, items)
+	return items, snap, resolver, nil
 }
 
 func (s *Store) resolveRef(cfg *datamodel.Config, ref string) (*datamodel.Item, []*datamodel.Item, *id.Resolver, error) {

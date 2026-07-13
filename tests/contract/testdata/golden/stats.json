@@ -1,0 +1,39 @@
+{
+  "scope": {
+    "weeks": 8
+  },
+  "completion": {
+    "done": 0,
+    "total": 3,
+    "dropped": 0,
+    "pct": 0
+  },
+  "cycle_time_days": {
+    "p50": 0,
+    "p90": 0,
+    "n": 0
+  },
+  "lead_time_days": {
+    "p50": 0,
+    "p90": 0,
+    "n": 0
+  },
+  "throughput_per_week": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "estimate": {
+    "total": 3,
+    "unit": "points"
+  },
+  "reopens": {
+    "count": 0,
+    "items": []
+  }
+}

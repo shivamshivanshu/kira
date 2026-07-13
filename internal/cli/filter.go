@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -45,7 +44,7 @@ func renderFilterList(w io.Writer, res *datamodel.FilterListResult) {
 		fmt.Fprintln(w, "no filters configured")
 		return
 	}
-	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+	tw := newTabWriter(w)
 	for _, f := range res.Filters {
 		fmt.Fprintf(tw, "%s\t%s\n", f.Name, f.Query)
 	}

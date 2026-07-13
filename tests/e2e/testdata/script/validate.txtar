@@ -1,0 +1,54 @@
+# kira validate checks a single file against the schema and config; nvim/pre-commit plumbing.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'anchor' --no-edit
+
+# a well-formed file passes and exits zero
+cp good.md .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZZA.md
+exec kira validate .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZZA.md
+stdout 'ok: 0 error'
+
+# a file with a bad state fails and reports only that file
+! exec kira validate bad.md
+stdout 'error   state'
+stdout 'problems found'
+
+# --json report on stdout, non-zero exit
+! exec kira validate --json bad.md
+stdout '"ok": false'
+
+-- good.md --
+---
+id: 01HZZZZZZZZZZZZZZZZZZZZZZZA
+number: KIRA-90
+aliases: []
+type: ticket
+title: fine
+state: TODO
+labels: [bug]
+blocked_by: []
+epic: null
+created: 2026-07-10T09:14:00+05:30
+updated: 2026-07-10T09:14:00+05:30
+---
+## Description
+-- bad.md --
+---
+id: 01HZZZZZZZZZZZZZZZZZZZZZZZC
+number: KIRA-91
+aliases: []
+type: ticket
+title: bad state
+state: WAT
+labels: []
+blocked_by: []
+epic: null
+created: 2026-07-10T09:14:00+05:30
+updated: 2026-07-10T09:14:00+05:30
+---
+## Description

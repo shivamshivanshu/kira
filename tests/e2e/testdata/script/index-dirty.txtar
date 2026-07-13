@@ -1,0 +1,96 @@
+# Under commit.mode manual a mutation stages but never commits, so HEAD is
+# unchanged while the working tree differs: the index's dirty-hash watermark
+# must reflect the uncommitted content, not the last committed state.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+cp manual-config.yaml .kira/config.yaml
+exec git add .kira/config.yaml
+exec git commit -m 'switch to manual mode'
+
+# create + commit one ticket so there is a committed baseline
+exec kira create ticket --title committed --no-edit
+exec git add -A
+exec git commit -m 'add ticket'
+
+exec kira list --json
+stdout '"count": 1'
+
+# an uncommitted edit changes the working tree but not HEAD; the read must
+# still show the edited value off the dirty watermark
+exec kira edit KIRA-1 --field title=edited-uncommitted
+exec git rev-list --count HEAD
+stdout '^3$'
+exec kira show KIRA-1 --json
+stdout '"title": "edited-uncommitted"'
+
+# reverting the uncommitted edit is likewise reflected (previously-dirty path)
+exec kira edit KIRA-1 --field title=committed
+exec kira show KIRA-1 --json
+stdout '"title": "committed"'
+
+-- manual-config.yaml --
+version: 1
+
+project:
+  key: KIRA
+  name: kira
+
+id:
+  style: sequential
+
+workflows:
+  ticket:
+    states:
+      - { key: TODO,        category: todo }
+      - { key: IN_PROGRESS, category: doing }
+      - { key: REVIEW,      category: doing }
+      - { key: DONE,        category: done }
+      - { key: WONT_DO,     category: done, resolution: dropped }
+    initial: TODO
+    transitions:
+      TODO:        [IN_PROGRESS, WONT_DO]
+      IN_PROGRESS: [REVIEW, TODO, WONT_DO]
+      REVIEW:      [DONE, IN_PROGRESS]
+      DONE:        []
+      WONT_DO:     []
+    enforce_transitions: true
+  epic:
+    states:
+      - { key: PLANNED, category: todo }
+      - { key: ACTIVE,  category: doing }
+      - { key: DONE,    category: done }
+    initial: PLANNED
+    transitions:
+      PLANNED: [ACTIVE]
+      ACTIVE:  [DONE]
+      DONE:    []
+
+labels:
+  known: []
+  strict: false
+
+people:
+  known: []
+  strict: false
+
+commit:
+  mode: manual
+  trailer: Kira-Ticket
+
+merge:
+  policy: auto
+
+sync:
+  push: false
+
+ui:
+  icons: auto
+
+estimate:
+  unit: points

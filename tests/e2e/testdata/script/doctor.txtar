@@ -1,0 +1,65 @@
+# kira doctor detects each violation class on a broken fixture and exits non-zero.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'real one' --no-edit
+
+# a clean repo reports ok and exits zero
+exec kira doctor
+stdout 'ok: 0 error'
+
+# drop in broken items: schema/state/vocab/refs violations + a colliding number
+cp broken.md .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZZA.md
+cp collider.md .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZZB.md
+
+! exec kira doctor
+stdout 'error   state'
+stdout 'dangling-ref'
+stdout 'error   schema'
+stdout 'vocab'
+stdout 'id-collision'
+stdout 'problems found'
+
+# --json emits a machine-readable report on stdout and still exits non-zero
+! exec kira doctor --json
+stdout '"ok": false'
+stdout '"class": "id-collision"'
+stdout '"kind": "live-live"'
+
+-- broken.md --
+---
+id: 01HZZZZZZZZZZZZZZZZZZZZZZZA
+number: KIRA-50
+aliases: []
+type: ticket
+title: broken
+state: NONEXISTENT
+labels: [notaknownlabel]
+blocked_by: [01HXXXXXXXXXXXXXXXXXXXXXXX]
+epic: 01HYYYYYYYYYYYYYYYYYYYYYYY
+due: not-a-date
+sprint: 2099-S1
+mystery_field: 1
+created: 2026-07-10T09:14:00+05:30
+updated: 2026-07-10T09:14:00+05:30
+---
+## Description
+-- collider.md --
+---
+id: 01HZZZZZZZZZZZZZZZZZZZZZZZB
+number: KIRA-1
+aliases: []
+type: ticket
+title: collider
+state: TODO
+labels: []
+blocked_by: []
+epic: null
+created: 2026-07-11T09:14:00+05:30
+updated: 2026-07-11T09:14:00+05:30
+---
+## Description

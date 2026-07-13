@@ -2,7 +2,9 @@ package codec
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
@@ -36,6 +38,38 @@ func ParseComments(body string) []datamodel.Comment {
 			Body:   strings.Join(lines[i+1:end], "\n"),
 		})
 		i = end
+	}
+	return out
+}
+
+func LintComments(body string) []string {
+	var out []string
+	open := false
+	for _, line := range strings.Split(body, "\n") {
+		trimmed := strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(trimmed, "<!-- kira:comment"):
+			if open {
+				out = append(out, "comment block opened before the previous one closed")
+			}
+			open = true
+			m := commentOpen.FindStringSubmatch(trimmed)
+			if m == nil {
+				out = append(out, "comment marker does not match `id=<ulid> author=<name> ts=<rfc3339>`")
+				continue
+			}
+			if _, err := time.Parse(time.RFC3339, m[3]); err != nil {
+				out = append(out, "comment timestamp "+strconv.Quote(m[3])+" is not RFC3339")
+			}
+		case trimmed == commentClose:
+			if !open {
+				out = append(out, "comment close marker without a matching open")
+			}
+			open = false
+		}
+	}
+	if open {
+		out = append(out, "comment block is never closed")
 	}
 	return out
 }

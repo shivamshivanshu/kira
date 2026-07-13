@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -68,7 +67,7 @@ func renderList(w io.Writer, res *datamodel.ListResult) {
 		fmt.Fprintln(w, "no items")
 		return
 	}
-	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+	tw := newTabWriter(w)
 	for _, it := range res.Items {
 		fmt.Fprintln(tw, formatItemRow(it))
 	}

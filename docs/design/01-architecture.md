@@ -117,7 +117,7 @@ CREATE TABLE commit_links (item_id TEXT REFERENCES items(id), sha TEXT, subject 
 
 CREATE VIRTUAL TABLE body_fts USING fts5(item_id UNINDEXED, title, body);  -- backs `kira find` fallback / full-text query
 
-CREATE TABLE events (        -- cached view of git-derived field history; fully rebuildable from `git log --follow -p`
+CREATE TABLE events (        -- cached view of git-derived field history; fully rebuildable from `git log -p` (no --follow: ULID paths never rename, and --follow bleeds sibling history)
   item_id    TEXT, ts TEXT, field TEXT, old_value TEXT, new_value TEXT, commit_sha TEXT,
   PRIMARY KEY (item_id, commit_sha, field)
 );

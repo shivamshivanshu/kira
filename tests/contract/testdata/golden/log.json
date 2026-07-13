@@ -1,0 +1,98 @@
+{
+  "id": "<ULID-1>",
+  "number": "KIRA-2",
+  "entries": [
+    {
+      "kind": "event",
+      "ts": "<TS>",
+      "field": "state",
+      "old": "TODO",
+      "new": "IN_PROGRESS",
+      "sha": "<SHA>"
+    },
+    {
+      "kind": "event",
+      "ts": "<TS>",
+      "field": "subtype",
+      "new": "bug",
+      "sha": "<SHA>"
+    },
+    {
+      "kind": "event",
+      "ts": "<TS>",
+      "field": "priority",
+      "new": "P1",
+      "sha": "<SHA>"
+    },
+    {
+      "kind": "event",
+      "ts": "<TS>",
+      "field": "rank",
+      "new": "0|hzzzzz:",
+      "sha": "<SHA>"
+    },
+    {
+      "kind": "event",
+      "ts": "<TS>",
+      "field": "reporter",
+      "new": "alice",
+      "sha": "<SHA>"
+    },
+    {
+      "kind": "event",
+      "ts": "<TS>",
+      "field": "sprint",
+      "new": "2026-S14",
+      "sha": "<SHA>"
+    },
+    {
+      "kind": "event",
+      "ts": "<TS>",
+      "field": "due",
+      "new": "2026-07-20",
+      "sha": "<SHA>"
+    },
+    {
+      "kind": "commit",
+      "ts": "<TS>",
+      "sha": "<SHA>",
+      "subject": "kira: KIRA-2 state TODO -> IN_PROGRESS",
+      "author": "tester"
+    },
+    {
+      "kind": "commit",
+      "ts": "<TS>",
+      "sha": "<SHA>",
+      "subject": "kira: KIRA-2 comment",
+      "author": "tester"
+    },
+    {
+      "kind": "commit",
+      "ts": "<TS>",
+      "sha": "<SHA>",
+      "subject": "kira: KIRA-2 link relates KIRA-3",
+      "author": "tester"
+    },
+    {
+      "kind": "commit",
+      "ts": "<TS>",
+      "sha": "<SHA>",
+      "subject": "kira: KIRA-2 link blocked-by KIRA-3",
+      "author": "tester"
+    },
+    {
+      "kind": "commit",
+      "ts": "<TS>",
+      "sha": "<SHA>",
+      "subject": "kira: KIRA-2 edit subtype,priority,rank,reporter,sprint,due",
+      "author": "tester"
+    },
+    {
+      "kind": "commit",
+      "ts": "<TS>",
+      "sha": "<SHA>",
+      "subject": "kira: create KIRA-2 \"Rich ticket\"",
+      "author": "tester"
+    }
+  ]
+}

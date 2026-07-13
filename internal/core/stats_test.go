@@ -10,7 +10,7 @@ import (
 
 var burnSprint = datamodel.Sprint{Key: "S1", Name: "Sprint 1", Start: "2026-01-05", End: "2026-01-09"}
 
-var burnItems = []burnItem{
+var burnItems = []metricItem{
 	{estimate: 3, estimated: true, doneDay: "2026-01-07"},
 	{estimate: 5, estimated: true, doneDay: "2026-01-08"},
 	{estimate: 2, estimated: true},
@@ -53,7 +53,7 @@ func TestComputeBurndownBeforeStart(t *testing.T) {
 }
 
 func TestComputeBurndownDoneBeforeStartExcludedFromDayOne(t *testing.T) {
-	items := []burnItem{
+	items := []metricItem{
 		{estimate: 4, estimated: true, doneDay: "2026-01-02"},
 		{estimate: 6, estimated: true},
 	}
@@ -64,7 +64,7 @@ func TestComputeBurndownDoneBeforeStartExcludedFromDayOne(t *testing.T) {
 }
 
 func TestComputeBurndownCountsDegraded(t *testing.T) {
-	items := []burnItem{{estimate: 1, estimated: true, doneDay: "2026-01-06", degraded: true}}
+	items := []metricItem{{estimate: 1, estimated: true, doneDay: "2026-01-06", degraded: true}}
 	b := computeBurndown(burnSprint, "points", items, "2026-01-06")
 	if b.DegradedN != 1 {
 		t.Errorf("degraded_n = %d, want 1", b.DegradedN)
@@ -76,7 +76,7 @@ func TestComputeVelocity(t *testing.T) {
 		{Key: "S1", Start: "2026-01-05", End: "2026-01-09"},
 		{Key: "S2", Start: "2026-01-12", End: "2026-01-16"},
 	}
-	bySprint := map[string][]velocityItem{
+	bySprint := map[string][]metricItem{
 		"S1": {
 			{estimate: 3, doneDay: "2026-01-07"},
 			{estimate: 5, doneDay: "2026-01-08"},
@@ -101,11 +101,11 @@ func TestComputeVelocity(t *testing.T) {
 
 func TestComputeVelocityTrailingThreeOfFour(t *testing.T) {
 	var closed []datamodel.Sprint
-	bySprint := map[string][]velocityItem{}
+	bySprint := map[string][]metricItem{}
 	for i, key := range []string{"A", "B", "C", "D"} {
 		sp := datamodel.Sprint{Key: key, Start: "2026-01-05", End: "2026-01-09"}
 		closed = append(closed, sp)
-		bySprint[key] = []velocityItem{{estimate: float64(10 * (i + 1)), doneDay: "2026-01-06"}}
+		bySprint[key] = []metricItem{{estimate: float64(10 * (i + 1)), doneDay: "2026-01-06"}}
 	}
 	v := computeVelocity(closed, "points", bySprint)
 	if v.Trailing3 != 30 {
@@ -126,7 +126,7 @@ func TestComputeVelocityRoundsTrailing(t *testing.T) {
 		{Key: "B", Start: "2026-01-12", End: "2026-01-16"},
 		{Key: "C", Start: "2026-01-19", End: "2026-01-23"},
 	}
-	bySprint := map[string][]velocityItem{
+	bySprint := map[string][]metricItem{
 		"A": {{estimate: 28, doneDay: "2026-01-06"}},
 		"B": {{estimate: 31, doneDay: "2026-01-13"}},
 		"C": {{estimate: 26, doneDay: "2026-01-20"}},

@@ -52,7 +52,7 @@ func Default() *datamodel.Config {
 		// and sprint entries are illustrations, not defaults
 		Filters: map[string]string{},
 		Sprints: nil,
-		Commit:  datamodel.Commit{Mode: datamodel.CommitAuto, Trailer: "Kira-Ticket"},
+		Commit:  datamodel.Commit{Mode: datamodel.CommitAuto, Trailer: "Kira-Ticket", CloseTrailer: "Kira-Closes"},
 		Merge:   datamodel.Merge{Policy: datamodel.MergeAuto},
 		Sync:    datamodel.Sync{Push: false},
 		UI:      datamodel.UI{Icons: datamodel.IconAuto},

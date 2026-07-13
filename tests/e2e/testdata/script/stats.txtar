@@ -77,9 +77,22 @@ stdout 'Burndown 2026-S1'
 stdout '2026-01-06  remaining 10  ideal 12.8'
 stdout 'unestimated items \(burn nothing\): 1'
 
-# the general metrics slice is M2; bare stats says so
-! exec kira stats
-stderr 'pass --sprint <key> and/or --velocity'
+# bare stats: project-wide general metrics (docs/design/08-telemetry.md §2).
+# done = KIRA-1,2,6 (done-category, not dropped); KIRA-5 dropped; total 6.
+# cycle time is derived from commit dates (KIRA-1 1d, KIRA-2 2d, KIRA-6 1d).
+exec kira stats --json
+stdout '"total": 6'
+stdout '"done": 3'
+stdout '"dropped": 1'
+stdout '"pct": 0.5'
+stdout '"cycle_time_days"'
+stdout '"lead_time_days"'
+stdout '"throughput_per_week"'
+stdout '"estimate"'
+
+# the human render carries completion
+exec kira stats
+stdout 'completion: 3/6 done \(50%\)'
 
 # unknown sprint and unset active pointer are user errors
 ! exec kira stats --sprint 2099-S1

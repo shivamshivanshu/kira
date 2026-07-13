@@ -73,6 +73,7 @@ func kira(t *testing.T, dir string, args ...string) (stdout, stderr string, code
 	cmd.Env = append(baseEnv(), "HOME="+dir,
 		"GIT_AUTHOR_NAME=tester", "GIT_AUTHOR_EMAIL=tester@example.com",
 		"GIT_COMMITTER_NAME=tester", "GIT_COMMITTER_EMAIL=tester@example.com",
+		"GIT_AUTHOR_DATE=2026-07-13T12:00:00Z", "GIT_COMMITTER_DATE=2026-07-13T12:00:00Z",
 		"EDITOR=true",
 	)
 	var out, errBuf bytes.Buffer
@@ -215,6 +216,11 @@ func TestJSONContract(t *testing.T) {
 		{"sprint-list", seededRepo, []string{"sprint", "list"}, true},
 		{"sprint-activate", seededRepo, []string{"sprint", "activate", "2026-S14"}, false},
 		{"sprint-close", seededRepo, []string{"sprint", "close", "2026-S14"}, true},
+		{"index", seededRepo, []string{"index"}, false},
+		{"doctor", kiraRepo, []string{"doctor"}, true},
+		{"log", seededRepo, []string{"log", "KIRA-2"}, true},
+		{"stats", seededRepo, []string{"stats"}, true},
+		{"blame", seededRepo, []string{"blame", "KIRA-2"}, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -271,6 +277,7 @@ func TestJSONErrors(t *testing.T) {
 var (
 	ulidRE = regexp.MustCompile(`[0-9A-HJKMNP-TV-Z]{26}`)
 	tsRE   = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})`)
+	shaRE  = regexp.MustCompile(`\b[0-9a-f]{40}\b`)
 )
 
 func scrub(s, dir string) string {
@@ -286,6 +293,7 @@ func scrub(s, dir string) string {
 		seen[u] = r
 		return r
 	})
+	s = shaRE.ReplaceAllString(s, "<SHA>")
 	return tsRE.ReplaceAllString(s, "<TS>")
 }
 

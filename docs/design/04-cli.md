@@ -325,7 +325,7 @@ kira log <id> [--field NAME] [--since DATE] [--commits] [--json]
 | `--since` | only events after this date |
 | `--commits` | include linked-commit entries interleaved (default: on) |
 
-Behavior: `git log --follow -p -- .kira/tickets/<ulid>.md` (live shell-out; `--follow` is safe here because the file is never renamed) piped through a frontmatter-aware structural diff to produce field-change events, interleaved chronologically with `commit_links` rows from the index. This is the sole "history" mechanism — nothing is stored beyond git's own object model. See [08-telemetry.md](08-telemetry.md) for how this feeds cycle/lead time.
+Behavior: `git log -p -- .kira/tickets/<ulid>.md` (live shell-out; no `--follow` — the ULID path is never renamed so a plain log is complete, and `--follow` is *unsafe* here because its rename detection bleeds structurally-similar sibling tickets' history in) piped through a frontmatter-aware structural diff to produce field-change events, interleaved chronologically with `commit_links` rows from the index. This is the sole "history" mechanism — nothing is stored beyond git's own object model. See [08-telemetry.md](08-telemetry.md) for how this feeds cycle/lead time.
 
 ```json
 {"events": [{"ts": "2026-07-11T18:30:00+05:30", "kind": "field_change", "field": "state", "from": "TODO", "to": "IN_PROGRESS", "commit": "a1b2c3d"},

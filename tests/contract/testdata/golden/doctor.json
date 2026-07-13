@@ -1,0 +1,30 @@
+{
+  "ok": true,
+  "findings": [
+    {
+      "class": "environment",
+      "severity": "info",
+      "message": "fzf not found on PATH; the feature that uses it falls back to a slower pure-Go path"
+    },
+    {
+      "class": "environment",
+      "severity": "info",
+      "message": "rg not found on PATH; the feature that uses it falls back to a slower pure-Go path"
+    },
+    {
+      "class": "hooks",
+      "severity": "info",
+      "message": "no tracked hooks in .kira/hooks"
+    },
+    {
+      "class": "index-freshness",
+      "severity": "info",
+      "message": "index freshness not checked (index unavailable)"
+    }
+  ],
+  "summary": {
+    "error": 0,
+    "warning": 0,
+    "info": 4
+  }
+}

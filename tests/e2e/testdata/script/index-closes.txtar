@@ -1,0 +1,66 @@
+# A Kira-Closes trailer on a commit that has reached the landed ref fires the
+# configured done-transition, but only under `kira index --closes`; a plain
+# index never mutates tickets. Closes are idempotent, and a manual reopen after
+# a close survives a cache wipe and re-scan (the closing commit is older than
+# the reopen, so it must not re-fire).
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git symbolic-ref HEAD refs/heads/main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create ticket --title closeme --no-edit
+exec kira show KIRA-1 --json
+stdout '"state": "TODO"'
+
+# a landed commit declares the ticket done (dated after the ticket's creation)
+exec sleep 1
+exec git commit --allow-empty -m 'ship the feature' -m 'Kira-Closes: KIRA-1'
+
+# a plain index links the commit but must not transition the ticket
+exec kira index --json
+stdout '"closed": \[\]'
+exec kira show KIRA-1 --json
+stdout '"state": "TODO"'
+
+# --closes applies the transition
+exec kira index --closes --json
+stdout '"closed":'
+stdout 'KIRA-1'
+exec kira show KIRA-1 --json
+stdout '"category": "done"'
+
+# re-scanning fires nothing: watermark advanced and the item is already done
+exec kira index --closes --json
+stdout '"closed": \[\]'
+
+# reopen case: manual move after a close, cache wiped, re-scanned
+exec kira create ticket --title reopenme --no-edit
+exec kira show KIRA-2 --json
+stdout '"state": "TODO"'
+
+exec sleep 1
+exec git commit --allow-empty -m 'ship again' -m 'Kira-Closes: KIRA-2'
+exec kira index --closes --json
+stdout 'KIRA-2'
+exec kira show KIRA-2 --json
+stdout '"category": "done"'
+
+# the manual reopen bumps Updated to a time after the closing commit
+exec sleep 1
+exec kira move KIRA-2 TODO --force
+exec kira show KIRA-2 --json
+stdout '"state": "TODO"'
+
+# wiping the cache drops the landed watermark, so the commit is seen again;
+# the reopen guard keeps the ticket reopened
+exec rm -rf .kira/.cache
+exec kira index --closes --json
+stdout '"closed": \[\]'
+exec kira show KIRA-2 --json
+stdout '"state": "TODO"'
+
+-- .keep --

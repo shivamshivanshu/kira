@@ -13,6 +13,21 @@ import (
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
+func ReadItem(path string) (*datamodel.Item, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return codec.Parse(string(data))
+}
+
+func ULIDFromFilename(name string) (string, bool) {
+	if !strings.HasSuffix(name, ".md") || strings.HasPrefix(name, ".") {
+		return "", false
+	}
+	return strings.TrimSuffix(name, ".md"), true
+}
+
 func (s *Store) LoadAll() ([]*datamodel.Item, error) {
 	entries, err := os.ReadDir(s.TicketsDir())
 	if err != nil {
@@ -23,23 +38,20 @@ func (s *Store) LoadAll() ([]*datamodel.Item, error) {
 	}
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") || strings.HasPrefix(e.Name(), ".") {
+		if e.IsDir() {
 			continue
 		}
-		names = append(names, e.Name())
+		if _, ok := ULIDFromFilename(e.Name()); ok {
+			names = append(names, e.Name())
+		}
 	}
 	sort.Strings(names)
 
 	items := make([]*datamodel.Item, 0, len(names))
 	for _, name := range names {
-		path := filepath.Join(s.TicketsDir(), name)
-		data, err := os.ReadFile(path)
+		it, err := ReadItem(filepath.Join(s.TicketsDir(), name))
 		if err != nil {
 			return nil, errx.User("reading %s: %v", name, err)
-		}
-		it, err := codec.Parse(string(data))
-		if err != nil {
-			return nil, errx.User("parsing %s: %v", name, err)
 		}
 		items = append(items, it)
 	}

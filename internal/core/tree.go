@@ -7,7 +7,7 @@ import (
 )
 
 func (s *Store) Tree(cfg *datamodel.Config, ref string) (*datamodel.TreeResult, error) {
-	items, _, resolver, err := s.load(cfg)
+	items, _, resolver, idxNotes, err := s.indexedLoad(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -16,18 +16,10 @@ func (s *Store) Tree(cfg *datamodel.Config, ref string) (*datamodel.TreeResult, 
 	for _, it := range items {
 		byID[it.ID] = it
 	}
-	children := map[string][]*datamodel.Item{}
+	children := epicChildren(items)
 	roots := make([]*datamodel.Item, 0)
 	for _, it := range items {
-		p := ""
-		if it.Epic != nil {
-			if _, ok := byID[*it.Epic]; ok {
-				p = *it.Epic
-			}
-		}
-		if p != "" {
-			children[p] = append(children[p], it)
-		} else {
+		if it.Epic == nil || byID[*it.Epic] == nil {
 			roots = append(roots, it)
 		}
 	}
@@ -50,7 +42,7 @@ func (s *Store) Tree(cfg *datamodel.Config, ref string) (*datamodel.TreeResult, 
 		if err != nil {
 			return nil, err
 		}
-		return &datamodel.TreeResult{Root: &ulid, Nodes: []datamodel.TreeNode{node}}, nil
+		return &datamodel.TreeResult{Root: &ulid, Nodes: []datamodel.TreeNode{node}, StderrNotes: idxNotes}, nil
 	}
 
 	sortItems(roots)
@@ -62,7 +54,17 @@ func (s *Store) Tree(cfg *datamodel.Config, ref string) (*datamodel.TreeResult, 
 		}
 		nodes = append(nodes, node)
 	}
-	return &datamodel.TreeResult{Root: nil, Nodes: nodes}, nil
+	return &datamodel.TreeResult{Root: nil, Nodes: nodes, StderrNotes: idxNotes}, nil
+}
+
+func epicChildren(items []*datamodel.Item) map[string][]*datamodel.Item {
+	children := map[string][]*datamodel.Item{}
+	for _, it := range items {
+		if it.Epic != nil {
+			children[*it.Epic] = append(children[*it.Epic], it)
+		}
+	}
+	return children
 }
 
 type treeBuilder struct {

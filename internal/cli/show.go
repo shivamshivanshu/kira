@@ -24,6 +24,7 @@ func newShowCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			emitStderrNotes(cmd.ErrOrStderr(), res.StderrNotes)
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}

@@ -7,6 +7,7 @@ type Workflow struct {
 	Initial            string                  `yaml:"initial"`
 	Transitions        map[string][]Transition `yaml:"transitions"`
 	EnforceTransitions bool                    `yaml:"enforce_transitions"`
+	CloseTarget        string                  `yaml:"close_target,omitempty"`
 }
 
 type State struct {

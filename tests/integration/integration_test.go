@@ -10,25 +10,11 @@ import (
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/testutil"
 )
 
 func initGitRepo(t *testing.T) string {
-	t.Helper()
-	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
-	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
-	t.Setenv("EDITOR", "true")
-	root := t.TempDir()
-	repo := gitx.Repo{Dir: root}
-	for _, args := range [][]string{
-		{"init"},
-		{"config", "user.email", "test@example.com"},
-		{"config", "user.name", "tester"},
-	} {
-		if _, err := repo.Output(args...); err != nil {
-			t.Fatalf("git %v: %v", args, err)
-		}
-	}
-	return root
+	return testutil.InitGitRepo(t)
 }
 
 func commitCount(t *testing.T, root string) int {

@@ -1,0 +1,64 @@
+# The SQLite index is a disposable cache: deleting .kira/.cache must yield
+# byte-identical results, and staleness (new commit, corruption, history
+# rewrite) must be detected and repaired transparently.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create ticket --title one --owner alice --no-edit
+exec kira create ticket --title two --owner bob --no-edit
+exec kira create epic --title big --no-edit
+
+# baseline outputs, captured while the index is fresh
+exec kira list --json
+cp stdout want-list.json
+exec kira show KIRA-1 --json
+cp stdout want-show.json
+exec kira query type=ticket --json
+cp stdout want-query.json
+
+# the index command reports state and forces a rebuild
+exec kira index --json
+stdout '"action": "fresh"'
+exec kira index --full --json
+stdout '"action": "full"'
+stdout '"items": 3'
+exec kira index
+stdout 'index fresh'
+
+# disposability: drop the whole cache, every read is identical
+rm .kira/.cache
+exec kira list --json
+cmp stdout want-list.json
+exec kira show KIRA-1 --json
+cmp stdout want-show.json
+exec kira query type=ticket --json
+cmp stdout want-query.json
+
+# a corrupted index.db auto-rebuilds rather than failing, on both the
+# automatic read path and the explicit index command
+exec kira index --full
+cp garbage .kira/.cache/index.db
+exec kira list --json
+cmp stdout want-list.json
+cp garbage .kira/.cache/index.db
+exec kira index --json
+stdout '"items": 3'
+
+# a new committed ticket is picked up incrementally
+exec kira create ticket --title four --no-edit
+exec kira list --json
+stdout '"count": 4'
+
+# a history rewrite (amend) triggers a full rescan and stays correct
+exec kira edit KIRA-4 --field title=four-renamed
+exec git commit --amend -m amended
+exec kira show KIRA-4 --json
+stdout '"title": "four-renamed"'
+
+-- garbage --
+this is not a sqlite database

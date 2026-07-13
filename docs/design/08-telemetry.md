@@ -9,7 +9,7 @@ Part of the kira design set — see [DESIGN.md](../../DESIGN.md) for decisions a
 Everything below is computed on demand from two inputs, nothing else:
 
 1. **The index** (`.cache/index.db`) — current item state, frontmatter fields, `created`/`updated` timestamps.
-2. **The git-derived transition-event stream** — populated during incremental reindex by replaying `git log --follow -p` per ticket file (same mechanism as [`kira log`](04-cli.md#kira-log)) and caching the resulting field-change events in `index.db`'s event cache. No telemetry data is stored independently of this cache; deleting `.cache/` loses zero information — the next reindex rederives it.
+2. **The git-derived transition-event stream** — populated during incremental reindex by replaying `git log -p` per ticket file (same mechanism as [`kira log`](04-cli.md#kira-log); no `--follow` — ULID paths never rename and `--follow` would bleed similar siblings' history) and caching the resulting field-change events in `index.db`'s event cache. No telemetry data is stored independently of this cache; deleting `.cache/` loses zero information — the next reindex rederives it.
 
 Category and resolution membership (`todo`/`doing`/`done`, `resolution: dropped`) come **only** from the `category`/`resolution` tags in `config.yaml`'s workflow definitions — never from matching on state *names*. This is what lets a team rename `IN_PROGRESS` to `DOING` without breaking cycle-time history: the category tag on the state definition is what telemetry keys off, not the string.
 

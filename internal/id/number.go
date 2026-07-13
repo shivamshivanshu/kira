@@ -45,3 +45,10 @@ func HashNumber(key string, u ULID) string {
 	s := u.String()
 	return key + "-" + s[len(s)-6:]
 }
+
+func AllocFor(hashStyle bool, key string, next int, u ULID) string {
+	if hashStyle {
+		return HashNumber(key, u)
+	}
+	return Number{Key: key, N: next}.String()
+}

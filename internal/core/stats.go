@@ -8,92 +8,152 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/id"
 )
 
 type StatsOpts struct {
+	Epic     string
+	Since    string
+	Weeks    int
 	Sprint   string
 	Velocity bool
 }
 
 func (s *Store) Stats(cfg *datamodel.Config, opts StatsOpts) (*datamodel.StatsResult, error) {
-	if opts.Sprint == "" && !opts.Velocity {
-		return nil, errx.User("general project metrics are not implemented yet (M2); pass --sprint <key> and/or --velocity")
-	}
-	items, err := s.LoadAll()
+	items, _, resolver, _, err := s.indexedLoad(cfg)
 	if err != nil {
 		return nil, err
 	}
-	today := time.Now().Local().Format(time.DateOnly)
+	now := time.Now().Local()
+	today := now.Format(time.DateOnly)
 	unit := string(cfg.Estimate.Unit)
 
-	memo := map[string]doneInfo{}
-	infoOf := func(it *datamodel.Item) (doneInfo, error) {
-		if di, ok := memo[it.ID]; ok {
-			return di, nil
+	memo := map[string]metricItem{}
+	metricsOf := func(it *datamodel.Item) (metricItem, error) {
+		if mi, ok := memo[it.ID]; ok {
+			return mi, nil
 		}
-		di, err := s.itemDoneInfo(cfg, it)
+		mi, err := s.itemMetrics(cfg, it)
 		if err != nil {
-			return doneInfo{}, err
+			return metricItem{}, err
 		}
-		memo[it.ID] = di
-		return di, nil
+		memo[it.ID] = mi
+		return mi, nil
 	}
 
-	res := &datamodel.StatsResult{}
-	if opts.Sprint != "" {
-		key, err := s.ResolveSprintKey(cfg, opts.Sprint)
+	scope, set, sprintKey, err := s.resolveScope(cfg, opts, items, resolver)
+	if err != nil {
+		return nil, err
+	}
+
+	mis := make([]metricItem, 0, len(set))
+	for _, it := range set {
+		mi, err := metricsOf(it)
 		if err != nil {
 			return nil, err
 		}
-		sp, _ := cfg.Sprint(key)
-		var bis []burnItem
-		for _, it := range items {
-			if !inSprint(it, key) {
-				continue
-			}
-			di, err := infoOf(it)
-			if err != nil {
-				return nil, err
-			}
-			bis = append(bis, burnItem{
-				estimate:  deref(it.Estimate),
-				estimated: it.Estimate != nil,
-				doneDay:   di.doneDay,
-				degraded:  di.degraded,
-			})
-		}
-		res.Burndown = computeBurndown(sp, unit, bis, today)
+		mis = append(mis, mi)
+	}
+
+	res := &datamodel.StatsResult{
+		Scope:      scope,
+		Completion: computeCompletion(mis),
+		CycleTime:  computeCycle(mis),
+		LeadTime:   computeLead(mis),
+		Throughput: computeThroughput(mis, scope.Weeks, now),
+		Estimate:   computeEstimate(mis, unit, cfg.Estimate.HoursPerDay),
+		Reopens:    computeReopens(mis),
+	}
+
+	if opts.Sprint != "" {
+		sp, _ := cfg.Sprint(sprintKey)
+		res.Burndown = computeBurndown(sp, unit, mis, today)
 	}
 	if opts.Velocity {
 		closed := closedSprints(cfg, today)
-		bySprint := map[string][]velocityItem{}
+		bySprint := map[string][]metricItem{}
 		for _, it := range items {
 			if it.Sprint == nil || !slices.ContainsFunc(closed, func(sp datamodel.Sprint) bool { return sp.Key == *it.Sprint }) {
 				continue
 			}
-			di, err := infoOf(it)
+			mi, err := metricsOf(it)
 			if err != nil {
 				return nil, err
 			}
-			bySprint[*it.Sprint] = append(bySprint[*it.Sprint], velocityItem{
-				estimate: deref(it.Estimate),
-				doneDay:  di.doneDay,
-				dropped:  it.Resolution != nil && *it.Resolution == "dropped",
-			})
+			bySprint[*it.Sprint] = append(bySprint[*it.Sprint], mi)
 		}
 		res.Velocity = computeVelocity(closed, unit, bySprint)
 	}
 	return res, nil
 }
 
-type burnItem struct {
-	estimate  float64
-	estimated bool
-	doneDay   string
-	degraded  bool
+func (s *Store) resolveScope(cfg *datamodel.Config, opts StatsOpts, items []*datamodel.Item, resolver *id.Resolver) (*datamodel.StatsScope, []*datamodel.Item, string, error) {
+	scope := &datamodel.StatsScope{Weeks: opts.Weeks, Since: opts.Since}
+	if scope.Weeks <= 0 {
+		scope.Weeks = defaultWeeks
+	}
+
+	set := items
+	if opts.Epic != "" {
+		ulid, err := resolver.Resolve(opts.Epic)
+		if err != nil {
+			return nil, nil, "", errx.User("%v", err)
+		}
+		epic := findByULID(items, ulid)
+		if epic == nil {
+			return nil, nil, "", errx.User("resolved %s to %s, which has no file", opts.Epic, ulid)
+		}
+		scope.Epic, scope.EpicNumber = ulid, epic.Number
+		set, err = descendants(items, ulid)
+		if err != nil {
+			return nil, nil, "", err
+		}
+	}
+
+	var sprintKey string
+	if opts.Sprint != "" {
+		var err error
+		sprintKey, err = s.ResolveSprintKey(cfg, opts.Sprint)
+		if err != nil {
+			return nil, nil, "", err
+		}
+		scope.Sprint = sprintKey
+	}
+
+	if sprintKey != "" || opts.Since != "" {
+		set = slices.DeleteFunc(slices.Clone(set), func(it *datamodel.Item) bool {
+			return (sprintKey != "" && !inSprint(it, sprintKey)) || (opts.Since != "" && it.Created < opts.Since)
+		})
+	}
+	return scope, set, sprintKey, nil
 }
 
-func computeBurndown(sp datamodel.Sprint, unit string, items []burnItem, today string) *datamodel.Burndown {
+func descendants(items []*datamodel.Item, epicULID string) ([]*datamodel.Item, error) {
+	children := epicChildren(items)
+	var out []*datamodel.Item
+	onPath := map[string]bool{epicULID: true}
+	var walk func(parentID string) error
+	walk = func(parentID string) error {
+		for _, c := range children[parentID] {
+			if onPath[c.ID] {
+				return errx.Conflict("epic cycle detected at %s", c.Number)
+			}
+			onPath[c.ID] = true
+			out = append(out, c)
+			if err := walk(c.ID); err != nil {
+				return err
+			}
+			delete(onPath, c.ID)
+		}
+		return nil
+	}
+	if err := walk(epicULID); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func computeBurndown(sp datamodel.Sprint, unit string, items []metricItem, today string) *datamodel.Burndown {
 	b := &datamodel.Burndown{Sprint: sp.Key, Start: sp.Start, End: sp.End, Unit: unit, Days: []datamodel.BurndownDay{}}
 	for _, it := range items {
 		if !it.estimated {
@@ -137,13 +197,7 @@ func linearIdeal(initialRemaining float64, dayIndex, span int) float64 {
 	return round1(initialRemaining * float64(span-1-dayIndex) / float64(span-1))
 }
 
-type velocityItem struct {
-	estimate float64
-	doneDay  string
-	dropped  bool
-}
-
-func computeVelocity(closed []datamodel.Sprint, unit string, bySprint map[string][]velocityItem) *datamodel.Velocity {
+func computeVelocity(closed []datamodel.Sprint, unit string, bySprint map[string][]metricItem) *datamodel.Velocity {
 	v := &datamodel.Velocity{Unit: unit, Sprints: make([]datamodel.VelocitySprint, 0, len(closed))}
 	for _, sp := range closed {
 		var completed float64

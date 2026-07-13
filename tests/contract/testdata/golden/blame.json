@@ -1,0 +1,104 @@
+{
+  "id": "<ULID-1>",
+  "number": "KIRA-2",
+  "fields": [
+    {
+      "field": "id",
+      "value": "<ULID-1>",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "created"
+    },
+    {
+      "field": "number",
+      "value": "KIRA-2",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "created"
+    },
+    {
+      "field": "type",
+      "value": "ticket",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "created"
+    },
+    {
+      "field": "subtype",
+      "value": "bug",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "commit"
+    },
+    {
+      "field": "title",
+      "value": "Rich ticket",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "created"
+    },
+    {
+      "field": "state",
+      "value": "IN_PROGRESS",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "commit"
+    },
+    {
+      "field": "priority",
+      "value": "P1",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "commit"
+    },
+    {
+      "field": "rank",
+      "value": "0|hzzzzz:",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "commit"
+    },
+    {
+      "field": "owner",
+      "value": "shivam",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "created"
+    },
+    {
+      "field": "reporter",
+      "value": "alice",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "commit"
+    },
+    {
+      "field": "epic",
+      "value": "<ULID-2>",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "created"
+    },
+    {
+      "field": "sprint",
+      "value": "2026-S14",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "commit"
+    },
+    {
+      "field": "due",
+      "value": "2026-07-20",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "commit"
+    },
+    {
+      "field": "estimate",
+      "value": "3",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "created"
+    }
+  ]
+}

@@ -46,6 +46,8 @@ type TreeNode struct {
 type TreeResult struct {
 	Root  *string    `json:"root"`
 	Nodes []TreeNode `json:"nodes"`
+
+	StderrNotes []string `json:"-"`
 }
 
 type CommentView struct {
@@ -83,6 +85,8 @@ type ShowResult struct {
 	Comments      []CommentView       `json:"comments"`
 	LinkedCommits []any               `json:"linked_commits"`
 	HistoryTail   []any               `json:"history_tail"`
+
+	StderrNotes []string `json:"-"`
 }
 
 type MutationResult struct {
@@ -171,9 +175,83 @@ type SprintCloseResult struct {
 	MovedTo    string   `json:"moved_to,omitempty"`
 }
 
+type Event struct {
+	Ts        string `json:"ts"`
+	Field     string `json:"field"`
+	Old       string `json:"old"`
+	New       string `json:"new"`
+	CommitSHA string `json:"commit"`
+}
+
+type LogEntry struct {
+	Kind    string `json:"kind"`
+	Ts      string `json:"ts"`
+	Field   string `json:"field,omitempty"`
+	Old     string `json:"old,omitempty"`
+	New     string `json:"new,omitempty"`
+	SHA     string `json:"sha,omitempty"`
+	Subject string `json:"subject,omitempty"`
+	Author  string `json:"author,omitempty"`
+}
+
+type LogResult struct {
+	ID      string     `json:"id"`
+	Number  string     `json:"number"`
+	Entries []LogEntry `json:"entries"`
+}
+
+type IndexResult struct {
+	Action string   `json:"action"`
+	Reason string   `json:"reason"`
+	Items  int      `json:"items"`
+	Closed []string `json:"closed"`
+
+	StderrNotes []string `json:"-"`
+}
+
 type StatsResult struct {
-	Burndown *Burndown `json:"burndown,omitempty"`
-	Velocity *Velocity `json:"velocity,omitempty"`
+	Scope      *StatsScope     `json:"scope,omitempty"`
+	Completion *Completion     `json:"completion,omitempty"`
+	CycleTime  *Percentiles    `json:"cycle_time_days,omitempty"`
+	LeadTime   *Percentiles    `json:"lead_time_days,omitempty"`
+	Throughput []int           `json:"throughput_per_week,omitempty"`
+	Estimate   *EstimateRollup `json:"estimate,omitempty"`
+	Reopens    *Reopens        `json:"reopens,omitempty"`
+	Burndown   *Burndown       `json:"burndown,omitempty"`
+	Velocity   *Velocity       `json:"velocity,omitempty"`
+}
+
+type StatsScope struct {
+	Epic       string `json:"epic,omitempty"`
+	EpicNumber string `json:"epic_number,omitempty"`
+	Sprint     string `json:"sprint,omitempty"`
+	Since      string `json:"since,omitempty"`
+	Weeks      int    `json:"weeks"`
+}
+
+type Completion struct {
+	Done    int     `json:"done"`
+	Total   int     `json:"total"`
+	Dropped int     `json:"dropped"`
+	Pct     float64 `json:"pct"`
+}
+
+type Percentiles struct {
+	P50       float64 `json:"p50"`
+	P90       float64 `json:"p90"`
+	N         int     `json:"n"`
+	DegradedN int     `json:"degraded_n,omitempty"`
+}
+
+type EstimateRollup struct {
+	Total          float64  `json:"total"`
+	Unit           string   `json:"unit"`
+	ActualRatioP50 *float64 `json:"actual_ratio_p50,omitempty"`
+}
+
+type Reopens struct {
+	Count int      `json:"count"`
+	Items []string `json:"items"`
 }
 
 type BurndownDay struct {
@@ -201,4 +279,19 @@ type Velocity struct {
 	Unit      string           `json:"unit"`
 	Sprints   []VelocitySprint `json:"sprints"`
 	Trailing3 float64          `json:"trailing_3"`
+}
+
+type BlameField struct {
+	Field      string `json:"field"`
+	Value      string `json:"value"`
+	When       string `json:"when"`
+	By         string `json:"by"`
+	SourceKind string `json:"source_kind"`
+	Degraded   bool   `json:"degraded,omitempty"`
+}
+
+type BlameResult struct {
+	ID     string       `json:"id"`
+	Number string       `json:"number"`
+	Fields []BlameField `json:"fields"`
 }

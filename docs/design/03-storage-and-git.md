@@ -76,11 +76,11 @@ Every mutating command writes via **temp file + rename** (write to `tickets/.<ul
 **No stored history.** `kira log <id>` is entirely derived at read time:
 
 ```
-git log --follow -p -- .kira/tickets/<ulid>.md
+git log -p -- .kira/tickets/<ulid>.md
 ```
 piped through a frontmatter-aware structural differ that turns each commit's patch into field-change events (`owner: alice -> bob`, `state: TODO -> IN_PROGRESS`, comment-block additions), interleaved chronologically with trailer-linked commits pulled from the index ([07-git-integration.md §1](07-git-integration.md#1-commit-linking-convention)). This event stream is also the *only* input to cycle-time/lead-time/throughput stats — there is no separate telemetry store.
 
-`--follow` is safe here specifically because filenames never change: the filename is the immutable ULID ([02-data-model.md §7](02-data-model.md#7-id-scheme)), so there is no rename for `--follow` to track across — it degrades to a plain `git log -p` on a never-renamed path.
+No `--follow`: the filename is the immutable ULID ([02-data-model.md §7](02-data-model.md#7-id-scheme)) and never changes, so a plain `git log -p` on that path is already complete. `--follow` is not merely unnecessary here — it is *unsafe*: its rename/copy detection pairs the file's add-boundary against structurally-similar sibling ticket files, so a ticket can inherit another's history (a content/SHA-sensitive, run-to-run-nondeterministic bleed). We omit it deliberately.
 
 **Rejected: the founder's original snapshot-linked-list idea** — on every edit, snapshot the old item and link it to the new one in a simple in-repo linked list, giving an explicit version chain per item. Evaluated and rejected for four concrete reasons:
 

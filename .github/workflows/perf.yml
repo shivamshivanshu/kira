@@ -1,0 +1,93 @@
+name: Perf budget (non-gating)
+
+# Same-job A/B: build the merge-base and HEAD binaries on one runner and run
+# them interleaved so runner speed cancels in the ratio. This job is a trend
+# report — it goes red only on harness failure or the cold-start tripwire,
+# never on the benchstat ratio (promotion to a failing gate is WP-7.7).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    env:
+      KIRA_PERF: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      # benchstat lives in CI only, never in the project go.mod.
+      - name: Install benchstat
+        run: go install golang.org/x/perf/cmd/benchstat@latest
+
+      - name: Resolve merge-base
+        id: base
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_ref="${{ github.event.pull_request.base.sha }}"
+          else
+            base_ref="${{ github.event.before }}"
+          fi
+          merge_base="$(git merge-base "$base_ref" HEAD || echo HEAD~1)"
+          echo "sha=$merge_base" >> "$GITHUB_OUTPUT"
+          echo "merge-base: $merge_base"
+
+      # Build both binaries. HEAD is built from the checkout; the merge-base is
+      # built from a throwaway worktree so its source never contaminates HEAD.
+      - name: Build HEAD binary
+        run: go build -o /tmp/kira-head ./cmd/kira
+
+      - name: Build merge-base binary
+        run: |
+          git worktree add /tmp/base-tree "${{ steps.base.outputs.sha }}"
+          (cd /tmp/base-tree && go build -o /tmp/kira-base ./cmd/kira)
+
+      # A/B benchmark: median-of-N (>=10) on each binary, then a ratio report.
+      # Fixtures are seeded per-process by HEAD's harness, so both binaries face
+      # the same workload shape. continue-on-error keeps the ratio non-gating.
+      - name: Benchmark merge-base
+        continue-on-error: true
+        run: KIRA_BIN=/tmp/kira-base go test -run '^$' -bench=BenchmarkCommands -count=10 ./tests/perf/ | tee base.txt
+
+      - name: Benchmark HEAD
+        continue-on-error: true
+        run: KIRA_BIN=/tmp/kira-head go test -run '^$' -bench=BenchmarkCommands -count=10 ./tests/perf/ | tee head.txt
+
+      - name: A/B ratio (2x threshold, informational)
+        continue-on-error: true
+        run: |
+          echo '## Perf A/B (merge-base vs HEAD)' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          benchstat base.txt head.txt | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      # Deterministic proxies + cold-start tripwire. These run against HEAD and
+      # a harness failure (command error, non-deterministic spawn count, or a
+      # cold start over the 50ms tripwire) is the only thing that reddens the job.
+      - name: Spawn counts, scaling, cold-start
+        run: |
+          echo '## Deterministic proxies' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          KIRA_BIN=/tmp/kira-head go test -count=1 -v \
+            -run 'TestSpawnCounts|TestScaling|TestColdStartSmoke' ./tests/perf/ \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload trend artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-report
+          path: |
+            base.txt
+            head.txt

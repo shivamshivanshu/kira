@@ -61,7 +61,7 @@ func commitState(t *testing.T, s *Store, it *datamodel.Item, state, date string)
 
 func eventTicket() *datamodel.Item {
 	return &datamodel.Item{
-		ID:      "01TESTULID0000000000000000",
+		ID:      "01HZZ0TEST0000000000000000",
 		Number:  "KIRA-1",
 		Type:    "ticket",
 		Title:   "T",
@@ -72,7 +72,7 @@ func eventTicket() *datamodel.Item {
 	}
 }
 
-func TestItemDoneInfoCleanHistory(t *testing.T) {
+func TestItemMetricsCleanHistory(t *testing.T) {
 	s := eventRepo(t)
 	cfg := config.Default()
 	it := eventTicket()
@@ -81,7 +81,7 @@ func TestItemDoneInfoCleanHistory(t *testing.T) {
 	commitState(t, s, it, "REVIEW", "2026-01-07")
 	commitState(t, s, it, "DONE", "2026-01-08")
 
-	di, err := s.itemDoneInfo(cfg, it)
+	di, err := s.itemMetrics(cfg, it)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,14 +93,14 @@ func TestItemDoneInfoCleanHistory(t *testing.T) {
 	}
 }
 
-func TestItemDoneInfoSquashedHistoryDegrades(t *testing.T) {
+func TestItemMetricsSquashedHistoryDegrades(t *testing.T) {
 	s := eventRepo(t)
 	cfg := config.Default()
 	it := eventTicket()
 	commitState(t, s, it, "TODO", "2026-01-05")
 	commitState(t, s, it, "DONE", "2026-01-08")
 
-	di, err := s.itemDoneInfo(cfg, it)
+	di, err := s.itemMetrics(cfg, it)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,13 +112,13 @@ func TestItemDoneInfoSquashedHistoryDegrades(t *testing.T) {
 	}
 }
 
-func TestItemDoneInfoCreatedAlreadyDone(t *testing.T) {
+func TestItemMetricsCreatedAlreadyDone(t *testing.T) {
 	s := eventRepo(t)
 	cfg := config.Default()
 	it := eventTicket()
 	commitState(t, s, it, "DONE", "2026-01-05")
 
-	di, err := s.itemDoneInfo(cfg, it)
+	di, err := s.itemMetrics(cfg, it)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestItemDoneInfoCreatedAlreadyDone(t *testing.T) {
 	}
 }
 
-func TestItemDoneInfoUncommittedFallsBackToUpdated(t *testing.T) {
+func TestItemMetricsUncommittedFallsBackToUpdated(t *testing.T) {
 	s := eventRepo(t)
 	cfg := config.Default()
 	it := eventTicket()
@@ -140,7 +140,7 @@ func TestItemDoneInfoUncommittedFallsBackToUpdated(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	di, err := s.itemDoneInfo(cfg, it)
+	di, err := s.itemMetrics(cfg, it)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,26 +153,30 @@ func TestItemDoneInfoUncommittedFallsBackToUpdated(t *testing.T) {
 	}
 }
 
-func TestStateEventsChronology(t *testing.T) {
+func TestCachedStateEventsChronology(t *testing.T) {
 	s := eventRepo(t)
 	it := eventTicket()
 	commitState(t, s, it, "TODO", "2026-01-05")
 	commitState(t, s, it, "IN_PROGRESS", "2026-01-06")
+	commitState(t, s, it, "REVIEW", "2026-01-07")
 
-	evs, err := s.stateEvents(it.ID)
+	evs, committed, err := s.cachedStateEvents(it.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if !committed {
+		t.Error("committed = false, want true")
+	}
 	if len(evs) != 2 {
-		t.Fatalf("events = %+v, want 2", evs)
+		t.Fatalf("events = %+v, want 2 (creation is not a transition event)", evs)
 	}
-	if evs[0].from != "" || evs[0].to != "TODO" {
-		t.Errorf("creation event = %+v, want \"\" -> TODO", evs[0])
+	if evs[0].from != "TODO" || evs[0].to != "IN_PROGRESS" {
+		t.Errorf("first event = %+v, want TODO -> IN_PROGRESS", evs[0])
 	}
-	if evs[1].from != "TODO" || evs[1].to != "IN_PROGRESS" {
-		t.Errorf("second event = %+v, want TODO -> IN_PROGRESS", evs[1])
+	if evs[1].from != "IN_PROGRESS" || evs[1].to != "REVIEW" {
+		t.Errorf("second event = %+v, want IN_PROGRESS -> REVIEW", evs[1])
 	}
-	if !strings.HasPrefix(evs[1].ts.UTC().Format(time.RFC3339), "2026-01-06") {
-		t.Errorf("second event ts = %v, want 2026-01-06", evs[1].ts)
+	if !strings.HasPrefix(evs[0].ts.UTC().Format(time.RFC3339), "2026-01-06") {
+		t.Errorf("first event ts = %v, want 2026-01-06", evs[0].ts)
 	}
 }

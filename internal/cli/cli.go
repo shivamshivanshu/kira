@@ -65,6 +65,11 @@ func newRootCmd() *cobra.Command {
 		newHooksCmd(g),
 		newSprintCmd(g),
 		newStatsCmd(g),
+		newIndexCmd(g),
+		newLogCmd(g),
+		newBlameCmd(g),
+		newDoctorCmd(g),
+		newValidateCmd(g),
 	)
 	return root
 }

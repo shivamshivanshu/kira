@@ -36,8 +36,9 @@ type Vocab struct {
 }
 
 type Commit struct {
-	Mode    CommitMode `yaml:"mode"`
-	Trailer string     `yaml:"trailer"`
+	Mode         CommitMode `yaml:"mode"`
+	Trailer      string     `yaml:"trailer"`
+	CloseTrailer string     `yaml:"close_trailer"`
 }
 
 type Merge struct {
@@ -54,6 +55,7 @@ type UI struct {
 
 type Git struct {
 	ScanSince string `yaml:"scan_since,omitempty"`
+	LandedRef string `yaml:"landed_ref,omitempty"`
 }
 
 type Estimate struct {

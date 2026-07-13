@@ -2,88 +2,119 @@ package core
 
 import (
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/index"
 )
 
-type transitionEvent struct {
+type stateTransition struct {
 	ts   time.Time
 	from string
 	to   string
 }
 
-func (s *Store) stateEvents(ulid string) ([]transitionEvent, error) {
+func (s *Store) cachedEvents(ulid string) (events []datamodel.Event, committed bool, err error) {
 	rel := s.fs().RelToRoot(s.itemPath(ulid))
-	out, err := s.repo().FollowLogPatch(rel)
+	fileHead, ferr := s.repo().LastCommitFor(rel)
+	if ferr != nil {
+		fileHead = ""
+	}
+	events, _, err = index.LogEntries(s.fs(), ulid, fileHead, func() ([]datamodel.Event, error) {
+		return s.deriveEvents(ulid)
+	})
+	return events, fileHead != "", err
+}
+
+func (s *Store) cachedStateEvents(ulid string) (events []stateTransition, committed bool, err error) {
+	all, committed, err := s.cachedEvents(ulid)
 	if err != nil {
-		if strings.Contains(err.Error(), "does not have any commits") {
-			return nil, nil
-		}
-		return nil, errx.User("%s", err)
+		return nil, false, err
 	}
-
-	var newestFirst []transitionEvent
-	var ts time.Time
-	var from, to string
-	flushPendingCommit := func() {
-		if to != "" {
-			newestFirst = append(newestFirst, transitionEvent{ts: ts, from: from, to: to})
+	for _, e := range all {
+		if e.Field != datamodel.KeyState {
+			continue
 		}
-		from, to = "", ""
-	}
-	for _, line := range strings.Split(out, "\n") {
-		switch {
-		case strings.HasPrefix(line, "\x01"):
-			flushPendingCommit()
-			t, perr := time.Parse(time.RFC3339, strings.TrimSpace(line[1:]))
-			if perr != nil {
-				return nil, errx.User("parsing commit date %q: %v", line[1:], perr)
-			}
-			ts = t
-		case strings.HasPrefix(line, "-state: "):
-			from = unquoteScalar(line[len("-state: "):])
-		case strings.HasPrefix(line, "+state: "):
-			to = unquoteScalar(line[len("+state: "):])
+		ts, perr := time.Parse(time.RFC3339, e.Ts)
+		if perr != nil {
+			continue
 		}
+		events = append(events, stateTransition{ts: ts, from: e.Old, to: e.New})
 	}
-	flushPendingCommit()
-	slices.Reverse(newestFirst)
-	return newestFirst, nil
+	slices.Reverse(events)
+	return events, committed, nil
 }
 
-func unquoteScalar(v string) string {
-	return strings.Trim(strings.TrimSpace(v), `"'`)
+type metricItem struct {
+	number    string
+	created   time.Time
+	doingAt   time.Time
+	doneAt    time.Time
+	hasDoing  bool
+	hasDone   bool
+	doneDay   string
+	degraded  bool
+	dropped   bool
+	category  datamodel.Category
+	estimate  float64
+	estimated bool
+	reopens   int
 }
 
-type doneInfo struct {
-	doneDay  string
-	degraded bool
-}
-
-func (s *Store) itemDoneInfo(cfg *datamodel.Config, it *datamodel.Item) (doneInfo, error) {
-	evs, err := s.stateEvents(it.ID)
+func (s *Store) itemMetrics(cfg *datamodel.Config, it *datamodel.Item) (metricItem, error) {
+	evs, committed, err := s.cachedStateEvents(it.ID)
 	if err != nil {
-		return doneInfo{}, err
+		return metricItem{}, err
+	}
+	mi := metricItem{
+		number:    it.Number,
+		estimate:  deref(it.Estimate),
+		estimated: it.Estimate != nil,
+		dropped:   it.Resolution != nil && *it.Resolution == "dropped",
+	}
+	mi.category, _ = categoryOf(cfg, it.Type, it.State)
+	if c, cerr := it.CreatedTime(); cerr == nil {
+		mi.created = c
 	}
 	wf, hasWorkflow := cfg.Workflows[it.Type]
-	var di doneInfo
+	doneSeen := false
 	for _, ev := range evs {
-		if di.doneDay == "" && isDoneState(cfg, it.Type, ev.to) {
-			di.doneDay = ev.ts.Local().Format(time.DateOnly)
+		cat, _ := categoryOf(cfg, it.Type, ev.to)
+		if cat == datamodel.CategoryDoing {
+			if !mi.hasDoing {
+				mi.hasDoing = true
+				mi.doingAt = ev.ts
+			}
+			if doneSeen {
+				mi.reopens++
+			}
 		}
-		offGraphJump := ev.from != "" && hasWorkflow && wf.EnforceTransitions && !transitionAllowed(wf, ev.from, ev.to)
-		if offGraphJump {
-			di.degraded = true
+		if cat == datamodel.CategoryDone {
+			doneSeen = true
+			if !mi.hasDone {
+				mi.hasDone = true
+				mi.doneAt = ev.ts
+				mi.doneDay = ev.ts.Local().Format(time.DateOnly)
+			}
+		}
+		if ev.from != "" && hasWorkflow && wf.EnforceTransitions && !transitionAllowed(wf, ev.from, ev.to) {
+			mi.degraded = true
 		}
 	}
-	if di.doneDay == "" && isDoneState(cfg, it.Type, it.State) {
-		if updated, terr := it.UpdatedTime(); terr == nil {
-			di.doneDay = updated.Local().Format(time.DateOnly)
-			di.degraded = true
+	if !mi.hasDone && isDoneState(cfg, it.Type, it.State) {
+		switch {
+		case committed && !mi.created.IsZero():
+			mi.hasDone = true
+			mi.doneAt = mi.created
+			mi.doneDay = mi.created.Local().Format(time.DateOnly)
+		default:
+			if updated, uerr := it.UpdatedTime(); uerr == nil {
+				mi.hasDone = true
+				mi.doneAt = updated
+				mi.doneDay = updated.Local().Format(time.DateOnly)
+				mi.degraded = true
+			}
 		}
 	}
-	return di, nil
+	return mi, nil
 }

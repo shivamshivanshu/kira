@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -29,6 +28,7 @@ func newTreeCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			emitStderrNotes(cmd.ErrOrStderr(), res.StderrNotes)
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
@@ -43,7 +43,7 @@ func renderTree(w io.Writer, res *datamodel.TreeResult) {
 		fmt.Fprintln(w, "no items")
 		return
 	}
-	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+	tw := newTabWriter(w)
 	for _, n := range res.Nodes {
 		renderTreeNode(tw, n, 0)
 	}
@@ -67,7 +67,7 @@ func renderTreeGroups(w io.Writer, res *datamodel.ListResult) {
 	for _, it := range res.Items {
 		byID[it.ID] = it
 	}
-	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+	tw := newTabWriter(w)
 	for _, grp := range res.Tree {
 		switch label := epicLabel(grp); label {
 		case "":

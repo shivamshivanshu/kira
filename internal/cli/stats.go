@@ -2,20 +2,27 @@ package cli
 
 import (
 	"fmt"
+	"io"
+	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
 func newStatsCmd(g *globalFlags) *cobra.Command {
 	var opts core.StatsOpts
 	cmd := &cobra.Command{
-		Use:   "stats [--sprint KEY] [--velocity]",
-		Short: "Sprint burndown and velocity metrics",
-		Args:  cobra.NoArgs,
+		Use:   "stats [epic-id] [--since DATE] [--weeks N] [--sprint KEY] [--velocity]",
+		Short: "Project and sprint metrics: completion, cycle/lead time, throughput, burndown, velocity",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				opts.Epic = args[0]
+			}
 			s, cfg, err := openStore(g)
 			if err != nil {
 				return err
@@ -27,31 +34,90 @@ func newStatsCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			out := cmd.OutOrStdout()
-			if b := res.Burndown; b != nil {
-				fmt.Fprintf(out, "Burndown %s  %s -> %s (%s)\n", b.Sprint, b.Start, b.End, b.Unit)
-				for _, d := range b.Days {
-					fmt.Fprintf(out, "  %s  remaining %s  ideal %s\n", d.Date, codec.EmitFloat(d.Remaining), codec.EmitFloat(d.Ideal))
-				}
-				if b.Unestimated > 0 {
-					fmt.Fprintf(out, "  unestimated items (burn nothing): %d\n", b.Unestimated)
-				}
-				if b.DegradedN > 0 {
-					fmt.Fprintf(out, "  items with lossy history (best-effort done day): %d\n", b.DegradedN)
-				}
-			}
-			if v := res.Velocity; v != nil {
-				fmt.Fprintf(out, "Velocity (%s)\n", v.Unit)
-				for _, sp := range v.Sprints {
-					fmt.Fprintf(out, "  %s  %s\n", sp.Key, codec.EmitFloat(sp.Completed))
-				}
-				fmt.Fprintf(out, "  trailing-3 average: %s\n", codec.EmitFloat(v.Trailing3))
-			}
+			renderStats(cmd.OutOrStdout(), res)
 			return nil
 		},
 	}
 	f := cmd.Flags()
-	f.StringVar(&opts.Sprint, "sprint", "", "sprint key to report burndown for ('active' resolves the local active sprint)")
-	f.BoolVar(&opts.Velocity, "velocity", false, "report completed estimate per closed sprint and the trailing-3 average")
+	f.StringVar(&opts.Since, "since", "", "include only items created on or after this date (YYYY-MM-DD)")
+	f.IntVar(&opts.Weeks, "weeks", 0, "trailing weeks in the throughput series (default 8)")
+	f.StringVar(&opts.Sprint, "sprint", "", "scope metrics to a sprint and add its burndown ('active' resolves the local active sprint)")
+	f.BoolVar(&opts.Velocity, "velocity", false, "add completed estimate per closed sprint and the trailing-3 average")
 	return cmd
+}
+
+func renderStats(out io.Writer, res *datamodel.StatsResult) {
+	if sc := res.Scope; sc != nil {
+		var parts []string
+		if sc.EpicNumber != "" {
+			parts = append(parts, "epic "+sc.EpicNumber)
+		}
+		if sc.Sprint != "" {
+			parts = append(parts, "sprint "+sc.Sprint)
+		}
+		if sc.Since != "" {
+			parts = append(parts, "since "+sc.Since)
+		}
+		scope := "project"
+		if len(parts) > 0 {
+			scope = strings.Join(parts, ", ")
+		}
+		fmt.Fprintf(out, "Stats (%s)\n", scope)
+	}
+	if c := res.Completion; c != nil {
+		fmt.Fprintf(out, "  completion: %d/%d done (%.0f%%)", c.Done, c.Total, c.Pct*100)
+		if c.Dropped > 0 {
+			fmt.Fprintf(out, ", %d dropped", c.Dropped)
+		}
+		fmt.Fprintln(out)
+	}
+	renderPercentiles(out, "cycle time", res.CycleTime)
+	renderPercentiles(out, "lead time", res.LeadTime)
+	if len(res.Throughput) > 0 {
+		nums := make([]string, len(res.Throughput))
+		for i, n := range res.Throughput {
+			nums[i] = strconv.Itoa(n)
+		}
+		fmt.Fprintf(out, "  throughput/week: %s\n", strings.Join(nums, " "))
+	}
+	if e := res.Estimate; e != nil {
+		fmt.Fprintf(out, "  estimate: %s %s", codec.EmitFloat(e.Total), e.Unit)
+		if e.ActualRatioP50 != nil {
+			fmt.Fprintf(out, " (est/actual p50 %s)", codec.EmitFloat(*e.ActualRatioP50))
+		}
+		fmt.Fprintln(out)
+	}
+	if r := res.Reopens; r != nil && r.Count > 0 {
+		fmt.Fprintf(out, "  reopens: %d across %s\n", r.Count, strings.Join(r.Items, ", "))
+	}
+	if b := res.Burndown; b != nil {
+		fmt.Fprintf(out, "Burndown %s  %s -> %s (%s)\n", b.Sprint, b.Start, b.End, b.Unit)
+		for _, d := range b.Days {
+			fmt.Fprintf(out, "  %s  remaining %s  ideal %s\n", d.Date, codec.EmitFloat(d.Remaining), codec.EmitFloat(d.Ideal))
+		}
+		if b.Unestimated > 0 {
+			fmt.Fprintf(out, "  unestimated items (burn nothing): %d\n", b.Unestimated)
+		}
+		if b.DegradedN > 0 {
+			fmt.Fprintf(out, "  items with lossy history (best-effort done day): %d\n", b.DegradedN)
+		}
+	}
+	if v := res.Velocity; v != nil {
+		fmt.Fprintf(out, "Velocity (%s)\n", v.Unit)
+		for _, sp := range v.Sprints {
+			fmt.Fprintf(out, "  %s  %s\n", sp.Key, codec.EmitFloat(sp.Completed))
+		}
+		fmt.Fprintf(out, "  trailing-3 average: %s\n", codec.EmitFloat(v.Trailing3))
+	}
+}
+
+func renderPercentiles(out io.Writer, label string, p *datamodel.Percentiles) {
+	if p == nil || p.N == 0 {
+		return
+	}
+	fmt.Fprintf(out, "  %s (days): p50 %s  p90 %s  n=%d", label, codec.EmitFloat(p.P50), codec.EmitFloat(p.P90), p.N)
+	if p.DegradedN > 0 {
+		fmt.Fprintf(out, "  (%d best-effort)", p.DegradedN)
+	}
+	fmt.Fprintln(out)
 }

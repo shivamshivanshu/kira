@@ -1,8 +1,6 @@
 package gitx
 
 import (
-	"bytes"
-	"fmt"
 	"os/exec"
 	"strings"
 )
@@ -15,19 +13,11 @@ func Installed() bool {
 }
 
 func (r Repo) Output(args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = r.Dir
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), msg)
+	out, err := r.outputRaw(args...)
+	if err != nil {
+		return "", err
 	}
-	return strings.TrimSpace(stdout.String()), nil
+	return strings.TrimSpace(out), nil
 }
 
 func (r Repo) InsideWorkTree() error {
@@ -49,6 +39,16 @@ func (r Repo) Commit(subject, trailerKey, trailerVal string) error {
 	return err
 }
 
-func (r Repo) FollowLogPatch(relPath string) (string, error) {
-	return r.Output("log", "--follow", "--format=%x01%cI", "-p", "--", relPath)
+const fullFileContext = "--unified=1000000"
+
+func (r Repo) FileLog(relPath string) (string, error) {
+	return r.Output("log", "--format=%x00%H%x00%cI", "-p", fullFileContext, "--", relPath)
+}
+
+func (r Repo) LastCommitFor(relPath string) (string, error) {
+	return r.Output("log", "-1", "--format=%H", "--", relPath)
+}
+
+func (r Repo) FileCommitMeta(relPath string) (string, error) {
+	return r.Output("log", "--format=%H%x00%an%x00%cI%x00%P", "--", relPath)
 }

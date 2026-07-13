@@ -1,0 +1,36 @@
+# kira log derives field-level events from git history, caches them per-item,
+# refreshes the cache when new commits land, and is disposable like the rest
+# of the index.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create ticket --title history --no-edit
+exec kira move KIRA-1 IN_PROGRESS
+
+exec kira log KIRA-1 --json
+stdout '"kind": "event"'
+stdout '"field": "state"'
+stdout '"old": "TODO"'
+stdout '"new": "IN_PROGRESS"'
+stdout '"kind": "commit"'
+cp stdout log-before.json
+
+# deleting the whole cache yields identical log output (disposable + rebuildable)
+rm .kira/.cache
+exec kira log KIRA-1 --json
+cmp stdout log-before.json
+
+# a new committed edit refreshes the per-item event cache
+exec kira edit KIRA-1 --field priority=P0
+exec kira log KIRA-1 --json
+stdout '"field": "priority"'
+stdout '"new": "P0"'
+
+# creation itself is not emitted as field events (only the linked create commit)
+exec kira log KIRA-1 --json
+! stdout '"new": "TODO"'

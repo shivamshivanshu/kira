@@ -17,17 +17,30 @@ const (
 )
 
 func Parse(content string) (*datamodel.Item, error) {
+	it, _, err := parse(content)
+	return it, err
+}
+
+func ParseKeys(content string) (*datamodel.Item, []string, error) {
+	return parse(content)
+}
+
+func parse(content string) (*datamodel.Item, []string, error) {
 	front, body, err := splitDocument(content)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var doc yaml.Node
 	if err := yaml.Unmarshal([]byte(front), &doc); err != nil {
-		return nil, fmt.Errorf("frontmatter yaml: %w", err)
+		return nil, nil, fmt.Errorf("frontmatter yaml: %w", err)
 	}
 
 	nodes := frontmatterNodes(&doc)
+	keys := make([]string, 0, len(nodes))
+	for k := range nodes {
+		keys = append(keys, k)
+	}
 
 	it := &datamodel.Item{Body: body}
 	var errs []error
@@ -59,9 +72,9 @@ func Parse(content string) (*datamodel.Item, error) {
 	it.Updated = reqTimestamp(nodes, datamodel.KeyUpdated, add)
 
 	if len(errs) > 0 {
-		return it, &datamodel.ParseError{Errs: errs}
+		return it, keys, &datamodel.ParseError{Errs: errs}
 	}
-	return it, nil
+	return it, keys, nil
 }
 
 func DecodeFrontmatter(content string, out any) (body string, err error) {

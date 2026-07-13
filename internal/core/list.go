@@ -24,7 +24,7 @@ type ListOpts struct {
 }
 
 func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResult, error) {
-	items, _, resolver, err := s.load(cfg)
+	items, _, resolver, idxNotes, err := s.indexedLoad(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 	for i, it := range matched {
 		rows[i] = listItemOf(cfg, it)
 	}
-	res := &datamodel.ListResult{Items: rows, Count: len(rows), StderrNotes: notes}
+	res := &datamodel.ListResult{Items: rows, Count: len(rows), StderrNotes: append(idxNotes, notes...)}
 	if opts.Tree {
 		res.Tree = groupByEpic(rows, items)
 	}
