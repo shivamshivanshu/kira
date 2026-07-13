@@ -8,6 +8,7 @@ const (
 	WarnCloseUnknown   WarnCode = "close_unknown"
 	WarnCloseFailed    WarnCode = "close_failed"
 	WarnLiteral        WarnCode = "literal"
+	WarnOrphanType     WarnCode = "orphan_type"
 )
 
 type Warning struct {

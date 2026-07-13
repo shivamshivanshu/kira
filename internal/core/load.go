@@ -1,6 +1,9 @@
 package core
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
@@ -21,6 +24,26 @@ type loaded struct {
 }
 
 func (s *Store) read(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
+	ld, err := s.readRaw(cfg, opts)
+	if err != nil {
+		return nil, err
+	}
+	ld.notes = append(ld.notes, orphanTypeNotes(ld.cfg, ld.items)...)
+	return ld, nil
+}
+
+func orphanTypeNotes(cfg *datamodel.Config, items []*datamodel.Item) []datamodel.Warning {
+	var out []datamodel.Warning
+	for _, it := range items {
+		if _, ok := cfg.Workflows[it.Type]; !ok {
+			out = append(out, datamodel.Warning{Code: datamodel.WarnOrphanType, Args: []string{it.Number, it.Type}})
+		}
+	}
+	slices.SortFunc(out, func(a, b datamodel.Warning) int { return strings.Compare(a.Args[0], b.Args[0]) })
+	return out
+}
+
+func (s *Store) readRaw(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
 	if opts.at != "" {
 		sha, err := s.resolveAtRef(opts.at)
 		if err != nil {

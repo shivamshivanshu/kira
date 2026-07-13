@@ -47,7 +47,7 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 			it.Resolution = &opts.Resolution
 		}
 		if tr != nil {
-			h, w := applyTransitionEffects(it, tr, from, state, opts)
+			h, w := applyTransitionEffects(cfg, it, tr, from, state, opts, items)
 			if len(h) > 0 {
 				return h, nil
 			}
@@ -105,9 +105,12 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 	}, nil
 }
 
-func applyTransitionEffects(it *datamodel.Item, tr *datamodel.Transition, from, state string, opts MoveOpts) (hard, warns []error) {
+func applyTransitionEffects(cfg *datamodel.Config, it *datamodel.Item, tr *datamodel.Transition, from, state string, opts MoveOpts, items []*datamodel.Item) (hard, warns []error) {
 	var missing []string
 	for _, f := range tr.Require {
+		if f == datamodel.RequireBlockersClosed {
+			continue
+		}
 		if !fieldPresent(it, f) {
 			missing = append(missing, f)
 		}
@@ -119,6 +122,13 @@ func applyTransitionEffects(it *datamodel.Item, tr *datamodel.Transition, from, 
 		}
 		warns = append(warns, fmt.Errorf("forced past require guard: %s not set", fields))
 	}
+	if slices.Contains(tr.Require, datamodel.RequireBlockersClosed) {
+		h, w := blockersClosedGuard(cfg, it, items, from, state, opts.Force)
+		if len(h) > 0 {
+			return h, nil
+		}
+		warns = append(warns, w...)
+	}
 	for _, f := range slices.Sorted(maps.Keys(tr.Set)) {
 		if f == "resolution" && opts.Resolution != "" {
 			continue
@@ -126,6 +136,34 @@ func applyTransitionEffects(it *datamodel.Item, tr *datamodel.Transition, from, 
 		if err := applyFieldEdit(it, f, tr.Set[f]); err != nil {
 			return []error{err}, nil
 		}
+	}
+	return nil, warns
+}
+
+func blockersClosedGuard(cfg *datamodel.Config, it *datamodel.Item, items []*datamodel.Item, from, state string, force bool) (hard, warns []error) {
+	byID := byULID(items)
+	var open []string
+	for _, b := range it.BlockedBy {
+		blocker, ok := byID[b]
+		if !ok {
+			warns = append(warns, fmt.Errorf("blocked_by %s resolves to no item; treating blocker as satisfied", b))
+			continue
+		}
+		cat, known := categoryOf(cfg, blocker.Type, blocker.State)
+		if !known {
+			warns = append(warns, fmt.Errorf("blocked_by %s has no known state category; treating blocker as satisfied", numberOrID(blocker, b)))
+			continue
+		}
+		if cat != datamodel.CategoryDone {
+			open = append(open, numberOrID(blocker, b))
+		}
+	}
+	if len(open) > 0 {
+		refs := strings.Join(open, ", ")
+		if !force {
+			return []error{errx.User("%s -> %s is blocked by open items: %s", from, state, refs).WithHint("close the blockers first, or use `--force` to override")}, nil
+		}
+		warns = append(warns, fmt.Errorf("forced past blocker guard: %s still open", refs))
 	}
 	return nil, warns
 }

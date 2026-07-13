@@ -2,9 +2,13 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"slices"
+	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
@@ -12,10 +16,49 @@ import (
 func newCreateCmd(g *globalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
-		Short: "Create a ticket or epic",
+		Short: "Create an item of a configured type",
 	}
-	cmd.AddCommand(newCreateSubCmd(g, datamodel.TypeTicket), newCreateSubCmd(g, datamodel.TypeEpic))
+	for _, typ := range createTypes(g) {
+		cmd.AddCommand(newCreateSubCmd(g, typ))
+	}
 	return cmd
+}
+
+func createTypes(g *globalFlags) []string {
+	s, err := core.Discover(chdirArg(g))
+	if err != nil {
+		return []string{datamodel.TypeTicket, datamodel.TypeEpic}
+	}
+	cfg, err := config.Load(s.Root())
+	if err != nil || len(cfg.Workflows) == 0 {
+		return []string{datamodel.TypeTicket, datamodel.TypeEpic}
+	}
+	types := make([]string, 0, len(cfg.Workflows))
+	for typ := range cfg.Workflows {
+		types = append(types, typ)
+	}
+	slices.Sort(types)
+	return types
+}
+
+func chdirArg(g *globalFlags) string {
+	if g.chdir != "" {
+		return g.chdir
+	}
+	args := os.Args[1:]
+	for i, a := range args {
+		switch {
+		case a == "-C" || a == "--C":
+			if i+1 < len(args) {
+				return args[i+1]
+			}
+		case strings.HasPrefix(a, "-C="):
+			return strings.TrimPrefix(a, "-C=")
+		case strings.HasPrefix(a, "--C="):
+			return strings.TrimPrefix(a, "--C=")
+		}
+	}
+	return ""
 }
 
 func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {

@@ -102,6 +102,13 @@ func TestEmptyVocabIsFreeForm(t *testing.T) {
 	}
 }
 
+func TestRequireBlockersClosedAccepted(t *testing.T) {
+	yaml := "version: 1\nworkflows:\n  ticket:\n    states:\n      - {key: A, category: todo}\n      - {key: B, category: done}\n    initial: A\n    transitions:\n      A: [{to: B, require: [blockers_closed]}]\n"
+	if _, err := config.Parse([]byte(yaml)); err != nil {
+		t.Errorf("require: [blockers_closed] must be accepted, got %v", err)
+	}
+}
+
 func TestValidationRejections(t *testing.T) {
 	cases := []struct {
 		name    string

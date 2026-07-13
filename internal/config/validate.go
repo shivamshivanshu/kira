@@ -188,6 +188,9 @@ func validateWorkflow(name string, w datamodel.Workflow, c *datamodel.Config) er
 
 func validateGuards(t datamodel.Transition, where string, c *datamodel.Config) error {
 	for _, f := range t.Require {
+		if f == datamodel.RequireBlockersClosed {
+			continue
+		}
 		if !slices.Contains(datamodel.MutableFields, f) {
 			return fmt.Errorf("config: %s: require names unknown field %q", where, f)
 		}

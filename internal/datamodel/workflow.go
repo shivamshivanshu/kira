@@ -23,6 +23,8 @@ type Transition struct {
 	Set     map[string]string `yaml:"set,omitempty"`
 }
 
+const RequireBlockersClosed = "blockers_closed"
+
 func (t *Transition) UnmarshalYAML(n *yaml.Node) error {
 	if n.Kind == yaml.ScalarNode {
 		t.To = n.Value

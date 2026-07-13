@@ -529,3 +529,33 @@ func TestAssignStrictBypass(t *testing.T) {
 		t.Fatalf("reporter = %v, want alice", show.Reporter)
 	}
 }
+
+func TestMoveBlockersClosedGuard(t *testing.T) {
+	s, cfg := newStore(t)
+	withTicketTransitions(cfg, "TODO", []datamodel.Transition{
+		{To: "IN_PROGRESS", Require: []string{datamodel.RequireBlockersClosed}},
+		{To: "WONT_DO"},
+	})
+	a := mustCreate(t, s, cfg, "A")
+	b := mustCreate(t, s, cfg, "B")
+	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkBlockedBy, Ref: b.Number}); err != nil {
+		t.Fatalf("Link: %v", err)
+	}
+
+	if _, err := s.Move(cfg, a.Number, "IN_PROGRESS", core.MoveOpts{}); err == nil {
+		t.Fatal("move with an open blocker: expected refusal")
+	}
+
+	if _, err := s.Move(cfg, a.Number, "IN_PROGRESS", core.MoveOpts{Force: true}); err != nil {
+		t.Fatalf("forced move past an open blocker: %v", err)
+	}
+	positionTo(t, s, cfg, a.Number, "TODO")
+
+	positionTo(t, s, cfg, b.Number, "DONE")
+	if _, err := s.Move(cfg, a.Number, "IN_PROGRESS", core.MoveOpts{}); err != nil {
+		t.Fatalf("move with a closed blocker: %v", err)
+	}
+	if got := stateOf(t, s, cfg, a.Number); got != "IN_PROGRESS" {
+		t.Fatalf("state after unblocked move = %q, want IN_PROGRESS", got)
+	}
+}

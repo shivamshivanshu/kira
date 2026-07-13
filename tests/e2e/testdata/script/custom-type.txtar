@@ -1,0 +1,41 @@
+# A type is valid iff a workflow is configured for it: create/move work for a
+# third, config-defined type with no code change.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp config.yaml .kira/config.yaml
+exec git add -A
+exec git commit -m 'define blocker type'
+
+# `kira create <type>` exposes a subcommand per configured workflow key
+exec kira create blocker --title 'Gate the release' --no-edit --json
+stdout '"type": "blocker"'
+stdout '"state": "OPEN"'
+stdout '"number": "KIRA-1"'
+
+# the third type moves through its own workflow
+exec kira move KIRA-1 RESOLVED
+exec kira show KIRA-1 --json
+stdout '"state": "RESOLVED"'
+
+# list and board render it like any first-class type
+exec kira list --json
+stdout '"type": "blocker"'
+
+-- config.yaml --
+version: 1
+project:
+  key: KIRA
+  name: KIRA
+workflows:
+  blocker:
+    states:
+      - { key: OPEN,     category: todo }
+      - { key: RESOLVED, category: done }
+    initial: OPEN
+    transitions:
+      OPEN: [RESOLVED]

@@ -21,6 +21,8 @@ func renderWarning(w datamodel.Warning) string {
 		return fmt.Sprintf("failed to close %s: %s", w.Args[0], w.Args[1])
 	case datamodel.WarnLiteral:
 		return w.Args[0]
+	case datamodel.WarnOrphanType:
+		return fmt.Sprintf("%s has no workflow for type %q; it is read-only until a workflow is configured", w.Args[0], w.Args[1])
 	}
 	return ""
 }

@@ -46,8 +46,6 @@ const (
 	TypeEpic   = "epic"
 )
 
-func ValidType(t string) bool { return t == TypeTicket || t == TypeEpic }
-
 const ResolutionDropped = "dropped"
 
 type LinkType string

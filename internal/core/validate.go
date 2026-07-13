@@ -46,14 +46,10 @@ func validateItem(cfg *datamodel.Config, it *datamodel.Item, force bool) (errs, 
 	if it.Title == "" {
 		errs = append(errs, fmt.Errorf("field %q: required, missing", datamodel.KeyTitle))
 	}
-	if !datamodel.ValidType(it.Type) {
-		errs = append(errs, fmt.Errorf("field %q: must be %s or %s, got %q", datamodel.KeyType, datamodel.TypeTicket, datamodel.TypeEpic, it.Type))
-	}
-
-	if wf, ok := cfg.Workflows[it.Type]; ok {
-		if _, defined := stateIn(wf, it.State); !defined {
-			errs = append(errs, fmt.Errorf("field %q: %q is not a state in the %s workflow", datamodel.KeyState, it.State, it.Type))
-		}
+	if wf, ok := cfg.Workflows[it.Type]; !ok {
+		errs = append(errs, fmt.Errorf("field %q: no workflow configured for type %q", datamodel.KeyType, it.Type))
+	} else if _, defined := stateIn(wf, it.State); !defined {
+		errs = append(errs, fmt.Errorf("field %q: %q is not a state in the %s workflow", datamodel.KeyState, it.State, it.Type))
 	}
 
 	vocabCheck := func(field, value string, v datamodel.Vocab) {

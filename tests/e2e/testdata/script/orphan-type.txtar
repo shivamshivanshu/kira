@@ -1,0 +1,46 @@
+# An item whose type has no configured workflow still loads read-only: list and
+# show render it with a load-time warning, doctor flags it, and every mutating
+# command refuses it. Forward-compat: a future/foreign type never bricks the repo.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp saga.md .kira/tickets/01HXAGA0000000000000000000.md
+
+# it LOADS: list renders the orphan and warns on stderr
+exec kira list --json
+stdout 'KIRA-77'
+stderr 'no workflow for type "saga"'
+
+# show renders it too
+exec kira show KIRA-77 --json
+stdout '"type": "saga"'
+
+# doctor reports the missing workflow as a schema finding
+! exec kira doctor
+stdout 'no workflow configured for type'
+
+# mutating commands refuse: move and edit both fail with a clear error
+! exec kira move KIRA-77 DONE
+stderr 'no workflow configured for type'
+! exec kira edit KIRA-77 --field title=Renamed
+stderr 'no workflow configured for type'
+
+-- saga.md --
+---
+id: 01HXAGA0000000000000000000
+number: KIRA-77
+aliases: []
+type: saga
+title: an orphan-typed item
+state: TODO
+labels: []
+blocked_by: []
+epic: null
+created: 2026-07-10T09:14:00+05:30
+updated: 2026-07-10T09:14:00+05:30
+---
+## Description

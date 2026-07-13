@@ -1,0 +1,68 @@
+# The reserved require token `blockers_closed` gates a transition on every
+# blocked_by target being in a done-category state: refuse by default, --force
+# downgrades to a warning, and an undeterminable blocker degrades to warn+pass
+# rather than bricking the move.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp config.yaml .kira/config.yaml
+exec git add -A
+exec git commit -m 'gate IN_PROGRESS on closed blockers'
+
+exec kira create ticket --title 'A' --no-edit
+exec kira create ticket --title 'B' --no-edit
+exec kira create ticket --title 'C' --no-edit
+exec kira link KIRA-1 --blocked-by KIRA-2
+
+# an open blocker refuses the move by default
+! exec kira move KIRA-1 IN_PROGRESS
+stderr 'blocked by open items'
+
+# --force downgrades the guard to a warning and still moves
+exec kira move KIRA-1 IN_PROGRESS --force
+stderr 'forced past blocker guard'
+
+# a blocker of an orphan type (no known state category) cannot be evaluated:
+# warn and pass rather than brick the move on missing data
+cp saga.md .kira/tickets/01HXAGA0000000000000000000.md
+exec kira link KIRA-3 --blocked-by KIRA-77
+exec kira move KIRA-3 IN_PROGRESS
+stderr 'no known state category'
+
+-- config.yaml --
+version: 1
+project:
+  key: KIRA
+  name: KIRA
+workflows:
+  ticket:
+    states:
+      - { key: TODO,        category: todo }
+      - { key: IN_PROGRESS, category: doing }
+      - { key: DONE,        category: done }
+    initial: TODO
+    transitions:
+      TODO:        [{ to: IN_PROGRESS, require: [blockers_closed] }, DONE]
+      IN_PROGRESS: [DONE]
+      DONE:        []
+    enforce_transitions: true
+
+-- saga.md --
+---
+id: 01HXAGA0000000000000000000
+number: KIRA-77
+aliases: []
+type: saga
+title: an orphan-typed blocker
+state: TODO
+labels: []
+blocked_by: []
+epic: null
+created: 2026-07-10T09:14:00+05:30
+updated: 2026-07-10T09:14:00+05:30
+---
+## Description

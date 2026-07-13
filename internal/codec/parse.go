@@ -39,9 +39,6 @@ func Parse(content string) (*datamodel.Item, error) {
 	it.Number = reqScalar(nodes, datamodel.KeyNumber, add)
 	it.Aliases = reqList(nodes, datamodel.KeyAliases, add)
 	it.Type = reqScalar(nodes, datamodel.KeyType, add)
-	if it.Type != "" && !datamodel.ValidType(it.Type) {
-		add("field %q: must be %s or %s, got %q", datamodel.KeyType, datamodel.TypeTicket, datamodel.TypeEpic, it.Type)
-	}
 	it.Subtype = optScalar(nodes, datamodel.KeySubtype, add)
 	it.Title = reqScalar(nodes, datamodel.KeyTitle, add)
 	it.State = reqScalar(nodes, datamodel.KeyState, add)
