@@ -57,6 +57,20 @@ type CommentView struct {
 	Text   string `json:"text"`
 }
 
+type CommitLink struct {
+	SHA     string `json:"sha"`
+	Subject string `json:"subject"`
+	Author  string `json:"author"`
+	Ts      string `json:"ts"`
+}
+
+type HistoryEvent struct {
+	Ts    string  `json:"ts"`
+	Field string  `json:"field"`
+	From  *string `json:"from"`
+	To    *string `json:"to"`
+}
+
 type ShowResult struct {
 	ID            string              `json:"id"`
 	Number        string              `json:"number"`
@@ -83,8 +97,8 @@ type ShowResult struct {
 	Updated       string              `json:"updated"`
 	Body          string              `json:"body"`
 	Comments      []CommentView       `json:"comments"`
-	LinkedCommits []any               `json:"linked_commits"`
-	HistoryTail   []any               `json:"history_tail"`
+	LinkedCommits []CommitLink        `json:"linked_commits"`
+	HistoryTail   []HistoryEvent      `json:"history_tail"`
 
 	StderrNotes []string `json:"-"`
 }

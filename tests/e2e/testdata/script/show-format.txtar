@@ -1,0 +1,34 @@
+# kira show --format prints a single reference form, sharing definitions with
+# the TUI yank picker.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create ticket --title 'Fix snapshot dedup' --no-edit
+
+exec kira show KIRA-1 --format number
+stdout '^KIRA-1$'
+
+exec kira show KIRA-1 --format number-title
+stdout '^KIRA-1 Fix snapshot dedup$'
+
+exec kira show KIRA-1 --format markdown
+stdout '^\[KIRA-1 Fix snapshot dedup\]\(KIRA-1\)$'
+
+exec kira show KIRA-1 --format branch
+stdout '^kira-1-fix-snapshot-dedup$'
+
+exec kira show KIRA-1 --format id
+stdout '.'
+
+# --format and --json are mutually exclusive
+! exec kira show KIRA-1 --format number --json
+stderr 'cannot be combined'
+
+# unknown form is rejected with the list of valid forms
+! exec kira show KIRA-1 --format bogus
+stderr 'unknown format'

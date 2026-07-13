@@ -76,6 +76,16 @@ func LintComments(body string) []string {
 	return out
 }
 
+func Description(body string) string {
+	lines := strings.Split(body, "\n")
+	for i, line := range lines {
+		if commentOpen.MatchString(line) {
+			return strings.TrimRight(strings.Join(lines[:i], "\n"), "\n")
+		}
+	}
+	return strings.TrimRight(body, "\n")
+}
+
 func AppendComment(content string, c datamodel.Comment) string {
 	return content + "\n" + formatComment(c) + "\n"
 }

@@ -24,6 +24,9 @@ func Validate(c *datamodel.Config) error {
 	if err := validateEnum("ui.icons", c.UI.Icons, datamodel.IconModes...); err != nil {
 		return err
 	}
+	if err := validateEnum("ui.background", c.UI.Background, datamodel.Backgrounds...); err != nil {
+		return err
+	}
 	if err := validateEnum("estimate.unit", c.Estimate.Unit, datamodel.EstimateUnits...); err != nil {
 		return err
 	}

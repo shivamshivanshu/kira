@@ -38,6 +38,16 @@ const (
 
 var IconModes = []IconMode{IconAuto, IconAlways, IconNever}
 
+type Background string
+
+const (
+	BackgroundAuto  Background = "auto"
+	BackgroundDark  Background = "dark"
+	BackgroundLight Background = "light"
+)
+
+var Backgrounds = []Background{BackgroundAuto, BackgroundDark, BackgroundLight}
+
 type EstimateUnit string
 
 const (

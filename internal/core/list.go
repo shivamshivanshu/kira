@@ -38,12 +38,7 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 		return nil, err
 	}
 
-	qopts := query.Options{
-		Resolver:     resolver,
-		Priorities:   cfg.Priorities,
-		ActiveSprint: s.ActiveSprintKey(),
-	}
-	pred, order, notes, err := opts.compile(cfg, qopts)
+	pred, order, notes, err := opts.compile(cfg, s.queryOptions(cfg, resolver))
 	if err != nil {
 		return nil, errx.User("%v", err)
 	}
@@ -66,6 +61,30 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 		res.Tree = groupByEpic(rows, items)
 	}
 	return res, nil
+}
+
+func (s *Store) queryOptions(cfg *datamodel.Config, resolver *id.Resolver) query.Options {
+	return query.Options{Resolver: resolver, Priorities: cfg.Priorities, ActiveSprint: s.ActiveSprintKey()}
+}
+
+func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel.ListItem, map[string]bool, error) {
+	items, _, resolver, err := s.load(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	pred, _, _, err := ListOpts{Query: expr}.compile(cfg, s.queryOptions(cfg, resolver))
+	if err != nil {
+		return nil, nil, errx.User("%v", err)
+	}
+	rows := make([]datamodel.ListItem, len(items))
+	matched := make(map[string]bool, len(items))
+	for i, it := range items {
+		rows[i] = listItemOf(cfg, it)
+		if pred == nil || pred(it, cfg) {
+			matched[it.ID] = true
+		}
+	}
+	return rows, matched, nil
 }
 
 func sortMatched(cfg *datamodel.Config, matched []*datamodel.Item, order *query.Order) {

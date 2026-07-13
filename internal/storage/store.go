@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -8,6 +9,8 @@ import (
 )
 
 const dirName = ".kira"
+
+var ErrStoreNotFound = errors.New("no .kira/ found")
 
 type Store struct {
 	root string
@@ -34,7 +37,7 @@ func Discover(startDir string) (*Store, error) {
 		}
 		parent := filepath.Dir(abs)
 		if parent == abs {
-			return nil, errx.Env("no %s/ found in %q or any parent directory (run `kira init`)", dirName, dir)
+			return nil, errx.Env("%w in %q or any parent directory (run `kira init`)", ErrStoreNotFound, dir)
 		}
 		abs = parent
 	}

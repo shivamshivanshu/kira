@@ -58,8 +58,8 @@ func showResultOf(cfg *datamodel.Config, it *datamodel.Item) datamodel.ShowResul
 		Updated:       it.Updated,
 		Body:          it.Body,
 		Comments:      views,
-		LinkedCommits: []any{},
-		HistoryTail:   []any{},
+		LinkedCommits: []datamodel.CommitLink{},
+		HistoryTail:   []datamodel.HistoryEvent{},
 	}
 }
 

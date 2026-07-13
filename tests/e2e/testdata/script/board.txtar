@@ -1,0 +1,34 @@
+# board renders columns from the ticket workflow; --plain is a static, non-interactive table.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# an empty board teaches the configured column names
+exec kira board --plain
+stdout 'Columns:'
+stdout 'TODO'
+stdout 'WONT_DO'
+
+# a created + moved ticket lands in its column
+exec kira create ticket --title 'Burst regression' --no-edit
+exec kira move KIRA-1 IN_PROGRESS
+exec kira board --plain
+stdout 'IN_PROGRESS'
+stdout 'KIRA-1'
+
+# the WIP header shows n/wip whenever a wip limit is configured (IN_PROGRESS wip=3)
+stdout '1/3'
+
+# --json emits the documented columns contract
+exec kira board --json
+stdout '"state": "TODO"'
+stdout '"category": "todo"'
+stdout '"state": "IN_PROGRESS"'
+
+# --at is seamed off until the M3 tree-ish loader lands
+! exec kira board --at HEAD
+stderr 'requires the M3 tree-ish loader'

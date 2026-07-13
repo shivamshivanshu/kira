@@ -70,7 +70,7 @@ func (s *Store) itemMetrics(cfg *datamodel.Config, it *datamodel.Item) (metricIt
 		number:    it.Number,
 		estimate:  deref(it.Estimate),
 		estimated: it.Estimate != nil,
-		dropped:   it.Resolution != nil && *it.Resolution == "dropped",
+		dropped:   isDropped(it),
 	}
 	mi.category, _ = categoryOf(cfg, it.Type, it.State)
 	if c, cerr := it.CreatedTime(); cerr == nil {

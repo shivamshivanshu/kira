@@ -8,15 +8,20 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/showfmt"
 )
 
 func newShowCmd(g *globalFlags) *cobra.Command {
 	var at string
+	var format string
 	cmd := &cobra.Command{
 		Use:   "show <id>",
 		Short: "Show a ticket or epic",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if format != "" && g.json {
+				return fmt.Errorf("--format cannot be combined with --json")
+			}
 			s, cfg, err := openStore(g)
 			if err != nil {
 				return err
@@ -29,6 +34,14 @@ func newShowCmd(g *globalFlags) *cobra.Command {
 			if skew != "" {
 				fmt.Fprintln(cmd.ErrOrStderr(), "kira:", skew)
 			}
+			if format != "" {
+				out, err := showfmt.Format(showfmt.Form(format), showfmt.Item{ID: res.ID, Number: res.Number, Title: res.Title})
+				if err != nil {
+					return err
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), out)
+				return nil
+			}
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
@@ -37,6 +50,7 @@ func newShowCmd(g *globalFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&at, "at", "", "read state at a git ref or date (YYYY-MM-DD), anchored on HEAD")
+	cmd.Flags().StringVar(&format, "format", "", "print a single reference form: "+strings.Join(showfmt.Names(), "|"))
 	return cmd
 }
 

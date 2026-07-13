@@ -11,10 +11,15 @@ import (
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/tui"
 )
 
 func Main() int {
 	if err := newRootCmd().Execute(); err != nil {
+		var crash *tui.CrashError
+		if errors.As(err, &crash) {
+			return errx.ExitCrash
+		}
 		fmt.Fprintln(os.Stderr, "kira:", err)
 		var ce *errx.Error
 		if errors.As(err, &ce) {
@@ -39,6 +44,10 @@ func newRootCmd() *cobra.Command {
 		Short:         "kira — a git-native, terminal-first ticket tracker",
 		SilenceUsage:  true,
 		SilenceErrors: true,
+		Args:          cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runTUI(g, false)
+		},
 	}
 	pf := root.PersistentFlags()
 	pf.BoolVar(&g.json, "json", false, "emit machine-readable JSON on stdout")
@@ -47,6 +56,7 @@ func newRootCmd() *cobra.Command {
 	pf.BoolVar(&g.quiet, "quiet", false, "suppress non-essential human output")
 
 	root.AddCommand(
+		newTUICmd(g),
 		newVersionCmd(),
 		newInitCmd(g),
 		newCreateCmd(g),
@@ -75,6 +85,7 @@ func newRootCmd() *cobra.Command {
 		newMergeFileCmd(g),
 		newResolveCmd(g),
 		newDiffCmd(g),
+		newBoardCmd(g),
 	)
 	return root
 }

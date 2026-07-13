@@ -1,0 +1,12 @@
+kira  1:tree  2:board  3:stats                                                                      
+                                                                                                    
+                                                                                                    
+                                    No tickets on the board yet.                                    
+                                                                                                    
+                   Columns: TODO  ·  IN_PROGRESS  ·  REVIEW  ·  DONE  ·  WONT_DO                    
+                                                                                                    
+                                Create a ticket — n new · : command                                 
+                                                                                                    
+                                                                                                    
+                                                                                                    
+h/l column  j/k card  H/L move  enter detail  p peek  1/2/3 view  ^o/^] jump  : command  / filter  y

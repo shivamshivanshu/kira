@@ -12,11 +12,7 @@ func (s *Store) Tree(cfg *datamodel.Config, ref string) (*datamodel.TreeResult, 
 		return nil, err
 	}
 
-	byID := make(map[string]*datamodel.Item, len(items))
-	for _, it := range items {
-		byID[it.ID] = it
-	}
-	children := epicChildren(items)
+	byID, children := indexByEpic(items)
 	roots := make([]*datamodel.Item, 0)
 	for _, it := range items {
 		if it.Epic == nil || byID[*it.Epic] == nil {
@@ -58,12 +54,7 @@ func (s *Store) Tree(cfg *datamodel.Config, ref string) (*datamodel.TreeResult, 
 }
 
 func epicChildren(items []*datamodel.Item) map[string][]*datamodel.Item {
-	children := map[string][]*datamodel.Item{}
-	for _, it := range items {
-		if it.Epic != nil {
-			children[*it.Epic] = append(children[*it.Epic], it)
-		}
-	}
+	_, children := indexByEpic(items)
 	return children
 }
 

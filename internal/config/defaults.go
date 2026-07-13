@@ -56,7 +56,7 @@ func Default() *datamodel.Config {
 		Merge:   datamodel.Merge{Policy: datamodel.MergeAuto},
 		Sync:    datamodel.Sync{Push: false},
 		Workon:  datamodel.Workon{BranchPattern: "{key}/{number}-{slug}", Casing: datamodel.CasingKebab},
-		UI:      datamodel.UI{Icons: datamodel.IconAuto},
+		UI:      datamodel.UI{Icons: datamodel.IconAuto, Background: datamodel.BackgroundAuto},
 		Git:     datamodel.Git{},
 		Estimate: datamodel.Estimate{
 			Unit:        datamodel.EstimatePoints,

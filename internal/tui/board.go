@@ -1,0 +1,223 @@
+package tui
+
+import (
+	"io"
+	"strconv"
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/tui/theme"
+)
+
+type boardModel struct {
+	result *datamodel.BoardResult
+	col    int
+	row    int
+}
+
+func (bm *boardModel) load(res *datamodel.BoardResult) {
+	bm.result = res
+	bm.clamp()
+}
+
+func (bm *boardModel) columns() []datamodel.BoardColumn {
+	if bm.result == nil {
+		return nil
+	}
+	return bm.result.Columns
+}
+
+func (bm *boardModel) colLen() int {
+	cols := bm.columns()
+	if bm.col < 0 || bm.col >= len(cols) {
+		return 0
+	}
+	return len(cols[bm.col].Items)
+}
+
+func (bm *boardModel) clamp() {
+	bm.col = clamp(bm.col, 0, len(bm.columns())-1)
+	bm.row = clamp(bm.row, 0, bm.colLen()-1)
+}
+
+func (bm *boardModel) moveCol(d int) {
+	bm.col += d
+	bm.clamp()
+}
+
+func (bm *boardModel) moveRow(d int) { bm.row = clamp(bm.row+d, 0, bm.colLen()-1) }
+
+func (bm *boardModel) selected() (datamodel.ListItem, bool) {
+	if bm.colLen() == 0 {
+		return datamodel.ListItem{}, false
+	}
+	return bm.columns()[bm.col].Items[bm.row], true
+}
+
+func (bm *boardModel) focusByID(id string) {
+	for ci, c := range bm.columns() {
+		for ri, it := range c.Items {
+			if it.ID == id {
+				bm.col, bm.row = ci, ri
+				return
+			}
+		}
+	}
+}
+
+func renderBoard(t theme.Theme, ic iconSet, res *datamodel.BoardResult, width, height, focusCol, focusRow int) string {
+	if res == nil || res.Empty() {
+		return renderBoardEmpty(t, res, width, height)
+	}
+	n := len(res.Columns)
+	widths := splitWidth(width-(n-1), n)
+	sep := verticalRule(t.Border.Render("│"), height)
+	blocks := make([]string, 0, 2*n-1)
+	for i, col := range res.Columns {
+		fr := -1
+		if i == focusCol {
+			fr = focusRow
+		}
+		blocks = append(blocks, renderColumn(t, ic, col, widths[i], height, i == focusCol, fr))
+		if i < n-1 {
+			blocks = append(blocks, sep)
+		}
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top, blocks...)
+}
+
+func renderColumn(t theme.Theme, ic iconSet, col datamodel.BoardColumn, w, height int, focused bool, focusRow int) string {
+	fit := t.Renderer().NewStyle().Width(w).MaxWidth(w)
+	lines := make([]string, 0, height)
+	lines = append(lines, fit.Render(columnHeaderStyle(t, col, focused).Render(fitWidth(columnLabel(col), w))))
+	if height > 1 {
+		lines = append(lines, fit.Render(t.Dim.Render(strings.Repeat("─", max(0, w)))))
+	}
+
+	cat := datamodel.Category(col.Category)
+	glyph := ic.categoryGlyph(cat, nil)
+	capacity := height - len(lines)
+	start, cardSlots, hidden := cardWindow(len(col.Items), capacity, focusRow)
+	for i := start; i < start+cardSlots; i++ {
+		it := col.Items[i]
+		body := glyph + " " + it.Number + "  "
+		title := fitWidth(it.Title, w-2-lipgloss.Width(body))
+		if focused && i == focusRow {
+			lines = append(lines, fit.Reverse(true).Render(">"+body+title))
+		} else {
+			lines = append(lines, fit.Render(" "+t.CategoryStyle(cat).Render(glyph)+" "+t.Dim.Render(it.Number)+"  "+t.Text.Render(title)))
+		}
+	}
+	if hidden > 0 {
+		lines = append(lines, fit.Render(t.Dim.Render("+"+strconv.Itoa(hidden)+" more")))
+	}
+	for len(lines) < height {
+		lines = append(lines, fit.Render(""))
+	}
+	return strings.Join(lines, "\n")
+}
+
+func cardWindow(total, capacity, focusRow int) (start, slots, hidden int) {
+	if capacity <= 0 {
+		return 0, 0, 0
+	}
+	if total <= capacity {
+		return 0, total, 0
+	}
+	slots = capacity - 1
+	if focusRow >= slots {
+		start = focusRow - slots + 1
+	}
+	if start+slots > total {
+		start = total - slots
+	}
+	if start < 0 {
+		start = 0
+	}
+	return start, slots, total - start - slots
+}
+
+func columnLabel(col datamodel.BoardColumn) string {
+	if col.Wip > 0 {
+		return col.State + "  " + strconv.Itoa(col.Count) + "/" + strconv.Itoa(col.Wip)
+	}
+	return col.State
+}
+
+func columnHeaderStyle(t theme.Theme, col datamodel.BoardColumn, focused bool) lipgloss.Style {
+	switch {
+	case col.Wip > 0 && col.Count > col.Wip:
+		if focused {
+			return t.Heat.Hot.Bold(true)
+		}
+		return t.Heat.Hot
+	case focused:
+		return t.Accent.Bold(true)
+	default:
+		return t.Dim
+	}
+}
+
+func renderBoardEmpty(t theme.Theme, res *datamodel.BoardResult, width, height int) string {
+	var b strings.Builder
+	b.WriteString(t.Dim.Render("No tickets on the board yet."))
+	if res != nil && len(res.Columns) > 0 {
+		names := make([]string, len(res.Columns))
+		for i, c := range res.Columns {
+			names[i] = c.State
+		}
+		b.WriteString("\n\n")
+		b.WriteString(t.Dim.Render("Columns: " + strings.Join(names, "  ·  ")))
+	}
+	b.WriteString("\n\n")
+	b.WriteString(t.Dim.Render("Create a ticket — n new · : command"))
+	return centered(t, width, height, b.String())
+}
+
+func verticalRule(cell string, height int) string {
+	lines := make([]string, max(0, height))
+	for i := range lines {
+		lines[i] = cell
+	}
+	return strings.Join(lines, "\n")
+}
+
+func splitWidth(total, n int) []int {
+	if n <= 0 {
+		return nil
+	}
+	if total < n {
+		total = n
+	}
+	base, rem := total/n, total%n
+	widths := make([]int, n)
+	for i := range widths {
+		widths[i] = base
+		if i < rem {
+			widths[i]++
+		}
+	}
+	return widths
+}
+
+func RenderBoardPlain(w io.Writer, cfg *datamodel.Config, res *datamodel.BoardResult, width int, noColor bool) error {
+	th := theme.For(w, cfg.UI, noColor)
+	out := renderBoard(th, detectIcons(cfg.UI.Icons, osEnv), res, width, plainHeight(res), -1, -1)
+	_, err := io.WriteString(w, out+"\n")
+	return err
+}
+
+func plainHeight(res *datamodel.BoardResult) int {
+	if res == nil || res.Empty() {
+		return 6
+	}
+	maxCards := 0
+	for _, c := range res.Columns {
+		if len(c.Items) > maxCards {
+			maxCards = len(c.Items)
+		}
+	}
+	return maxCards + 2
+}

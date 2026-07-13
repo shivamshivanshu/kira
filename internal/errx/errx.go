@@ -9,6 +9,7 @@ const (
 	ExitUser     = 1
 	ExitConflict = 2
 	ExitEnv      = 3
+	ExitCrash    = 4
 )
 
 type Error struct {

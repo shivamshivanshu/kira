@@ -56,7 +56,8 @@ type Workon struct {
 }
 
 type UI struct {
-	Icons IconMode `yaml:"icons"`
+	Icons      IconMode   `yaml:"icons"`
+	Background Background `yaml:"background"`
 }
 
 type Git struct {

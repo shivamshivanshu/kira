@@ -1,0 +1,16 @@
+# A panic raised inside a tea.Cmd is contained: terminal restored, crash log written, exit non-zero.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+! exec kira tui --test-inject-panic
+stderr 'kira crashed: injected tui panic'
+stderr 'crash log:'
+stderr '\[\?1049l'
+stderr 'data is intact'
+
+exec ls .kira/.local
+stdout 'crash-.*\.log'

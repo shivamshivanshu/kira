@@ -1,0 +1,21 @@
+KIRA-142  Fix race in order-book snapshot merge                                                     
+[IN_PROGRESS]   owner shivam   P1   bug orderbook                                                   
+                                                                                                    
+  The snapshot merge path drops updates when two feed threads race.                                 
+                                                                                                    
+  ## Acceptance criteria                                                                            
+                                                                                                    
+  • TSan clean on order_book_test                                                                   
+  • No p99 regression                                                                               
+                                                                                                    
+Comments                                                                                            
+shivam  2026-07-11 18:30                                                                            
+Confirmed repro with TSan; missing acquire fence.                                                   
+                                                                                                    
+Linked commits                                                                                      
+> a1b2c3d  fix acquire fence on the consumer side                                                   
+  f6a7b8c  add burst regression bench                                                               
+                                                                                                    
+History                                                                                             
+2026-07-11 18:30  state: TODO -> IN_PROGRESS                                                        
+2026-07-10 09:00  owner: (none) -> shivam                                                           

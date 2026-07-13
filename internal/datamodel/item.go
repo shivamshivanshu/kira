@@ -40,6 +40,8 @@ const (
 
 func ValidType(t string) bool { return t == TypeTicket || t == TypeEpic }
 
+const ResolutionDropped = "dropped"
+
 const (
 	LinkRelates     = "relates"
 	LinkDuplicateOf = "duplicate_of"
