@@ -111,9 +111,15 @@ Shippable: the JIRA-replacement daily driver. Needs M2. If the milestone needs a
 
 **Gate:** teatest suite green incl. nvim `:terminal` smoke run.
 
-## M5 — nvim plugin
+## M5 — nvim plugin ❌ DROPPED (2026-07-13)
 
-Shippable: the full founder vision. Needs M1 JSON freeze + M2.
+Dropped by founder decision: the tool stands alone in a `:terminal`
+split; a Lua wrapper adds maintenance without enough value. The
+CLI-shelling design ([06](docs/design/06-nvim-plugin.md)) remains
+valid if ever revisited — no architectural door closes, since the
+`--json` contract + version handshake it would consume are shipped.
+
+Original scope (for the record). Needs M1 JSON freeze + M2.
 
 | WP | Scope | Context | Verify |
 |---|---|---|---|
@@ -132,12 +138,12 @@ Unordered, data-driven: `kira serve` warm-cache process · shell completions pol
 
 ## M7 — Publishing
 
-Shippable: kira as an installable public product. Sequenced after M5 (the nvim plugin consumes WP-7.2's handshake) and **before** any M6 stretch promotions — those are post-dogfood/post-release material; numbered M7 only because M6 is the unordered stretch pool. First-tag constraint: WP-7.2/7.3 (with WP-3.5.3) must be aboard the first tagged binary — none of this is retrofittable to already-shipped binaries. v1 install story everywhere (pipeline, README, error hints): curl-binary + `go install` only.
+Shippable: kira as an installable public product. Next up (M5 dropped; WP-7.2's handshake shipped early for the machine-API seam) and **before** any M6 stretch promotions — those are post-dogfood/post-release material; numbered M7 only because M6 is the unordered stretch pool. First-tag constraint: WP-7.2/7.3 (with WP-3.5.3) must be aboard the first tagged binary — none of this is retrofittable to already-shipped binaries. v1 install story everywhere (pipeline, README, error hints): curl-binary + `go install` only.
 
 | WP | Scope | Context | Verify |
 |---|---|---|---|
 | 7.1 | goreleaser pipeline on `v*` tags: linux/darwin × amd64/arm64, `CGO_ENABLED=0` pinned and verified static (`file`/ldd check), archives + `SHA256SUMS`, GitHub artifact attestation, release gated on green CI, ldflags → `internal/version`; smoke step executes each built binary (`kira version` + tiny testscript); install docs for curl-binary + `go install` | [STRETCH_GOALS](STRETCH_GOALS.md) | tag dry-run produces all artifacts; static check + smoke green; release doc states darwin artifacts are cross-compiled untested |
-| 7.2 | `kira version` contract handshake: `--json` → `{version, commit, date, json_contract}` from `internal/version`; `json_contract` sourced from the golden-suite constant, never hand-bumped; shape enters the frozen golden corpus in the same change; works with no `.kira/` present | [04](docs/design/04-cli.md), [06](docs/design/06-nvim-plugin.md) | golden corpus includes `version --json`; testscript outside any repo |
+| 7.2 | ✅ mostly landed early (machine-API wave): `version --json` → `{version, json_contract, go, commit}`; shape pinned by unit test + schema artifact instead of the golden corpus (go/commit are build-env volatile — deliberate deviation); `json_contract` = datamodel constant. Residue: `date` field via ldflags at 7.1, works-with-no-`.kira/` testscript | [04](docs/design/04-cli.md) | shape unit test green; residue verified in 7.1 |
 | 7.3 | Compat policy doc + `kira.min_version` guard: older binary exits 3 with "repo requires kira ≥ X (you have Y): <install hint>" before any write; light-scan fallback for the one key when the config is otherwise unparseable; `doctor` unknown-key warning; `kira migrate` escape hatch | [03](docs/design/03-storage-and-git.md) | testscript: guard blocks writes, allows reads; unparseable-config fallback case |
 | 7.4 | vhs demo tapes: `.tape` scripts under `docs/demo/` against the tour seeder (M4), GIFs published as release assets — never committed to main; regeneration is a required release-checklist step | [STRETCH_GOALS](STRETCH_GOALS.md) | tapes render in the manual release workflow; checklist step documented |
 | 7.5 | README as product page: testscript-run quickstart (provisions a local bare origin so `kira sync` is real), install matrix = shipped channels only, principle-level "why not X" table, GIF-less fallback layout; last inside the milestone, after install paths are real | [STRETCH_GOALS](STRETCH_GOALS.md) | quickstart testscript green incl. sync against bare origin; CI link check |
