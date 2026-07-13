@@ -6,10 +6,11 @@ import (
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/testutil"
 )
 
 func TestConfigTemplateParses(t *testing.T) {
-	root := initGitRepo(t)
+	root := testutil.InitGitRepo(t)
 	if _, err := core.Init(root, "ACME", false); err != nil {
 		t.Fatalf("Init: %v", err)
 	}

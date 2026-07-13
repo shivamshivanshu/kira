@@ -14,6 +14,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/index"
 	"github.com/shivamshivanshu/kira/internal/storage"
+	"github.com/shivamshivanshu/kira/internal/testutil"
 )
 
 type repoFixture struct {
@@ -24,10 +25,7 @@ type repoFixture struct {
 
 func newRepo(t *testing.T) repoFixture {
 	t.Helper()
-	root := t.TempDir()
-	run(t, root, "git", "init")
-	run(t, root, "git", "config", "user.email", "test@example.com")
-	run(t, root, "git", "config", "user.name", "tester")
+	root := testutil.InitGitRepo(t)
 	if err := os.MkdirAll(filepath.Join(root, ".kira", "tickets"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -368,6 +366,37 @@ func TestCorruptedDBRecovers(t *testing.T) {
 	}
 	if len(items) != 1 {
 		t.Fatalf("recovery produced %d items, want 1", len(items))
+	}
+}
+
+func TestForcedRefreshRebuildsAfterCorruption(t *testing.T) {
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.writeTicket(t, b, ticket(b, "KIRA-2", "second"))
+	f.commit(t, "one")
+	if _, _, err := index.Load(f.store, f.repo, index.Options{}); err != nil {
+		t.Fatalf("initial Load: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(f.store.CacheDir(), "index.db"), []byte("not a database"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := index.Refresh(f.store, f.repo, index.Options{}, true)
+	if err != nil {
+		t.Fatalf("forced Refresh over corrupt cache: %v", err)
+	}
+	if res.Items != 2 {
+		t.Fatalf("forced Refresh reported %d items, want 2", res.Items)
+	}
+
+	items, _, err := index.Load(f.store, f.repo, index.Options{})
+	if err != nil {
+		t.Fatalf("Load after forced rebuild: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("rebuilt index has %d items, want 2", len(items))
 	}
 }
 

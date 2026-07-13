@@ -74,7 +74,7 @@ func renderTreeGroups(w io.Writer, res *datamodel.ListResult) {
 	for _, grp := range res.Tree {
 		switch label := epicLabel(grp); label {
 		case "":
-			fmt.Fprintln(tw, "(orphans)")
+			fmt.Fprintln(tw, "(no epic)")
 		default:
 			fmt.Fprintf(tw, "%s\t\t\t(epic)\n", label)
 		}

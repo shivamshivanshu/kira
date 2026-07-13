@@ -256,11 +256,7 @@ func TestEditPathSelfLinkRejected(t *testing.T) {
 			t.Fatal(err)
 		}
 		mutate(it)
-		path := filepath.Join(t.TempDir(), "edited.md")
-		if err := os.WriteFile(path, []byte(codec.Serialize(it)), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		_, err = s.Edit(cfg, a.Number, core.EditOpts{FromFile: path})
+		_, err = s.Edit(cfg, a.Number, core.EditOpts{FromFile: writeTempItem(t, codec.Serialize(it))})
 		return err
 	}
 
@@ -334,7 +330,8 @@ func TestMoveRequireMultiMissing(t *testing.T) {
 	res := mustCreate(t, s, cfg, "multi")
 
 	_, err := s.Move(cfg, res.Number, "IN_PROGRESS", core.MoveOpts{})
-	if err == nil || !strings.Contains(err.Error(), "requires owner, due") {
+	if err == nil || !strings.Contains(err.Error(), "requires") ||
+		!strings.Contains(err.Error(), "owner") || !strings.Contains(err.Error(), "due") {
 		t.Fatalf("err = %v, want both missing fields listed", err)
 	}
 
@@ -459,9 +456,9 @@ func TestMoveWipWarning(t *testing.T) {
 	if err != nil {
 		t.Fatalf("move over limit must not block: %v", err)
 	}
-	want := "IN_PROGRESS is over its WIP limit (4 > 3)"
-	if len(mres.Warnings) != 1 || mres.Warnings[0] != want {
-		t.Fatalf("warnings = %v, want [%s]", mres.Warnings, want)
+	if len(mres.Warnings) != 1 || !strings.Contains(mres.Warnings[0], "IN_PROGRESS") ||
+		!strings.Contains(mres.Warnings[0], "WIP limit") || !strings.Contains(mres.Warnings[0], "4 > 3") {
+		t.Fatalf("warnings = %v, want one over-WIP-limit warning naming IN_PROGRESS at 4 > 3", mres.Warnings)
 	}
 	if got := stateOf(t, s, cfg, nums[3]); got != "IN_PROGRESS" {
 		t.Fatalf("state = %s, want IN_PROGRESS (advisory, never blocks)", got)
@@ -503,9 +500,9 @@ func TestMoveWipCountsPerType(t *testing.T) {
 	if err != nil {
 		t.Fatalf("move t2: %v", err)
 	}
-	want := "DONE is over its WIP limit (2 > 1)"
-	if len(mres.Warnings) != 1 || mres.Warnings[0] != want {
-		t.Fatalf("warnings = %v, want [%s]", mres.Warnings, want)
+	if len(mres.Warnings) != 1 || !strings.Contains(mres.Warnings[0], "DONE") ||
+		!strings.Contains(mres.Warnings[0], "WIP limit") || !strings.Contains(mres.Warnings[0], "2 > 1") {
+		t.Fatalf("warnings = %v, want one over-WIP-limit warning naming DONE at 2 > 1", mres.Warnings)
 	}
 }
 

@@ -129,4 +129,11 @@ func TestAdjacentAllowedMirrorsTransitionGraph(t *testing.T) {
 			t.Errorf("AdjacentAllowed(%s->%s) = %v, want %v", c.from, c.to, got, c.want)
 		}
 	}
+
+	wf := cfg.Workflows[datamodel.TypeTicket]
+	wf.EnforceTransitions = false
+	cfg.Workflows[datamodel.TypeTicket] = wf
+	if !core.AdjacentAllowed(cfg, datamodel.TypeTicket, "TODO", "DONE") {
+		t.Error("EnforceTransitions=false must bypass the adjacency graph and allow TODO->DONE")
+	}
 }

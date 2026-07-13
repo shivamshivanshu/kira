@@ -23,7 +23,7 @@ func newConfigCmd(g *globalFlags) *cobra.Command {
 func newConfigFiltersCmd(g *globalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "filters",
-		Short: "List the named saved queries from config filters:",
+		Short: "List the named saved queries from config filters",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			_, cfg, err := openStore(g)

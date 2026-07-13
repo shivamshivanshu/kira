@@ -51,7 +51,7 @@ func Compile(input string, opts Options) (*Compiled, error) {
 
 func Match(field, value string, opts Options) (Predicate, error) {
 	if !fields[field] {
-		return nil, &Error{Pos: 0, Msg: "unknown field " + field}
+		return nil, unknownFieldErr(0, field)
 	}
 	if isDateField(field) {
 		return nil, &Error{Pos: 0, Msg: "field " + field + " is not an equality filter"}
@@ -147,7 +147,16 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 	case fieldDue:
 		return datePred(n, func(it *datamodel.Item) string { return ptr.Deref(it.Due) }), nil
 	}
-	return nil, &Error{Pos: n.op.pos, Msg: "unknown field " + n.field}
+	return nil, unknownFieldErr(n.op.pos, n.field)
+}
+
+func unknownFieldErr(pos int, field string) *Error {
+	names := make([]string, 0, len(fields))
+	for f := range fields {
+		names = append(names, f)
+	}
+	slices.Sort(names)
+	return &Error{Pos: pos, Msg: fmt.Sprintf("unknown field %s (available: %s)", quote(field), strings.Join(names, ", "))}
 }
 
 func (c *compiler) compileRefPred(n *predExpr, eq bool, matches func(*datamodel.Item, string) bool) (Predicate, error) {

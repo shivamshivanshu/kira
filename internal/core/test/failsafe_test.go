@@ -3,7 +3,6 @@ package core_test
 import (
 	"errors"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -153,11 +152,8 @@ func TestEditFullEditorRefusesBeforeDroppingUnknowns(t *testing.T) {
 	res := mustCreate(t, s, cfg, "Has future fields")
 	overwriteItem(t, s, res.ID, withUnknownKey(mustReadItem(t, s, res.ID)))
 
-	src := filepath.Join(t.TempDir(), "edited.md")
 	clean := strings.Replace(mustReadItem(t, s, res.ID), unknownKeyLine, "", 1)
-	if err := os.WriteFile(src, []byte(strings.Replace(clean, "state: TODO", "state: IN_PROGRESS", 1)), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	src := writeTempItem(t, strings.Replace(clean, "state: TODO", "state: IN_PROGRESS", 1))
 	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{FromFile: src})
 	assertUpgradeRefusal(t, err)
 }
@@ -180,19 +176,9 @@ func TestMergeFileRefusesOnUnknown(t *testing.T) {
 	res := mustCreate(t, s, cfg, "mergeable")
 	clean := mustReadItem(t, s, res.ID)
 
-	dir := t.TempDir()
-	base := filepath.Join(dir, "base.md")
-	ours := filepath.Join(dir, "ours.md")
-	theirs := filepath.Join(dir, "theirs.md")
-	if err := os.WriteFile(base, []byte(clean), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(ours, []byte(withUnknownKey(clean)), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(theirs, []byte(clean), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	base := writeTempItem(t, clean)
+	ours := writeTempItem(t, withUnknownKey(clean))
+	theirs := writeTempItem(t, clean)
 
 	_, err := core.MergeFile(gitx.Repo{Dir: s.Root()}, base, ours, theirs)
 	assertUpgradeRefusal(t, err)

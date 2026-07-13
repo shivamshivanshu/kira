@@ -110,7 +110,7 @@ func statsLines(t theme.Theme, rich bool, res *datamodel.StatsResult) []string {
 			vals[i] = float64(n)
 			total += n
 		}
-		lines = append(lines, sparkRow(t, "throughput", sparkline(vals, rich), fmt.Sprintf("%d/wk", total)))
+		lines = append(lines, sparkRow(t, "throughput", sparkline(vals, rich), fmt.Sprintf("%d in %dw", total, len(res.Throughput))))
 	}
 	if r := res.Reopens; r != nil && r.Count > 0 {
 		lines = append(lines, t.Dim.Render(fmt.Sprintf("  %-12s", "reopens"))+strings.Join(r.Items, ", "))

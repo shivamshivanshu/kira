@@ -9,28 +9,17 @@ import (
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/testutil"
 	"github.com/shivamshivanshu/kira/internal/treeish"
 )
 
 func initRepo(t *testing.T) (string, gitx.Repo) {
 	t.Helper()
-	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
-	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
-	root := t.TempDir()
-	repo := gitx.Repo{Dir: root}
-	for _, args := range [][]string{
-		{"init"},
-		{"config", "user.email", "t@example.com"},
-		{"config", "user.name", "t"},
-	} {
-		if _, err := repo.Output(args...); err != nil {
-			t.Fatalf("git %v: %v", args, err)
-		}
-	}
+	root := testutil.InitGitRepo(t)
 	if _, err := core.Init(root, "KIRA", false); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
-	return root, repo
+	return root, gitx.Repo{Dir: root}
 }
 
 func item(ulid, number, state string, aliases []string) *datamodel.Item {

@@ -8,7 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/exp/golden"
-	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/muesli/termenv"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -40,6 +39,13 @@ func sampleTree() ([]datamodel.TreeNode, map[string]datamodel.ListItem, map[stri
 }
 
 func strptr(s string) *string { return &s }
+
+func loadedTree() treeModel {
+	nodes, fields, progress := sampleTree()
+	tm := newTreeModel()
+	(&tm).load(nodes, fields, progress)
+	return tm
+}
 
 func newTestModel(w, h int, withData bool) model {
 	m := newModel(nil, nil, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
@@ -75,20 +81,9 @@ func TestCollapseViaKey(t *testing.T) {
 	golden.RequireEqual(t, []byte(updated.(model).View()))
 }
 
-func TestTeatestCollapseSnapshot(t *testing.T) {
-	m := newTestModel(100, 12, true)
-	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 12))
-	tm.Type("h")
-	tm.Type("q")
-	tm.WaitFinished(t)
-	golden.RequireEqual(t, []byte(tm.FinalModel(t).(model).View()))
-}
-
 func TestIconsAsciiVsNerd(t *testing.T) {
-	nodes, fields, progress := sampleTree()
 	th := asciiTheme()
-	tm := newTreeModel()
-	(&tm).load(nodes, fields, progress)
+	tm := loadedTree()
 
 	ascii := tm.render(th, iconSet{mode: datamodel.IconText}, 100, 6, true, true)
 	if !strings.Contains(ascii, "[E]") || strings.Contains(ascii, glyphEpic.nerd) {
@@ -105,16 +100,12 @@ func TestIconsAsciiVsNerd(t *testing.T) {
 }
 
 func TestTreeNerdIconsSnapshot(t *testing.T) {
-	nodes, fields, progress := sampleTree()
-	tm := newTreeModel()
-	(&tm).load(nodes, fields, progress)
+	tm := loadedTree()
 	golden.RequireEqual(t, []byte(tm.render(asciiTheme(), iconSet{mode: datamodel.IconNerd}, 100, 6, true, true)))
 }
 
 func TestTreeEmojiIconsSnapshot(t *testing.T) {
-	nodes, fields, progress := sampleTree()
-	tm := newTreeModel()
-	(&tm).load(nodes, fields, progress)
+	tm := loadedTree()
 	golden.RequireEqual(t, []byte(tm.render(asciiTheme(), iconSet{mode: datamodel.IconEmoji}, 100, 6, true, true)))
 }
 

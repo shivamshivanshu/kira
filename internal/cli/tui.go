@@ -16,7 +16,7 @@ func newTUICmd(g *globalFlags) *cobra.Command {
 	var injectPanic bool
 	cmd := &cobra.Command{
 		Use:   "tui",
-		Short: "launch the interactive terminal UI (also the default when kira is run with no command)",
+		Short: "Launch the interactive terminal UI (also the default when kira is run with no command)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runTUI(g, injectPanic)

@@ -126,28 +126,8 @@ func TestColumnHeaderTintReflectsWipPressure(t *testing.T) {
 
 func boardStore(t *testing.T) (*core.Store, *datamodel.Config) {
 	t.Helper()
-	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
-	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
 	t.Setenv("EDITOR", "true")
-	root := t.TempDir()
-	for _, args := range [][]string{{"init"}, {"config", "user.email", "t@e.com"}, {"config", "user.name", "t"}} {
-		cmd := exec.Command("git", args...)
-		cmd.Dir = root
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("git %v: %v\n%s", args, err, out)
-		}
-	}
-	if _, err := core.Init(root, "KIRA", false); err != nil {
-		t.Fatalf("Init: %v", err)
-	}
-	s, err := core.Discover(root)
-	if err != nil {
-		t.Fatalf("Discover: %v", err)
-	}
-	cfg, err := s.Config()
-	if err != nil {
-		t.Fatalf("Config: %v", err)
-	}
+	s, cfg, _ := initRepo(t)
 	return s, cfg
 }
 

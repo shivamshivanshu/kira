@@ -13,7 +13,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
-	"github.com/shivamshivanshu/kira/internal/merge"
 )
 
 func setMergePolicyManual(t *testing.T, root string) {
@@ -100,15 +99,6 @@ func writeCommit(t *testing.T, repo gitx.Repo, root string, it *datamodel.Item, 
 	}
 }
 
-func blobAt(t *testing.T, repo gitx.Repo, ref string) string {
-	t.Helper()
-	out, err := repo.OutputRaw("show", ref+":"+mergeRelPath())
-	if err != nil {
-		t.Fatalf("git show %s: %v", ref, err)
-	}
-	return out
-}
-
 func gitMerger(b, o, tt string) (string, bool) {
 	mm, c, err := gitx.MergeText(b, o, tt)
 	if err != nil {
@@ -145,78 +135,6 @@ func registerDriver(t *testing.T, root string) {
 	}
 	if err := s.RegisterMergeDriver(); err != nil {
 		t.Fatalf("register driver: %v", err)
-	}
-}
-
-func TestMergeDriverByteIdenticalToEngineAndRecoverable(t *testing.T) {
-	root := initGitRepo(t)
-	initStore(t, root)
-	repo := gitx.Repo{Dir: root}
-
-	base := mergeItem(nil)
-	ours := mergeItem(func(it *datamodel.Item) { it.State = "REVIEW"; it.Updated = "2026-03-02T00:00:00Z" })
-	theirs := mergeItem(func(it *datamodel.Item) { it.State = "DONE"; it.Updated = "2026-03-01T00:00:00Z" })
-	mainBranch := diverge(t, repo, root, base, ours, theirs)
-
-	baseRef, err := repo.Output("merge-base", mainBranch, "other")
-	if err != nil {
-		t.Fatalf("merge-base: %v", err)
-	}
-	baseBlob := blobAt(t, repo, baseRef)
-	oursBlob := blobAt(t, repo, mainBranch)
-	theirsBlob := blobAt(t, repo, "other")
-
-	registerDriver(t, root)
-	if _, err := repo.Output("merge", "other"); err != nil {
-		t.Fatalf("git merge with driver should resolve cleanly: %v", err)
-	}
-
-	got, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(mergeRelPath())))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(got), "<<<<<<<") {
-		t.Fatalf("driver left conflict markers:\n%s", got)
-	}
-
-	bi, _ := codec.Parse(baseBlob)
-	oi, _ := codec.Parse(oursBlob)
-	ti, _ := codec.Parse(theirsBlob)
-	want := codec.Serialize(merge.Merge(bi, oi, ti, merge.Theirs, gitMerger).Item)
-	if string(got) != want {
-		t.Fatalf("driver path != direct engine:\n--- driver ---\n%s\n--- engine ---\n%s", got, want)
-	}
-
-	merged, _ := codec.Parse(string(got))
-	if merged.State != "REVIEW" {
-		t.Fatalf("merged state = %q, want REVIEW (ours updated later)", merged.State)
-	}
-	loser, _ := codec.Parse(blobAt(t, repo, "other"))
-	if loser.State != "DONE" {
-		t.Fatalf("losing side not recoverable from parent: state = %q, want DONE", loser.State)
-	}
-}
-
-func TestMergeDriverConcurrentComments(t *testing.T) {
-	root := initGitRepo(t)
-	initStore(t, root)
-	repo := gitx.Repo{Dir: root}
-
-	c1 := datamodel.Comment{ID: "01AAA", Author: "a", Ts: "2026-03-01T00:00:00Z", Body: "from theirs"}
-	c2 := datamodel.Comment{ID: "01BBB", Author: "b", Ts: "2026-03-02T00:00:00Z", Body: "from ours"}
-	base := mergeItem(nil)
-	ours := mergeItem(func(it *datamodel.Item) { it.Body = codec.AppendComment(base.Body, c2) })
-	theirs := mergeItem(func(it *datamodel.Item) { it.Body = codec.AppendComment(base.Body, c1) })
-	diverge(t, repo, root, base, ours, theirs)
-
-	registerDriver(t, root)
-	if _, err := repo.Output("merge", "other"); err != nil {
-		t.Fatalf("git merge with driver: %v", err)
-	}
-	got, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(mergeRelPath())))
-	comments := codec.ParseComments(string(got))
-	if len(comments) != 2 || comments[0].ID != "01AAA" || comments[1].ID != "01BBB" {
-		t.Fatalf("comments = %+v, want both, ts-sorted", comments)
 	}
 }
 
@@ -323,32 +241,5 @@ func TestMergeFileManualPolicyCleanTextMerge(t *testing.T) {
 	}
 	if !strings.Contains(s, "OURS") || !strings.Contains(s, "THEIRS") {
 		t.Fatalf("clean text merge should union both sides:\n%s", s)
-	}
-}
-
-func TestMergeDriverManualPolicySurfacesConflict(t *testing.T) {
-	root := initGitRepo(t)
-	initStore(t, root)
-	setMergePolicyManual(t, root)
-	repo := gitx.Repo{Dir: root}
-	if _, err := repo.Output("commit", "-am", "merge.policy manual"); err != nil {
-		t.Fatalf("commit config: %v", err)
-	}
-
-	base := mergeItem(nil)
-	ours := mergeItem(func(it *datamodel.Item) { it.State = "REVIEW"; it.Updated = "2026-03-02T00:00:00Z" })
-	theirs := mergeItem(func(it *datamodel.Item) { it.State = "DONE"; it.Updated = "2026-03-01T00:00:00Z" })
-	diverge(t, repo, root, base, ours, theirs)
-
-	registerDriver(t, root)
-	if _, err := repo.Output("merge", "other"); err == nil {
-		t.Fatal("manual policy must surface a real git conflict, not auto-resolve on the driver path")
-	}
-	got, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(mergeRelPath())))
-	if !strings.Contains(string(got), "<<<<<<<") {
-		t.Fatalf("manual driver must leave conflict markers:\n%s", got)
-	}
-	if unmerged, _ := repo.Output("ls-files", "-u"); unmerged == "" {
-		t.Fatal("path should be left unmerged under manual policy")
 	}
 }

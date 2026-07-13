@@ -1,12 +1,12 @@
 package cli
 
 import (
-	"os/exec"
 	"strings"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/testutil"
 )
 
 func TestCommandRunnerMovesTicketThroughCoreService(t *testing.T) {
@@ -43,18 +43,7 @@ func TestCommandRunnerReportsError(t *testing.T) {
 
 func initFixture(t *testing.T) string {
 	t.Helper()
-	t.Setenv("GIT_CONFIG_GLOBAL", "/dev/null")
-	t.Setenv("GIT_CONFIG_SYSTEM", "/dev/null")
-	t.Setenv("GIT_AUTHOR_NAME", "t")
-	t.Setenv("GIT_AUTHOR_EMAIL", "t@e.c")
-	t.Setenv("GIT_COMMITTER_NAME", "t")
-	t.Setenv("GIT_COMMITTER_EMAIL", "t@e.c")
-	dir := t.TempDir()
-	cmd := exec.Command("git", "init")
-	cmd.Dir = dir
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v: %s", err, out)
-	}
+	dir := testutil.InitGitRepo(t)
 	if _, err := core.Init(dir, "KIRA", false); err != nil {
 		t.Fatalf("core.Init: %v", err)
 	}

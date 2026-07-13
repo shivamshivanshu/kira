@@ -24,3 +24,21 @@ func TestSpawnCounts(t *testing.T) {
 	}
 	fmt.Print(b.String())
 }
+
+func TestSpawnCountsMutations(t *testing.T) {
+	requirePerf(t)
+	bin := kiraBin(t)
+	shimDir, counter := gitShim(t)
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "\n=== git-spawn count per mutation (1k fixture, fresh tree per run) ===\n")
+	for _, c := range mutations {
+		first := spawnCount(t, bin, freshFixture(t, 1000), shimDir, counter, c.args...)
+		second := spawnCount(t, bin, freshFixture(t, 1000), shimDir, counter, c.args...)
+		if first != second {
+			t.Errorf("%s: spawn count not deterministic (%d then %d)", c.name, first, second)
+		}
+		fmt.Fprintf(&b, "  %-8s %d\n", c.name, first)
+	}
+	fmt.Print(b.String())
+}

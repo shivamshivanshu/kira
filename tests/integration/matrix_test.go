@@ -12,6 +12,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/merge"
 )
 
 const (
@@ -443,7 +444,51 @@ func TestByteIdenticalSyncVsDriver(t *testing.T) {
 				t.Fatalf("driver path: %v", err)
 			}
 			assertSameTickets(t, ticketBytes(t, syncW.root), ticketBytes(t, driverW.root))
+			assertDriverMatchesEngine(t, driverW)
 		})
+	}
+}
+
+func showBlob(repo gitx.Repo, ref, rel string) (string, bool) {
+	out, err := repo.OutputRaw("show", ref+":"+rel)
+	if err != nil {
+		return "", false
+	}
+	return out, true
+}
+
+func assertDriverMatchesEngine(t *testing.T, w *world) {
+	t.Helper()
+	mergeCommit, err := w.repo.Output("rev-list", "--merges", "-1", "HEAD")
+	if err != nil || mergeCommit == "" {
+		t.Fatalf("locate merge commit: %v (out=%q)", err, mergeCommit)
+	}
+	base, err := w.repo.Output("merge-base", mergeCommit+"^1", mergeCommit+"^2")
+	if err != nil {
+		t.Fatalf("merge-base: %v", err)
+	}
+	listed, err := w.repo.Output("ls-tree", "-r", "--name-only", mergeCommit, "--", ".kira/tickets")
+	if err != nil {
+		t.Fatalf("ls-tree: %v", err)
+	}
+	for _, rel := range strings.Split(strings.TrimSpace(listed), "\n") {
+		if rel == "" {
+			continue
+		}
+		baseBlob, okB := showBlob(w.repo, base, rel)
+		oursBlob, okO := showBlob(w.repo, mergeCommit+"^1", rel)
+		theirsBlob, okT := showBlob(w.repo, mergeCommit+"^2", rel)
+		mergedBlob, okM := showBlob(w.repo, mergeCommit, rel)
+		if !okB || !okO || !okT || !okM {
+			continue
+		}
+		bi, _ := codec.Parse(baseBlob)
+		oi, _ := codec.Parse(oursBlob)
+		ti, _ := codec.Parse(theirsBlob)
+		want := codec.Serialize(merge.Merge(bi, oi, ti, merge.Theirs, gitMerger).Item)
+		if mergedBlob != want {
+			t.Fatalf("%s: driver merge output is not byte-identical to direct merge.Merge:\n--- driver ---\n%s\n--- engine ---\n%s", rel, mergedBlob, want)
+		}
 	}
 }
 

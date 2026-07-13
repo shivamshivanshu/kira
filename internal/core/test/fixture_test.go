@@ -2,36 +2,27 @@ package core_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/storage"
+	"github.com/shivamshivanshu/kira/internal/testutil"
 )
 
-func initGitRepo(t *testing.T) string {
+func writeTempItem(t *testing.T, content string) string {
 	t.Helper()
-	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
-	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
-	t.Setenv("EDITOR", "true")
-	root := t.TempDir()
-	repo := gitx.Repo{Dir: root}
-	for _, args := range [][]string{
-		{"init"},
-		{"config", "user.email", "test@example.com"},
-		{"config", "user.name", "tester"},
-	} {
-		if _, err := repo.Output(args...); err != nil {
-			t.Fatalf("git %v: %v", args, err)
-		}
+	path := filepath.Join(t.TempDir(), "item.md")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	return root
+	return path
 }
 
 func newStore(t *testing.T) (*core.Store, *datamodel.Config) {
 	t.Helper()
-	root := initGitRepo(t)
+	root := testutil.InitGitRepo(t)
 	if _, err := core.Init(root, "KIRA", false); err != nil {
 		t.Fatalf("Init: %v", err)
 	}

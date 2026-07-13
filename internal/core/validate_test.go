@@ -73,67 +73,40 @@ func TestValidateGraph(t *testing.T) {
 
 func strPtr(s string) *string { return &s }
 
-func TestVocabStrictWarn(t *testing.T) {
-	base := datamodel.Item{ID: "X", Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "t", State: "TODO"}
-	cases := []struct {
-		name       string
-		strict     bool
-		owner      string
-		force      bool
-		wantErr    bool
-		wantWarned bool
-	}{
-		{"known", true, "shivam", false, false, false},
-		{"unknown-strict", true, "mallory", false, true, false},
-		{"unknown-strict-force", true, "mallory", true, false, true},
-		{"unknown-lenient", false, "mallory", false, false, true},
-		{"known-lenient", false, "alice", false, false, false},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			cfg := config.Default()
-			cfg.People.Strict = tc.strict
-			it := base
-			it.Owner = &tc.owner
-			errs, warns := validateItem(cfg, &it, tc.force)
-			if gotErr := len(errs) > 0; gotErr != tc.wantErr {
-				t.Errorf("errs = %v, wantErr = %v", errs, tc.wantErr)
-			}
-			if gotWarn := len(warns) > 0; gotWarn != tc.wantWarned {
-				t.Errorf("warns = %v, wantWarned = %v", warns, tc.wantWarned)
-			}
-		})
-	}
-}
-
-func TestParityFieldValidation(t *testing.T) {
+func TestValidateItemVocabAndFields(t *testing.T) {
 	base := datamodel.Item{ID: "X", Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "t", State: "TODO"}
 	cases := []struct {
 		name     string
 		tweak    func(*datamodel.Config)
 		mutate   func(*datamodel.Item)
+		force    bool
 		wantErr  bool
 		wantWarn bool
 	}{
-		{"subtype-known", nil, func(it *datamodel.Item) { it.Subtype = strPtr("bug") }, false, false},
-		{"subtype-unknown-lenient", nil, func(it *datamodel.Item) { it.Subtype = strPtr("saga") }, false, true},
+		{"owner-known-strict", func(c *datamodel.Config) { c.People.Strict = true }, func(it *datamodel.Item) { it.Owner = strPtr("shivam") }, false, false, false},
+		{"owner-unknown-strict", func(c *datamodel.Config) { c.People.Strict = true }, func(it *datamodel.Item) { it.Owner = strPtr("mallory") }, false, true, false},
+		{"owner-unknown-strict-force", func(c *datamodel.Config) { c.People.Strict = true }, func(it *datamodel.Item) { it.Owner = strPtr("mallory") }, true, false, true},
+		{"owner-unknown-lenient", nil, func(it *datamodel.Item) { it.Owner = strPtr("mallory") }, false, false, true},
+		{"owner-known-lenient", nil, func(it *datamodel.Item) { it.Owner = strPtr("alice") }, false, false, false},
+		{"subtype-known", nil, func(it *datamodel.Item) { it.Subtype = strPtr("bug") }, false, false, false},
+		{"subtype-unknown-lenient", nil, func(it *datamodel.Item) { it.Subtype = strPtr("saga") }, false, false, true},
 		{"subtype-unknown-strict", func(c *datamodel.Config) { c.Labels.Strict = true },
-			func(it *datamodel.Item) { it.Subtype = strPtr("saga") }, true, false},
+			func(it *datamodel.Item) { it.Subtype = strPtr("saga") }, false, true, false},
 		{"subtype-freeform-when-empty", func(c *datamodel.Config) { c.Subtypes = nil },
-			func(it *datamodel.Item) { it.Subtype = strPtr("saga") }, false, false},
-		{"priority-unknown-lenient", nil, func(it *datamodel.Item) { it.Priority = strPtr("P9") }, false, true},
+			func(it *datamodel.Item) { it.Subtype = strPtr("saga") }, false, false, false},
+		{"priority-unknown-lenient", nil, func(it *datamodel.Item) { it.Priority = strPtr("P9") }, false, false, true},
 		{"priority-unknown-strict", func(c *datamodel.Config) { c.Labels.Strict = true },
-			func(it *datamodel.Item) { it.Priority = strPtr("P9") }, true, false},
-		{"resolution-known", nil, func(it *datamodel.Item) { it.Resolution = strPtr("dropped") }, false, false},
-		{"resolution-unknown-lenient", nil, func(it *datamodel.Item) { it.Resolution = strPtr("meh") }, false, true},
-		{"rank-empty", nil, func(it *datamodel.Item) { it.Rank = strPtr("") }, true, false},
-		{"rank-freeform", nil, func(it *datamodel.Item) { it.Rank = strPtr("0|zzz:") }, false, false},
+			func(it *datamodel.Item) { it.Priority = strPtr("P9") }, false, true, false},
+		{"resolution-known", nil, func(it *datamodel.Item) { it.Resolution = strPtr("dropped") }, false, false, false},
+		{"resolution-unknown-lenient", nil, func(it *datamodel.Item) { it.Resolution = strPtr("meh") }, false, false, true},
+		{"rank-empty", nil, func(it *datamodel.Item) { it.Rank = strPtr("") }, false, true, false},
+		{"rank-freeform", nil, func(it *datamodel.Item) { it.Rank = strPtr("0|zzz:") }, false, false, false},
 		{"sprint-known", func(c *datamodel.Config) {
 			c.Sprints = []datamodel.Sprint{{Key: "2026-S14", Name: "Sprint 14", Start: "2026-07-13", End: "2026-07-26"}}
-		}, func(it *datamodel.Item) { it.Sprint = strPtr("2026-S14") }, false, false},
-		{"sprint-unknown", nil, func(it *datamodel.Item) { it.Sprint = strPtr("2099-S1") }, true, false},
-		{"due-valid", nil, func(it *datamodel.Item) { it.Due = strPtr("2026-07-20") }, false, false},
-		{"due-invalid", nil, func(it *datamodel.Item) { it.Due = strPtr("someday") }, true, false},
+		}, func(it *datamodel.Item) { it.Sprint = strPtr("2026-S14") }, false, false, false},
+		{"sprint-unknown", nil, func(it *datamodel.Item) { it.Sprint = strPtr("2099-S1") }, false, true, false},
+		{"due-valid", nil, func(it *datamodel.Item) { it.Due = strPtr("2026-07-20") }, false, false, false},
+		{"due-invalid", nil, func(it *datamodel.Item) { it.Due = strPtr("someday") }, false, true, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -143,7 +116,7 @@ func TestParityFieldValidation(t *testing.T) {
 			}
 			it := base
 			tc.mutate(&it)
-			errs, warns := validateItem(cfg, &it, false)
+			errs, warns := validateItem(cfg, &it, tc.force)
 			if gotErr := len(errs) > 0; gotErr != tc.wantErr {
 				t.Errorf("errs = %v, wantErr = %v", errs, tc.wantErr)
 			}

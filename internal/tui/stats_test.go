@@ -60,15 +60,23 @@ func TestStatsScreenSwitchViaKey(t *testing.T) {
 
 func TestStatsCacheKeyedByResultPointer(t *testing.T) {
 	m, ss := statsScreenWith(sampleStats())
-	first := ss.contentLines(m.theme, false)
-	again := ss.contentLines(m.theme, false)
-	if &first[0] != &again[0] {
-		t.Fatal("unchanged result pointer must serve cached lines, not rebuild")
+	first := strings.Join(ss.contentLines(m.theme, false), "\n")
+
+	ss.res.Scope.Sprint = "mutated-after-first-render"
+	again := strings.Join(ss.contentLines(m.theme, false), "\n")
+	if again != first {
+		t.Fatal("same result pointer must serve the cached lines, ignoring an in-place mutation of the same result")
 	}
-	ss.setResult(sampleStats())
-	fresh := ss.contentLines(m.theme, false)
-	if &first[0] == &fresh[0] {
-		t.Fatal("a fresh result pointer must invalidate the cache; a reload that mutated in place would serve stale lines")
+
+	other := sampleStats()
+	other.Scope.Sprint = "a-distinctly-different-sprint"
+	ss.setResult(other)
+	fresh := strings.Join(ss.contentLines(m.theme, false), "\n")
+	if fresh == first {
+		t.Fatal("a fresh result pointer must invalidate the cache and rebuild, not reuse the first render")
+	}
+	if !strings.Contains(fresh, other.Scope.Sprint) {
+		t.Fatalf("rebuilt content must reflect the new result's data, got:\n%s", fresh)
 	}
 }
 

@@ -2,7 +2,6 @@ package core
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -10,25 +9,12 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/testutil"
 )
 
 func eventRepo(t *testing.T) *Store {
 	t.Helper()
-	dir := t.TempDir()
-	run := func(args ...string) {
-		t.Helper()
-		cmd := exec.Command("git", args...)
-		cmd.Dir = dir
-		cmd.Env = append(os.Environ(),
-			"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null",
-			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@e.c",
-			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@e.c",
-		)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("git %v: %v: %s", args, err, out)
-		}
-	}
-	run("init")
+	dir := testutil.InitGitRepo(t)
 	if err := os.MkdirAll(filepath.Join(dir, ".kira", "tickets"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -42,21 +28,9 @@ func commitState(t *testing.T, s *Store, it *datamodel.Item, state, date string)
 	if _, err := s.fs().WriteItem(it); err != nil {
 		t.Fatal(err)
 	}
-	for _, args := range [][]string{{"add", "-A"}, {"commit", "-m", "state " + state}} {
-		cmd := exec.Command("git", args...)
-		cmd.Dir = s.root
-		cmd.Env = append(os.Environ(),
-			"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null",
-			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@e.c",
-			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@e.c",
-			"GIT_AUTHOR_DATE="+date+"T10:00:00Z",
-			"GIT_COMMITTER_DATE="+date+"T10:00:00Z",
-			"TZ=UTC",
-		)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("git %v: %v: %s", args, err, out)
-		}
-	}
+	stamp := date + "T10:00:00Z"
+	gitRun(t, s, stamp, "add", "-A")
+	gitRun(t, s, stamp, "commit", "-m", "state "+state)
 }
 
 func eventTicket() *datamodel.Item {

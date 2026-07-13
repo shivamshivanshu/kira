@@ -72,8 +72,11 @@ func renderReport(w io.Writer, report *doctor.Report, asJSON bool) error {
 	for _, f := range report.Findings {
 		fmt.Fprintf(w, "%-7s %-15s %s%s\n", f.Severity, f.Class, findingLocation(f), f.Message)
 	}
-	fmt.Fprintf(w, "%s: %d error(s), %d warning(s), %d info\n",
-		reportVerdict(report), report.Summary.Error, report.Summary.Warning, report.Summary.Info)
+	fmt.Fprintf(w, "%s: %d %s, %d %s, %d info\n",
+		reportVerdict(report),
+		report.Summary.Error, plural(report.Summary.Error, "error"),
+		report.Summary.Warning, plural(report.Summary.Warning, "warning"),
+		report.Summary.Info)
 	return nil
 }
 
@@ -99,5 +102,12 @@ func reportExit(report *doctor.Report, cmd string) error {
 	if report.OK {
 		return nil
 	}
-	return errx.User("%s: %d problem(s) found", cmd, report.Summary.Error)
+	return errx.User("%s: %d %s found", cmd, report.Summary.Error, plural(report.Summary.Error, "problem"))
+}
+
+func plural(n int, word string) string {
+	if n == 1 {
+		return word
+	}
+	return word + "s"
 }

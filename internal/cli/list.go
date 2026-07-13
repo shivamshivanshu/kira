@@ -42,7 +42,7 @@ func newListCmd(g *globalFlags) *cobra.Command {
 	f.StringVar(&opts.Epic, "epic", "", "filter by parent epic")
 	f.StringVar(&opts.Priority, "priority", "", "filter by priority")
 	f.StringVar(&opts.Sprint, "sprint", "", "filter by sprint key ('active' resolves the active sprint)")
-	f.StringVar(&opts.Filter, "filter", "", "apply a named saved query from config filters:")
+	f.StringVar(&opts.Filter, "filter", "", "apply a named saved query from config filters")
 	f.StringVar(&opts.Query, "query", "", "filter by a query expression (ANDed with the flags)")
 	f.BoolVar(&opts.Tree, "tree", false, "group results by epic")
 	f.StringVar(&opts.At, "at", "", "read state at a git ref or date (YYYY-MM-DD), anchored on HEAD")

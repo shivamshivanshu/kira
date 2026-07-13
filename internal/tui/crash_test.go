@@ -7,6 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
 func TestHandleCrashRestoresAndReports(t *testing.T) {
@@ -30,6 +34,38 @@ func TestHandleCrashRestoresAndReports(t *testing.T) {
 	data, err := os.ReadFile(ce.LogPath)
 	if err != nil || !strings.Contains(string(data), "boom") {
 		t.Errorf("crash log unreadable or missing panic value: %v %q", err, data)
+	}
+}
+
+func TestInjectPanicRecoversThroughUpdateToQuit(t *testing.T) {
+	m := newModel(nil, nil, asciiTheme(), iconSet{mode: datamodel.IconText}, true)
+
+	cmd := m.Init()
+	if cmd == nil {
+		t.Fatal("Init with injectPanic=true must return the panicking command")
+	}
+	msg := cmd()
+	cm, ok := msg.(crashMsg)
+	if !ok {
+		t.Fatalf("safeCmd should recover the panic into a crashMsg, got %T (%v)", msg, msg)
+	}
+	if cm.value != "injected tui panic (tea.Cmd)" {
+		t.Fatalf("crashMsg.value = %v, want the panic value", cm.value)
+	}
+
+	updated, updateCmd := m.Update(cm)
+	m2, ok := updated.(model)
+	if !ok {
+		t.Fatalf("Update returned %T, want model", updated)
+	}
+	if m2.crash == nil || m2.crash.value != cm.value {
+		t.Fatalf("Update on crashMsg must record the crash on the model, got %+v", m2.crash)
+	}
+	if updateCmd == nil {
+		t.Fatal("Update on crashMsg must return a command")
+	}
+	if _, ok := updateCmd().(tea.QuitMsg); !ok {
+		t.Fatalf("Update on crashMsg must return a command that quits the program")
 	}
 }
 

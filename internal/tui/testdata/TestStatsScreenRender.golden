@@ -2,5 +2,5 @@ Sprint  2026-S1
 Completion  5/10 done (50%), 1 dropped                                                              
   cycle time  p50 5  p90 8.8  n=4                                                                   
   lead time   p50 5  p90 9.4  n=5                                                                   
-  throughput  .-*+.@-+  13/wk                                                                       
+  throughput  .-*+.@-+  13 in 8w                                                                    
   reopens     KIRA-3, KIRA-4                                                                        

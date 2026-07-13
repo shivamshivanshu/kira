@@ -9,11 +9,12 @@ import (
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/testutil"
 )
 
 func listFixture(t *testing.T) (*core.Store, *datamodel.Config) {
 	t.Helper()
-	root := initGitRepo(t)
+	root := testutil.InitGitRepo(t)
 	if _, err := core.Init(root, "KIRA", false); err != nil {
 		t.Fatalf("Init: %v", err)
 	}

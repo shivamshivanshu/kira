@@ -29,8 +29,14 @@ var commands = []command{
 	{"list", []string{"list", "--json"}},
 	{"tree", []string{"tree", "--json"}},
 	{"show", []string{"show", "KIRA-1", "--json"}},
-	{"query", []string{"query", "type = ticket", "--json"}},
+	{"query", []string{"list", "--query", "type = ticket", "--json"}},
 	{"stats", []string{"stats", "--json"}},
+}
+
+var mutations = []command{
+	{"create", []string{"create", "ticket", "--title", "perf", "--no-edit", "--json"}},
+	{"edit", []string{"edit", "KIRA-1", "--rank", "zzz", "--json"}},
+	{"move", []string{"move", "KIRA-1", "ACTIVE", "--force", "--json"}},
 }
 
 var (
@@ -120,6 +126,20 @@ func fixture(tb testing.TB, size int) string {
 	warm(tb, kiraBin(tb), p)
 	fixtures[size] = p
 	return p
+}
+
+func freshFixture(tb testing.TB, size int) string {
+	tb.Helper()
+	src := fixture(tb, size)
+	dst, err := os.MkdirTemp("", "kira-mut-")
+	if err != nil {
+		tb.Fatal(err)
+	}
+	registerTmp(dst)
+	if err := os.CopyFS(dst, os.DirFS(src)); err != nil {
+		tb.Fatalf("copy fixture: %v", err)
+	}
+	return dst
 }
 
 func seedFixture(tb testing.TB, size int) string {

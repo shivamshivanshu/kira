@@ -91,14 +91,22 @@ func TestTreeDetailPanelShowsLinkedData(t *testing.T) {
 func TestDetailCacheKeyedByResultPointer(t *testing.T) {
 	res := sampleDetail()
 	d := newDetailPanel()
-	first := d.contentLines(asciiTheme(), res, 100)
-	again := d.contentLines(asciiTheme(), res, 100)
-	if &first[0] != &again[0] {
-		t.Fatal("unchanged (res,width) must serve the cached lines, not rebuild")
+	first := strings.Join(d.contentLines(asciiTheme(), res, 100), "\n")
+
+	res.Title = "mutated after first render"
+	again := strings.Join(d.contentLines(asciiTheme(), res, 100), "\n")
+	if again != first {
+		t.Fatal("same (res,width) key must serve the cached lines, ignoring an in-place mutation of the same result")
 	}
-	fresh := d.contentLines(asciiTheme(), sampleDetail(), 100)
-	if &first[0] == &fresh[0] {
-		t.Fatal("a fresh result pointer must invalidate the cache; a producer that mutated in place would wrongly serve stale lines")
+
+	other := sampleDetail()
+	other.Title = "a distinctly different ticket"
+	fresh := strings.Join(d.contentLines(asciiTheme(), other, 100), "\n")
+	if fresh == first {
+		t.Fatal("a fresh result pointer must invalidate the cache and rebuild, not reuse the first render")
+	}
+	if !strings.Contains(fresh, other.Title) {
+		t.Fatalf("rebuilt content must reflect the new result's data, got:\n%s", fresh)
 	}
 }
 

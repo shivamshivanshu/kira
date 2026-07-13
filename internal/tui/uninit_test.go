@@ -10,10 +10,11 @@ import (
 	"github.com/charmbracelet/x/exp/teatest"
 
 	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/testutil"
 )
 
 func TestUninitTypedConfirmCreatesKira(t *testing.T) {
-	dir := gitRepo(t)
+	dir := testutil.InitGitRepo(t)
 	m := newUninitModel(dir, asciiTheme())
 
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(80, 20))
@@ -45,7 +46,7 @@ func TestUninitTypedConfirmCreatesKira(t *testing.T) {
 }
 
 func TestUninitEmptyKeyDoesNotInit(t *testing.T) {
-	dir := gitRepo(t)
+	dir := testutil.InitGitRepo(t)
 	m := newUninitModel(dir, asciiTheme())
 	m.width, m.height = 80, 20
 

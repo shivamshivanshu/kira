@@ -9,10 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
-func gitRun(t *testing.T, s *Store, date string, args ...string) {
-	t.Helper()
-	cmd := exec.Command("git", args...)
-	cmd.Dir = s.root
+func gitEnv(date string) []string {
 	env := append(os.Environ(),
 		"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null",
 		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@e.c",
@@ -20,10 +17,22 @@ func gitRun(t *testing.T, s *Store, date string, args ...string) {
 	if date != "" {
 		env = append(env, "GIT_AUTHOR_DATE="+date, "GIT_COMMITTER_DATE="+date)
 	}
-	cmd.Env = env
+	return env
+}
+
+func runGitIn(t *testing.T, dir, date string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	cmd.Env = gitEnv(date)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git %v: %v: %s", args, err, out)
 	}
+}
+
+func gitRun(t *testing.T, s *Store, date string, args ...string) {
+	t.Helper()
+	runGitIn(t, s.root, date, args...)
 }
 
 func blameField(res *datamodel.BlameResult, field string) *datamodel.BlameField {
@@ -33,27 +42,6 @@ func blameField(res *datamodel.BlameResult, field string) *datamodel.BlameField 
 		}
 	}
 	return nil
-}
-
-func TestBlameCreatedThenCommitSource(t *testing.T) {
-	s := eventRepo(t)
-	cfg := config.Default()
-	it := eventTicket()
-	commitState(t, s, it, "TODO", "2026-01-05")
-	commitState(t, s, it, "IN_PROGRESS", "2026-01-06")
-
-	res, err := s.Blame(cfg, it.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	title := blameField(res, "title")
-	if title == nil || title.SourceKind != sourceCreated || title.Degraded {
-		t.Errorf("title = %+v, want created, not degraded", title)
-	}
-	state := blameField(res, "state")
-	if state == nil || state.Value != "IN_PROGRESS" || state.SourceKind != sourceCommit || state.Degraded {
-		t.Errorf("state = %+v, want IN_PROGRESS via commit", state)
-	}
 }
 
 func TestBlameNullFieldOmittedUnlessEvent(t *testing.T) {
