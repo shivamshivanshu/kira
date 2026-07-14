@@ -53,7 +53,11 @@ func (s *Store) Comment(cfg *datamodel.Config, ref string, opts CommentOpts) (*d
 		Ts:     time.Now().Format(time.RFC3339),
 		Body:   text,
 	}
-	path, err := s.fs().WriteItemRaw(orig.ID, codec.AppendComment(string(raw), c))
+	content, err := codec.AppendCommentToDocument(string(raw), c)
+	if err != nil {
+		return nil, errx.User("appending comment to %s: %v", orig.Number, err)
+	}
+	path, err := s.fs().WriteItemRaw(orig.ID, content)
 	if err != nil {
 		return nil, err
 	}
@@ -74,21 +78,36 @@ func (s *Store) Comment(cfg *datamodel.Config, ref string, opts CommentOpts) (*d
 
 func (s *Store) commentText(editor string, opts CommentOpts) (string, error) {
 	if opts.HasMessage {
-		if strings.TrimSpace(opts.Message) == "" {
-			return "", errx.User("empty comment")
+		msg := normalizeEOL(opts.Message)
+		if err := validateCommentText(msg); err != nil {
+			return "", err
 		}
-		return opts.Message, nil
+		return msg, nil
 	}
 	content, err := runEditor(editor, editorx.Stdio{}, "", func(c string) []error {
-		if strings.TrimSpace(c) == "" {
-			return []error{errx.User("empty comment")}
+		if err := validateCommentText(normalizeEOL(c)); err != nil {
+			return []error{err}
 		}
 		return nil
 	})
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimRight(content, "\n"), nil
+	return strings.TrimRight(normalizeEOL(content), "\n"), nil
+}
+
+func normalizeEOL(s string) string { return strings.ReplaceAll(s, "\r\n", "\n") }
+
+func validateCommentText(text string) error {
+	if strings.TrimSpace(text) == "" {
+		return errx.User("empty comment")
+	}
+	for _, line := range strings.Split(text, "\n") {
+		if codec.IsCommentMarker(line) {
+			return errx.User("comment text cannot contain kira comment markers")
+		}
+	}
+	return nil
 }
 
 func (s *Store) currentUser(cfg *datamodel.Config) string {

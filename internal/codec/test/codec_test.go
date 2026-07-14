@@ -364,7 +364,10 @@ func TestAppendComment(t *testing.T) {
 
 func TestSplitCommentsMalformedOpenMarker(t *testing.T) {
 	body := "Real description.\n<!-- kira:comment id=01ABC -->\nnot a real comment\n<!-- /kira:comment -->\n"
-	prose, comments := codec.SplitComments(body)
+	prose, comments, canonical := codec.SplitComments(body)
+	if !canonical {
+		t.Fatal("marker-free body must be canonical")
+	}
 	if len(comments) != 0 {
 		t.Fatalf("malformed marker must not parse as a comment, got %d", len(comments))
 	}
@@ -378,14 +381,202 @@ func TestSplitCommentsMalformedOpenMarker(t *testing.T) {
 
 func TestSplitCommentsMarkerAtBodyStart(t *testing.T) {
 	body := "<!-- kira:comment id=01J8XA1F6Q2N9K3M7V0R5T8B4C author=shivam ts=2026-07-11T18:30:00+05:30 -->\nfirst line\n<!-- /kira:comment -->\n"
-	prose, comments := codec.SplitComments(body)
+	prose, comments, canonical := codec.SplitComments(body)
+	if !canonical {
+		t.Fatal("comment at body start must be canonical")
+	}
 	if len(comments) != 1 {
 		t.Fatalf("want 1 comment, got %d", len(comments))
 	}
-	if strings.Contains(prose, "kira:comment") {
-		t.Fatalf("comment leaked into prose: %q", prose)
+	if prose != "" {
+		t.Fatalf("prose must be empty, got %q", prose)
 	}
-	if got := codec.ParseComments(codec.JoinComments(prose, comments)); len(got) != 1 {
-		t.Fatalf("round-trip duplicated the comment, got %d", len(got))
+	if got := codec.JoinComments(prose, comments); got != body {
+		t.Fatalf("round-trip must be byte-identical:\nwant %q\ngot  %q", body, got)
+	}
+}
+
+func TestSplitCommentsNonCanonicalFallsBackToProse(t *testing.T) {
+	open := "<!-- kira:comment id=01J8XA1F6Q2N9K3M7V0R5T8B4C author=shivam ts=2026-07-11T18:30:00+05:30 -->"
+	open2 := "<!-- kira:comment id=01J8XB000000000000000000ZZ author=alice ts=2026-07-12T12:00:00+05:30 -->"
+	closeMarker := "<!-- /kira:comment -->"
+	cases := []struct {
+		name, body string
+	}{
+		{"missing close", "prose\n\n" + open + "\ncomment text\n"},
+		{"indented close", "prose\n\n" + open + "\ncomment text\n  " + closeMarker + "\n"},
+		{"epilogue after comment", "prose\n\n" + open + "\ntext\n" + closeMarker + "\nepilogue\n"},
+		{"prose between comments", open + "\na\n" + closeMarker + "\nbetween\n" + open2 + "\nb\n" + closeMarker + "\n"},
+		{"no trailing newline", "prose\n\n" + open + "\ntext\n" + closeMarker},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			prose, comments, canonical := codec.SplitComments(tc.body)
+			if canonical {
+				t.Fatal("body must be reported non-canonical")
+			}
+			if prose != tc.body || comments != nil {
+				t.Fatalf("fallback must return the whole body as prose with nil comments, got prose=%q comments=%v", prose, comments)
+			}
+		})
+	}
+}
+
+func TestSplitJoinCommentsByteIdentity(t *testing.T) {
+	it, err := codec.Parse(readExample(t))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	prose, comments, canonical := codec.SplitComments(it.Body)
+	if !canonical {
+		t.Fatal("example body must be canonical")
+	}
+	if got := codec.JoinComments(prose, comments); got != it.Body {
+		t.Fatalf("join(split) must be byte-identical:\nwant %q\ngot  %q", it.Body, got)
+	}
+}
+
+func TestAppendCommentToEmptyContent(t *testing.T) {
+	c := datamodel.Comment{
+		ID:     "01J8XB000000000000000000ZZ",
+		Author: "alice",
+		Ts:     "2026-07-12T12:00:00+05:30",
+		Body:   "note",
+	}
+	got := codec.AppendComment("", c)
+	if strings.HasPrefix(got, "\n") {
+		t.Fatalf("append to empty content must not inject a leading newline: %q", got)
+	}
+	if _, _, canonical := codec.SplitComments(got); !canonical {
+		t.Fatalf("append to empty content must produce a canonical body: %q", got)
+	}
+}
+
+func TestAppendCommentNormalizesAuthor(t *testing.T) {
+	cases := []struct {
+		author, want string
+	}{
+		{"John Smith", "John-Smith"},
+		{"  spaced \t out ", "spaced-out"},
+		{"", "unknown"},
+	}
+	for _, tc := range cases {
+		c := datamodel.Comment{
+			ID:     "01J8XB000000000000000000ZZ",
+			Author: tc.author,
+			Ts:     "2026-07-12T12:00:00+05:30",
+			Body:   "note",
+		}
+		got := codec.ParseComments(codec.AppendComment("prose", c))
+		if len(got) != 1 {
+			t.Fatalf("author %q: comment must stay parseable, got %d comments", tc.author, len(got))
+		}
+		if got[0].Author != tc.want {
+			t.Fatalf("author %q normalized to %q, want %q", tc.author, got[0].Author, tc.want)
+		}
+	}
+}
+
+func TestAppendCommentToDocument(t *testing.T) {
+	c1 := datamodel.Comment{ID: "01J8XB000000000000000000AA", Author: "alice", Ts: "2026-07-12T12:00:00+05:30", Body: "one"}
+	c2 := datamodel.Comment{ID: "01J8XB000000000000000000BB", Author: "bob", Ts: "2026-07-12T13:00:00+05:30", Body: "two"}
+
+	it, err := codec.Parse(readExample(t))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	it.Body = ""
+	doc := codec.Serialize(it)
+
+	for _, c := range []datamodel.Comment{c1, c2} {
+		doc, err = codec.AppendCommentToDocument(doc, c)
+		if err != nil {
+			t.Fatalf("append: %v", err)
+		}
+	}
+	got, err := codec.Parse(doc)
+	if err != nil {
+		t.Fatalf("re-parse: %v", err)
+	}
+	if strings.HasPrefix(got.Body, "\n") {
+		t.Fatalf("empty-body append injected a leading blank line: %q", got.Body)
+	}
+	_, comments, canonical := codec.SplitComments(got.Body)
+	if !canonical {
+		t.Fatalf("empty-body appends must produce a canonical body: %q", got.Body)
+	}
+	if len(comments) != 2 || comments[0].ID != c1.ID || comments[1].ID != c2.ID {
+		t.Fatalf("comments = %+v, want [c1 c2]", comments)
+	}
+
+	terminal, err := codec.AppendCommentToDocument("---\nid: x\n---", c1)
+	if err != nil {
+		t.Fatalf("terminal-fence append: %v", err)
+	}
+	if body, err := codec.DecodeFrontmatter(terminal, &struct{}{}); err != nil {
+		t.Fatalf("terminal-fence result unparseable: %v\n%q", err, terminal)
+	} else if _, _, canonical := codec.SplitComments(body); !canonical {
+		t.Fatalf("terminal-fence append must be canonical: %q", terminal)
+	}
+
+	if _, err := codec.AppendCommentToDocument("no fences here", c1); err == nil {
+		t.Fatal("malformed document must be rejected")
+	}
+}
+
+func TestCanonicalizeCommentBody(t *testing.T) {
+	block := codec.AppendComment("", datamodel.Comment{
+		ID: "01J8XB000000000000000000AA", Author: "alice", Ts: "2026-07-12T12:00:00+05:30", Body: "note",
+	})
+	cases := []struct {
+		name, body, want string
+	}{
+		{"legacy leading blank healed", "\n" + block, block},
+		{"legacy multi-comment healed", "\n" + block + "\n" + block, block + "\n" + block},
+		{"canonical untouched", "prose\n\n" + block, "prose\n\n" + block},
+		{"prose leading newline untouched", "\nprose\n\n" + block, "\nprose\n\n" + block},
+		{"non-healable epilogue untouched", block + "epilogue\n", block + "epilogue\n"},
+		{"plain prose untouched", "\njust prose\n", "\njust prose\n"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := codec.CanonicalizeCommentBody(tc.body); got != tc.want {
+				t.Fatalf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestLintComments(t *testing.T) {
+	open := "<!-- kira:comment id=01J8XA1F6Q2N9K3M7V0R5T8B4C author=shivam ts=2026-07-11T18:30:00+05:30 -->"
+	closeMarker := "<!-- /kira:comment -->"
+	cases := []struct {
+		name, body string
+		want       []string
+	}{
+		{"clean", "prose\n\n" + open + "\ntext\n" + closeMarker + "\n", nil},
+		{"never closed", "prose\n" + open + "\ntext\n", []string{"comment block is never closed"}},
+		{"indented close", "prose\n" + open + "\ntext\n  " + closeMarker + "\n", []string{
+			"whitespace-padded comment marker is ignored by the parser",
+			"comment block is never closed",
+		}},
+		{"indented open", "prose\n  " + open + "\n", []string{"whitespace-padded comment marker is ignored by the parser"}},
+		{"close without open", "prose\n" + closeMarker + "\n", []string{"comment close marker without a matching open"}},
+		{"malformed marker", "<!-- kira:comment id=01ABC -->\ntext\n" + closeMarker + "\n", []string{
+			"comment marker does not match `id=<ulid> author=<name> ts=<rfc3339>`",
+		}},
+		{"bad timestamp", "<!-- kira:comment id=01ABC author=a ts=yesterday -->\ntext\n" + closeMarker + "\n", []string{
+			"comment timestamp \"yesterday\" is not RFC3339",
+		}},
+		{"reopened before close", open + "\ntext\n" + open + "\ntext\n" + closeMarker + "\n", []string{
+			"comment block opened before the previous one closed",
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := codec.LintComments(tc.body); !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("findings = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }

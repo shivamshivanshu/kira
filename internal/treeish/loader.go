@@ -19,6 +19,7 @@ type Loaded struct {
 	Config   *datamodel.Config
 	Snapshot id.Snapshot
 	Resolver *id.Resolver
+	Warnings []string
 }
 
 func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
@@ -59,6 +60,7 @@ func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
 	}
 
 	items := make([]*datamodel.Item, 0, len(ticketPaths))
+	var warnings []string
 	for i, p := range ticketPaths {
 		blob := blobs[i+1]
 		if !blob.Found {
@@ -66,7 +68,8 @@ func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
 		}
 		it, err := codec.Parse(blob.Content)
 		if err != nil {
-			return nil, fmt.Errorf("parsing %s at %s: %w", p, treeish, err)
+			warnings = append(warnings, fmt.Sprintf("skipped %s at %s: %v", p, treeish, err))
+			continue
 		}
 		it.Activity = it.Updated
 		items = append(items, it)
@@ -79,6 +82,7 @@ func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
 		Config:   cfg,
 		Snapshot: snap,
 		Resolver: id.NewResolver(snap),
+		Warnings: warnings,
 	}, nil
 }
 

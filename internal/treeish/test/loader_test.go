@@ -3,6 +3,7 @@ package treeish_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
@@ -42,6 +43,36 @@ func commitItem(t *testing.T, repo gitx.Repo, root string, it *datamodel.Item, m
 	}
 	if _, err := repo.Output("commit", "-m", msg); err != nil {
 		t.Fatalf("commit: %v", err)
+	}
+}
+
+func TestLoadSkipsMalformedItemWithWarning(t *testing.T) {
+	t.Parallel()
+	root, repo := initRepo(t)
+	commitItem(t, repo, root, item("01J8X8Q7RZTN5Y3VXW2A9K4E7F", "KIRA-1", "TODO", nil), "good")
+
+	bad := item("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-2", "TODO", nil)
+	content := strings.Replace(codec.Serialize(bad), "state: TODO\n", "state: TODO\nstate: DONE\n", 1)
+	rel := ".kira/tickets/" + bad.ID + ".md"
+	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(rel)), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.Output("add", "--", rel); err != nil {
+		t.Fatalf("add: %v", err)
+	}
+	if _, err := repo.Output("commit", "-m", "bad"); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+
+	loaded, err := treeish.Load(repo, "HEAD")
+	if err != nil {
+		t.Fatalf("Load must not abort on one malformed item: %v", err)
+	}
+	if len(loaded.Items) != 1 || loaded.Items[0].Number != "KIRA-1" {
+		t.Fatalf("items = %+v, want only KIRA-1", loaded.Items)
+	}
+	if len(loaded.Warnings) != 1 || !strings.Contains(loaded.Warnings[0], bad.ID) || !strings.Contains(loaded.Warnings[0], "duplicate key") {
+		t.Fatalf("warnings = %q, want a skip note naming the file and the duplicate key", loaded.Warnings)
 	}
 }
 

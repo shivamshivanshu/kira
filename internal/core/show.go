@@ -30,7 +30,8 @@ func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResu
 	}
 	it, err := storage.ReadItem(s.itemPath(ulid))
 	if err != nil {
-		return nil, errx.User("reading %s: %v", ref, err)
+		return nil, errx.User("reading %s from %s: %v", ref, s.itemPath(ulid), err).
+			WithHint("the file is malformed; repair it in a text editor, then verify with `kira doctor`")
 	}
 	res := showResultOf(cfg, it)
 	res.StderrNotes = ld.notes

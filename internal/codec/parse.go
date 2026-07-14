@@ -30,10 +30,17 @@ func Parse(content string) (*datamodel.Item, error) {
 		return nil, fmt.Errorf("frontmatter yaml: %w", err)
 	}
 
-	nodes := frontmatterNodes(&doc)
+	if len(doc.Content) > 0 && doc.Content[0].Kind != yaml.MappingNode {
+		return nil, fmt.Errorf("frontmatter: expected a mapping")
+	}
+
+	nodes, duplicates := frontmatterNodes(&doc)
 	it := &datamodel.Item{Body: body, CRLF: crlf}
 	var errs []error
 	add := func(format string, args ...any) { errs = append(errs, fmt.Errorf(format, args...)) }
+	for _, key := range duplicates {
+		add("field %q: duplicate key", key)
+	}
 
 	it.ID = reqScalar(nodes, datamodel.KeyID, add)
 	it.Number = reqScalar(nodes, datamodel.KeyNumber, add)
@@ -83,26 +90,57 @@ func DecodeFrontmatter(content string, out any) (body string, err error) {
 
 func splitDocument(content string) (front, body string, err error) {
 	content = strings.ReplaceAll(content, "\r\n", "\n")
-	if !strings.HasPrefix(content, FenceLine) {
+	rest, ok := strings.CutPrefix(content, FenceLine)
+	if !ok {
 		return "", "", fmt.Errorf("missing opening frontmatter fence")
 	}
-	rest := content[len(FenceLine):]
+	if body, ok := strings.CutPrefix(rest, FenceLine); ok {
+		return "", body, nil
+	}
 	if i := strings.Index(rest, closeFence); i >= 0 {
 		return rest[:i+1], rest[i+len(closeFence):], nil
+	}
+	if front, ok := strings.CutSuffix(rest, "\n---"); ok {
+		return front + "\n", "", nil
+	}
+	if rest == "---" {
+		return "", "", nil
 	}
 	return "", "", fmt.Errorf("missing closing frontmatter fence")
 }
 
-func frontmatterNodes(doc *yaml.Node) map[string]*yaml.Node {
-	if len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
-		return map[string]*yaml.Node{}
+func cutAfterFrontmatter(doc string) (head, body string, ok bool) {
+	rest, found := strings.CutPrefix(doc, FenceLine)
+	if !found {
+		return "", "", false
+	}
+	if b, found := strings.CutPrefix(rest, FenceLine); found {
+		return doc[:len(doc)-len(b)], b, true
+	}
+	if i := strings.Index(rest, closeFence); i >= 0 {
+		b := rest[i+len(closeFence):]
+		return doc[:len(doc)-len(b)], b, true
+	}
+	if strings.HasSuffix(rest, "\n---") || rest == "---" {
+		return doc + "\n", "", true
+	}
+	return "", "", false
+}
+
+func frontmatterNodes(doc *yaml.Node) (nodes map[string]*yaml.Node, duplicates []string) {
+	if len(doc.Content) == 0 {
+		return map[string]*yaml.Node{}, nil
 	}
 	m := doc.Content[0]
-	nodes := make(map[string]*yaml.Node, len(m.Content)/2)
+	nodes = make(map[string]*yaml.Node, len(m.Content)/2)
 	for i := 0; i+1 < len(m.Content); i += 2 {
-		nodes[m.Content[i].Value] = m.Content[i+1]
+		key := m.Content[i].Value
+		if _, seen := nodes[key]; seen {
+			duplicates = append(duplicates, key)
+		}
+		nodes[key] = m.Content[i+1]
 	}
-	return nodes
+	return nodes, duplicates
 }
 
 func isNull(n *yaml.Node) bool { return n.Kind == yaml.ScalarNode && n.Tag == "!!null" }

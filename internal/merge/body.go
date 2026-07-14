@@ -9,9 +9,12 @@ import (
 )
 
 func mergeBody(base, ours, theirs string, winner Side, tm TextMerger) string {
-	baseProse, baseComments := codec.SplitComments(base)
-	oursProse, oursComments := codec.SplitComments(ours)
-	theirsProse, theirsComments := codec.SplitComments(theirs)
+	baseProse, baseComments, baseCanonical := codec.SplitComments(base)
+	oursProse, oursComments, oursCanonical := codec.SplitComments(ours)
+	theirsProse, theirsComments, theirsCanonical := codec.SplitComments(theirs)
+	if !baseCanonical || !oursCanonical || !theirsCanonical {
+		return mergeProse(base, ours, theirs, winner, tm)
+	}
 
 	prose := mergeProse(baseProse, oursProse, theirsProse, winner, tm)
 	comments := unionComments(baseComments, oursComments, theirsComments)

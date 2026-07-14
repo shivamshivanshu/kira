@@ -83,6 +83,23 @@ func TestLintUnknownFieldWarns(t *testing.T) {
 	t.Fatalf("expected an unknown-field warning for bogus_key, got %+v", findings)
 }
 
+func TestLintSurfacesDuplicateKeys(t *testing.T) {
+	t.Parallel()
+	content := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
+		"state: TODO\nstate: DONE\nlabels: []\nblocked_by: []\nepic: null\n" +
+		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n## Description\n"
+	_, parsed, findings := doctor.Lint(content)
+	if parsed {
+		t.Fatal("duplicate keys must fail parsing")
+	}
+	for _, f := range findings {
+		if f.Class == doctor.ClassSchema && f.Severity == doctor.SeverityError && strings.Contains(f.Message, "duplicate key") {
+			return
+		}
+	}
+	t.Fatalf("expected a duplicate-key schema finding, got %+v", findings)
+}
+
 func TestLintMalformedComment(t *testing.T) {
 	t.Parallel()
 	body := "## Comments\n<!-- kira:comment id=X author=y ts=bogus -->\nunterminated body\n"

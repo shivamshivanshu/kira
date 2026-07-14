@@ -54,7 +54,7 @@ func (s *Store) readRaw(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
 		if err != nil {
 			return nil, errx.User("%v", err)
 		}
-		return &loaded{items: tl.Items, resolver: tl.Resolver, cfg: tl.Config}, nil
+		return &loaded{items: tl.Items, resolver: tl.Resolver, cfg: tl.Config, notes: literalWarnings(tl.Warnings)}, nil
 	}
 	if opts.useIndex {
 		if items, res, err := index.Load(s.fs(), s.repo(), indexOptions(cfg)); err == nil {

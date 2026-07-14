@@ -10,6 +10,7 @@ import (
 )
 
 func (s *FS) WriteItem(it *datamodel.Item) (string, error) {
+	it.Body = codec.CanonicalizeCommentBody(it.Body)
 	return s.WriteItemRaw(it.ID, codec.Serialize(it))
 }
 

@@ -16,6 +16,7 @@ var tokens = []string{
 	"null", "true", "false", "123", "3.14", "~", "",
 	"a: b", "has #hash", "[bracket]", `quote"inside`, "line\nbreak",
 	"01J8X8Q7RZTN5Y3VXW2A9K4E7F", "trailing ", " leading",
+	"a, b", "x]y", "x[y",
 }
 
 func pick(r *rand.Rand) string { return tokens[r.Intn(len(tokens))] }

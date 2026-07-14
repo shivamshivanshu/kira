@@ -100,10 +100,9 @@ func rawSink(st *storage.FS, cfg *datamodel.Config, alloc *id.Allocator, mint fu
 		if parent != "" {
 			it.Epic = ptr(parent)
 		}
-		content := codec.Serialize(it)
 		var counts Summary
 		for j, body := range sp.Comments {
-			content = codec.AppendComment(content, datamodel.Comment{
+			it.Body = codec.AppendComment(it.Body, datamodel.Comment{
 				ID:     id.Mint().String(),
 				Author: sp.Owner,
 				Ts:     ts.Add(time.Duration(j+1) * time.Minute).Format(time.RFC3339),
@@ -111,7 +110,7 @@ func rawSink(st *storage.FS, cfg *datamodel.Config, alloc *id.Allocator, mint fu
 			})
 			counts.Comments++
 		}
-		if _, err := st.WriteItemRaw(it.ID, content); err != nil {
+		if _, err := st.WriteItemRaw(it.ID, codec.Serialize(it)); err != nil {
 			return "", Summary{}, err
 		}
 		if sp.Type == datamodel.TypeEpic {

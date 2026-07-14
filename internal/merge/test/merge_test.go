@@ -130,6 +130,60 @@ func TestCommentsUnionSortedByTs(t *testing.T) {
 	}
 }
 
+func TestFreshEmptyBodyCommentUnionKeepsBoth(t *testing.T) {
+	t.Parallel()
+	fresh := base(func(it *datamodel.Item) { it.Body = "" })
+	doc := codec.Serialize(fresh)
+	cA := datamodel.Comment{ID: "ca", Author: "alice", Ts: "2026-03-01T00:00:00Z", Body: "from branch A"}
+	cB := datamodel.Comment{ID: "cb", Author: "bob", Ts: "2026-03-02T00:00:00Z", Body: "from branch B"}
+
+	side := func(c datamodel.Comment) *datamodel.Item {
+		t.Helper()
+		withComment, err := codec.AppendCommentToDocument(doc, c)
+		if err != nil {
+			t.Fatalf("append: %v", err)
+		}
+		it, err := codec.Parse(withComment)
+		if err != nil {
+			t.Fatalf("parse: %v", err)
+		}
+		return it
+	}
+	got := merge.Merge(fresh, side(cA), side(cB), merge.Theirs, gitMerger).Item
+	parsed := codec.ParseComments(got.Body)
+	if len(parsed) != 2 || parsed[0].ID != "ca" || parsed[1].ID != "cb" {
+		t.Fatalf("comments = %+v, want both branch comments to survive the union merge", parsed)
+	}
+}
+
+func TestBodyNonCanonicalCommentsFallToTextMerge(t *testing.T) {
+	t.Parallel()
+	c1 := datamodel.Comment{ID: "c1", Author: "a", Ts: "2026-03-01T00:00:00Z", Body: "first"}
+	canonical := codec.AppendComment("Prose", c1)
+	b := base(func(it *datamodel.Item) { it.Body = canonical })
+	ours := base(func(it *datamodel.Item) { it.Body = canonical })
+	theirs := base(func(it *datamodel.Item) { it.Body = canonical + "epilogue after the comment\n" })
+	got := merge.Merge(b, ours, theirs, merge.Theirs, gitMerger).Item
+	if got.Body != theirs.Body {
+		t.Fatalf("one-sided epilogue must survive the merge:\nwant %q\ngot  %q", theirs.Body, got.Body)
+	}
+	if parsed := codec.ParseComments(got.Body); len(parsed) != 1 || parsed[0].ID != "c1" {
+		t.Fatalf("comment must not duplicate or vanish, got %+v", parsed)
+	}
+}
+
+func TestBodyUnterminatedCommentNotDropped(t *testing.T) {
+	t.Parallel()
+	body := "Prose\n<!-- kira:comment id=c9 author=a ts=2026-03-01T00:00:00Z -->\ndangling\n"
+	b := base(func(it *datamodel.Item) { it.Body = "Prose\n" })
+	ours := base(func(it *datamodel.Item) { it.Body = "Prose\n" })
+	theirs := base(func(it *datamodel.Item) { it.Body = body })
+	got := merge.Merge(b, ours, theirs, merge.Theirs, gitMerger).Item
+	if got.Body != body {
+		t.Fatalf("unterminated comment must merge as plain text, not vanish:\nwant %q\ngot  %q", body, got.Body)
+	}
+}
+
 func TestBodyOneSidedChangeTaken(t *testing.T) {
 	t.Parallel()
 	b := base(func(it *datamodel.Item) { it.Body = "original" })

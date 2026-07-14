@@ -149,6 +149,123 @@ func TestCommentEmptyRejected(t *testing.T) {
 	}
 }
 
+func TestCommentMarkerLinesRejected(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "marker")
+	for _, msg := range []string{
+		"<!-- /kira:comment -->",
+		"before\n<!-- kira:comment id=01ABC author=a ts=2026-07-11T18:30:00+05:30 -->\nafter",
+	} {
+		if _, err := s.Comment(cfg, res.Number, core.CommentOpts{Message: msg, HasMessage: true}); err == nil {
+			t.Fatalf("comment containing marker line must be rejected: %q", msg)
+		}
+	}
+	if _, err := s.Comment(cfg, res.Number, core.CommentOpts{Message: "mentions <!-- kira:comment --> mid-line", HasMessage: true}); err != nil {
+		t.Fatalf("mid-line marker text must stay allowed: %v", err)
+	}
+}
+
+func TestCommentCRLFMarkerRejectedAndTextNormalized(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "crlf")
+	if _, err := s.Comment(cfg, res.Number, core.CommentOpts{Message: "x\r\n<!-- /kira:comment -->\r\ny", HasMessage: true}); err == nil {
+		t.Fatal("CRLF-masked marker line must be rejected")
+	}
+	if _, err := s.Comment(cfg, res.Number, core.CommentOpts{Message: "line1\r\nline2", HasMessage: true}); err != nil {
+		t.Fatalf("benign CRLF comment: %v", err)
+	}
+	raw := readItemFile(t, s, res.Path)
+	it, err := codec.Parse(raw)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	cs := codec.ParseComments(it.Body)
+	if len(cs) != 1 || cs[0].Body != "line1\nline2" {
+		t.Fatalf("comment body = %+v, want CRLF normalized to LF", cs)
+	}
+	if strings.Contains(raw, "\r") {
+		t.Fatal("stored file must not contain carriage returns")
+	}
+}
+
+func readItemFile(t *testing.T, s *core.Store, relPath string) string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(s.Root(), relPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
+}
+
+func setItemBody(t *testing.T, s *core.Store, relPath, body string) {
+	t.Helper()
+	abs := filepath.Join(s.Root(), relPath)
+	it, err := codec.Parse(readItemFile(t, s, relPath))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	it.Body = body
+	if err := os.WriteFile(abs, []byte(codec.Serialize(it)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCommentOnEmptyBodyStaysCanonical(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "empty body comments")
+	setItemBody(t, s, res.Path, "")
+
+	for _, msg := range []string{"first", "second"} {
+		if _, err := s.Comment(cfg, res.Number, core.CommentOpts{Message: msg, HasMessage: true}); err != nil {
+			t.Fatalf("Comment %q: %v", msg, err)
+		}
+	}
+	it, err := codec.Parse(readItemFile(t, s, res.Path))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if strings.HasPrefix(it.Body, "\n") {
+		t.Fatalf("empty-body comment injected a leading blank line: %q", it.Body)
+	}
+	prose, comments, canonical := codec.SplitComments(it.Body)
+	if !canonical {
+		t.Fatalf("body must be canonical for comment-union merge: %q", it.Body)
+	}
+	if prose != "" || len(comments) != 2 || comments[0].Body != "first" || comments[1].Body != "second" {
+		t.Fatalf("prose=%q comments=%+v, want empty prose and both comments", prose, comments)
+	}
+}
+
+func TestMutationHealsLegacyCommentBody(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "legacy heal")
+	block := codec.AppendComment("", datamodel.Comment{
+		ID:     "01J8XB000000000000000000AA",
+		Author: "alice",
+		Ts:     "2026-07-12T12:00:00+05:30",
+		Body:   "legacy note",
+	})
+	setItemBody(t, s, res.Path, "\n"+block)
+
+	if _, err := s.Assign(cfg, res.Number, "alice", core.AssignOpts{}); err != nil {
+		t.Fatalf("Assign: %v", err)
+	}
+	it, err := codec.Parse(readItemFile(t, s, res.Path))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if it.Body != block {
+		t.Fatalf("legacy body must self-heal on mutation:\nwant %q\ngot  %q", block, it.Body)
+	}
+	if _, comments, canonical := codec.SplitComments(it.Body); !canonical || len(comments) != 1 {
+		t.Fatalf("healed body must be canonical with the comment intact: %q", it.Body)
+	}
+}
+
 func TestLinkTouchesOneFile(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)

@@ -94,16 +94,66 @@ func EmitList(xs []string) string {
 	}
 	parts := make([]string, len(xs))
 	for i, x := range xs {
-		parts[i] = EmitScalar(x)
+		parts[i] = emitFlowScalar(x)
 	}
 	return "[" + strings.Join(parts, ", ") + "]"
 }
 
 func EmitScalar(s string) string {
+	if plainSafe(s) {
+		return s
+	}
 	if plain, err := marshalScalar(s); err == nil && plain == s {
 		return s
 	}
 	return emitQuoted(s)
+}
+
+func emitFlowScalar(s string) string {
+	if plainSafe(s) {
+		return s
+	}
+	if out := EmitScalar(s); out != s {
+		return out
+	}
+	seq := &yaml.Node{
+		Kind:    yaml.SequenceNode,
+		Style:   yaml.FlowStyle,
+		Content: []*yaml.Node{{Kind: yaml.ScalarNode, Value: s}},
+	}
+	out, err := marshalScalar(seq)
+	if err != nil {
+		return emitQuoted(s)
+	}
+	if out == "["+s+"]" {
+		return s
+	}
+	return strings.TrimSuffix(strings.TrimPrefix(out, "["), "]")
+}
+
+func plainSafe(s string) bool {
+	if s == "" || !asciiLetter(s[0]) || yamlKeyword(s) {
+		return false
+	}
+	for i := 1; i < len(s); i++ {
+		c := s[i]
+		if !asciiLetter(c) && !asciiDigit(c) && c != '_' && c != '-' {
+			return false
+		}
+	}
+	return true
+}
+
+func asciiLetter(c byte) bool { return 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' }
+
+func asciiDigit(c byte) bool { return '0' <= c && c <= '9' }
+
+func yamlKeyword(s string) bool {
+	switch strings.ToLower(s) {
+	case "null", "true", "false", "yes", "no", "on", "off", "y", "n":
+		return true
+	}
+	return false
 }
 
 func emitQuoted(s string) string {
