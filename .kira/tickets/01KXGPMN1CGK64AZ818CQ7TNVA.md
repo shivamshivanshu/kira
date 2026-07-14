@@ -5,12 +5,12 @@ aliases: []
 type: ticket
 subtype: bug
 title: "Wrap detail pane text instead of truncating"
-state: IN_PROGRESS
+state: REVIEW
 labels: [tui]
 epic: null
 blocked_by: []
 created: 2026-07-14T21:46:26+05:30
-updated: 2026-07-14T21:46:37+05:30
+updated: 2026-07-14T21:46:47+05:30
 ---
 
 ## Description
