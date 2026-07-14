@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: task
 title: "Categorise tickets into boards (CORE, TUI, ...)"
-state: REVIEW
+state: DONE
+resolution: done
 labels: [core]
 epic: null
 blocked_by: []
