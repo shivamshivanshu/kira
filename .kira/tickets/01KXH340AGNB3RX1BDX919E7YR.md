@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: bug
 title: "edit --field state bypasses move guards and leaves stale resolution"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
