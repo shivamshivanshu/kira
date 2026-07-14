@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: bug
 title: "Force GIT_EDITOR=true via env in rebase — editor failures masked or sync hangs"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
