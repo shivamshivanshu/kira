@@ -51,6 +51,7 @@ people:
 
 commit:
   mode: auto                  # auto | manual | prompt
+  subject_prefix: ""
   trailer: Kira-Ticket
 
 merge:
