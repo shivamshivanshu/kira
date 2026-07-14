@@ -34,6 +34,10 @@ workflows:
       ACTIVE:  [DONE]
       DONE:    []
 
+filters:
+  backlog: "state = TODO ORDER BY priority"
+  core: "label = core AND state != DONE"
+
 priorities: [P0, P1, P2, P3]
 subtypes: [bug, task, feature, support]
 resolutions: [done, dropped, duplicate, cannot-reproduce]
