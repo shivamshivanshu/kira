@@ -5,12 +5,13 @@ aliases: [KIRA-101]
 type: ticket
 subtype: task
 title: "Conventions audit: inventory every baked-in rule; keep / config-knob / drop verdict"
-state: REVIEW
+state: DONE
+resolution: done
 labels: [dx]
 epic: null
 blocked_by: []
 created: 2026-07-14T22:26:43+05:30
-updated: 2026-07-15T01:25:33+05:30
+updated: 2026-07-15T01:38:16+05:30
 ---
 
 ## Description
