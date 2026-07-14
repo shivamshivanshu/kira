@@ -5,12 +5,12 @@ aliases: []
 type: ticket
 subtype: bug
 title: "Widen [[marker]] link tier from project key to all board keys + aliases"
-state: IN_PROGRESS
+state: REVIEW
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-14T23:48:16+05:30
-updated: 2026-07-15T01:26:33+05:30
+updated: 2026-07-15T02:56:39+05:30
 ---
 
 ## Description
