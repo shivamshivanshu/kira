@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: bug
 title: "Gate auto-TUI on the command's writer; extract shared shouldAutoTUI"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
