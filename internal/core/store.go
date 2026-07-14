@@ -71,14 +71,36 @@ func (s *Store) resolveRef(cfg *datamodel.Config, ref string) (*datamodel.Item, 
 	return nil, nil, nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
 }
 
-func (s *Store) resolveMe(value string) (string, error) {
+func (s *Store) resolveMe(cfg *datamodel.Config, value string) (string, error) {
 	if value != query.MeToken {
 		return value, nil
 	}
-	if id, ok := s.gitIdentity(); ok {
+	if id, ok := s.identity(cfg); ok {
 		return id, nil
 	}
 	return "", errx.User("cannot resolve @me: set git user.name or user.email")
+}
+
+func (s *Store) identity(cfg *datamodel.Config) (string, bool) {
+	name := strings.TrimSpace(s.gitConfig("user.name"))
+	email := strings.TrimSpace(s.gitConfig("user.email"))
+	if canon, ok := cfg.People.Canonical(name, email); ok {
+		return canon, true
+	}
+	for _, v := range []string{name, email} {
+		if f := strings.Fields(v); len(f) > 0 {
+			return strings.Join(f, "-"), true
+		}
+	}
+	return "", false
+}
+
+func (s *Store) gitConfig(key string) string {
+	v, err := s.repo().Output("config", key)
+	if err != nil {
+		return ""
+	}
+	return v
 }
 
 func (s *Store) RefExists(cfg *datamodel.Config, ref string) bool {

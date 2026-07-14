@@ -202,7 +202,7 @@ func (s *boardScreen) renderMain(m *model, width, height int) string {
 		return s.host.render(m.theme, m.icons, width, height)
 	}
 	if s.peek == peekDocked {
-		return splitPane(m.theme, width, height,
+		return splitPane(m.theme, m.cfg.UI.Tui.Split, width, height,
 			func(w int) string {
 				return renderBoard(m.theme, m.icons, s.board.result, w, height, s.board.col, s.board.row)
 			},

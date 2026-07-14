@@ -19,6 +19,22 @@ func TestRenderWarningExhaustive(t *testing.T) {
 	}
 }
 
+func TestListColumnsExhaustive(t *testing.T) {
+	for _, c := range datamodel.ListColumns {
+		if _, ok := listCells[c]; !ok {
+			t.Errorf("listCells missing column %q from datamodel.ListColumns", c)
+		}
+	}
+	if len(listCells) != len(datamodel.ListColumns) {
+		t.Errorf("listCells has %d entries, datamodel.ListColumns has %d; keep them in sync", len(listCells), len(datamodel.ListColumns))
+	}
+	for _, c := range datamodel.DefaultListColumns {
+		if _, ok := listCells[c]; !ok {
+			t.Errorf("default column %q is not renderable", c)
+		}
+	}
+}
+
 func TestRenderDiffHeaderExhaustive(t *testing.T) {
 	want := map[datamodel.DiffStatus]string{
 		datamodel.DiffCreated: "created 7  hi\n",

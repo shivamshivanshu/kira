@@ -43,7 +43,7 @@ func newBoardCmd(g *globalFlags) *cobra.Command {
 			if len(args) == 1 {
 				epic = args[0]
 			}
-			if !plain && !g.json && epic == "" && at == "" && owner == "" && label == "" && query == "" && filter == "" && termx.IsTerminal(os.Stdout) {
+			if cfg.UI.AutoTUI && !plain && !g.json && epic == "" && at == "" && owner == "" && label == "" && query == "" && filter == "" && termx.IsTerminal(os.Stdout) {
 				return tui.Run(s, cfg, tui.Options{NoColor: g.noColor, RunCommand: commandRunner(g), InitialView: tui.ViewBoard})
 			}
 			res, err := s.Board(cfg, core.BoardOpts{Epic: epic, Owner: owner, Label: label, Query: query, Filter: filter, At: at})

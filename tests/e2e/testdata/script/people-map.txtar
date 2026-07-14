@@ -1,0 +1,31 @@
+# people.known may map a canonical name to git identities; @me then resolves
+# through the map to the canonical name instead of the raw git identity.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email alice@corp.com
+exec git config user.name 'Alice A'
+exec kira init --key KIRA
+cp people.yaml .kira/config.yaml
+exec git add .kira/config.yaml
+exec git commit -m 'people map'
+exec kira create ticket --title A --no-edit
+
+# @me maps the git identity (alice@corp.com / Alice A) to canonical "alice",
+# which passes the strict people vocabulary the raw identity would fail.
+exec kira assign KIRA-1 @me
+exec kira show KIRA-1 --json
+stdout '"owner": "alice"'
+
+-- people.yaml --
+version: 1
+project:
+  key: KIRA
+  name: kira
+people:
+  known:
+    - name: alice
+      git: [alice@corp.com, "Alice A"]
+    - bob
+  strict: true

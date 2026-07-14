@@ -72,23 +72,23 @@ func validateItem(cfg *datamodel.Config, it *datamodel.Item, force bool) (errs, 
 		}
 	}
 	if it.Owner != nil {
-		vocabCheck(datamodel.KeyOwner, *it.Owner, cfg.People)
+		vocabCheck(datamodel.KeyOwner, *it.Owner, cfg.People.Vocab())
 	}
 	if it.Reporter != nil {
-		vocabCheck(datamodel.KeyReporter, *it.Reporter, cfg.People)
+		vocabCheck(datamodel.KeyReporter, *it.Reporter, cfg.People.Vocab())
 	}
 	for _, l := range it.Labels {
 		vocabCheck(datamodel.KeyLabels, l, cfg.Labels)
 	}
 
-	enumCheck := func(field string, value *string) {
-		if known, _ := cfg.VocabFor(field); value != nil && len(known) > 0 {
-			vocabCheck(field, *value, datamodel.Vocab{Known: known, Strict: cfg.Labels.Strict})
+	enumCheck := func(field string, value *string, ev datamodel.EnumVocab) {
+		if value != nil && len(ev.Values) > 0 {
+			vocabCheck(field, *value, datamodel.Vocab{Known: ev.Values, Strict: ev.StrictOr(cfg.Labels.Strict)})
 		}
 	}
-	enumCheck(datamodel.KeyPriority, it.Priority)
-	enumCheck(datamodel.KeySubtype, it.Subtype)
-	enumCheck(datamodel.KeyResolution, it.Resolution)
+	enumCheck(datamodel.KeyPriority, it.Priority, cfg.Priorities)
+	enumCheck(datamodel.KeySubtype, it.Subtype, cfg.Subtypes)
+	enumCheck(datamodel.KeyResolution, it.Resolution, cfg.Resolutions)
 
 	if it.Rank != nil && *it.Rank == "" {
 		errs = append(errs, fmt.Errorf("field %q: must be a non-empty string when present", datamodel.KeyRank))

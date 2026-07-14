@@ -7,7 +7,7 @@ import (
 )
 
 func progressCfg() *datamodel.Config {
-	return &datamodel.Config{Workflows: map[string]datamodel.Workflow{
+	return &datamodel.Config{ResolutionsDropped: []string{datamodel.ResolutionDropped}, Workflows: map[string]datamodel.Workflow{
 		datamodel.TypeTicket: {States: []datamodel.State{
 			{Key: "TODO", Category: datamodel.CategoryTodo},
 			{Key: "DONE", Category: datamodel.CategoryDone},
@@ -39,6 +39,26 @@ func TestEpicProgressDroppedExcludedFromNumerator(t *testing.T) {
 	}
 	if p.Done != 2 {
 		t.Errorf("done = %d, want 2 (dropped excluded from numerator, sub-epic recursed)", p.Done)
+	}
+}
+
+func TestEpicProgressHonorsConfiguredDroppedSet(t *testing.T) {
+	cfg := progressCfg()
+	cfg.ResolutionsDropped = []string{"wont-fix"}
+	wontfix := "wont-fix"
+	dropped := datamodel.ResolutionDropped
+	children := map[string][]*datamodel.Item{
+		"E1": {
+			ticket("T1", "DONE", &wontfix),
+			ticket("T2", "DONE", &dropped),
+		},
+	}
+	p := epicProgress(cfg, children, "E1")
+	if p.Total != 2 {
+		t.Errorf("total = %d, want 2", p.Total)
+	}
+	if p.Done != 1 {
+		t.Errorf("done = %d, want 1 (configured wont-fix excluded; literal dropped no longer special)", p.Done)
 	}
 }
 

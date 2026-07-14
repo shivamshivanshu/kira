@@ -1,0 +1,27 @@
+# commit.subject_prefix drives the subject of every kira-authored commit.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# swap in a config with a custom prefix, then commit it
+cp prefix.yaml .kira/config.yaml
+exec git add .kira/config.yaml
+exec git commit -m 'custom prefix'
+
+# a kira-authored commit now uses the configured prefix, not "kira: "
+exec kira create ticket --title A --no-edit
+exec git log -1 --format=%s
+stdout '^tix/ create KIRA-1'
+! stdout '^kira: '
+
+-- prefix.yaml --
+version: 1
+project:
+  key: KIRA
+  name: kira
+commit:
+  subject_prefix: "tix/ "

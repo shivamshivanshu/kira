@@ -18,7 +18,7 @@ type completer = func(*cobra.Command, []string, string) ([]string, cobra.ShellCo
 
 func attachCompletions(root *cobra.Command, g *globalFlags) {
 	items := completeItems(g, "")
-	people := completeVocab(g, func(c *datamodel.Config) []string { return c.People.Known })
+	people := completeVocab(g, func(c *datamodel.Config) []string { return c.People.Names() })
 
 	for _, name := range []string{"show", "edit", "comment", "log", "blame", "workon", "link"} {
 		if c := subCmd(root, name); c != nil {
@@ -45,13 +45,13 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 
 	flags := map[string]completer{
 		"label":      completeVocab(g, func(c *datamodel.Config) []string { return c.Labels.Known }),
-		"priority":   completeVocab(g, func(c *datamodel.Config) []string { return c.Priorities }),
+		"priority":   completeVocab(g, func(c *datamodel.Config) []string { return c.Priorities.Values }),
 		"owner":      people,
 		"reporter":   people,
 		"sprint":     completeVocab(g, sprintKeys),
 		"filter":     completeVocab(g, filterNames),
-		"resolution": completeVocab(g, func(c *datamodel.Config) []string { return c.Resolutions }),
-		"subtype":    completeVocab(g, func(c *datamodel.Config) []string { return c.Subtypes }),
+		"resolution": completeVocab(g, func(c *datamodel.Config) []string { return c.Resolutions.Values }),
+		"subtype":    completeVocab(g, func(c *datamodel.Config) []string { return c.Subtypes.Values }),
 		"state":      completeVocab(g, workflowStates),
 		"format":     completeStatic(showfmt.Names()),
 		"category":   completeStatic(categoryValues()),

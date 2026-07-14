@@ -9,13 +9,13 @@ exec git config user.email test@example.com
 exec git config user.name tester
 exec kira init --key KIRA
 
-# enum
+# enum: the ui block ships commented out so it never stomps a user's ~/.config pin;
+# setting a ui key creates the block in place while the doc comment is kept.
 exec kira config set ui.icons never --json
 stdout '"key": "ui.icons"'
 stdout '"value": "never"'
 grep 'icons: never' .kira/config.yaml
-# the inline doc comment on that line survives the edit
-grep 'icons: never.*# auto \| nerd \| emoji \| text' .kira/config.yaml
+grep '# ui:' .kira/config.yaml
 
 # string
 exec kira config set project.name 'My Project'
@@ -50,5 +50,7 @@ stderr 'merge.policy'
 # after which further sets only stage
 exec kira config set commit.mode manual
 grep 'mode: manual' .kira/config.yaml
+# editing a live scalar line preserves its inline doc comment
+grep 'mode: manual.*# auto \| manual \| prompt' .kira/config.yaml
 exec git log --oneline
 stdout 'kira: config set commit.mode'

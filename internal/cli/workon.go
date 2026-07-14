@@ -20,6 +20,9 @@ func newWorkonCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if !cmd.Flags().Changed("worktree") {
+				opts.Worktree = cfg.Workon.Worktree
+			}
 			res, err := s.Workon(cfg, args[0], opts)
 			if err != nil {
 				return err

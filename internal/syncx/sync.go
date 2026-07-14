@@ -28,6 +28,7 @@ type DirtyPolicy string
 
 const (
 	DirtyAuto   DirtyPolicy = ""
+	DirtyFail   DirtyPolicy = "fail"
 	DirtyCommit DirtyPolicy = "commit"
 	DirtyStash  DirtyPolicy = "stash"
 )

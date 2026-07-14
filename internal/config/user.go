@@ -17,6 +17,7 @@ const (
 	userHooksYAMLName  = "hooks.yaml"
 
 	userKeyUI         = "ui"
+	userKeyWorkon     = "workon"
 	userKeyAutomation = "automation"
 )
 
@@ -31,8 +32,9 @@ func UserConfigDir(env func(string) string) (string, bool) {
 }
 
 type userTier struct {
-	ui    *datamodel.UI
-	hooks []datamodel.AutomationHook
+	ui     *datamodel.UI
+	workon *datamodel.Workon
+	hooks  []datamodel.AutomationHook
 }
 
 type ignoreFunc func(format string, args ...any)
@@ -48,34 +50,42 @@ func readUserTier(env func(string) string, warn io.Writer) userTier {
 	if !ok {
 		return userTier{}
 	}
+	ui, workon := readUserPrefs(filepath.Join(dir, userConfigFileName), warn)
 	return userTier{
-		ui:    readUserPrefs(filepath.Join(dir, userConfigFileName), warn),
-		hooks: readUserHooks(dir, warn),
+		ui:     ui,
+		workon: workon,
+		hooks:  readUserHooks(dir, warn),
 	}
 }
 
-func readUserPrefs(path string, warn io.Writer) *datamodel.UI {
+func readUserPrefs(path string, warn io.Writer) (*datamodel.UI, *datamodel.Workon) {
 	ignore := ignorer(warn, path)
 	root, ok := readMapping(path, ignore)
 	if !ok {
-		return nil
+		return nil, nil
 	}
-	var uiNode *yaml.Node
+	var uiNode, workonNode *yaml.Node
 	for i := 0; i+1 < len(root.Content); i += 2 {
 		switch key := root.Content[i].Value; key {
 		case userKeyUI:
 			uiNode = root.Content[i+1]
+		case userKeyWorkon:
+			workonNode = root.Content[i+1]
 		case userKeyAutomation:
 			ignore("automation: personal hooks belong in %s", userHooksYAMLName)
 		default:
 			ignore("key %q is repo-authoritative", key)
 		}
 	}
-	if uiNode == nil {
+	return decodeUserUI(uiNode, ignore), decodeUserWorkon(workonNode, ignore)
+}
+
+func decodeUserUI(node *yaml.Node, ignore ignoreFunc) *datamodel.UI {
+	if node == nil {
 		return nil
 	}
 	ui := Default().UI
-	if err := uiNode.Decode(&ui); err != nil {
+	if err := node.Decode(&ui); err != nil {
 		ignore("ui: %v", err)
 		return nil
 	}
@@ -84,6 +94,22 @@ func readUserPrefs(path string, warn io.Writer) *datamodel.UI {
 		return nil
 	}
 	return &ui
+}
+
+func decodeUserWorkon(node *yaml.Node, ignore ignoreFunc) *datamodel.Workon {
+	if node == nil {
+		return nil
+	}
+	w := Default().Workon
+	if err := node.Decode(&w); err != nil {
+		ignore("workon: %v", err)
+		return nil
+	}
+	if err := validateWorkonSection(w); err != nil {
+		ignore("%v", err)
+		return nil
+	}
+	return &w
 }
 
 func readUserHooks(dir string, warn io.Writer) []datamodel.AutomationHook {

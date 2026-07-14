@@ -44,6 +44,7 @@ var (
 type iconSet struct {
 	mode       datamodel.IconMode
 	priorities []string
+	dropped    []string
 }
 
 func (ic iconSet) rich() bool { return ic.mode != datamodel.IconText }
@@ -53,8 +54,8 @@ func writerIsTTY(w io.Writer) bool {
 	return ok && termx.IsTerminal(f)
 }
 
-func detectIcons(mode datamodel.IconMode, priorities []string, env func(string) string, isTTY bool) iconSet {
-	return iconSet{mode: resolveIconMode(mode, env, isTTY), priorities: priorities}
+func detectIcons(mode datamodel.IconMode, priorities, dropped []string, env func(string) string, isTTY bool) iconSet {
+	return iconSet{mode: resolveIconMode(mode, env, isTTY), priorities: priorities, dropped: dropped}
 }
 
 func resolveIconMode(mode datamodel.IconMode, env func(string) string, isTTY bool) datamodel.IconMode {
@@ -121,7 +122,7 @@ func (ic iconSet) categoryGlyph(cat datamodel.Category, resolution *string) stri
 	case datamodel.CategoryDoing:
 		return glyphDoing.pick(ic.mode)
 	case datamodel.CategoryDone:
-		if resolution != nil && *resolution == datamodel.ResolutionDropped {
+		if resolution != nil && slices.Contains(ic.dropped, *resolution) {
 			return glyphDropped.pick(ic.mode)
 		}
 		return glyphDone.pick(ic.mode)

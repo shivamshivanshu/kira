@@ -1,0 +1,26 @@
+# ui.auto_tui=false: bare `kira` prints help instead of auto-launching the TUI.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp autotui-config.yaml .kira/config.yaml
+
+exec kira
+stdout 'Usage:'
+stdout 'Available Commands:'
+
+# with auto_tui off, `kira board` (no args) renders the static board instead of escalating.
+exec kira create ticket --title 'First' --no-edit
+exec kira board
+stdout 'TODO'
+stdout 'IN_PROGRESS'
+
+-- autotui-config.yaml --
+version: 1
+project:
+  key: KIRA
+ui:
+  auto_tui: false

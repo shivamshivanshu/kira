@@ -41,7 +41,7 @@ func vocabFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 		{datamodel.KeyOwner, it.Owner},
 		{datamodel.KeyReporter, it.Reporter},
 	} {
-		if p.value != nil && *p.value != "" && !slices.Contains(cfg.People.Known, *p.value) {
+		if p.value != nil && *p.value != "" && !slices.Contains(cfg.People.Names(), *p.value) {
 			out = append(out, vocabFinding(p.field, *p.value, vocabSeverity(cfg.People.Strict)))
 		}
 	}
@@ -50,15 +50,14 @@ func vocabFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 			out = append(out, vocabFinding(datamodel.KeyLabels, l, vocabSeverity(cfg.Labels.Strict)))
 		}
 	}
-	enum := func(field string, value *string) {
-		known, _ := cfg.VocabFor(field)
-		if value != nil && *value != "" && len(known) > 0 && !slices.Contains(known, *value) {
-			out = append(out, vocabFinding(field, *value, vocabSeverity(cfg.Labels.Strict)))
+	enum := func(field string, value *string, ev datamodel.EnumVocab) {
+		if value != nil && *value != "" && len(ev.Values) > 0 && !slices.Contains(ev.Values, *value) {
+			out = append(out, vocabFinding(field, *value, vocabSeverity(ev.StrictOr(cfg.Labels.Strict))))
 		}
 	}
-	enum(datamodel.KeyPriority, it.Priority)
-	enum(datamodel.KeySubtype, it.Subtype)
-	enum(datamodel.KeyResolution, it.Resolution)
+	enum(datamodel.KeyPriority, it.Priority, cfg.Priorities)
+	enum(datamodel.KeySubtype, it.Subtype, cfg.Subtypes)
+	enum(datamodel.KeyResolution, it.Resolution, cfg.Resolutions)
 	return out
 }
 

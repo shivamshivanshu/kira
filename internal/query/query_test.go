@@ -52,7 +52,7 @@ func fixture() (items []*datamodel.Item, opts Options, cfg *datamodel.Config) {
 	for _, it := range items {
 		snap.Items = append(snap.Items, id.Item{ULID: it.ID, Number: it.Number, Aliases: it.Aliases})
 	}
-	opts = Options{Resolver: id.NewResolver(snap), Priorities: cfg.Priorities}
+	opts = Options{Resolver: id.NewResolver(snap), Priorities: cfg.Priorities.Values}
 	return items, opts, cfg
 }
 

@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
@@ -18,7 +20,13 @@ func Validate(c *datamodel.Config) error {
 	if err := validateEnum("commit.mode", c.Commit.Mode, datamodel.CommitModes...); err != nil {
 		return err
 	}
+	if strings.ContainsAny(c.Commit.SubjectPrefix, "\n\r") {
+		return fmt.Errorf("config: commit.subject_prefix: must be a single line, got %q", c.Commit.SubjectPrefix)
+	}
 	if err := validateEnum("merge.policy", c.Merge.Policy, datamodel.MergePolicies...); err != nil {
+		return err
+	}
+	if err := validateEnum("sync.dirty", c.Sync.Dirty, datamodel.SyncDirties...); err != nil {
 		return err
 	}
 	if err := validateUISection(c.UI); err != nil {
@@ -27,11 +35,8 @@ func Validate(c *datamodel.Config) error {
 	if err := validateEnum("estimate.unit", c.Estimate.Unit, datamodel.EstimateUnits...); err != nil {
 		return err
 	}
-	if err := validateEnum("workon.casing", c.Workon.Casing, datamodel.Casings...); err != nil {
+	if err := validateWorkonSection(c.Workon); err != nil {
 		return err
-	}
-	if !strings.Contains(c.Workon.BranchPattern, "{number}") {
-		return fmt.Errorf("config: workon.branch_pattern: must contain {number}, got %q", c.Workon.BranchPattern)
 	}
 	if len(c.Workflows) == 0 {
 		return fmt.Errorf("config: workflows: at least one workflow is required")
@@ -45,12 +50,25 @@ func Validate(c *datamodel.Config) error {
 		key  string
 		list []string
 	}{
-		{"priorities", c.Priorities},
-		{"subtypes", c.Subtypes},
-		{"resolutions", c.Resolutions},
+		{"priorities", c.Priorities.Values},
+		{"subtypes", c.Subtypes.Values},
+		{"resolutions", c.Resolutions.Values},
+		{"resolutions_dropped", c.ResolutionsDropped},
 	} {
 		if err := validateVocabList(vl.key, vl.list); err != nil {
 			return err
+		}
+	}
+	if len(c.Resolutions.Values) > 0 {
+		for _, d := range c.ResolutionsDropped {
+			if !slices.Contains(c.Resolutions.Values, d) {
+				return fmt.Errorf("config: resolutions_dropped: %q is not one of the configured resolutions %v; dropped detection would never match", d, c.Resolutions.Values)
+			}
+		}
+	}
+	for i, p := range c.People.Known {
+		if p.Name == "" {
+			return fmt.Errorf("config: people.known[%d].name: required", i)
 		}
 	}
 	if err := validateFilters(c); err != nil {
@@ -66,7 +84,58 @@ func validateUISection(ui datamodel.UI) error {
 	if err := validateEnum("ui.icons", ui.Icons, datamodel.IconModes...); err != nil {
 		return err
 	}
-	return validateEnum("ui.background", ui.Background, datamodel.Backgrounds...)
+	if err := validateEnum("ui.background", ui.Background, datamodel.Backgrounds...); err != nil {
+		return err
+	}
+	if err := validateEnum("ui.color", ui.Color, datamodel.ColorModes...); err != nil {
+		return err
+	}
+	return validateRefresh(ui.Tui.Refresh)
+}
+
+func validateRefresh(s string) error {
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return fmt.Errorf("config: ui.tui.refresh: invalid duration %q", s)
+	}
+	if d != 0 && d < datamodel.MinRefreshInterval {
+		return fmt.Errorf("config: ui.tui.refresh: %s is below the %s minimum (use 0 to disable)", d, datamodel.MinRefreshInterval)
+	}
+	return nil
+}
+
+func validateWorkonSection(w datamodel.Workon) error {
+	if err := validateEnum("workon.casing", w.Casing, datamodel.Casings...); err != nil {
+		return err
+	}
+	if !strings.Contains(w.BranchPattern, "{number}") {
+		return fmt.Errorf("config: workon.branch_pattern: must contain {number}, got %q", w.BranchPattern)
+	}
+	if strings.HasPrefix(w.WorktreeDir, "~") {
+		return fmt.Errorf("config: workon.worktree_dir: %q begins with ~, which is not expanded; use an absolute or repo-relative path", w.WorktreeDir)
+	}
+	return nil
+}
+
+func UIWarnings(ui datamodel.UI) []string {
+	var out []string
+	for _, c := range ui.List.Columns {
+		if !slices.Contains(datamodel.ListColumns, c) {
+			out = append(out, fmt.Sprintf("ui.list.columns: unknown column %q", c))
+		}
+	}
+	for _, slot := range slices.Sorted(maps.Keys(ui.Theme)) {
+		switch {
+		case !slices.Contains(datamodel.ThemeSlots, slot):
+			out = append(out, fmt.Sprintf("ui.theme: unknown slot %q", slot))
+		case !datamodel.IsHexColor(ui.Theme[slot]):
+			out = append(out, fmt.Sprintf("ui.theme.%s: invalid color %q", slot, ui.Theme[slot]))
+		}
+	}
+	if s := ui.Tui.Split; s <= 0 || s >= 1 {
+		out = append(out, fmt.Sprintf("ui.tui.split: %v out of range (0,1)", s))
+	}
+	return out
 }
 
 func validateAutomation(c *datamodel.Config) error {
@@ -159,6 +228,11 @@ func validateWorkflow(name string, w datamodel.Workflow, c *datamodel.Config) er
 		}
 		if s.Wip < 0 {
 			return fmt.Errorf("config: workflows.%s.states[%s].wip: must be >= 0, got %d", name, s.Key, s.Wip)
+		}
+	}
+	if w.WipPolicy != "" {
+		if err := validateEnum(fmt.Sprintf("workflows.%s.wip_policy", name), w.WipPolicy, datamodel.WipPolicies...); err != nil {
+			return err
 		}
 	}
 	if w.Initial == "" {

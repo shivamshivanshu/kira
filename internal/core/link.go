@@ -42,9 +42,9 @@ func (s *Store) Link(cfg *datamodel.Config, ref string, opts LinkOpts) (*datamod
 			verb = "unlink"
 		}
 		if opts.Target == LinkEpic && opts.Remove {
-			return fmt.Sprintf(subjectPrefix+"%s %s %s", orig.Number, verb, edge)
+			return fmt.Sprintf(cfg.Commit.SubjectPrefix+"%s %s %s", orig.Number, verb, edge)
 		}
-		return fmt.Sprintf(subjectPrefix+"%s %s %s %s", orig.Number, verb, edge, opts.Ref)
+		return fmt.Sprintf(cfg.Commit.SubjectPrefix+"%s %s %s %s", orig.Number, verb, edge, opts.Ref)
 	}
 
 	updated, changed, err := s.mutate(cfg, ref, opts.Force, apply, subjectOf, datamodel.SourceCLI)

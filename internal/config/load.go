@@ -31,8 +31,15 @@ func LoadWithUser(root string, env func(string) string, warn io.Writer) (*datamo
 	if tier.ui != nil {
 		cfg.UI = *tier.ui
 	}
+	if tier.workon != nil {
+		cfg.Workon = *tier.workon
+	}
 	if err := parseInto(cfg, data); err != nil {
 		return nil, err
+	}
+	ignore := ignorer(warn, filepath.Join(root, storage.ConfigRelPath))
+	for _, w := range UIWarnings(cfg.UI) {
+		ignore("%s", w)
 	}
 	cfg.UserAutomation = tier.hooks
 	return cfg, nil

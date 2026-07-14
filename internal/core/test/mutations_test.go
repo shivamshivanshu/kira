@@ -527,7 +527,7 @@ func TestMoveWipCountsPerType(t *testing.T) {
 func TestAssignStrictBypass(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
-	cfg.People.Known = []string{"shivam", "alice"}
+	cfg.People.Known = []datamodel.Person{{Name: "shivam"}, {Name: "alice"}}
 	cfg.People.Strict = true
 	res := mustCreate(t, s, cfg, "assign")
 

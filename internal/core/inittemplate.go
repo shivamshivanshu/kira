@@ -64,13 +64,13 @@ merge:
 sync:
   push: false                 # true = kira sync publishes after a clean pull; default is pull-only
 
-workon:
-  branch_pattern: "{key}/{number}-{slug}"   # tokens: {key} {number} {slug}
-  casing: kebab               # kebab | snake: casing of {slug} in the branch name
+# workon: branch and worktree naming (built-in defaults shown; uncomment a key to pin it for this repo)
+#   branch_pattern: "{key}/{number}-{slug}"   # tokens: {key} {number} {slug}
+#   casing: kebab             # kebab | snake: casing of {slug} in the branch name
 
-ui:
-  icons: auto                 # auto | nerd | emoji | text — if glyphs render as boxes, set emoji or text (nerd font not installed)
-  background: auto            # auto | dark | light: palette the TUI and board assume
+# ui: TUI and board appearance (personal presentation; prefer ~/.config/kira/config.yaml so pins are not shared across clones)
+#   icons: auto               # auto | nerd | emoji | text
+#   background: auto          # auto | dark | light
 
 estimate:
   unit: points                # points | hours

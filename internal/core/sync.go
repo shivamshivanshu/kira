@@ -99,6 +99,22 @@ func (s *Store) syncCloses(cfg *datamodel.Config) syncx.Step {
 	return syncx.Step{Name: "closes", Status: syncx.StepDone, Detail: fmt.Sprintf("closed %s", strings.Join(res.Closed, ", "))}
 }
 
+func dirtyPolicyFor(cfg *datamodel.Config) syncx.DirtyPolicy {
+	switch cfg.Sync.Dirty {
+	case datamodel.SyncDirtyFail:
+		return syncx.DirtyFail
+	case datamodel.SyncDirtyCommit:
+		return syncx.DirtyCommit
+	case datamodel.SyncDirtyStash:
+		return syncx.DirtyStash
+	default:
+		if cfg.Commit.Mode != datamodel.CommitAuto {
+			return syncx.DirtyFail
+		}
+		return syncx.DirtyCommit
+	}
+}
+
 func (s *Store) prepareTree(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts, report *syncx.Report) (bool, error) {
 	dirty, err := repo.DirtyPaths(".kira")
 	if err != nil {
@@ -110,12 +126,11 @@ func (s *Store) prepareTree(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts
 	}
 	policy := opts.Dirty
 	if policy == syncx.DirtyAuto {
-		if cfg.Commit.Mode != datamodel.CommitAuto {
-			return false, errx.User("uncommitted kira changes; re-run with --commit or --stash")
-		}
-		policy = syncx.DirtyCommit
+		policy = dirtyPolicyFor(cfg)
 	}
 	switch policy {
+	case syncx.DirtyFail:
+		return false, errx.User("uncommitted kira changes; re-run with --commit or --stash")
 	case syncx.DirtyStash:
 		if err := repo.Stash(); err != nil {
 			return false, errx.User("%v", err)
@@ -123,7 +138,7 @@ func (s *Store) prepareTree(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts
 		report.Add("prepare", syncx.StepDone, fmt.Sprintf("stashed %d paths", len(dirty)))
 		return true, nil
 	default:
-		if _, err := s.finalize(datamodel.CommitAuto, commitSpec{trailerKey: cfg.Commit.Trailer, subject: subjectPrefix + "sync checkpoint"}, dirty...); err != nil {
+		if _, err := s.finalize(datamodel.CommitAuto, commitSpec{trailerKey: cfg.Commit.Trailer, subject: cfg.Commit.SubjectPrefix + "sync checkpoint"}, dirty...); err != nil {
 			return false, err
 		}
 		report.Add("prepare", syncx.StepDone, fmt.Sprintf("committed %d paths", len(dirty)))

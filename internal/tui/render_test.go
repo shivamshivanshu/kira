@@ -48,7 +48,8 @@ func loadedTree() treeModel {
 }
 
 func newTestModel(w, h int, withData bool) model {
-	m := newModel(nil, nil, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
+	cfg := &datamodel.Config{UI: datamodel.UI{Tui: datamodel.UITui{Split: datamodel.DefaultSplit}}}
+	m := newModel(nil, cfg, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
 	m.width, m.height = w, h
 	if withData {
 		nodes, fields, progress := sampleTree()
@@ -146,7 +147,7 @@ func TestCategoryGlyphDroppedVsDone(t *testing.T) {
 	dropped := datamodel.ResolutionDropped
 	other := "fixed"
 	for _, mode := range []datamodel.IconMode{datamodel.IconNerd, datamodel.IconEmoji, datamodel.IconText} {
-		ic := iconSet{mode: mode}
+		ic := iconSet{mode: mode, dropped: []string{dropped}}
 		if got := ic.categoryGlyph(datamodel.CategoryDone, &dropped); got != glyphDropped.pick(mode) {
 			t.Errorf("%s done+dropped must render dropped glyph, got %q", mode, got)
 		}
@@ -169,7 +170,7 @@ func TestTreeRowPlumbsPriorityAndResolution(t *testing.T) {
 	}
 	tm := newTreeModel()
 	(&tm).load(nodes, fields, map[string]datamodel.EpicProgress{})
-	out := tm.render(asciiTheme(), iconSet{mode: datamodel.IconText, priorities: []string{"P0", "P1", "P2", "P3"}}, 100, 3, true, false)
+	out := tm.render(asciiTheme(), iconSet{mode: datamodel.IconText, priorities: []string{"P0", "P1", "P2", "P3"}, dropped: []string{dropped}}, 100, 3, true, false)
 	if !strings.Contains(out, "!") {
 		t.Errorf("P0 priority marker missing from row:\n%s", out)
 	}

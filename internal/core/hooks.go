@@ -134,7 +134,7 @@ func (s *Store) commitTrackedHooks(cfg *datamodel.Config, repo gitx.Repo, tracke
 	if len(dirty) == 0 {
 		return nil
 	}
-	_, err = s.finalize(cfg.Commit.Mode, commitSpec{subject: subjectPrefix + "install hooks"}, tracked...)
+	_, err = s.finalize(cfg.Commit.Mode, commitSpec{subject: cfg.Commit.SubjectPrefix + "install hooks"}, tracked...)
 	return err
 }
 

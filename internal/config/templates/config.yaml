@@ -1,0 +1,26 @@
+# # kira user preferences. Every line below is the built-in default.
+# # Uncomment a line to pin that value for yourself, unless the repo's config sets the same key (repo wins on collision).
+# # These keys are personal; repo-authoritative keys here are ignored with a warning.
+
+# ui:                                              # terminal UI and board appearance
+#   icons: auto                                    # glyph set: auto | nerd | emoji | text
+#   background: auto                               # palette the TUI and board assume: auto | dark | light
+#   color: auto                                    # ANSI color: auto | always | never
+#   auto_tui: true                                 # launch the TUI when kira is run bare in a terminal
+#   list:
+#     columns: [number, state, type, priority, title]   # columns shown by `kira list`
+#   tui:
+#     split: 0.5                                   # tree/detail split fraction, open interval (0,1)
+#     refresh: "0"                                 # TUI auto-refresh interval, e.g. 5s; "0" disables it (min 1s)
+#   theme:                                         # override individual palette slots with hex colors (example values)
+#     accent: "#7dcfff"
+#     dim: "#6c7086"
+#     todo: "#a9b1d6"
+#     doing: "#e0af68"
+#     done: "#9ece6a"
+#     warm: "#e0af68"
+#     hot: "#f7768e"
+
+# workon:                                          # `kira workon` branch and worktree behavior
+#   worktree: false                                # create a git worktree instead of switching the current checkout
+#   worktree_dir: "../{repo}-{branch}"             # where worktrees are created; tokens: {repo} {branch} {key} {number}; absolute paths used as-is

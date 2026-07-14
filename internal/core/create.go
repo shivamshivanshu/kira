@@ -81,7 +81,7 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 	if err != nil {
 		return nil, err
 	}
-	subject := subjectPrefix + "create " + finalItem.Number + " " + quoteTitle(finalItem.Title)
+	subject := cfg.Commit.SubjectPrefix + "create " + finalItem.Number + " " + quoteTitle(finalItem.Title)
 	cs := &datamodel.ChangeSet{
 		Kind:    datamodel.ChangeCreated,
 		After:   finalItem,

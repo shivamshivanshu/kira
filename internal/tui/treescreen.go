@@ -112,7 +112,7 @@ func (s *treeScreen) view(m *model, width, height int) string {
 		}
 		return s.tree.render(m.theme, m.icons, width, height, true, false)
 	}
-	return splitPane(m.theme, width, height,
+	return splitPane(m.theme, m.cfg.UI.Tui.Split, width, height,
 		func(w int) string { return s.tree.render(m.theme, m.icons, w, height, s.focus == paneTree, true) },
 		func(w int) string { return s.host.render(m.theme, m.icons, w, height) })
 }

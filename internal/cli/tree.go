@@ -79,7 +79,7 @@ func renderTreeGroups(w io.Writer, res *datamodel.ListResult) {
 			fmt.Fprintf(tw, "%s\t\t\t\t(epic)\n", label)
 		}
 		for _, ulid := range grp.Items {
-			fmt.Fprintln(tw, "  "+formatItemRow(byID[ulid]))
+			fmt.Fprintln(tw, "  "+formatItemRow(datamodel.DefaultListColumns, byID[ulid]))
 		}
 	}
 	tw.Flush()

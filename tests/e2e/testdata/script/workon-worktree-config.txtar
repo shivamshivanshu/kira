@@ -1,0 +1,27 @@
+# workon.worktree=true makes bare `kira workon` create a git worktree; worktree_dir places it.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira hooks install
+cp workon-config.yaml .kira/config.yaml
+exec kira create ticket --title 'Fix the bug' --no-edit
+
+# no --worktree flag: the config default drives worktree creation and placement.
+exec kira workon KIRA-1 --json
+stdout '"worktree"'
+stdout '"branch": "kira/kira-1-fix-the-bug"'
+
+exec git worktree list
+stdout 'wt-KIRA-1'
+
+-- workon-config.yaml --
+version: 1
+project:
+  key: KIRA
+workon:
+  worktree: true
+  worktree_dir: ../wt-{number}

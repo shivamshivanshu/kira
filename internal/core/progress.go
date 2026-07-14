@@ -1,6 +1,10 @@
 package core
 
-import "github.com/shivamshivanshu/kira/internal/datamodel"
+import (
+	"slices"
+
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+)
 
 func indexByEpic(items []*datamodel.Item) (map[string]*datamodel.Item, map[string][]*datamodel.Item) {
 	byID := byULID(items)
@@ -38,13 +42,13 @@ func epicProgress(cfg *datamodel.Config, children map[string][]*datamodel.Item, 
 			return
 		}
 		p.Total++
-		if cat, ok := categoryOf(cfg, c.Type, c.State); ok && cat == datamodel.CategoryDone && !isDropped(c) {
+		if cat, ok := categoryOf(cfg, c.Type, c.State); ok && cat == datamodel.CategoryDone && !isDropped(cfg, c) {
 			p.Done++
 		}
 	})
 	return p
 }
 
-func isDropped(it *datamodel.Item) bool {
-	return it.Resolution != nil && *it.Resolution == datamodel.ResolutionDropped
+func isDropped(cfg *datamodel.Config, it *datamodel.Item) bool {
+	return it.Resolution != nil && slices.Contains(cfg.ResolutionsDropped, *it.Resolution)
 }

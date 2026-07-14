@@ -73,6 +73,8 @@ func TestValidateGraph(t *testing.T) {
 
 func strPtr(s string) *string { return &s }
 
+func boolPtr(b bool) *bool { return &b }
+
 func TestValidateItemVocabAndFields(t *testing.T) {
 	base := datamodel.Item{ID: "X", Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "t", State: "TODO"}
 	cases := []struct {
@@ -92,11 +94,15 @@ func TestValidateItemVocabAndFields(t *testing.T) {
 		{"subtype-unknown-lenient", nil, func(it *datamodel.Item) { it.Subtype = strPtr("saga") }, false, false, true},
 		{"subtype-unknown-strict", func(c *datamodel.Config) { c.Labels.Strict = true },
 			func(it *datamodel.Item) { it.Subtype = strPtr("saga") }, false, true, false},
-		{"subtype-freeform-when-empty", func(c *datamodel.Config) { c.Subtypes = nil },
+		{"subtype-freeform-when-empty", func(c *datamodel.Config) { c.Subtypes = datamodel.EnumVocab{} },
 			func(it *datamodel.Item) { it.Subtype = strPtr("saga") }, false, false, false},
 		{"priority-unknown-lenient", nil, func(it *datamodel.Item) { it.Priority = strPtr("P9") }, false, false, true},
 		{"priority-unknown-strict", func(c *datamodel.Config) { c.Labels.Strict = true },
 			func(it *datamodel.Item) { it.Priority = strPtr("P9") }, false, true, false},
+		{"subtype-per-vocab-strict-without-labels-strict", func(c *datamodel.Config) { c.Subtypes.Strict = boolPtr(true) },
+			func(it *datamodel.Item) { it.Subtype = strPtr("saga") }, false, true, false},
+		{"priority-per-vocab-lenient-overrides-labels-strict", func(c *datamodel.Config) { c.Labels.Strict = true; c.Priorities.Strict = boolPtr(false) },
+			func(it *datamodel.Item) { it.Priority = strPtr("P9") }, false, false, true},
 		{"resolution-known", nil, func(it *datamodel.Item) { it.Resolution = strPtr("dropped") }, false, false, false},
 		{"resolution-unknown-lenient", nil, func(it *datamodel.Item) { it.Resolution = strPtr("meh") }, false, false, true},
 		{"rank-empty", nil, func(it *datamodel.Item) { it.Rank = strPtr("") }, false, true, false},

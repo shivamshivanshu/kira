@@ -35,7 +35,7 @@ func (s *Store) ConfigSet(cfg *datamodel.Config, key, value string) (*datamodel.
 	if err := os.WriteFile(fs.ConfigPath(), out, 0o644); err != nil {
 		return nil, errx.User("writing config: %v", err)
 	}
-	subject := subjectPrefix + "config set " + key
+	subject := cfg.Commit.SubjectPrefix + "config set " + key
 	if _, err := s.finalize(cfg.Commit.Mode, commitSpec{trailerKey: cfg.Commit.Trailer, subject: subject}, fs.RelToRoot(fs.ConfigPath())); err != nil {
 		return nil, err
 	}

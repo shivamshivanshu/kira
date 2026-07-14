@@ -14,6 +14,8 @@ type crashMsg struct {
 	stack []byte
 }
 
+type tickMsg struct{}
+
 type treeData struct {
 	nodes    []datamodel.TreeNode
 	fields   map[string]datamodel.ListItem

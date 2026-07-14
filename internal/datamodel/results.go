@@ -233,6 +233,12 @@ type ConfigSetResult struct {
 	Value string `json:"value"`
 }
 
+type ConfigInitResult struct {
+	Path    string   `json:"path"`
+	Created bool     `json:"created"`
+	Files   []string `json:"files"`
+}
+
 type LabelCreateResult struct {
 	Created      []string `json:"created"`
 	AlreadyKnown []string `json:"already_known"`

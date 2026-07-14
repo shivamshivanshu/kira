@@ -1,0 +1,7 @@
+# # Personal automation hooks, run in addition to a repo's own hooks.
+# # Each entry fires a shell command on an event; run `kira automation trust` after editing.
+# # Available env vars include KIRA_NUMBER, KIRA_TITLE, KIRA_FROM, KIRA_TO, KIRA_TO_CATEGORY.
+
+# - name: notify-on-state-change                   # example: desktop notification when an item moves
+#   on: item.state_changed                         # item.created | item.state_changed | sync.completed
+#   run: notify-send "kira" "$KIRA_NUMBER → $KIRA_TO"

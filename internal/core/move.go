@@ -71,6 +71,9 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 				}
 			}
 			if inTargetState > target.Wip {
+				if wf.EffectiveWipPolicy() == datamodel.WipBlock && !opts.Force {
+					return []error{errx.User("%s is over its WIP limit (%d > %d)", state, inTargetState, target.Wip).WithHint("move an item out of %s first, or use `--force` to override", state)}, nil
+				}
 				w := fmt.Errorf("%s is over its WIP limit (%d > %d)", state, inTargetState, target.Wip)
 				wipWarnings = append(wipWarnings, w.Error())
 				warns = append(warns, w)
@@ -79,7 +82,7 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 		return nil, warns
 	}
 	subjectOf := func(orig *datamodel.Item) string {
-		return fmt.Sprintf(subjectPrefix+"%s state %s -> %s", orig.Number, orig.State, state)
+		return fmt.Sprintf(cfg.Commit.SubjectPrefix+"%s state %s -> %s", orig.Number, orig.State, state)
 	}
 
 	source := opts.Source

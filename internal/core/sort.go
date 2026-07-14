@@ -39,6 +39,6 @@ func precedenceKeyOf(priorityIndex map[string]int, it *datamodel.Item) precedenc
 }
 
 func sortByPrecedence(cfg *datamodel.Config, items []*datamodel.Item) {
-	priorityIndex := query.PriorityIndex(cfg.Priorities)
+	priorityIndex := query.PriorityIndex(cfg.Priorities.Values)
 	sortByKey(items, func(it *datamodel.Item) precedenceKey { return precedenceKeyOf(priorityIndex, it) })
 }

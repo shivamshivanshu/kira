@@ -8,6 +8,14 @@ type Workflow struct {
 	Transitions        map[string][]Transition `yaml:"transitions"`
 	EnforceTransitions bool                    `yaml:"enforce_transitions"`
 	CloseTarget        string                  `yaml:"close_target,omitempty"`
+	WipPolicy          WipPolicy               `yaml:"wip_policy,omitempty"`
+}
+
+func (w Workflow) EffectiveWipPolicy() WipPolicy {
+	if w.WipPolicy == WipBlock {
+		return WipBlock
+	}
+	return WipWarn
 }
 
 type State struct {

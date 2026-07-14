@@ -1,0 +1,61 @@
+# kira config: bare invocation prints the resolved user config path and which
+# template files exist; init scaffolds commented defaults, is a no-op when any
+# template file is already present, scaffolds into an existing empty dir, and emits --json.
+env XDG_CONFIG_HOME=$WORK/xdg
+
+# bare config reports the resolved path and that no files exist yet.
+exec kira config
+stdout 'xdg/kira'
+stdout 'present: none'
+
+# init scaffolds both files with commented user-tier defaults.
+exec kira config init
+stdout 'Created user config'
+exists xdg/kira/config.yaml
+exists xdg/kira/hooks.yaml
+grep 'color: auto' xdg/kira/config.yaml
+grep 'refresh: "0"' xdg/kira/config.yaml
+grep 'worktree_dir: "\.\./\{repo\}-\{branch\}"' xdg/kira/config.yaml
+grep 'on: item.state_changed' xdg/kira/hooks.yaml
+
+# bare config now lists the present files.
+exec kira config
+stdout 'present: config.yaml, hooks.yaml'
+
+# re-running init is a full no-op: it changes nothing and reports what is present.
+cp xdg/kira/config.yaml saved-config.yaml
+exec kira config init
+stdout 'already exists; leaving it untouched'
+stdout 'present: config.yaml, hooks.yaml'
+cmp xdg/kira/config.yaml saved-config.yaml
+
+# --json reflects the resolved path, that nothing was created, and the present files.
+exec kira config init --json
+stdout '"created": false'
+stdout '"path":'
+stdout '"config.yaml"'
+stdout '"hooks.yaml"'
+
+# a fresh directory reports created=true over --json.
+env XDG_CONFIG_HOME=$WORK/xdg2
+exec kira config init --json
+stdout '"created": true'
+exists xdg2/kira/config.yaml
+exists xdg2/kira/hooks.yaml
+
+# an existing but empty dir is treated as uninitialized: init scaffolds both.
+env XDG_CONFIG_HOME=$WORK/xdg3
+mkdir xdg3/kira
+exec kira config init
+stdout 'Created user config'
+exists xdg3/kira/config.yaml
+exists xdg3/kira/hooks.yaml
+
+# an existing dir already holding a template file is a full no-op reporting it.
+env XDG_CONFIG_HOME=$WORK/xdg4
+mkdir xdg4/kira
+cp xdg/kira/hooks.yaml xdg4/kira/hooks.yaml
+exec kira config init
+stdout 'already exists; leaving it untouched'
+stdout 'present: hooks.yaml'
+! exists xdg4/kira/config.yaml

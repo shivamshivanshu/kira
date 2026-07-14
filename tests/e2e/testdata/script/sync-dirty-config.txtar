@@ -1,0 +1,39 @@
+# sync.dirty selects the default dirty-tree policy when no flag is passed.
+# With sync.dirty=stash, a bare `kira sync` stashes (and, on the failure here,
+# pops back) rather than committing the dirty edit as the auto default would.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+env GIT_AUTHOR_NAME=tester
+env GIT_AUTHOR_EMAIL=test@example.com
+env GIT_COMMITTER_NAME=tester
+env GIT_COMMITTER_EMAIL=test@example.com
+exec git init --initial-branch=main
+exec kira init --key KIRA
+cp dirty.yaml .kira/config.yaml
+exec git add .kira/config.yaml
+exec git commit -m 'sync.dirty stash'
+exec kira create ticket --title A --no-edit
+
+# dirty a tracked kira file; the branch has no upstream so the sync fails.
+cp $WORK/dirtytmpl .kira/templates/ticket.md
+! exec kira sync
+stderr 'prepare'
+
+# stash was used and popped: nothing stranded, and the edit is back (not committed).
+exec git stash list
+! stdout .
+exec git status --porcelain
+stdout 'templates/ticket.md'
+
+-- dirty.yaml --
+version: 1
+project:
+  key: KIRA
+  name: kira
+sync:
+  dirty: stash
+
+-- dirtytmpl --
+# locally modified template to create a dirty tracked kira file
+Title:

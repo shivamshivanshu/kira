@@ -292,6 +292,29 @@
       ],
       "type": "object"
     },
+    "ConfigInitResult": {
+      "additionalProperties": false,
+      "properties": {
+        "created": {
+          "type": "boolean"
+        },
+        "files": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "created",
+        "files"
+      ],
+      "type": "object"
+    },
     "ConfigSetResult": {
       "additionalProperties": false,
       "properties": {

@@ -58,8 +58,8 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 }
 
 func (s *Store) queryOptions(cfg *datamodel.Config, resolver *id.Resolver) query.Options {
-	me, _ := s.gitIdentity()
-	return query.Options{Resolver: resolver, Priorities: cfg.Priorities, ActiveSprint: s.ActiveSprintKey(), Me: me}
+	me, _ := s.identity(cfg)
+	return query.Options{Resolver: resolver, Priorities: cfg.Priorities.Values, ActiveSprint: s.ActiveSprintKey(), Me: me}
 }
 
 func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel.ListItem, map[string]bool, error) {
@@ -89,7 +89,7 @@ func sortMatched(cfg *datamodel.Config, matched []*datamodel.Item, order *query.
 		return
 	}
 	keyOf := order.Keyer(cfg)
-	priorityIndex := query.PriorityIndex(cfg.Priorities)
+	priorityIndex := query.PriorityIndex(cfg.Priorities.Values)
 	sortByKey(matched, func(it *datamodel.Item) orderedKey {
 		return orderedKey{order: order, key: keyOf(it), tie: precedenceKeyOf(priorityIndex, it)}
 	})

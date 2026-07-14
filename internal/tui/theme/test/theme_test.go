@@ -27,6 +27,46 @@ func TestNoColorRendersPlain(t *testing.T) {
 	}
 }
 
+func hasANSI(s string) bool { return strings.Contains(s, "\x1b[") }
+
+func TestColorAlwaysForcesANSIWhenPiped(t *testing.T) {
+	th := theme.For(io.Discard, datamodel.UI{Color: datamodel.ColorAlways}, false)
+	if !hasANSI(th.Accent.Render("x")) {
+		t.Error("ui.color=always did not force ANSI on a non-TTY writer")
+	}
+}
+
+func TestColorNeverAndPrecedence(t *testing.T) {
+	if hasANSI(theme.For(io.Discard, datamodel.UI{Color: datamodel.ColorNever}, false).Accent.Render("x")) {
+		t.Error("ui.color=never emitted ANSI")
+	}
+	if hasANSI(theme.For(io.Discard, datamodel.UI{Color: datamodel.ColorAlways}, true).Accent.Render("x")) {
+		t.Error("--no-color did not override ui.color=always")
+	}
+	t.Setenv("NO_COLOR", "1")
+	if hasANSI(theme.For(io.Discard, datamodel.UI{Color: datamodel.ColorAlways}, false).Accent.Render("x")) {
+		t.Error("NO_COLOR did not override ui.color=always")
+	}
+}
+
+func TestThemeSlotOverride(t *testing.T) {
+	ui := datamodel.UI{Color: datamodel.ColorAlways, Theme: map[string]string{"accent": "#ff0000"}}
+	got := theme.For(io.Discard, ui, false).Accent.Render("x")
+	if !strings.Contains(got, "38;2;255;0;0") {
+		t.Errorf("accent override not applied under TrueColor: %q", got)
+	}
+}
+
+func TestThemeSlotInvalidKeepsDefault(t *testing.T) {
+	base := datamodel.UI{Color: datamodel.ColorAlways}
+	def := theme.For(io.Discard, base, false).Accent.Render("x")
+	bad := base
+	bad.Theme = map[string]string{"accent": "not-a-hex"}
+	if got := theme.For(io.Discard, bad, false).Accent.Render("x"); got != def {
+		t.Errorf("invalid hex should keep default: default=%q got=%q", def, got)
+	}
+}
+
 func TestAdaptiveColorFollowsBackground(t *testing.T) {
 	dark := theme.New(pinnedRenderer(true)).CategoryStyle(datamodel.CategoryDone).Render("x")
 	light := theme.New(pinnedRenderer(false)).CategoryStyle(datamodel.CategoryDone).Render("x")

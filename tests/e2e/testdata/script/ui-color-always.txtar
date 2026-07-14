@@ -1,0 +1,21 @@
+# ui.color=always forces ANSI even when stdout is a pipe (not a TTY).
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+env NO_COLOR=
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp color-config.yaml .kira/config.yaml
+exec kira create ticket --title 'First' --no-edit
+
+exec kira board --plain
+stdout '\x1b\['
+
+-- color-config.yaml --
+version: 1
+project:
+  key: KIRA
+ui:
+  color: always

@@ -1,0 +1,27 @@
+# ui.list.columns reorders the flat list header and cells; JSON stays unaffected.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp columns-config.yaml .kira/config.yaml
+exec kira create ticket --title 'First' --no-edit
+
+# custom column order: title then number, no priority column.
+exec kira list --no-color
+stdout 'TITLE\s+NUMBER'
+! stdout 'PRIORITY'
+
+# --json is frozen: it always carries the full field set regardless of ui.list.columns.
+exec kira list --json
+stdout '"priority"'
+
+-- columns-config.yaml --
+version: 1
+project:
+  key: KIRA
+ui:
+  list:
+    columns: [title, number]

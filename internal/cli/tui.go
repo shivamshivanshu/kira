@@ -19,7 +19,7 @@ func newTUICmd(g *globalFlags) *cobra.Command {
 		Short: "Launch the interactive terminal UI (also the default when kira is run with no command)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runTUI(g, injectPanic)
+			return runTUI(cmd, g, injectPanic, false)
 		},
 	}
 	f := cmd.Flags()
@@ -28,7 +28,7 @@ func newTUICmd(g *globalFlags) *cobra.Command {
 	return cmd
 }
 
-func runTUI(g *globalFlags, injectPanic bool) error {
+func runTUI(cmd *cobra.Command, g *globalFlags, injectPanic, auto bool) error {
 	s, cfg, err := openStore(g)
 	if err != nil {
 		if !canOfferInit(g, err) {
@@ -41,6 +41,9 @@ func runTUI(g *globalFlags, injectPanic bool) error {
 		if s, cfg, err = openStore(g); err != nil {
 			return err
 		}
+	}
+	if auto && !cfg.UI.AutoTUI {
+		return cmd.Help()
 	}
 	return tui.Run(s, cfg, tui.Options{NoColor: g.noColor, InjectPanic: injectPanic, RunCommand: commandRunner(g)})
 }

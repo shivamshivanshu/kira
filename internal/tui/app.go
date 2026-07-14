@@ -3,6 +3,7 @@ package tui
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -57,20 +58,32 @@ type model struct {
 	crash       *crashInfo
 	injectPanic bool
 
-	busy     bool
-	quitting bool
-	pending  []tea.Cmd
+	busy         bool
+	quitting     bool
+	pending      []tea.Cmd
+	refreshEvery time.Duration
 }
 
 func newModel(store *core.Store, cfg *datamodel.Config, th theme.Theme, ic iconSet, injectPanic bool) model {
-	return model{store: store, cfg: cfg, theme: th, icons: ic, view: viewTree, screens: buildScreens(), bar: newBar(), injectPanic: injectPanic}
+	var every time.Duration
+	if cfg != nil {
+		every = cfg.UI.Tui.RefreshInterval()
+	}
+	return model{store: store, cfg: cfg, theme: th, icons: ic, view: viewTree, screens: buildScreens(), bar: newBar(), injectPanic: injectPanic, refreshEvery: every}
 }
 
 func (m model) Init() tea.Cmd {
 	if m.injectPanic {
 		return safeCmd(func() tea.Msg { panic("injected tui panic (tea.Cmd)") })
 	}
-	return nil
+	return m.scheduleRefresh()
+}
+
+func (m model) scheduleRefresh() tea.Cmd {
+	if m.refreshEvery <= 0 {
+		return nil
+	}
+	return tea.Tick(m.refreshEvery, func(time.Time) tea.Msg { return tickMsg{} })
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -111,6 +124,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			bs.applyMove(&m, msg)
 		}
 		return m, m.afterDrain(cmd)
+	case tickMsg:
+		var cmd tea.Cmd
+		if !m.busy {
+			cmd = m.request(refreshCmd(m.store, m.cfg, m.bar.filter))
+		}
+		return m, tea.Batch(cmd, m.scheduleRefresh())
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	}

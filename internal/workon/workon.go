@@ -45,6 +45,15 @@ func RenderBranch(pattern, key, number, title string, c datamodel.Casing) string
 	).Replace(pattern)
 }
 
+func RenderWorktreeDir(pattern, repo, branch, key, number string) string {
+	return strings.NewReplacer(
+		"{repo}", repo,
+		"{branch}", strings.ReplaceAll(branch, "/", "-"),
+		"{key}", key,
+		"{number}", number,
+	).Replace(pattern)
+}
+
 func branchPrefix(pattern, key, number string, c datamodel.Casing) string {
 	p := pattern
 	if i := strings.Index(p, "{slug}"); i >= 0 {

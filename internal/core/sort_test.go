@@ -42,7 +42,7 @@ func TestSortByPrecedence(t *testing.T) {
 
 func TestSortByPrecedenceLegacyDegradation(t *testing.T) {
 	cfg := config.Default()
-	cfg.Priorities = nil
+	cfg.Priorities = datamodel.EnumVocab{}
 	items := []*datamodel.Item{
 		mkItem("KIRA-3", "01C", nil, nil),
 		mkItem("KIRA-1", "01A", nil, nil),

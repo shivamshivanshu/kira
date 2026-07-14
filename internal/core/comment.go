@@ -48,7 +48,7 @@ func (s *Store) Comment(cfg *datamodel.Config, ref string, opts CommentOpts) (*d
 
 	c := datamodel.Comment{
 		ID:     id.Mint().String(),
-		Author: s.currentUser(),
+		Author: s.currentUser(cfg),
 		Ts:     time.Now().Format(time.RFC3339),
 		Body:   text,
 	}
@@ -56,7 +56,7 @@ func (s *Store) Comment(cfg *datamodel.Config, ref string, opts CommentOpts) (*d
 	if err != nil {
 		return nil, err
 	}
-	subject := subjectPrefix + orig.Number + " comment"
+	subject := cfg.Commit.SubjectPrefix + orig.Number + " comment"
 	cs := &datamodel.ChangeSet{
 		Kind:    datamodel.ChangeCommented,
 		Before:  orig,
@@ -90,19 +90,8 @@ func (s *Store) commentText(opts CommentOpts) (string, error) {
 	return strings.TrimRight(content, "\n"), nil
 }
 
-func (s *Store) gitIdentity() (string, bool) {
-	for _, key := range []string{"user.name", "user.email"} {
-		if v, err := s.repo().Output("config", key); err == nil {
-			if f := strings.Fields(v); len(f) > 0 {
-				return strings.Join(f, "-"), true
-			}
-		}
-	}
-	return "", false
-}
-
-func (s *Store) currentUser() string {
-	if id, ok := s.gitIdentity(); ok {
+func (s *Store) currentUser(cfg *datamodel.Config) string {
+	if id, ok := s.identity(cfg); ok {
 		return id
 	}
 	return "unknown"

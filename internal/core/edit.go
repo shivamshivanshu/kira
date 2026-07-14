@@ -73,7 +73,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		for _, fe := range opts.Fields {
 			value := fe.Value
 			if fe.Key == datamodel.KeyOwner || fe.Key == datamodel.KeyReporter {
-				if value, err = s.resolveMe(fe.Value); err != nil {
+				if value, err = s.resolveMe(cfg, fe.Value); err != nil {
 					return nil, err
 				}
 			}
@@ -106,7 +106,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 	}
 
 	changed := datamodel.ChangedFields(orig, updated)
-	subject := subjectPrefix + updated.Number + " edit " + strings.Join(changed, ",")
+	subject := cfg.Commit.SubjectPrefix + updated.Number + " edit " + strings.Join(changed, ",")
 	if err := s.commitMutation(cfg, orig, updated, changed, warns, subject, datamodel.SourceCLI); err != nil {
 		return nil, err
 	}

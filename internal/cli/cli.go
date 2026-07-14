@@ -73,7 +73,7 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 		SilenceErrors: true,
 		Args:          cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runTUI(g, false)
+			return runTUI(cmd, g, false, true)
 		},
 	}
 	pf := root.PersistentFlags()

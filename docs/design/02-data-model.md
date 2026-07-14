@@ -81,7 +81,8 @@ Rejected: one-file-per-comment. Structurally conflict-proof (new file per commen
 ## 5. Labels & people
 
 - `labels` and `owner`/`reporter`/`people` values are checked against `config.yaml`'s `labels.known` / `people.known` lists — controlled vocabularies, not free strings.
-- Strictness is configurable per-list (`labels.strict`, `people.strict`; both default `false` — warn on unknown, don't reject). See [§10](#10-validation-rules) for how this interacts with `validate`/`doctor`.
+- Strictness is configurable per-list (`labels.strict`, `people.strict`; both default `false` — warn on unknown, don't reject). `priorities`/`subtypes`/`resolutions` each take an optional `strict` in their map form (`{ values: [...], strict: true }`); when unset they inherit `labels.strict`. See [§10](#10-validation-rules) for how this interacts with `validate`/`doctor`.
+- `people.known` entries are plain names or `{name, git: [identities]}` maps; `@me` and commit-author attribution resolve a git `user.name`/`user.email` through the map to the canonical `name` (falling back to the raw identity when unmapped). Canonical names are what vocabulary checks accept.
 - `--force` on `create`/`edit` bypasses a `strict: true` rejection for that one write; the write still happens and is still auditable (normal frontmatter, normal commit) — force is an escape hatch, not a stealth path.
 
 ## 6. State machine
@@ -106,7 +107,7 @@ enforce_transitions: true
 ```
 
 - `category` ∈ `todo`\|`doing`\|`done` — every state must declare one.
-- `resolution` is optional, only meaningful on `category: done` states that aren't a "real" completion (e.g. `WONT_DO` → `resolution: dropped`). Telemetry reports resolved-not-done separately from done ([03-storage-and-git.md item on telemetry lives with stats — see synthesis §Telemetry]).
+- `resolution` is optional, only meaningful on `category: done` states that aren't a "real" completion (e.g. `WONT_DO` → `resolution: dropped`). Telemetry reports resolved-not-done separately from done ([03-storage-and-git.md item on telemetry lives with stats — see synthesis §Telemetry]); the set of resolutions treated as dropped is `config.resolutions_dropped` (default `[dropped]`).
 - `initial` is the state a new item of this `type` is created in.
 - `transitions` is an adjacency map: `kira move <id> <state>` succeeds only if the target is listed for the item's current state.
 - `enforce_transitions: true` makes off-graph moves fail; `--force` overrides for that one call. A forced move is still a normal, audited frontmatter write (normal commit, normal `kira log` entry) — it is not a bypass of history, only of the graph check.
@@ -114,7 +115,7 @@ enforce_transitions: true
 
 **WIP limits, transition guards, and the `resolution` field** (all optional, all additive to the block above):
 
-- **`wip:` per state** — an int cap on how many items may sit in that state. `0` or absent = unlimited. Advisory only: `kira move` **warns** on breach, never blocks (there is no `--force` for it because it does not reject) — see [04-cli.md `kira move`](04-cli.md#kira-move). Board rendering colours over-limit columns (M4, [05-tui.md](05-tui.md)).
+- **`wip:` per state** — an int cap on how many items may sit in that state. `0` or absent = unlimited. Enforcement is per-workflow `wip_policy` (default `warn`): `warn` makes `kira move` warn on breach and pass; `block` makes a breach a hard refusal that `--force` downgrades to a warning. Board rendering colours over-limit columns (M4, [05-tui.md](05-tui.md)).
 - **`require:` / `set:` per transition** — a transition target may be written as a map instead of a bare state key, carrying guards:
   ```yaml
   transitions:
@@ -219,6 +220,7 @@ workflows:
       DONE:        []
       WONT_DO:     []
     enforce_transitions: true
+    wip_policy: warn            # warn (default) | block: block makes a WIP breach a hard refusal (--force → warn)
   epic:
     states:
       - { key: PLANNED, category: todo }
@@ -235,13 +237,17 @@ labels:
   strict: false               # true: reject unknown labels (--force overrides)
 
 people:
-  known: [shivam, alice]
+  known:                        # entries are plain names OR {name, git: [identities]}
+    - shivam
+    - { name: alice, git: [alice@corp.com, "Alice A"] }   # @me / author map git identity → canonical name
   strict: false
 
 priorities: [P0, P1, P2, P3]  # ordered high→low: validates `priority`, defines ranked sort
                               # and >/< query compare. Empty [] = free-form legacy (equality-only).
-subtypes:    [bug, story, task, spike]   # validates `subtype`; [] = free-form
-resolutions: [done, dropped, duplicate, cannot-reproduce]  # validates `resolution`; [] = free-form
+                              # strict form: { values: [...], strict: true } — else inherits labels.strict
+subtypes:    [bug, story, task, spike]   # validates `subtype`; [] = free-form; strict form as above
+resolutions: [done, dropped, duplicate, cannot-reproduce]  # validates `resolution`; [] = free-form; strict form as above
+resolutions_dropped: [dropped]           # resolutions counted as dropped (excluded from done-work telemetry)
 
 filters:                      # named saved queries → `kira list --filter <name>`, board chips
   mine-active: "owner=shivam AND category=doing"
@@ -255,6 +261,7 @@ sprints:                      # scrum sprint entities; `sprint` frontmatter is a
 commit:
   mode: auto                  # auto | manual | prompt
   trailer: Kira-Ticket
+  subject_prefix: "kira: "    # prefix on every kira-authored commit subject
   # close_trailer: Kira-Closes   # v2: auto-transition to done when landed
 
 merge:
@@ -262,9 +269,18 @@ merge:
 
 sync:
   push: false                 # true: `kira sync` (no flags) also pushes after a clean doctor pass
+  dirty: auto                 # auto (commit if commit.mode=auto, else fail) | fail | commit | stash
 
 ui:
   icons: auto                 # auto | nerd | emoji | text — if glyphs render as boxes, set emoji or text (nerd font not installed)
+  color: auto                 # auto | always | never — precedence: --no-color > NO_COLOR > ui.color
+  auto_tui: true              # false: bare `kira` and bare `kira board` print/render statically instead of launching the TUI (the interactive board stays reachable from inside `kira tui`)
+  list:
+    columns: [number, state, type, priority, title]   # flat `kira list` columns; unknown names warn and are dropped (JSON unaffected)
+  tui:
+    split: 0.5                # tree/detail pane ratio, 0..1 exclusive; out of range warns and reverts to 0.5
+    refresh: "0"              # TUI auto-refresh interval (e.g. 5s); "0" disables it, minimum 1s
+  theme: {}                   # override named slots (accent, dim, todo, doing, done, warm, hot) with a hex color; invalid warns and keeps the default
 
 # git:
 #   scan_since: ...            # (proposed) bound the first trailer scan on a large pre-existing history
@@ -306,7 +322,7 @@ fields: {}                    # reserved: per-type extra-field declarations (v2)
 
 kira reads config from two sources and merges them per key, not as a blind overlay. The repo file (`.kira/config.yaml`) stays authoritative for everything that must agree across clones; a user tier under `~/.config/kira/` carries only per-machine presentation and personal automation, split by topic across a small set of files:
 
-- `config.yaml` — a preferences overlay. Only the `ui` block is honored.
+- `config.yaml` — a preferences overlay. Only the `ui` and `workon` blocks are honored.
 - `hooks.yaml` — a bare top-level list of personal automation hooks.
 - `entities/` — reserved for future user-level type definitions; not yet consumed.
 
@@ -316,11 +332,12 @@ Effective value per key class:
 
 | Key class | builtin | user tier | repo tier |
 |---|---|---|---|
-| `ui.*` (icons, background) | default | `config.yaml` overrides builtin | overrides user (repo wins) |
+| `ui.*` (icons, background, color, list.columns, tui.split, theme, auto_tui) | default | `config.yaml` overrides builtin | overrides user (repo wins) |
+| `workon.*` (branch_pattern, casing, worktree, worktree_dir) | default | `config.yaml` overrides builtin | overrides user (repo wins) |
 | automation hooks | — | `hooks.{yaml,json}`, kept separate (see below) | repo `automation` |
 | everything else (project, id, workflows, vocabularies, sprints, …) | default | **ignored** with a one-line stderr warning per key | authoritative |
 
-Precedence for `ui.*` is builtin < user < repo. Any other key in `config.yaml` is repo-authoritative: it is read, dropped, and warned (`<path>: key "X" is repo-authoritative; ignored`) so silent cross-clone divergence stays impossible. An `automation` block placed in `config.yaml` is a misfiling and is warned specifically (`personal hooks belong in hooks.yaml; ignored`).
+Precedence for `ui.*` and `workon.*` is builtin < user < repo, merged per key. Any other key in `config.yaml` is repo-authoritative: it is read, dropped, and warned (`<path>: key "X" is repo-authoritative; ignored`) so silent cross-clone divergence stays impossible. Soft `ui` values (unknown `list.columns`, unknown/invalid `theme` slots, out-of-range `tui.split`) never brick the CLI: each warns once and falls back to the default. An `automation` block placed in `config.yaml` is a misfiling and is warned specifically (`personal hooks belong in hooks.yaml; ignored`).
 
 Personal hooks from `hooks.{yaml,json}` are: validated with the same rules as repo hooks; **auto-trusted** (the user's own machine — they run without a repo trust grant); provenance-tagged (`kira automation list` marks them `(user)`, and the `--json` view carries an additive `source` field); and **excluded from the repo trust hash**. The trust hash covers only repo-tier hooks, so editing a personal hook never revokes repo trust and editing a repo hook never disturbs personal hooks. When an event fires, repo hooks run first (trust permitting) then user hooks, through the same match/payload/runner path.
 

@@ -3,7 +3,6 @@ package core
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
@@ -38,7 +37,7 @@ func (s *Store) Workon(cfg *datamodel.Config, ref string, opts WorkonOpts) (*dat
 
 	target := s
 	if opts.Worktree {
-		path, created, err := s.ensureWorktree(repo, branch, !found)
+		path, created, err := s.ensureWorktree(repo, cfg, it.Number, branch, !found)
 		if err != nil {
 			return nil, err
 		}
@@ -85,11 +84,19 @@ func checkoutBranch(repo gitx.Repo, branch string, exists bool) (created bool, e
 	return true, nil
 }
 
-func (s *Store) ensureWorktree(repo gitx.Repo, branch string, createBranch bool) (string, bool, error) {
+func (s *Store) ensureWorktree(repo gitx.Repo, cfg *datamodel.Config, number, branch string, createBranch bool) (string, bool, error) {
 	if existing, ok := repo.WorktreeForBranch(branch); ok {
 		return existing, false, nil
 	}
-	path := filepath.Join(filepath.Dir(s.root), filepath.Base(s.root)+"-"+strings.ReplaceAll(branch, "/", "-"))
+	pattern := cfg.Workon.WorktreeDir
+	if pattern == "" {
+		pattern = datamodel.DefaultWorktreeDir
+	}
+	rendered := workon.RenderWorktreeDir(pattern, filepath.Base(s.root), branch, cfg.Project.Key, number)
+	path := rendered
+	if !filepath.IsAbs(rendered) {
+		path = filepath.Join(s.root, rendered)
+	}
 	if err := repo.WorktreeAdd(path, branch, createBranch); err != nil {
 		return "", false, errx.User("%v", err)
 	}

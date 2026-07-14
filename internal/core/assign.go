@@ -11,7 +11,7 @@ type AssignOpts struct {
 }
 
 func (s *Store) Assign(cfg *datamodel.Config, ref, user string, opts AssignOpts) (*datamodel.MutationResult, error) {
-	user, err := s.resolveMe(user)
+	user, err := s.resolveMe(cfg, user)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +28,7 @@ func (s *Store) Assign(cfg *datamodel.Config, ref, user string, opts AssignOpts)
 		return nil, nil
 	}
 	subjectOf := func(orig *datamodel.Item) string {
-		return subjectPrefix + orig.Number + " assign " + field + " " + user
+		return cfg.Commit.SubjectPrefix + orig.Number + " assign " + field + " " + user
 	}
 
 	updated, changed, err := s.mutate(cfg, ref, opts.Force, apply, subjectOf, datamodel.SourceCLI)

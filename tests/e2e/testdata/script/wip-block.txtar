@@ -1,0 +1,44 @@
+# wip_policy: block turns the advisory WIP warning into a hard refusal; --force
+# downgrades it back to a warning and lets the move through.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp wip.yaml .kira/config.yaml
+exec git add .kira/config.yaml
+exec git commit -m 'wip block'
+
+exec kira create ticket --title A --no-edit
+exec kira create ticket --title B --no-edit
+exec kira move KIRA-1 DOING
+
+# the second item would breach the wip:1 cap; block refuses it.
+! exec kira move KIRA-2 DOING
+stderr 'over its WIP limit'
+
+# --force downgrades the refusal to a warning and still moves.
+exec kira move KIRA-2 DOING --force
+exec kira show KIRA-2 --json
+stdout '"state": "DOING"'
+
+-- wip.yaml --
+version: 1
+project:
+  key: KIRA
+  name: kira
+workflows:
+  ticket:
+    states:
+      - {key: TODO, category: todo}
+      - {key: DOING, category: doing, wip: 1}
+      - {key: DONE, category: done}
+    initial: TODO
+    transitions:
+      TODO: [DOING]
+      DOING: [DONE, TODO]
+      DONE: []
+    enforce_transitions: true
+    wip_policy: block

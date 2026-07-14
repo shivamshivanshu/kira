@@ -9,8 +9,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/gitx"
 )
 
-const subjectPrefix = "kira: "
-
 func (s *Store) repo() gitx.Repo {
 	return gitx.Repo{Dir: s.root}
 }

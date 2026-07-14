@@ -2,12 +2,52 @@ package tui
 
 import (
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
+
+func TestRefreshTickRequestsWhenIdle(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(100, 12, true)
+	m.refreshEvery = time.Second
+
+	u, cmd := m.Update(tickMsg{})
+	m = u.(model)
+	if !m.busy {
+		t.Fatal("an idle tick must dispatch a refresh through the executor")
+	}
+	if cmd == nil {
+		t.Fatal("tick must return a command (refresh plus a re-armed tick)")
+	}
+	if len(m.pending) != 0 {
+		t.Fatalf("an idle refresh must dispatch immediately, not queue: pending=%d", len(m.pending))
+	}
+}
+
+func TestRefreshTickSkipsWhenBusy(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(100, 12, true)
+	m.refreshEvery = time.Second
+	if cmd := m.request(func() tea.Msg { return treeLoadedMsg{} }); cmd == nil {
+		t.Fatal("a mutation should be in flight")
+	}
+
+	u, cmd := m.Update(tickMsg{})
+	m = u.(model)
+	if !m.busy {
+		t.Fatal("the in-flight mutation must keep the executor busy")
+	}
+	if len(m.pending) != 0 {
+		t.Fatalf("a tick while busy must be skipped, not queued: pending=%d", len(m.pending))
+	}
+	if cmd == nil {
+		t.Fatal("tick must re-arm even when it skips the refresh")
+	}
+}
 
 func TestMutationThenRefreshSerializes(t *testing.T) {
 	t.Parallel()

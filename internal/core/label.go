@@ -59,7 +59,7 @@ func (s *Store) LabelCreate(cfg *datamodel.Config, names []string) (*datamodel.L
 	if err := os.WriteFile(fs.ConfigPath(), out, 0o644); err != nil {
 		return nil, errx.User("writing config: %v", err)
 	}
-	subject := subjectPrefix + "label create " + strings.Join(toAdd, ",")
+	subject := cfg.Commit.SubjectPrefix + "label create " + strings.Join(toAdd, ",")
 	if _, err := s.finalize(cfg.Commit.Mode, commitSpec{trailerKey: cfg.Commit.Trailer, subject: subject}, fs.RelToRoot(fs.ConfigPath())); err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (s *Store) LabelSet(cfg *datamodel.Config, ref, label string, add, force bo
 		verb = "rm"
 	}
 	subjectOf := func(orig *datamodel.Item) string {
-		return subjectPrefix + orig.Number + " label " + verb + " " + label
+		return cfg.Commit.SubjectPrefix + orig.Number + " label " + verb + " " + label
 	}
 	updated, changed, err := s.mutate(cfg, ref, force, apply, subjectOf, datamodel.SourceCLI)
 	if err != nil {

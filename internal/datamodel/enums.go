@@ -51,6 +51,16 @@ const (
 
 var Backgrounds = []Background{BackgroundAuto, BackgroundDark, BackgroundLight}
 
+type ColorMode string
+
+const (
+	ColorAuto   ColorMode = "auto"
+	ColorAlways ColorMode = "always"
+	ColorNever  ColorMode = "never"
+)
+
+var ColorModes = []ColorMode{ColorAuto, ColorAlways, ColorNever}
+
 type EstimateUnit string
 
 const (
@@ -68,6 +78,26 @@ const (
 )
 
 var Casings = []Casing{CasingKebab, CasingSnake}
+
+type SyncDirty string
+
+const (
+	SyncDirtyAuto   SyncDirty = "auto"
+	SyncDirtyFail   SyncDirty = "fail"
+	SyncDirtyCommit SyncDirty = "commit"
+	SyncDirtyStash  SyncDirty = "stash"
+)
+
+var SyncDirties = []SyncDirty{SyncDirtyAuto, SyncDirtyFail, SyncDirtyCommit, SyncDirtyStash}
+
+type WipPolicy string
+
+const (
+	WipWarn  WipPolicy = "warn"
+	WipBlock WipPolicy = "block"
+)
+
+var WipPolicies = []WipPolicy{WipWarn, WipBlock}
 
 type Category string
 

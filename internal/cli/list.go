@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -29,7 +30,7 @@ func newListCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			renderListResult(cmd.OutOrStdout(), res)
+			renderListResult(cmd.OutOrStdout(), res, cfg.UI.List.Columns)
 			return nil
 		},
 	}
@@ -56,32 +57,74 @@ func emitStderrNotes(w io.Writer, notes []datamodel.Warning) {
 	}
 }
 
-func renderListResult(w io.Writer, res *datamodel.ListResult) {
+func renderListResult(w io.Writer, res *datamodel.ListResult, columns []string) {
 	if res.Tree != nil {
 		renderTreeGroups(w, res)
 		return
 	}
-	renderList(w, res)
+	renderList(w, res, columns)
 }
 
-func renderList(w io.Writer, res *datamodel.ListResult) {
+func renderList(w io.Writer, res *datamodel.ListResult, columns []string) {
 	if res.Count == 0 {
 		fmt.Fprintln(w, msgNoItems)
 		return
 	}
+	cols := resolveColumns(columns)
 	tw := newTabWriter(w)
-	fmt.Fprintln(tw, "NUMBER\tSTATE\tTYPE\tPRIORITY\tTITLE")
+	fmt.Fprintln(tw, columnHeader(cols))
 	for _, it := range res.Items {
-		fmt.Fprintln(tw, formatItemRow(it))
+		fmt.Fprintln(tw, formatItemRow(cols, it))
 	}
 	tw.Flush()
 }
 
-func formatItemRow(it datamodel.ListItem) string {
-	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s", it.Number, it.State, it.Type, priorityCell(it.Priority), it.Title)
+func resolveColumns(columns []string) []string {
+	out := make([]string, 0, len(columns))
+	for _, c := range columns {
+		if _, ok := listCells[c]; ok {
+			out = append(out, c)
+		}
+	}
+	if len(out) == 0 {
+		return datamodel.DefaultListColumns
+	}
+	return out
 }
 
-func priorityCell(p *string) string {
+func columnHeader(cols []string) string {
+	heads := make([]string, len(cols))
+	for i, c := range cols {
+		heads[i] = strings.ToUpper(c)
+	}
+	return strings.Join(heads, "\t")
+}
+
+func formatItemRow(cols []string, it datamodel.ListItem) string {
+	cells := make([]string, len(cols))
+	for i, c := range cols {
+		cells[i] = listCells[c](it)
+	}
+	return strings.Join(cells, "\t")
+}
+
+var listCells = map[string]func(datamodel.ListItem) string{
+	"number":      func(it datamodel.ListItem) string { return it.Number },
+	"title":       func(it datamodel.ListItem) string { return it.Title },
+	"type":        func(it datamodel.ListItem) string { return it.Type },
+	"state":       func(it datamodel.ListItem) string { return it.State },
+	"category":    func(it datamodel.ListItem) string { return it.Category },
+	"priority":    func(it datamodel.ListItem) string { return derefCell(it.Priority) },
+	"owner":       func(it datamodel.ListItem) string { return derefCell(it.Owner) },
+	"labels":      func(it datamodel.ListItem) string { return strings.Join(it.Labels, ",") },
+	"epic":        func(it datamodel.ListItem) string { return derefCell(it.Epic) },
+	"epic_number": func(it datamodel.ListItem) string { return derefCell(it.EpicNumber) },
+	"resolution":  func(it datamodel.ListItem) string { return derefCell(it.Resolution) },
+	"due":         func(it datamodel.ListItem) string { return derefCell(it.Due) },
+	"id":          func(it datamodel.ListItem) string { return it.ID },
+}
+
+func derefCell(p *string) string {
 	if p == nil || *p == "" {
 		return "-"
 	}
