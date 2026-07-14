@@ -9,6 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/merge"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
@@ -35,7 +36,7 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 
 	specs := make([]string, 0, len(paths)*3)
 	for _, p := range paths {
-		specs = append(specs, ":1:"+p, ":2:"+p, ":3:"+p)
+		specs = append(specs, gitx.RevPath(":1", p), gitx.RevPath(":2", p), gitx.RevPath(":3", p))
 	}
 	blobs, err := repo.CatFileBatch(specs)
 	if err != nil {

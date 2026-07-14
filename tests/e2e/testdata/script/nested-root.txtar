@@ -1,0 +1,72 @@
+# kira with the store rooted in a subdirectory of the git toplevel: porcelain
+# and diff paths translate onto the store root for kira commit, dirty sync,
+# hook entry points, and rev:path time-travel reads.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+env GIT_AUTHOR_NAME=tester
+env GIT_AUTHOR_EMAIL=test@example.com
+env GIT_COMMITTER_NAME=tester
+env GIT_COMMITTER_EMAIL=test@example.com
+
+exec git init --bare origin.git
+
+# clone A: the kira store lives in sub/, below the git toplevel.
+exec git clone origin.git a
+cd $WORK/a
+exec git symbolic-ref HEAD refs/heads/main
+mkdir sub
+cd $WORK/a/sub
+exec kira init --key KIRA
+exec kira hooks install
+exec kira create ticket --title 'nested one' --no-edit
+exec git push -u origin HEAD
+exec git -C $WORK/origin.git symbolic-ref HEAD refs/heads/main
+
+# kira commit packages dirt under sub/.kira and leaves the tree clean.
+cp $WORK/scratch-note .kira/note.md
+exec kira commit
+stdout 'update 1 files'
+exec git status --porcelain -- .kira
+! stdout .
+
+# clone B discovers the nested store and sees A's ticket.
+cd $WORK
+exec git clone origin.git b
+cd $WORK/b/sub
+exec kira list
+stdout 'nested one'
+exec kira create ticket --title 'from B' --no-edit
+exec kira sync --push
+
+# A syncs with a dirty tree under the commit policy: checkpoint, pull, reindex.
+cd $WORK/a/sub
+cp $WORK/scratch-note .kira/note2.md
+exec kira sync --commit
+stdout 'prepare:\s+done \(committed 1 paths\)'
+stdout 'pull:\s+done'
+stdout 'reindex:\s+done'
+exec kira list
+stdout 'nested one'
+stdout 'from B'
+
+# an outside commit moves HEAD; the post-merge hook entry point reindexes.
+exec git commit --allow-empty -m 'outside kira'
+exec kira hooks run post-merge
+exec kira index
+stdout 'index fresh \(up-to-date\)'
+
+# time-travel reads resolve rev:path specs against the nested store.
+exec kira list --at HEAD
+stdout 'nested one'
+
+# the pre-commit hook entry point validates staged items in the nested store.
+cp $WORK/broken-item .kira/tickets/broken.md
+exec git add .kira/tickets/broken.md
+! exec kira hooks run pre-commit
+stderr 'broken.md'
+
+-- scratch-note --
+scratch note, not an item
+-- broken-item --
+not a kira item

@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 func (r Repo) ToplevelHead() (toplevel, head string, err error) {
@@ -57,6 +59,50 @@ func isUnknownRevision(stderr string) bool {
 		strings.Contains(s, "bad revision")
 }
 
+var showPrefixCache sync.Map
+
+func (r Repo) showPrefix() (string, error) {
+	if v, ok := showPrefixCache.Load(r.Dir); ok {
+		return v.(string), nil
+	}
+	prefix, err := r.Output("rev-parse", "--show-prefix")
+	if err != nil {
+		return "", err
+	}
+	showPrefixCache.Store(r.Dir, prefix)
+	return prefix, nil
+}
+
+func (r Repo) relToDir(paths []string) ([]string, error) {
+	if len(paths) == 0 {
+		return paths, nil
+	}
+	prefix, err := r.showPrefix()
+	if err != nil {
+		return nil, err
+	}
+	if prefix == "" {
+		return paths, nil
+	}
+	out := make([]string, len(paths))
+	for i, p := range paths {
+		out[i] = relFromToplevel(prefix, p)
+	}
+	return out, nil
+}
+
+func relFromToplevel(prefix, p string) string {
+	rel, err := filepath.Rel(filepath.FromSlash(prefix), filepath.FromSlash(p))
+	if err != nil {
+		return p
+	}
+	return filepath.ToSlash(rel)
+}
+
+func RevPath(rev, path string) string {
+	return rev + ":./" + path
+}
+
 func parsePorcelainPaths(out string) []string {
 	var paths []string
 	for _, line := range strings.Split(out, "\n") {
@@ -89,7 +135,7 @@ func (r Repo) DiffNameStatus(from DiffFrom, to DiffTo, pathspec string) ([]strin
 		}
 		paths = append(paths, unquotePath(fields[len(fields)-1]))
 	}
-	return paths, nil
+	return r.relToDir(paths)
 }
 
 func unquotePath(p string) string {

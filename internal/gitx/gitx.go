@@ -114,19 +114,28 @@ func (r Repo) LastCommits(pathspec string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	shaByPath := map[string]string{}
+	var paths, shas []string
+	seen := map[string]bool{}
 	var sha string
 	for _, line := range strings.Split(out, "\n") {
 		if strings.HasPrefix(line, nul) {
 			sha = line[len(nul):]
 			continue
 		}
-		if line == "" {
+		if line == "" || seen[line] {
 			continue
 		}
-		if _, seen := shaByPath[line]; !seen {
-			shaByPath[line] = sha
-		}
+		seen[line] = true
+		paths = append(paths, line)
+		shas = append(shas, sha)
+	}
+	rel, err := r.relToDir(paths)
+	if err != nil {
+		return nil, err
+	}
+	shaByPath := make(map[string]string, len(rel))
+	for i, p := range rel {
+		shaByPath[p] = shas[i]
 	}
 	return shaByPath, nil
 }
@@ -233,7 +242,11 @@ func (r Repo) RebaseInProgress() bool {
 }
 
 func (r Repo) UnmergedPaths() ([]string, error) {
-	return r.splitLines("diff", "--name-only", "--diff-filter=U")
+	lines, err := r.splitLines("diff", "--name-only", "--diff-filter=U")
+	if err != nil {
+		return nil, err
+	}
+	return r.relToDir(lines)
 }
 
 func (r Repo) SetConfig(key, val string) error {

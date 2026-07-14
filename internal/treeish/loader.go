@@ -42,9 +42,9 @@ func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
 	}
 
 	specs := make([]string, 0, len(ticketPaths)+1)
-	specs = append(specs, treeish+":"+storage.ConfigRelPath)
+	specs = append(specs, gitx.RevPath(treeish, storage.ConfigRelPath))
 	for _, p := range ticketPaths {
-		specs = append(specs, treeish+":"+p)
+		specs = append(specs, gitx.RevPath(treeish, p))
 	}
 	blobs, err := repo.CatFileBatch(specs)
 	if err != nil {
