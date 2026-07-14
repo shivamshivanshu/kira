@@ -4,15 +4,11 @@ import (
 	"cmp"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
-	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/doctor"
 	"github.com/shivamshivanshu/kira/internal/errx"
-	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
 func newDoctorCmd(g *globalFlags) *cobra.Command {
@@ -25,44 +21,16 @@ func newDoctorCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			files, err := readTicketFiles(s)
+			report, err := s.DoctorReport(cfg)
 			if err != nil {
 				return err
 			}
-			report := doctor.Run(cfg, files, gatherEnv(s.Root()))
 			if err := renderReport(cmd.OutOrStdout(), report, g.json); err != nil {
 				return err
 			}
 			return reportExit(report, "doctor")
 		},
 	}
-}
-
-func readTicketFiles(s *core.Store) ([]doctor.File, error) {
-	dir := storage.New(s.Root()).ItemsDir()
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, errx.User("reading tickets: %v", err)
-	}
-	var files []doctor.File
-	for _, e := range entries {
-		name := e.Name()
-		if e.IsDir() {
-			continue
-		}
-		if _, ok := storage.ULIDFromFilename(name); !ok {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(dir, name))
-		if err != nil {
-			return nil, errx.User("reading %s: %v", name, err)
-		}
-		files = append(files, doctor.File{Path: name, Content: string(data)})
-	}
-	return files, nil
 }
 
 func renderReport(w io.Writer, report *doctor.Report, asJSON bool) error {

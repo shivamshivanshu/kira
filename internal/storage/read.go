@@ -55,6 +55,27 @@ func (s *FS) ItemFilenames() ([]string, error) {
 	return names, nil
 }
 
+type RawItem struct {
+	Name    string
+	Content string
+}
+
+func (s *FS) RawItems() ([]RawItem, error) {
+	names, err := s.ItemFilenames()
+	if err != nil {
+		return nil, err
+	}
+	items := make([]RawItem, len(names))
+	for i, name := range names {
+		data, err := os.ReadFile(filepath.Join(s.ItemsDir(), name))
+		if err != nil {
+			return nil, errx.User("reading %s: %v", name, err)
+		}
+		items[i] = RawItem{Name: name, Content: string(data)}
+	}
+	return items, nil
+}
+
 func (s *FS) LoadAll() ([]*datamodel.Item, []string, error) {
 	names, err := s.ItemFilenames()
 	if err != nil {
