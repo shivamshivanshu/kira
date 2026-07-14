@@ -236,6 +236,81 @@ func TestCompileErrors(t *testing.T) {
 	}
 }
 
+func TestEvalBlocked(t *testing.T) {
+	items, opts, cfg := fixture()
+	waitsOnDone := &datamodel.Item{
+		ID: id.Mint().String(), Number: "KIRA-4", Type: datamodel.TypeTicket, Title: "waits on done",
+		State: "TODO", BlockedBy: []string{items[3].ID},
+		Created: "2026-07-05T00:00:00Z", Updated: "2026-07-05T00:00:00Z",
+	}
+	waitsOnGhost := &datamodel.Item{
+		ID: id.Mint().String(), Number: "KIRA-5", Type: datamodel.TypeTicket, Title: "waits on ghost",
+		State: "TODO", BlockedBy: []string{"01ZZZZZZZZZZZZZZZZZZZZZZZZZ"},
+		Created: "2026-07-05T00:00:00Z", Updated: "2026-07-05T00:00:00Z",
+	}
+	items = append(items, waitsOnDone, waitsOnGhost)
+	opts.Items = items
+
+	notBlocked := []string{"KIRA-100", "KIRA-2", "KIRA-3", "KIRA-4", "KIRA-5"}
+	tests := []struct {
+		expr string
+		want []string
+	}{
+		{"blocked", []string{"KIRA-1"}},
+		{"blocked = true", []string{"KIRA-1"}},
+		{"blocked != false", []string{"KIRA-1"}},
+		{"NOT blocked", notBlocked},
+		{"blocked = false", notBlocked},
+		{"blocked AND state=IN_PROGRESS", []string{"KIRA-1"}},
+	}
+	for _, tc := range tests {
+		got := matchNums(t, tc.expr, items, opts, cfg)
+		if strings.Join(got, ",") != strings.Join(tc.want, ",") {
+			t.Errorf("%q matched %v, want %v", tc.expr, got, tc.want)
+		}
+	}
+}
+
+func TestEvalActivity(t *testing.T) {
+	items, opts, cfg := fixture()
+	items[0].Activity = items[0].Updated
+	items[1].Activity = "2026-07-15T00:00:00Z"
+	items[2].Activity = items[2].Updated
+	items[3].Activity = items[3].Updated
+
+	tests := []struct {
+		expr string
+		want []string
+	}{
+		{"activity>2026-07-12", []string{"KIRA-1"}},
+		{"activity<2026-07-05", []string{"KIRA-100", "KIRA-3"}},
+		{"activity=2026-07-10", []string{"KIRA-2"}},
+	}
+	for _, tc := range tests {
+		got := matchNums(t, tc.expr, items, opts, cfg)
+		if strings.Join(got, ",") != strings.Join(tc.want, ",") {
+			t.Errorf("%q matched %v, want %v", tc.expr, got, tc.want)
+		}
+	}
+
+	c, err := Compile("state=TODO ORDER BY activity", opts)
+	if err != nil {
+		t.Fatalf("ORDER BY activity: %v", err)
+	}
+	if c.Order == nil || c.Order.Field != fieldActivity {
+		t.Errorf("ORDER BY activity did not parse into an activity order: %+v", c.Order)
+	}
+}
+
+func TestBlockedActivitySyntaxErrors(t *testing.T) {
+	_, opts, _ := fixture()
+	for _, expr := range []string{"state=TODO ORDER BY blocked", "blocked IS EMPTY", "blocked = maybe", "blocked IN (true)"} {
+		if _, err := Compile(expr, opts); err == nil {
+			t.Errorf("Compile(%q) should error", expr)
+		}
+	}
+}
+
 func TestMatch(t *testing.T) {
 	items, opts, cfg := fixture()
 	pred, err := Match("owner", "shivam", opts)

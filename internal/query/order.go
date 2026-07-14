@@ -23,7 +23,7 @@ func (o *Order) Keyer(cfg *datamodel.Config) func(*datamodel.Item) OrderKey {
 			}
 			return OrderKey{numeric: true, num: float64(idx)}
 		}
-	case fieldDue, fieldCreated, fieldUpdated:
+	case fieldDue, fieldCreated, fieldUpdated, fieldActivity:
 		get := scalarGet(o.Field)
 		return func(it *datamodel.Item) OrderKey {
 			t, err := parseDate(get(it, cfg))

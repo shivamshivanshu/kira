@@ -39,11 +39,13 @@ func TestSeedCommentsAreInert(t *testing.T) {
 
 	// Uncommented, the optional blocks must reproduce exactly the documented
 	// defaults; the seed otherwise differs from Default() only by the empty
-	// project vocabularies a fresh repo starts with.
+	// project vocabularies a fresh repo starts with and the shipped starter
+	// filter, which Default() leaves empty so it stays user-removable.
 	def := config.Default()
 	fromUncommented.Project = def.Project
 	fromUncommented.Labels = def.Labels
 	fromUncommented.People = def.People
+	fromUncommented.Filters = def.Filters
 	if !reflect.DeepEqual(fromUncommented, def) {
 		t.Errorf("uncommented seed diverges from Default() beyond project/labels/people:\n%+v\n!=\n%+v", fromUncommented, def)
 	}

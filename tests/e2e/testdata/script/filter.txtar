@@ -7,11 +7,11 @@ exec git config user.email test@example.com
 exec git config user.name tester
 exec kira init --key KIRA
 
-# no filters configured yet
+# a fresh repo ships only the `next` starter filter
 exec kira config filters
-stdout 'no filters configured'
+stdout 'next\s+state = TODO AND NOT blocked ORDER BY priority'
 ! exec kira list --filter mine
-stderr 'unknown filter "mine" \(no filters configured\)'
+stderr 'unknown filter "mine" \(available: next\)'
 
 # configure filters and a sprint (omitted keys inherit the defaults)
 cp config-filters.yaml .kira/config.yaml

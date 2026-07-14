@@ -22,6 +22,7 @@ type Options struct {
 	Priorities   []string
 	ActiveSprint string
 	Me           string
+	Items        []*datamodel.Item
 }
 
 type Compiled struct {
@@ -89,6 +90,8 @@ func (c *compiler) compile(e Expr) (Predicate, error) {
 		return c.compileIn(n)
 	case *emptyExpr:
 		return compileIsEmpty(n), nil
+	case *boolExpr:
+		return c.compileBool(n)
 	default:
 		return nil, &Error{Pos: 0, Msg: "internal: unknown node"}
 	}
@@ -158,6 +161,8 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 		return datePred(n, localDay(func(it *datamodel.Item) string { return it.Created })), nil
 	case fieldUpdated:
 		return datePred(n, localDay(func(it *datamodel.Item) string { return it.Updated })), nil
+	case fieldActivity:
+		return datePred(n, localDay(func(it *datamodel.Item) string { return it.Activity })), nil
 	case fieldDue:
 		return datePred(n, func(it *datamodel.Item) string { return ptr.Deref(it.Due) }), nil
 	}
@@ -226,6 +231,37 @@ func compileIsEmpty(n *emptyExpr) Predicate {
 	return func(it *datamodel.Item, cfg *datamodel.Config) bool { return isEmpty(it, cfg) == want }
 }
 
+func (c *compiler) compileBool(n *boolExpr) (Predicate, error) {
+	switch n.field {
+	case fieldBlocked:
+		pred := c.blockedPred()
+		want := n.want
+		return func(it *datamodel.Item, cfg *datamodel.Config) bool { return pred(it, cfg) == want }, nil
+	}
+	return nil, unknownFieldErr(0, n.field)
+}
+
+func (c *compiler) blockedPred() Predicate {
+	byID := make(map[string]*datamodel.Item, len(c.opts.Items))
+	for _, it := range c.opts.Items {
+		byID[it.ID] = it
+	}
+	return func(it *datamodel.Item, cfg *datamodel.Config) bool {
+		for _, b := range it.BlockedBy {
+			blocker, ok := byID[b]
+			if !ok {
+				continue
+			}
+			cat := categoryOf(cfg, blocker.Type, blocker.State)
+			if cat == "" || cat == string(datamodel.CategoryDone) {
+				continue
+			}
+			return true
+		}
+		return false
+	}
+}
+
 var accessors = map[string]func(*datamodel.Item, *datamodel.Config) string{
 	fieldState:      func(it *datamodel.Item, _ *datamodel.Config) string { return it.State },
 	fieldType:       func(it *datamodel.Item, _ *datamodel.Config) string { return it.Type },
@@ -241,6 +277,7 @@ var accessors = map[string]func(*datamodel.Item, *datamodel.Config) string{
 	fieldEpic:       func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Epic) },
 	fieldCreated:    func(it *datamodel.Item, _ *datamodel.Config) string { return it.Created },
 	fieldUpdated:    func(it *datamodel.Item, _ *datamodel.Config) string { return it.Updated },
+	fieldActivity:   func(it *datamodel.Item, _ *datamodel.Config) string { return it.Activity },
 }
 
 func scalarGet(field string) func(*datamodel.Item, *datamodel.Config) string {

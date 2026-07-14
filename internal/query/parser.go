@@ -35,6 +35,11 @@ type emptyExpr struct {
 	notEmpty bool
 }
 
+type boolExpr struct {
+	field string
+	want  bool
+}
+
 type termExpr struct{ text string }
 
 func (e *orExpr) String() string   { return "(or " + e.left.String() + " " + e.right.String() + ")" }
@@ -49,6 +54,12 @@ func (e *emptyExpr) String() string {
 		return "(is-not-empty " + e.field + ")"
 	}
 	return "(is-empty " + e.field + ")"
+}
+func (e *boolExpr) String() string {
+	if e.want {
+		return "(" + e.field + " = true)"
+	}
+	return "(" + e.field + " = false)"
 }
 func (e *termExpr) String() string { return "(term " + e.text + ")" }
 
@@ -93,10 +104,12 @@ const (
 	fieldDue        = "due"
 	fieldEstimate   = "estimate"
 	fieldBlockedBy  = "blocked_by"
+	fieldBlocked    = "blocked"
 	fieldLinks      = "links"
 	fieldResolution = "resolution"
 	fieldCreated    = "created"
 	fieldUpdated    = "updated"
+	fieldActivity   = "activity"
 	fieldBoard      = "board"
 )
 
@@ -104,12 +117,16 @@ var fields = map[string]bool{
 	fieldState: true, fieldCategory: true, fieldOwner: true, fieldReporter: true,
 	fieldLabel: true, fieldType: true, fieldSubtype: true, fieldEpic: true,
 	fieldPriority: true, fieldRank: true, fieldSprint: true, fieldDue: true,
-	fieldEstimate: true, fieldBlockedBy: true, fieldLinks: true,
+	fieldEstimate: true, fieldBlockedBy: true, fieldBlocked: true, fieldLinks: true,
 	fieldResolution: true, fieldCreated: true, fieldUpdated: true,
-	fieldBoard: true,
+	fieldActivity: true, fieldBoard: true,
 }
 
-func isDateField(f string) bool { return f == fieldCreated || f == fieldUpdated || f == fieldDue }
+func isDateField(f string) bool {
+	return f == fieldCreated || f == fieldUpdated || f == fieldDue || f == fieldActivity
+}
+
+func isBoolField(f string) bool { return f == fieldBlocked }
 
 func isListField(f string) bool {
 	return f == fieldLabel || f == fieldBlockedBy || f == fieldLinks
@@ -186,6 +203,9 @@ func (p *parser) parseOrder() (*Order, error) {
 	}
 	if isListField(f.text) {
 		return nil, &Error{Pos: f.pos, Msg: "cannot order by list field " + f.text}
+	}
+	if isBoolField(f.text) {
+		return nil, &Error{Pos: f.pos, Msg: "cannot order by boolean field " + f.text}
 	}
 	p.next()
 	ord := &Order{Field: f.text, pos: f.pos}
@@ -279,11 +299,21 @@ func (p *parser) parsePrimary() (Expr, error) {
 		if fields[t.text] {
 			switch {
 			case p.peek2().isCmp():
+				if isBoolField(t.text) {
+					return p.parseBool()
+				}
 				return p.parsePredicate()
 			case isKeyword(p.peek2(), "IN") && p.toks[p.i+2].kind == tokLParen:
+				if isBoolField(t.text) {
+					return nil, &Error{Pos: t.pos, Msg: "field " + t.text + " is boolean; use " + t.text + " or NOT " + t.text}
+				}
 				return p.parseIn()
 			case isKeyword(p.peek2(), "IS"):
 				return p.parseIsEmpty()
+			}
+			if isBoolField(t.text) {
+				p.next()
+				return &boolExpr{field: t.text, want: true}, nil
 			}
 		}
 		p.next()
@@ -301,7 +331,7 @@ func (p *parser) parsePredicate() (Expr, error) {
 	op := p.next()
 	if !allowsOrderedCmp(field.text) && op.kind != tokEq && op.kind != tokNe {
 		return nil, &Error{Pos: op.pos, Msg: "operator " + op.cmpText() + " is only valid on " +
-			"created/updated/due, estimate, and priority"}
+			"created/updated/due/activity, estimate, and priority"}
 	}
 	val := p.peek()
 	if val.kind != tokWord && val.kind != tokString {
@@ -313,6 +343,37 @@ func (p *parser) parsePredicate() (Expr, error) {
 		return nil, err
 	}
 	return pred, nil
+}
+
+func (p *parser) parseBool() (Expr, error) {
+	field := p.next()
+	op := p.next()
+	if op.kind != tokEq && op.kind != tokNe {
+		return nil, &Error{Pos: op.pos, Msg: "operator " + op.cmpText() + " is not valid on boolean field " + field.text}
+	}
+	val := p.peek()
+	want, ok := boolValue(val)
+	if !ok {
+		return nil, &Error{Pos: val.pos, Msg: "expected true or false after " + op.cmpText()}
+	}
+	p.next()
+	if op.kind == tokNe {
+		want = !want
+	}
+	return &boolExpr{field: field.text, want: want}, nil
+}
+
+func boolValue(t token) (bool, bool) {
+	if t.kind != tokWord && t.kind != tokString {
+		return false, false
+	}
+	switch strings.ToLower(t.text) {
+	case "true":
+		return true, true
+	case "false":
+		return false, true
+	}
+	return false, false
 }
 
 func typeCheckValue(field string, val token, date *time.Time, num *float64) error {
@@ -375,6 +436,9 @@ func (p *parser) parseIsEmpty() (Expr, error) {
 		return nil, &Error{Pos: p.peek().pos, Msg: "expected EMPTY after IS"}
 	}
 	p.next()
+	if isBoolField(field.text) {
+		return nil, &Error{Pos: is.pos, Msg: "field " + field.text + " is boolean; use " + field.text + " or NOT " + field.text}
+	}
 	if isAlwaysPresent(field.text) {
 		return nil, &Error{Pos: is.pos, Msg: "field " + field.text + " is never empty"}
 	}

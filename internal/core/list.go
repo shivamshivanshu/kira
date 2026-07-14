@@ -31,7 +31,7 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 	cfg = ld.cfg
 	items, resolver, idxNotes := ld.items, ld.resolver, ld.notes
 
-	pred, order, notes, err := opts.compile(cfg, s.queryOptions(cfg, resolver))
+	pred, order, notes, err := opts.compile(cfg, s.queryOptions(cfg, resolver, items))
 	if err != nil {
 		return nil, errx.User("%v", err)
 	}
@@ -51,7 +51,7 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 }
 
 func (s *Store) matchSorted(cfg *datamodel.Config, ld *loaded, opts ListOpts) ([]*datamodel.Item, error) {
-	pred, order, _, err := opts.compile(cfg, s.queryOptions(cfg, ld.resolver))
+	pred, order, _, err := opts.compile(cfg, s.queryOptions(cfg, ld.resolver, ld.items))
 	if err != nil {
 		return nil, errx.User("%v", err)
 	}
@@ -70,9 +70,9 @@ func filterSort(cfg *datamodel.Config, items []*datamodel.Item, pred query.Predi
 	return matched
 }
 
-func (s *Store) queryOptions(cfg *datamodel.Config, resolver *id.Resolver) query.Options {
+func (s *Store) queryOptions(cfg *datamodel.Config, resolver *id.Resolver, items []*datamodel.Item) query.Options {
 	me, _ := s.identity(cfg)
-	return query.Options{Resolver: resolver, Priorities: cfg.Priorities.Values, ActiveSprint: s.ActiveSprintKey(), Me: me}
+	return query.Options{Resolver: resolver, Priorities: cfg.Priorities.Values, ActiveSprint: s.ActiveSprintKey(), Me: me, Items: items}
 }
 
 func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel.ListItem, map[string]bool, error) {
@@ -80,7 +80,7 @@ func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel
 	if err != nil {
 		return nil, nil, err
 	}
-	pred, _, _, err := ListOpts{Query: expr}.compile(cfg, s.queryOptions(cfg, ld.resolver))
+	pred, _, _, err := ListOpts{Query: expr}.compile(cfg, s.queryOptions(cfg, ld.resolver, ld.items))
 	if err != nil {
 		return nil, nil, errx.User("%v", err)
 	}

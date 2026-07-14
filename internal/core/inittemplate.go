@@ -82,7 +82,8 @@ estimate:
 # --- optional blocks: uncomment and edit to enable (defaults shown are inert) ---
 
 # filters: named saved queries, run via kira list --filter <name>.
-#filters: {}
+filters:
+  next: state = TODO AND NOT blocked ORDER BY priority
 
 # sprints: sprint entities, created by kira sprint create; items key into this list.
 #sprints:

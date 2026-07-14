@@ -1,0 +1,40 @@
+# the `blocked` computed query field: true iff any blocked_by ref resolves to a
+# non-done item; dangling refs count as satisfied, matching the move guard. Also
+# exercises the shipped `next` saved filter.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'Blocker' --no-edit
+exec kira create ticket --title 'Waiting' --no-edit
+exec kira create ticket --title 'Free' --no-edit
+exec kira link KIRA-2 --blocked-by KIRA-1
+
+# KIRA-2 is blocked by the open KIRA-1; nothing else is blocked.
+exec kira list --query blocked
+stdout KIRA-2
+! stdout KIRA-1
+! stdout KIRA-3
+
+exec kira list --query 'NOT blocked'
+stdout KIRA-1
+stdout KIRA-3
+! stdout KIRA-2
+
+# blocked = false is the explicit spelling of NOT blocked.
+exec kira list --query 'blocked = false'
+stdout KIRA-3
+
+# closing the blocker into a done-category state unblocks KIRA-2.
+exec kira move KIRA-1 WONT_DO
+exec kira list --query blocked
+! stdout KIRA-2
+
+# the shipped `next` filter is active out of the box.
+exec kira list --filter next
+stdout KIRA-2
+stdout KIRA-3
+! stdout KIRA-1
