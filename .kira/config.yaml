@@ -71,3 +71,4 @@ boards:
   - { key: KIRA, name: kira, default: true }
   - { key: CORE, name: Core store and domain }
   - { key: TUI, name: Terminal UI }
+  - { key: CLI, name: Command surface }
