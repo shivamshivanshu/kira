@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: bug
 title: "Index self-healing: dead-SHA recovery, deleted-DB detection, dup-ID skip, WAL-safe reads"
-state: IN_PROGRESS
+state: REVIEW
 priority: P1
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:32+05:30
-updated: 2026-07-15T01:26:33+05:30
+updated: 2026-07-15T02:56:39+05:30
 ---
 
 ## Description
