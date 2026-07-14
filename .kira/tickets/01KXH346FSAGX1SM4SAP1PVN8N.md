@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: bug
 title: "Doctor: honor hooksPath/worktrees via repo.GitPath; move env gathering behind core"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
