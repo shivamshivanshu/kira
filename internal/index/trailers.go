@@ -179,8 +179,12 @@ type linkPolicy struct {
 	bareRef       *regexp.Regexp
 }
 
+const scanPolicyVersion = "2"
+
 func scanConfigHash(opts Options) string {
 	var b strings.Builder
+	b.WriteString(scanPolicyVersion)
+	b.WriteByte(0)
 	b.WriteString(opts.ProjectKey)
 	b.WriteByte(0)
 	for _, k := range opts.BoardKeys {
@@ -214,7 +218,7 @@ func newLinkPolicy(opts Options, numbers map[string]string) linkPolicy {
 		leadingNumber: slices.Contains(opts.LinkMarkers, datamodel.LinkMarkerLeadingNumber),
 		bare:          slices.Contains(opts.ReferenceMarkers, datamodel.ReferenceMarkerBare),
 		subjectPrefix: opts.SubjectPrefix,
-		marker:        subjectMarkerPattern(opts.ProjectKey),
+		marker:        subjectMarkerPattern(opts, numbers),
 		bareRef:       lenientPattern(opts.BoardKeys, numbers),
 	}
 }
@@ -317,7 +321,7 @@ func bodyOutsideTrailers(c gitx.Commit) string {
 	return c.Body
 }
 
-func lenientPattern(boardKeys []string, numbers map[string]string) *regexp.Regexp {
+func keyPrefixes(keys []string, numbers map[string]string) []string {
 	seen := map[string]bool{}
 	var prefixes []string
 	add := func(p string) {
@@ -327,14 +331,11 @@ func lenientPattern(boardKeys []string, numbers map[string]string) *regexp.Regex
 			prefixes = append(prefixes, up)
 		}
 	}
-	for _, k := range boardKeys {
+	for _, k := range keys {
 		add(k)
 	}
 	for full := range numbers {
 		add(id.KeyOf(full))
-	}
-	if len(prefixes) == 0 {
-		return nil
 	}
 	slices.SortFunc(prefixes, func(a, b string) int {
 		if len(a) != len(b) {
@@ -342,18 +343,31 @@ func lenientPattern(boardKeys []string, numbers map[string]string) *regexp.Regex
 		}
 		return strings.Compare(a, b)
 	})
+	return prefixes
+}
+
+func prefixAlternation(prefixes []string) string {
 	quoted := make([]string, len(prefixes))
 	for i, p := range prefixes {
 		quoted[i] = regexp.QuoteMeta(p)
 	}
-	return regexp.MustCompile(`(?i)\b(?:` + strings.Join(quoted, "|") + `)-\d+\b`)
+	return strings.Join(quoted, "|")
 }
 
-func subjectMarkerPattern(projectKey string) *regexp.Regexp {
-	if projectKey == "" {
+func lenientPattern(boardKeys []string, numbers map[string]string) *regexp.Regexp {
+	prefixes := keyPrefixes(boardKeys, numbers)
+	if len(prefixes) == 0 {
 		return nil
 	}
-	return regexp.MustCompile(`\[\[` + regexp.QuoteMeta(projectKey) + `-\d+\]\]`)
+	return regexp.MustCompile(`(?i)\b(?:` + prefixAlternation(prefixes) + `)-\d+\b`)
+}
+
+func subjectMarkerPattern(opts Options, numbers map[string]string) *regexp.Regexp {
+	prefixes := keyPrefixes(append([]string{opts.ProjectKey}, opts.BoardKeys...), numbers)
+	if len(prefixes) == 0 {
+		return nil
+	}
+	return regexp.MustCompile(`(?i)\[\[(?:` + prefixAlternation(prefixes) + `)-\d+\]\]`)
 }
 
 func (i *Index) numberToULID() (map[string]string, error) {
