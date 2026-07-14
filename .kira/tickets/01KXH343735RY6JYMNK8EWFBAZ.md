@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: bug
 title: "ORDER BY board silently no-ops — missing board accessor"
-state: TODO
+state: IN_PROGRESS
 priority: P1
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:35+05:30
-updated: 2026-07-15T01:24:35+05:30
+updated: 2026-07-15T02:07:01+05:30
 ---
 
 ## Description
