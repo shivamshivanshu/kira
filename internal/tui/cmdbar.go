@@ -145,12 +145,8 @@ func (m *model) substituteFocused(argv []string) []string {
 }
 
 func (m *model) focusedNumber() string {
-	ts, ok := m.treeScreen()
-	if !ok {
-		return ""
-	}
-	if row := ts.tree.current(); row != nil {
-		return row.node.Number
+	if it, ok := selectedItem(m); ok {
+		return it.Number
 	}
 	return ""
 }

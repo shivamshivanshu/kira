@@ -5,15 +5,10 @@ import (
 )
 
 func selectedItem(m *model) (showfmt.Item, bool) {
-	ts, ok := m.current().(*treeScreen)
-	if !ok {
-		return showfmt.Item{}, false
+	if s := m.current(); s != nil {
+		return s.focusedItem()
 	}
-	cur := ts.tree.current()
-	if cur == nil {
-		return showfmt.Item{}, false
-	}
-	return showfmt.Item{ID: cur.node.ID, Number: cur.node.Number, Title: cur.node.Title}, true
+	return showfmt.Item{}, false
 }
 
 func (m *model) yankSelected() {

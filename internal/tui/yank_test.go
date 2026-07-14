@@ -3,6 +3,7 @@ package tui
 import (
 	"bytes"
 	"errors"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -61,6 +62,48 @@ func TestYankPickerCopiesChosenForm(t *testing.T) {
 	}
 	if chosen.(model).yank != nil {
 		t.Error("selecting a form must close the picker")
+	}
+}
+
+func boardYankModel() (model, *bytes.Buffer) {
+	m, buf := yankModel()
+	bs := m.screens[viewBoard].(*boardScreen)
+	bs.loaded = true
+	bs.board.load(buildBoardResult())
+	bs.board.focusByID("t2")
+	m.view = viewBoard
+	return m, buf
+}
+
+func TestYankOnBoardCopiesSelectedCard(t *testing.T) {
+	t.Parallel()
+	m, buf := boardYankModel()
+	m.Update(key("y"))
+	if want := clipx.OSC52("t2", false); buf.String() != want {
+		t.Fatalf("yank on board copied %q, want OSC52 of the selected card id t2", buf.String())
+	}
+}
+
+func TestYankPickerOnBoardTargetsSelectedCard(t *testing.T) {
+	t.Parallel()
+	m, _ := boardYankModel()
+	opened, _ := m.Update(key("Y"))
+	yank := opened.(model).yank
+	if yank == nil || yank.title != "yank KIRA-142" {
+		t.Fatalf("Y on board should pick from the selected card KIRA-142, got %+v", yank)
+	}
+}
+
+func TestStatsHintOmitsYank(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(100, 12, true)
+	m.view = viewStats
+	if strings.Contains(hintLine(m.activeKeys()), "yank") {
+		t.Fatal("stats has nothing to yank; y/Y must not be advertised")
+	}
+	m.view = viewBoard
+	if !strings.Contains(hintLine(m.activeKeys()), "yank") {
+		t.Fatal("board hints must keep y/Y")
 	}
 }
 

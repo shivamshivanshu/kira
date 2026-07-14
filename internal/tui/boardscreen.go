@@ -7,6 +7,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/showfmt"
 )
 
 type peekMode int
@@ -179,8 +180,8 @@ func (s *boardScreen) applyMove(m *model, msg boardMovedMsg) {
 		s.loaded = false
 		return
 	}
-	s.board.load(msg.board)
-	s.host.resetCache()
+	s.raw = msg.board
+	s.applyScope()
 	s.board.focusByID(msg.cardID)
 	s.syncPeek(m)
 }
@@ -206,11 +207,12 @@ func (s *boardScreen) focusItem(m *model, id string) {
 	s.board.focusByID(id)
 }
 
-func (s *boardScreen) focusedID() string {
-	if card, ok := s.board.selected(); ok {
-		return card.ID
+func (s *boardScreen) focusedItem() (showfmt.Item, bool) {
+	card, ok := s.board.selected()
+	if !ok {
+		return showfmt.Item{}, false
 	}
-	return ""
+	return showfmt.Item{ID: card.ID, Number: card.Number, Title: card.Title}, true
 }
 
 func (s *boardScreen) view(m *model, width, height int) string {

@@ -77,6 +77,44 @@ func TestCommandBarForwardsTokenizedArgvAndRefreshes(t *testing.T) {
 	}
 }
 
+func TestCommandBarDotResolvesBoardSelection(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(100, 12, true)
+	bs := m.screens[viewBoard].(*boardScreen)
+	bs.loaded = true
+	bs.board.load(buildBoardResult())
+	bs.board.focusByID("t3")
+	m.view = viewBoard
+	var got []string
+	m.bar.run = func(argv []string) (string, error) { got = argv; return "ok", nil }
+
+	m.barRoute(key(":"))
+	typeInto(&m, "move . DONE")
+	cmd, _ := m.barRoute(enter())
+	cmd()
+	want := []string{"move", "KIRA-160", "DONE"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("argv = %#v, want %#v ('.' must resolve the board's focused card, not the tree cursor)", got, want)
+	}
+}
+
+func TestCommandBarDotOnStatsStaysLiteral(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(100, 12, true)
+	m.view = viewStats
+	var got []string
+	m.bar.run = func(argv []string) (string, error) { got = argv; return "ok", nil }
+
+	m.barRoute(key(":"))
+	typeInto(&m, "show .")
+	cmd, _ := m.barRoute(enter())
+	cmd()
+	want := []string{"show", "."}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("argv = %#v, want %#v (stats has no focused item to substitute)", got, want)
+	}
+}
+
 func TestCommandBarShowsErrorAndSkipsRefresh(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(100, 12, true)

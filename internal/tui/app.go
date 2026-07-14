@@ -11,6 +11,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/clipx"
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/showfmt"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
@@ -26,12 +27,14 @@ var viewOrder = []view{viewTree, viewBoard, viewStats}
 
 var viewLabel = map[view]string{viewTree: "tree", viewBoard: "board", viewStats: "stats"}
 
+var yankKey = KeyBinding{"y/Y", "yank"}
+
 var globalKeys = []KeyBinding{
 	{"1/2/3", "view"},
 	{"^o/^]", "jump"},
 	{":", "command"},
 	{"/", "filter"},
-	{"y/Y", "yank"},
+	yankKey,
 	{"r", "refresh"},
 	{"?", "help"},
 	{"q", "quit"},
@@ -43,7 +46,7 @@ type screen interface {
 	view(m *model, width, height int) string
 	back(m *model) bool
 	focusItem(m *model, id string)
-	focusedID() string
+	focusedItem() (showfmt.Item, bool)
 	settle(m *model)
 }
 
@@ -290,7 +293,8 @@ func (m model) statsScreen() (*statsScreen, bool) {
 
 func (m *model) switchView(v view) {
 	if s := m.current(); s != nil {
-		m.jumps.push(jumpEntry{view: m.view, itemID: s.focusedID()})
+		it, _ := s.focusedItem()
+		m.jumps.push(jumpEntry{view: m.view, itemID: it.ID})
 	}
 	m.view = v
 }
@@ -341,10 +345,18 @@ func (m model) renderTitle() string {
 }
 
 func (m model) activeKeys() []KeyBinding {
-	if s := m.current(); s != nil {
-		return append(append([]KeyBinding{}, s.keys()...), globalKeys...)
+	s := m.current()
+	if s == nil {
+		return globalKeys
 	}
-	return globalKeys
+	keys := append([]KeyBinding{}, s.keys()...)
+	for _, k := range globalKeys {
+		if k == yankKey && m.view == viewStats {
+			continue
+		}
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 func (m model) renderHint() string {

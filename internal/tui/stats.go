@@ -9,6 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/showfmt"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
@@ -42,7 +43,7 @@ func (s *statsScreen) back(m *model) bool { return false }
 
 func (s *statsScreen) focusItem(m *model, id string) {}
 
-func (s *statsScreen) focusedID() string { return "" }
+func (s *statsScreen) focusedItem() (showfmt.Item, bool) { return showfmt.Item{}, false }
 
 func (s *statsScreen) settle(m *model) {}
 

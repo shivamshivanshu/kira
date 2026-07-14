@@ -5,6 +5,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/showfmt"
 )
 
 type pane int
@@ -158,7 +159,13 @@ func (s *treeScreen) focusItem(m *model, id string) {
 	s.syncDetail(m)
 }
 
-func (s *treeScreen) focusedID() string { return s.tree.selectedID() }
+func (s *treeScreen) focusedItem() (showfmt.Item, bool) {
+	row := s.tree.current()
+	if row == nil {
+		return showfmt.Item{}, false
+	}
+	return showfmt.Item{ID: row.node.ID, Number: row.node.Number, Title: row.node.Title}, true
+}
 
 func (s *treeScreen) view(m *model, width, height int) string {
 	if !splitDetail(width) {

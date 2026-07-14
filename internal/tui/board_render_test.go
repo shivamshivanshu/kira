@@ -176,6 +176,48 @@ func TestBoardScopePickerSelectsBoard(t *testing.T) {
 	}
 }
 
+func TestBoardMoveUnderScopeKeepsScopeAndSnapshot(t *testing.T) {
+	t.Parallel()
+	m, bs := newBoardTestModel(100, 12, config.Default(), buildMixedBoardResult())
+	bs.raw = buildMixedBoardResult()
+	bs.scope = "XYZ"
+	bs.applyScope()
+
+	card := func(id, num, board, state string) datamodel.ListItem {
+		it := bItem(id, num, num, state, "todo")
+		it.Board = board
+		return it
+	}
+	moved := &datamodel.BoardResult{Type: datamodel.TypeTicket, Columns: []datamodel.BoardColumn{
+		{State: "TODO", Category: "todo", Count: 2, Items: []datamodel.ListItem{
+			card("a", "KIRA-1", "KIRA", "TODO"),
+			card("c", "KIRA-2", "KIRA", "TODO"),
+		}},
+		{State: "IN_PROGRESS", Category: "doing", Count: 1, Items: []datamodel.ListItem{
+			card("b", "XYZ-1", "XYZ", "IN_PROGRESS"),
+		}},
+	}}
+	bs.applyMove(&m, boardMovedMsg{
+		res:    &datamodel.MoveResult{Number: "XYZ-1", From: "TODO", To: "IN_PROGRESS"},
+		board:  moved,
+		cardID: "b",
+	})
+
+	if bs.raw != moved {
+		t.Fatal("applyMove must adopt the reloaded board as the raw snapshot")
+	}
+	view := m.View()
+	if strings.Contains(view, "KIRA-1") || strings.Contains(view, "KIRA-2") {
+		t.Fatalf("post-move board must stay scoped to XYZ:\n%s", view)
+	}
+	if strings.Count(view, "XYZ-1") < 2 {
+		t.Fatalf("moved in-scope card must render in its column, not just the move notice:\n%s", view)
+	}
+	if sel, ok := bs.board.selected(); !ok || sel.ID != "b" {
+		t.Fatalf("moved card should stay focused, got %+v ok=%v", sel, ok)
+	}
+}
+
 func TestColumnHeaderTintReflectsWipPressure(t *testing.T) {
 	t.Parallel()
 	th := colorTheme()
