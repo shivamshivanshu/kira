@@ -1,0 +1,44 @@
+# kira now: resolve the active ticket from the workon pointer (falling back to
+# branch inference), printing its state, blockers, and commits since the last
+# state change. With no active ticket it prints nothing and exits non-zero.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'Fix the bug' --no-edit
+exec kira create ticket --title 'Second' --no-edit
+exec kira link KIRA-1 --blocked-by KIRA-2
+
+# no pointer and a non-inferable branch: nothing on stdout, hint on stderr, non-zero exit.
+! exec kira now
+! stdout .
+stderr 'no active ticket'
+stderr 'kira workon'
+
+# workon records the active pointer and moves the ticket to a doing state.
+exec kira workon KIRA-1
+exec kira now
+stdout 'KIRA-1'
+stdout 'IN_PROGRESS'
+stdout 'KIRA-2 \[TODO\]'
+# the state-move commit itself is excluded: nothing landed since the move.
+stdout '0 since last state change'
+
+# --json emits the additive now result: pointer source, resolved state, blocker.
+exec kira now --json
+stdout '"number": "KIRA-1"'
+stdout '"state": "IN_PROGRESS"'
+stdout '"source": "pointer"'
+stdout '"number": "KIRA-2"'
+stdout '"state": "TODO"'
+
+# a stale pointer branch (renamed/deleted after it was recorded) must not abort
+# now: the commit list degrades to empty, state and blockers still render.
+exec git branch -m main gone
+exec kira now
+stdout 'KIRA-1'
+stdout 'IN_PROGRESS'
+stdout 'since last state change'

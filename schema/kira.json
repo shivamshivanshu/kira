@@ -1049,6 +1049,86 @@
       ],
       "type": "object"
     },
+    "NowBlocker": {
+      "additionalProperties": false,
+      "properties": {
+        "number": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "number",
+        "state"
+      ],
+      "type": "object"
+    },
+    "NowResult": {
+      "additionalProperties": false,
+      "properties": {
+        "blockers": {
+          "items": {
+            "$ref": "#/$defs/NowBlocker"
+          },
+          "type": "array"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "commits": {
+          "items": {
+            "$ref": "#/$defs/CommitLink"
+          },
+          "type": "array"
+        },
+        "due": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        },
+        "overdue": {
+          "type": "boolean"
+        },
+        "source": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "state_since": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "title",
+        "state",
+        "category",
+        "state_since",
+        "overdue",
+        "branch",
+        "source",
+        "blockers",
+        "commits"
+      ],
+      "type": "object"
+    },
     "Percentiles": {
       "additionalProperties": false,
       "properties": {

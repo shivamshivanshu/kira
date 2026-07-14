@@ -4,11 +4,12 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
 func overdue(due *string, category string) bool {
-	if due == nil || *due == "" || datamodel.Category(category) == datamodel.CategoryDone {
+	if due == nil {
 		return false
 	}
-	return *due < time.Now().Format(time.DateOnly)
+	return timex.Overdue(*due, datamodel.Category(category) == datamodel.CategoryDone, time.Now())
 }

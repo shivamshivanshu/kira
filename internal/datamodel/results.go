@@ -503,6 +503,33 @@ type WorkonResult struct {
 	To            string `json:"to,omitempty"`
 }
 
+type NowSource string
+
+const (
+	NowSourcePointer NowSource = "pointer"
+	NowSourceBranch  NowSource = "branch"
+)
+
+type NowBlocker struct {
+	Number string `json:"number"`
+	State  string `json:"state"`
+}
+
+type NowResult struct {
+	ID         string       `json:"id"`
+	Number     string       `json:"number"`
+	Title      string       `json:"title"`
+	State      string       `json:"state"`
+	Category   string       `json:"category"`
+	StateSince string       `json:"state_since"`
+	Due        *string      `json:"due"`
+	Overdue    bool         `json:"overdue"`
+	Branch     string       `json:"branch"`
+	Source     NowSource    `json:"source"`
+	Blockers   []NowBlocker `json:"blockers"`
+	Commits    []CommitLink `json:"commits"`
+}
+
 type Renumbering struct {
 	ID   string `json:"id"`
 	From string `json:"from"`

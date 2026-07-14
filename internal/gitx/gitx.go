@@ -115,6 +115,23 @@ func (r Repo) FileCommitMeta(relPath string) (string, error) {
 	return r.Output("log", "--format=%H%x00%an%x00%cI%x00%P", "--", relPath)
 }
 
+func (r Repo) RevListSince(rev, since string) ([]Commit, error) {
+	format := "--format=%H" + nulFmt + "%s" + nulFmt + "%an" + nulFmt + "%cI"
+	out, err := r.Output("rev-list", "--since="+since, format, rev)
+	if err != nil {
+		return nil, err
+	}
+	var commits []Commit
+	for _, line := range strings.Split(out, "\n") {
+		f := strings.Split(line, nul)
+		if len(f) != 4 {
+			continue
+		}
+		commits = append(commits, Commit{SHA: f[0], Subject: f[1], Author: f[2], Timestamp: f[3]})
+	}
+	return commits, nil
+}
+
 func (r Repo) GitPath(rel string) (string, error) {
 	out, err := r.Output("rev-parse", "--git-path", rel)
 	if err != nil {

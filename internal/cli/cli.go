@@ -100,6 +100,7 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 		newHooksCmd(g),
 		newAutomationCmd(g),
 		newWorkonCmd(g),
+		newNowCmd(g),
 		newSyncCmd(g),
 		newSprintCmd(g),
 		newStatsCmd(g),
