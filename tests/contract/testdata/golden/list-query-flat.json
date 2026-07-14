@@ -3,6 +3,7 @@
     {
       "id": "<ULID-1>",
       "number": "KIRA-2",
+      "board": "KIRA",
       "title": "Rich ticket",
       "type": "ticket",
       "state": "IN_PROGRESS",
@@ -21,6 +22,7 @@
     {
       "id": "<ULID-3>",
       "number": "KIRA-3",
+      "board": "KIRA",
       "title": "Blocker",
       "type": "ticket",
       "state": "TODO",

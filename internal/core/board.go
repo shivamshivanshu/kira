@@ -1,9 +1,25 @@
 package core
 
 import (
+	"os"
+	"strings"
+
+	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
+
+var reservedBoardKeys = map[string]bool{
+	"create":  true,
+	"list":    true,
+	"rename":  true,
+	"archive": true,
+	"move":    true,
+}
+
+func boardView(b datamodel.Board) datamodel.BoardView {
+	return datamodel.BoardView{Key: b.Key, Name: b.Name, Description: b.Description, Default: b.Default, Archived: b.Archived}
+}
 
 type BoardOpts struct {
 	Type   string
@@ -71,6 +87,157 @@ func (s *Store) Board(cfg *datamodel.Config, opts BoardOpts) (*datamodel.BoardRe
 		}
 	}
 	return &datamodel.BoardResult{Type: typ, Columns: cols}, nil
+}
+
+func (s *Store) BoardCreate(cfg *datamodel.Config, key, name, description string) (*datamodel.BoardCreateResult, error) {
+	if !config.ValidBoardKey(key) {
+		return nil, errx.User("board key %q must match %s", key, config.BoardKeyPattern)
+	}
+	if reservedBoardKeys[strings.ToLower(key)] {
+		return nil, errx.User("board key %q is a reserved subcommand name", key)
+	}
+	if name == "" {
+		name = key
+	}
+
+	fs := s.fs()
+	release, err := fs.Lock()
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+
+	data, err := os.ReadFile(fs.ConfigPath())
+	if err != nil {
+		return nil, errx.User("reading config: %v", err)
+	}
+	locked, err := config.Parse(data)
+	if err != nil {
+		return nil, errx.User("%v", err)
+	}
+	for _, b := range locked.Boards {
+		if strings.EqualFold(b.Key, key) {
+			return nil, errx.User("board %q already exists", b.Key)
+		}
+	}
+
+	board := datamodel.Board{Key: key, Name: name, Description: description}
+	var implicit *datamodel.Board
+	if locked.Boards == nil {
+		switch {
+		case strings.EqualFold(key, locked.Project.Key) || locked.Project.Key == "":
+			board.Default = true
+		case !config.ValidBoardKey(locked.Project.Key):
+			return nil, errx.User("project.key %q is not a valid board key (must match %s); boards cannot be adopted until the project key conforms", locked.Project.Key, config.BoardKeyPattern)
+		default:
+			pname := locked.Project.Name
+			if pname == "" {
+				pname = locked.Project.Key
+			}
+			implicit = &datamodel.Board{Key: locked.Project.Key, Name: pname, Default: true}
+		}
+	}
+	out, err := config.AddBoard(data, board, implicit)
+	if err != nil {
+		return nil, errx.User("%v", err)
+	}
+	if err := os.WriteFile(fs.ConfigPath(), out, 0o644); err != nil {
+		return nil, errx.User("writing config: %v", err)
+	}
+	subject := locked.Commit.SubjectPrefix + "board create " + key
+	if _, err := s.finalize(locked.Commit.Mode, commitSpec{trailerKey: locked.Commit.Trailer, subject: subject}, fs.RelToRoot(fs.ConfigPath())); err != nil {
+		return nil, err
+	}
+	return &datamodel.BoardCreateResult{Created: true, Board: boardView(board)}, nil
+}
+
+func (s *Store) BoardRename(cfg *datamodel.Config, key, name string) (*datamodel.BoardUpdateResult, error) {
+	if strings.TrimSpace(name) == "" {
+		return nil, errx.User("board name must not be empty")
+	}
+	return s.updateBoard(cfg, key, "rename", func(b datamodel.Board) datamodel.Board {
+		b.Name = name
+		return b
+	})
+}
+
+func (s *Store) BoardArchive(cfg *datamodel.Config, key string) (*datamodel.BoardUpdateResult, error) {
+	active := cfg.ActiveBoards()
+	if len(active) == 1 && strings.EqualFold(active[0].Key, key) {
+		return nil, errx.User("cannot archive %s: it is the last active board", key).
+			WithHint("create or unarchive another board first")
+	}
+	return s.updateBoard(cfg, key, "archive", func(b datamodel.Board) datamodel.Board {
+		b.Archived = true
+		return b
+	})
+}
+
+func (s *Store) BoardUnarchive(cfg *datamodel.Config, key string) (*datamodel.BoardUpdateResult, error) {
+	return s.updateBoard(cfg, key, "unarchive", func(b datamodel.Board) datamodel.Board {
+		b.Archived = false
+		return b
+	})
+}
+
+func (s *Store) updateBoard(cfg *datamodel.Config, key, verb string, mutate func(datamodel.Board) datamodel.Board) (*datamodel.BoardUpdateResult, error) {
+	fs := s.fs()
+	release, err := fs.Lock()
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+
+	data, err := os.ReadFile(fs.ConfigPath())
+	if err != nil {
+		return nil, errx.User("reading config: %v", err)
+	}
+	locked, err := config.Parse(data)
+	if err != nil {
+		return nil, errx.User("%v", err)
+	}
+	target, ok := locked.BoardByKey(key)
+	if !ok {
+		return nil, errx.User("no such board %q", key).
+			WithHint("boards: %s", strings.Join(activeBoardKeys(locked.ActiveBoards()), ", "))
+	}
+
+	if locked.Boards == nil {
+		if !config.ValidBoardKey(locked.Project.Key) {
+			return nil, errx.User("project.key %q is not a valid board key (must match %s); boards cannot be adopted until the project key conforms", locked.Project.Key, config.BoardKeyPattern)
+		}
+		data, err = config.AddBoard(data, target, nil)
+		if err != nil {
+			return nil, errx.User("%v", err)
+		}
+	}
+
+	out, err := config.UpdateBoard(data, target.Key, mutate)
+	if err != nil {
+		return nil, errx.User("%v", err)
+	}
+	if err := os.WriteFile(fs.ConfigPath(), out, 0o644); err != nil {
+		return nil, errx.User("writing config: %v", err)
+	}
+	subject := locked.Commit.SubjectPrefix + "board " + verb + " " + target.Key
+	if _, err := s.finalize(locked.Commit.Mode, commitSpec{trailerKey: locked.Commit.Trailer, subject: subject}, fs.RelToRoot(fs.ConfigPath())); err != nil {
+		return nil, err
+	}
+	reread, err := config.Parse(out)
+	if err != nil {
+		return nil, errx.User("%v", err)
+	}
+	nb, _ := reread.BoardByKey(target.Key)
+	return &datamodel.BoardUpdateResult{Board: boardView(nb)}, nil
+}
+
+func (s *Store) BoardList(cfg *datamodel.Config) (*datamodel.BoardListResult, error) {
+	boards := cfg.EffectiveBoards()
+	views := make([]datamodel.BoardView, len(boards))
+	for i, b := range boards {
+		views[i] = boardView(b)
+	}
+	return &datamodel.BoardListResult{Boards: views}, nil
 }
 
 func AdjacentAllowed(cfg *datamodel.Config, typ, from, to string) bool {

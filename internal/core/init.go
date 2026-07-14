@@ -40,6 +40,10 @@ func Init(startDir, key string, force bool, prompter ...Prompter) (*datamodel.In
 	}
 
 	name := filepath.Base(abs)
+	if key != "" && !config.ValidBoardKey(key) {
+		return nil, errx.User("project key %q must match %s", key, config.BoardKeyPattern).
+			WithHint("keys are 2-10 uppercase letters/digits starting with a letter, e.g. ABC")
+	}
 	if key == "" {
 		def := deriveKey(name)
 		if s.prompter.Interactive() {

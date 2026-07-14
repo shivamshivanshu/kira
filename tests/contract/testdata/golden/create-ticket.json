@@ -1,6 +1,7 @@
 {
   "id": "<ULID-1>",
   "number": "KIRA-1",
+  "board": "KIRA",
   "type": "ticket",
   "title": "New ticket",
   "state": "TODO",

@@ -97,6 +97,7 @@ const (
 	fieldResolution = "resolution"
 	fieldCreated    = "created"
 	fieldUpdated    = "updated"
+	fieldBoard      = "board"
 )
 
 var fields = map[string]bool{
@@ -105,6 +106,7 @@ var fields = map[string]bool{
 	fieldPriority: true, fieldRank: true, fieldSprint: true, fieldDue: true,
 	fieldEstimate: true, fieldBlockedBy: true, fieldLinks: true,
 	fieldResolution: true, fieldCreated: true, fieldUpdated: true,
+	fieldBoard: true,
 }
 
 func isDateField(f string) bool { return f == fieldCreated || f == fieldUpdated || f == fieldDue }
@@ -119,7 +121,7 @@ func allowsOrderedCmp(f string) bool {
 
 func isAlwaysPresent(f string) bool {
 	switch f {
-	case fieldState, fieldType, fieldCategory, fieldCreated, fieldUpdated:
+	case fieldState, fieldType, fieldCategory, fieldCreated, fieldUpdated, fieldBoard:
 		return true
 	}
 	return false

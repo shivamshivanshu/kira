@@ -29,6 +29,7 @@ type CreateOpts struct {
 	NoEdit   bool
 	FromFile string
 	Force    bool
+	Board    string
 }
 
 func (s *Store) ResolveTemplate(opts CreateOpts) (string, error) {
@@ -45,13 +46,18 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 		return nil, errx.User("no workflow configured for type %q", opts.Type)
 	}
 
+	boardKey, err := resolveBoardKey(cfg, opts.Board)
+	if err != nil {
+		return nil, err
+	}
+
 	base, err := s.templateDraft(opts.Type)
 	if err != nil {
 		return nil, err
 	}
 	base = applyFlags(base, opts)
 
-	d, err := s.draftForCreate(cfg, opts, wf.Initial, base)
+	d, err := s.draftForCreate(cfg, opts, boardKey, wf.Initial, base)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +73,7 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 		return nil, err
 	}
 
-	sys := newSystemFields(cfg, snap, opts.Type, wf.Initial)
+	sys := newSystemFields(cfg, snap, boardKey, opts.Type, wf.Initial)
 	finalItem := itemFromDraft(d, sys)
 	hard, warns := validateAssembled(cfg, finalItem, resolver, opts.Force)
 	if len(hard) == 0 {
@@ -95,6 +101,7 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 	res := &datamodel.CreateResult{
 		ID:         finalItem.ID,
 		Number:     finalItem.Number,
+		Board:      boardKey,
 		Type:       finalItem.Type,
 		Title:      finalItem.Title,
 		State:      finalItem.State,
@@ -114,7 +121,7 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 	return res, nil
 }
 
-func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, initialState string, base draft) (draft, error) {
+func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, boardKey, initialState string, base draft) (draft, error) {
 	switch {
 	case opts.FromFile != "":
 		content, err := readSource(opts.FromFile)
@@ -133,7 +140,7 @@ func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, initialSt
 		if err != nil {
 			return draft{}, err
 		}
-		sys := newSystemFields(cfg, snap, opts.Type, initialState)
+		sys := newSystemFields(cfg, snap, boardKey, opts.Type, initialState)
 		content, err := runEditor(serializeDraft(base), validateBuffer(cfg, resolver, opts.Force, func(c string) (*datamodel.Item, []error) {
 			d, perr := parseDraft(c)
 			if perr != nil {
@@ -157,11 +164,11 @@ type systemFields struct {
 	created string
 }
 
-func newSystemFields(cfg *datamodel.Config, snap id.Snapshot, typ, state string) systemFields {
+func newSystemFields(cfg *datamodel.Config, snap id.Snapshot, boardKey, typ, state string) systemFields {
 	u := id.Mint()
 	return systemFields{
 		ulid:    u.String(),
-		number:  allocateNumber(cfg, snap, u),
+		number:  allocateNumber(cfg, snap, boardKey, u),
 		typ:     typ,
 		state:   state,
 		created: time.Now().Format(time.RFC3339),
@@ -252,10 +259,11 @@ func applyFlags(d draft, opts CreateOpts) draft {
 	return d
 }
 
-func allocateNumber(cfg *datamodel.Config, snap id.Snapshot, u id.ULID) string {
+func allocateNumber(cfg *datamodel.Config, snap id.Snapshot, boardKey string, u id.ULID) string {
 	if cfg.ID.Style == datamodel.IDStyleHash {
-		return id.HashNumber(cfg.Project.Key, u)
+		return id.HashNumber(boardKey, u)
 	}
+	snap.Key = boardKey
 	return id.Allocate(snap).String()
 }
 

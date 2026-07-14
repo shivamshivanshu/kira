@@ -82,6 +82,7 @@ func showResultOf(cfg *datamodel.Config, it *datamodel.Item) datamodel.ShowResul
 	return datamodel.ShowResult{
 		ID:            it.ID,
 		Number:        it.Number,
+		Board:         boardKeyOf(it.Number),
 		Aliases:       nonNil(it.Aliases),
 		Type:          it.Type,
 		Subtype:       it.Subtype,

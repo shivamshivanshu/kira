@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -12,6 +13,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/termx"
 )
 
 func newCreateCmd(g *globalFlags) *cobra.Command {
@@ -102,6 +104,9 @@ func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {
 				fmt.Fprint(cmd.OutOrStdout(), tmpl)
 				return nil
 			}
+			if err := pickBoardIfAmbiguous(cmd, g, cfg, &opts); err != nil {
+				return err
+			}
 			res, err := s.Create(cfg, opts)
 			if err != nil {
 				return err
@@ -130,6 +135,41 @@ func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {
 	f.BoolVar(&opts.NoEdit, "no-edit", false, "create from flags only, no $EDITOR")
 	f.StringVar(&opts.FromFile, "from-file", "", "read a complete item from a file (or - for stdin)")
 	f.BoolVar(&opts.Force, "force", false, "accept field values outside the configured vocabulary")
+	f.StringVar(&opts.Board, "board", "", "board key to create the item under")
 	f.BoolVar(&printTemplate, "print-template", false, "print the resolved template and exit")
 	return cmd
+}
+
+func pickBoardIfAmbiguous(cmd *cobra.Command, g *globalFlags, cfg *datamodel.Config, opts *core.CreateOpts) error {
+	if opts.Board != "" {
+		return nil
+	}
+	boards := cfg.ActiveBoards()
+	if len(boards) <= 1 {
+		return nil
+	}
+	if _, ok := cfg.DefaultBoard(); ok {
+		return nil
+	}
+	if g.json || !(terminalPrompter{}).Interactive() {
+		return nil
+	}
+	out := cmd.ErrOrStderr()
+	fmt.Fprintln(out, "Select a board:")
+	for i, b := range boards {
+		fmt.Fprintf(out, "  %d) %s  %s\n", i+1, b.Key, b.Name)
+	}
+	answer := strings.TrimSpace(termx.ReadLineDefault("board", boards[0].Key))
+	if n, err := strconv.Atoi(answer); err == nil {
+		if n < 1 || n > len(boards) {
+			return errx.User("board choice %d out of range", n)
+		}
+		opts.Board = boards[n-1].Key
+		return nil
+	}
+	if b, ok := cfg.BoardByKey(answer); ok && !b.Archived {
+		opts.Board = b.Key
+		return nil
+	}
+	return errx.User("no such board %q", answer)
 }

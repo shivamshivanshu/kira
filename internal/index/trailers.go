@@ -16,6 +16,7 @@ import (
 
 type Options struct {
 	ProjectKey       string
+	BoardKeys        []string
 	TrailerKey       string
 	CloseTrailer     string
 	LandedRef        string
@@ -177,6 +178,11 @@ func scanConfigHash(opts Options) string {
 	var b strings.Builder
 	b.WriteString(opts.ProjectKey)
 	b.WriteByte(0)
+	for _, k := range opts.BoardKeys {
+		b.WriteString(k)
+		b.WriteByte(0x1f)
+	}
+	b.WriteByte(0)
 	b.WriteString(opts.TrailerKey)
 	b.WriteByte(0)
 	b.WriteString(opts.CloseTrailer)
@@ -194,13 +200,13 @@ func scanConfigHash(opts Options) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func newLinkPolicy(opts Options) linkPolicy {
+func newLinkPolicy(opts Options, numbers map[string]string) linkPolicy {
 	return linkPolicy{
 		trailer: slices.Contains(opts.LinkMarkers, datamodel.LinkMarkerTrailer),
 		subject: slices.Contains(opts.LinkMarkers, datamodel.LinkMarkerSubject),
 		bare:    slices.Contains(opts.ReferenceMarkers, datamodel.ReferenceMarkerBare),
 		marker:  subjectMarkerPattern(opts.ProjectKey),
-		bareRef: lenientPattern(opts.ProjectKey),
+		bareRef: lenientPattern(opts.BoardKeys, numbers),
 	}
 }
 
@@ -228,7 +234,7 @@ func (i *Index) upsertCommitLinks(commits []gitx.Commit, numbers map[string]stri
 	}
 	defer insReferenced.Close()
 
-	pol := newLinkPolicy(opts)
+	pol := newLinkPolicy(opts, numbers)
 	for _, c := range commits {
 		linked, referenced := resolveItemRefs(c, numbers, pol)
 		for _, ulid := range linked {
@@ -296,11 +302,38 @@ func bodyOutsideTrailers(c gitx.Commit) string {
 	return c.Body
 }
 
-func lenientPattern(projectKey string) *regexp.Regexp {
-	if projectKey == "" {
+func lenientPattern(boardKeys []string, numbers map[string]string) *regexp.Regexp {
+	seen := map[string]bool{}
+	var prefixes []string
+	add := func(p string) {
+		up := strings.ToUpper(p)
+		if up != "" && !seen[up] {
+			seen[up] = true
+			prefixes = append(prefixes, up)
+		}
+	}
+	for _, k := range boardKeys {
+		add(k)
+	}
+	for full := range numbers {
+		if i := strings.LastIndexByte(full, '-'); i > 0 {
+			add(full[:i])
+		}
+	}
+	if len(prefixes) == 0 {
 		return nil
 	}
-	return regexp.MustCompile(`\b` + regexp.QuoteMeta(projectKey) + `-\d+\b`)
+	slices.SortFunc(prefixes, func(a, b string) int {
+		if len(a) != len(b) {
+			return len(b) - len(a)
+		}
+		return strings.Compare(a, b)
+	})
+	quoted := make([]string, len(prefixes))
+	for i, p := range prefixes {
+		quoted[i] = regexp.QuoteMeta(p)
+	}
+	return regexp.MustCompile(`(?i)\b(?:` + strings.Join(quoted, "|") + `)-\d+\b`)
 }
 
 func subjectMarkerPattern(projectKey string) *regexp.Regexp {

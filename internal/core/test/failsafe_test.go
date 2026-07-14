@@ -163,6 +163,29 @@ func TestEditFullEditorRefusesBeforeDroppingUnknowns(t *testing.T) {
 	assertUpgradeRefusal(t, err)
 }
 
+func TestReconcileWritesOldNumberAsAlias(t *testing.T) {
+	s, cfg := newStore(t)
+	one := mustCreate(t, s, cfg, "one")
+	two := mustCreate(t, s, cfg, "two")
+	overwriteItem(t, s, two.ID, strings.Replace(mustReadItem(t, s, two.ID), "number: "+two.Number, "number: "+one.Number, 1))
+
+	res, err := s.Reconcile(cfg)
+	if err != nil {
+		t.Fatalf("Reconcile: %v", err)
+	}
+	if len(res.Renumbered) != 1 {
+		t.Fatalf("want exactly one renumber, got %+v", res.Renumbered)
+	}
+	r := res.Renumbered[0]
+	got := mustReadItem(t, s, r.ID)
+	if !strings.Contains(got, "number: "+r.To) {
+		t.Fatalf("renumbered file number is not %s:\n%s", r.To, got)
+	}
+	if !strings.Contains(got, r.From) {
+		t.Fatalf("old number %s not kept as an alias:\n%s", r.From, got)
+	}
+}
+
 func TestReconcileRefusesOnUnknown(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)

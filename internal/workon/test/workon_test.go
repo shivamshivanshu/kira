@@ -63,6 +63,7 @@ func TestMatchBranchIsIdempotentAcrossSlugs(t *testing.T) {
 
 func TestInferNumber(t *testing.T) {
 	t.Parallel()
+	keys := []string{"KIRA", "XYZ", "AB"}
 	cases := []struct {
 		branch string
 		want   string
@@ -72,9 +73,11 @@ func TestInferNumber(t *testing.T) {
 		{"KIRA-7", "KIRA-7", true},
 		{"feature/no-ticket", "", false},
 		{"kira/KIRA-9-caps", "KIRA-9", true},
+		{"xyz/xyz-3-thing", "XYZ-3", true},
+		{"ab/ab-5", "AB-5", true},
 	}
 	for _, c := range cases {
-		got, ok := workon.InferNumber(c.branch, "KIRA")
+		got, ok := workon.InferNumber(c.branch, keys)
 		if ok != c.ok || got != c.want {
 			t.Errorf("InferNumber(%q) = (%q, %v), want (%q, %v)", c.branch, got, ok, c.want, c.ok)
 		}

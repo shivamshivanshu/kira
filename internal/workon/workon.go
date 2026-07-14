@@ -5,6 +5,7 @@ package workon
 import (
 	"encoding/json"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -76,13 +77,24 @@ func MatchBranch(branches []string, pattern, key, number string, c datamodel.Cas
 	return "", false
 }
 
-func InferNumber(branch, key string) (string, bool) {
-	re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(key) + `-(\d+)`)
-	m := re.FindStringSubmatch(branch)
-	if m == nil {
-		return "", false
+func InferNumber(branch string, keys []string) (string, bool) {
+	sorted := append([]string(nil), keys...)
+	slices.SortFunc(sorted, func(a, b string) int {
+		if len(a) != len(b) {
+			return len(b) - len(a)
+		}
+		return strings.Compare(a, b)
+	})
+	for _, key := range sorted {
+		if key == "" {
+			continue
+		}
+		re := regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(key) + `-(\d+)\b`)
+		if m := re.FindStringSubmatch(branch); m != nil {
+			return key + "-" + m[1], true
+		}
 	}
-	return key + "-" + m[1], true
+	return "", false
 }
 
 type ActivePointer struct {

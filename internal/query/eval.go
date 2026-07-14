@@ -138,6 +138,10 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 			want = c.opts.ActiveSprint
 		}
 		return scalarPred(eq, want, accessors[fieldSprint]), nil
+	case fieldBoard:
+		return scalarPred(eq, strings.ToUpper(want), func(it *datamodel.Item, _ *datamodel.Config) string {
+			return strings.ToUpper(id.KeyOf(it.Number))
+		}), nil
 	case fieldLabel:
 		return func(it *datamodel.Item, _ *datamodel.Config) bool {
 			return slices.Contains(it.Labels, want) == eq

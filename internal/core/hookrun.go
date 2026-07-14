@@ -38,7 +38,7 @@ func (s *Store) trailerNumber(cfg *datamodel.Config, repo gitx.Repo) (string, bo
 			return number, true
 		}
 	}
-	if display, ok := workon.InferNumber(branch, cfg.Project.Key); ok {
+	if display, ok := workon.InferNumber(branch, cfg.BoardKeys()); ok {
 		if number, ok := resolveNumber(items, resolver, display); ok {
 			return number, true
 		}

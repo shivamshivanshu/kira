@@ -108,6 +108,22 @@ func TestCheckCleanItemHasNoFindings(t *testing.T) {
 	}
 }
 
+func TestCheckUnknownBoardPrefixWarns(t *testing.T) {
+	it := valid(ulidA, "ZZZ-9")
+	findings := doctor.Check(config.Default(), resolver(it), it)
+	if classes(findings)[doctor.ClassBoard] != doctor.SeverityWarning {
+		t.Fatalf("expected a board warning for the unconfigured prefix ZZZ, got %+v", findings)
+	}
+}
+
+func TestCheckUnknownBoardPrefixWarnsForHashNumber(t *testing.T) {
+	it := valid(ulidA, "ZZZ-a1b2c3")
+	findings := doctor.Check(config.Default(), resolver(it), it)
+	if classes(findings)[doctor.ClassBoard] != doctor.SeverityWarning {
+		t.Fatalf("expected a board warning for the unconfigured hash-style prefix ZZZ, got %+v", findings)
+	}
+}
+
 func TestCheckUnknownStateAndSprintAndDue(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")

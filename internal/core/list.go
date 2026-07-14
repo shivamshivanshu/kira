@@ -251,6 +251,7 @@ func listItemOf(cfg *datamodel.Config, it *datamodel.Item, epicNumbers map[strin
 	li := datamodel.ListItem{
 		ID:         it.ID,
 		Number:     it.Number,
+		Board:      boardKeyOf(it.Number),
 		Title:      it.Title,
 		Type:       it.Type,
 		State:      it.State,

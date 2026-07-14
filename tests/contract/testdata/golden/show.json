@@ -1,6 +1,7 @@
 {
   "id": "<ULID-1>",
   "number": "KIRA-2",
+  "board": "KIRA",
   "aliases": [],
   "type": "ticket",
   "subtype": "bug",

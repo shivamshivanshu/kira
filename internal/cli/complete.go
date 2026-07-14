@@ -59,6 +59,7 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 		"epic":       completeItems(g, datamodel.TypeEpic),
 		"parent":     completeItems(g, datamodel.TypeEpic),
 		"blocked-by": items,
+		"board":      completeVocab(g, activeBoardKeys),
 	}
 	walk(root, func(c *cobra.Command) {
 		for name, fn := range flags {
@@ -169,6 +170,15 @@ func positional(fns ...completer) completer {
 		}
 		return fns[len(args)](cmd, args, toComplete)
 	}
+}
+
+func activeBoardKeys(cfg *datamodel.Config) []string {
+	boards := cfg.ActiveBoards()
+	keys := make([]string, len(boards))
+	for i, b := range boards {
+		keys[i] = b.Key
+	}
+	return keys
 }
 
 func sprintKeys(cfg *datamodel.Config) []string {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/id"
@@ -14,8 +15,27 @@ func Check(cfg *datamodel.Config, resolver *id.Resolver, it *datamodel.Item) []F
 	out = append(out, stateFindings(cfg, it)...)
 	out = append(out, vocabFindings(cfg, it)...)
 	out = append(out, scalarFindings(cfg, it)...)
+	out = append(out, boardFindings(cfg, it)...)
 	out = append(out, refFindings(resolver, it)...)
 	return out
+}
+
+func boardFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
+	key := id.KeyOf(it.Number)
+	if key == "" {
+		return nil
+	}
+	for _, b := range cfg.EffectiveBoards() {
+		if strings.EqualFold(b.Key, key) {
+			return nil
+		}
+	}
+	return []Finding{{
+		Class:    ClassBoard,
+		Severity: SeverityWarning,
+		Field:    datamodel.KeyNumber,
+		Message:  fmt.Sprintf("number prefix %q is not a configured board", key),
+	}}
 }
 
 func stateFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {

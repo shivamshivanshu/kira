@@ -25,6 +25,7 @@ const (
 	ClassFreshness Class = "index-freshness"
 	ClassHooks     Class = "hooks"
 	ClassEnv       Class = "environment"
+	ClassBoard     Class = "board"
 )
 
 type CollisionKind string

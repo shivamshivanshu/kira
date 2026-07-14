@@ -85,6 +85,61 @@
       ],
       "type": "object"
     },
+    "BoardCreateResult": {
+      "additionalProperties": false,
+      "properties": {
+        "board": {
+          "$ref": "#/$defs/BoardView"
+        },
+        "created": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "created",
+        "board"
+      ],
+      "type": "object"
+    },
+    "BoardListResult": {
+      "additionalProperties": false,
+      "properties": {
+        "boards": {
+          "items": {
+            "$ref": "#/$defs/BoardView"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "boards"
+      ],
+      "type": "object"
+    },
+    "BoardMoveResult": {
+      "additionalProperties": false,
+      "properties": {
+        "board": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "from",
+        "to",
+        "board"
+      ],
+      "type": "object"
+    },
     "BoardResult": {
       "additionalProperties": false,
       "properties": {
@@ -101,6 +156,43 @@
       "required": [
         "type",
         "columns"
+      ],
+      "type": "object"
+    },
+    "BoardUpdateResult": {
+      "additionalProperties": false,
+      "properties": {
+        "board": {
+          "$ref": "#/$defs/BoardView"
+        }
+      },
+      "required": [
+        "board"
+      ],
+      "type": "object"
+    },
+    "BoardView": {
+      "additionalProperties": false,
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "default": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "name"
       ],
       "type": "object"
     },
@@ -334,6 +426,9 @@
     "CreateResult": {
       "additionalProperties": false,
       "properties": {
+        "board": {
+          "type": "string"
+        },
         "category": {
           "type": "string"
         },
@@ -395,6 +490,7 @@
       "required": [
         "id",
         "number",
+        "board",
         "type",
         "title",
         "state",
@@ -692,6 +788,9 @@
     "ListItem": {
       "additionalProperties": false,
       "properties": {
+        "board": {
+          "type": "string"
+        },
         "category": {
           "type": "string"
         },
@@ -756,6 +855,7 @@
       "required": [
         "id",
         "number",
+        "board",
         "title",
         "type",
         "state",
@@ -1049,6 +1149,9 @@
           },
           "type": "array"
         },
+        "board": {
+          "type": "string"
+        },
         "body": {
           "type": "string"
         },
@@ -1189,6 +1292,7 @@
       "required": [
         "id",
         "number",
+        "board",
         "aliases",
         "type",
         "title",
