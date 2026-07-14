@@ -1,7 +1,7 @@
 ---
 id: 01KXGRRVMQ7D9WRJGXK5Q8EJDB
-number: KIRA-100
-aliases: []
+number: DATA-1
+aliases: [KIRA-100]
 type: ticket
 subtype: feature
 title: "Link policy: subject-leading bare KIRA-n counts as linked (config knob, retroactive reindex)"
