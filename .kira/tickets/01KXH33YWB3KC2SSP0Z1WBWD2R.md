@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: bug
 title: "Gate auto-TUI on the command's writer; extract shared shouldAutoTUI"
-state: IN_PROGRESS
+state: REVIEW
 priority: P1
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:30+05:30
-updated: 2026-07-15T01:26:33+05:30
+updated: 2026-07-15T02:00:56+05:30
 ---
 
 ## Description
