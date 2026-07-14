@@ -137,6 +137,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pending = append(m.pending, refreshCmd(m.store, m.cfg, m.bar.filter))
 		}
 		return m, m.afterDrain(m.drain())
+	case editorDoneMsg:
+		if msg.err != nil {
+			m.bar.setError(firstNonEmptyLine(msg.err.Error()))
+		}
+		if ts, ok := m.treeScreen(); ok {
+			ts.host.resetCache()
+		}
+		return m, m.request(refreshCmd(m.store, m.cfg, m.bar.filter))
 	case boardMovedMsg:
 		cmd := m.drain()
 		if bs, ok := m.boardScreen(); ok {

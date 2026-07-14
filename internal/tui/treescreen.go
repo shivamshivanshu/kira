@@ -2,6 +2,9 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
 type pane int
@@ -20,6 +23,8 @@ var treeKeys = []KeyBinding{
 	{"gg/G", "top/bottom"},
 	{"^d/^u", "half-page"},
 	{"zM/zR", "collapse/expand"},
+	{"e", "edit"},
+	{"v", "view"},
 }
 
 type treeScreen struct {
@@ -111,8 +116,33 @@ func (s *treeScreen) update(m *model, key string) tea.Cmd {
 	case "ctrl+u":
 		s.tree.move(-m.mainHeight()/2, m.mainHeight())
 		s.syncDetail(m)
+	case "e":
+		return s.editSelected(m)
+	case "v":
+		return s.viewSelected(m)
 	}
 	return nil
+}
+
+func (s *treeScreen) editSelected(m *model) tea.Cmd {
+	return s.suspendForSelected(m, editItemCmd)
+}
+
+func (s *treeScreen) viewSelected(m *model) tea.Cmd {
+	return s.suspendForSelected(m, viewItemCmd)
+}
+
+func (s *treeScreen) suspendForSelected(m *model, open func(*core.Store, *datamodel.Config, string) (tea.Cmd, error)) tea.Cmd {
+	id := s.tree.selectedID()
+	if id == "" || m.store == nil {
+		return nil
+	}
+	cmd, err := open(m.store, m.cfg, id)
+	if err != nil {
+		m.bar.setError(firstNonEmptyLine(err.Error()))
+		return nil
+	}
+	return cmd
 }
 
 func (s *treeScreen) back(m *model) bool {

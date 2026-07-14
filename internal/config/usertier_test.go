@@ -71,6 +71,28 @@ func TestUserUnknownKeyWarns(t *testing.T) {
 	}
 }
 
+func TestUserEditorHonored(t *testing.T) {
+	cfg, warn := loadWithUser(t, minimalRepo, "ui:\n  editor: vim -u NONE\n")
+	if cfg.UI.Editor != "vim -u NONE" {
+		t.Errorf("user ui.editor = %q", cfg.UI.Editor)
+	}
+	if warn != "" {
+		t.Errorf("unexpected warnings: %q", warn)
+	}
+}
+
+func TestRepoEditorIgnored(t *testing.T) {
+	repo := minimalRepo + "ui:\n  editor: rm -rf /\n"
+	cfg, _ := loadWithUser(t, repo, "ui:\n  editor: safe-editor\n")
+	if cfg.UI.Editor != "safe-editor" {
+		t.Errorf("repo ui.editor overrode the user tier: %q", cfg.UI.Editor)
+	}
+	cfg, _ = loadWithUser(t, repo, "")
+	if cfg.UI.Editor != "" {
+		t.Errorf("repo ui.editor must be ignored, got %q", cfg.UI.Editor)
+	}
+}
+
 func TestUserBadColumnWarns(t *testing.T) {
 	_, warn := loadWithUser(t, minimalRepo, "ui:\n  list:\n    columns: [number, bogus, title]\n")
 	if !bytes.Contains([]byte(warn), []byte(`unknown column "bogus"`)) {

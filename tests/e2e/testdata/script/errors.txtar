@@ -62,9 +62,9 @@ exec kira move KIRA-1 REVIEW
 stderr 'requires resolution to be set'
 stderr 'hint: set resolution first'
 
-# editor needed but $EDITOR/$VISUAL unset
+# editor needed but ui.editor/$EDITOR/$VISUAL unset
 env EDITOR=
 env VISUAL=
 ! exec kira create ticket --title 'Second'
-stderr 'EDITOR is not set'
-stderr 'hint: set .EDITOR'
+stderr 'no editor configured: set ui.editor or .EDITOR'
+stderr 'hint: set ui.editor'

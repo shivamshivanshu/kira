@@ -82,6 +82,7 @@ type UI struct {
 	Icons      IconMode          `yaml:"icons"`
 	Background Background        `yaml:"background"`
 	Color      ColorMode         `yaml:"color"`
+	Editor     string            `yaml:"editor"`
 	List       UIList            `yaml:"list"`
 	Theme      map[string]string `yaml:"theme"`
 	Tui        UITui             `yaml:"tui"`

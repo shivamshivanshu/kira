@@ -63,8 +63,10 @@ func Parse(data []byte) (*datamodel.Config, error) {
 }
 
 func parseInto(cfg *datamodel.Config, data []byte) error {
+	userEditor := cfg.UI.Editor
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
+	cfg.UI.Editor = userEditor
 	return Validate(cfg)
 }

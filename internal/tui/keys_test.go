@@ -105,6 +105,40 @@ func TestTreeDetailPaneForwardsDetailKeysAndFallsThrough(t *testing.T) {
 	}
 }
 
+func TestTreeEditAndViewKeysReturnExecCmds(t *testing.T) {
+	t.Parallel()
+	s, cfg, _ := initRepo(t)
+	createTicket(t, s, cfg, "Editable")
+	cfg.UI.Editor = "vi"
+	data, err := loadFilteredTree(s, cfg, "")
+	if err != nil {
+		t.Fatalf("loadFilteredTree: %v", err)
+	}
+	m := newModel(s, cfg, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
+	m.width, m.height = 100, 12
+	ts := m.screens[viewTree].(*treeScreen)
+	ts.setData(&m, data)
+
+	if cmd := ts.update(&m, "e"); cmd == nil {
+		t.Error("e on a selected row must return an edit exec cmd")
+	}
+	if cmd := ts.update(&m, "v"); cmd == nil {
+		t.Errorf("v on a selected row must return a view exec cmd (bar: %q)", m.bar.msg)
+	}
+}
+
+func TestTreeEditViewWithoutStoreAreNoOps(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(100, 12, true)
+	ts := m.screens[viewTree].(*treeScreen)
+	if cmd := ts.update(&m, "e"); cmd != nil {
+		t.Error("e without a store must be a no-op")
+	}
+	if cmd := ts.update(&m, "v"); cmd != nil {
+		t.Error("v without a store must be a no-op")
+	}
+}
+
 func TestBoardGgGJumpsTopAndBottom(t *testing.T) {
 	t.Parallel()
 	m, bs := newBoardTestModel(100, 12, config.Default(), buildBoardResult())

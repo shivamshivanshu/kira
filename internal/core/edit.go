@@ -7,6 +7,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/editorx"
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
@@ -19,6 +20,7 @@ type EditOpts struct {
 	Fields   []FieldEdit
 	FromFile string
 	Force    bool
+	Stdio    editorx.Stdio
 }
 
 func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamodel.MutationResult, error) {
@@ -114,7 +116,7 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 	if err := guardWritable(orig); err != nil {
 		return "", "", err
 	}
-	content, err := runEditor(codec.Serialize(orig), validateBuffer(cfg, resolver, opts.Force, func(c string) (*datamodel.Item, []error) {
+	content, err := runEditor(cfg.UI.Editor, opts.Stdio, codec.Serialize(orig), validateBuffer(cfg, resolver, opts.Force, func(c string) (*datamodel.Item, []error) {
 		it, errs := parseFullItem(c)
 		if len(errs) > 0 {
 			return nil, errs

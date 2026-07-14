@@ -1,0 +1,87 @@
+# ui.editor is user-tier only: it beats $EDITOR, a repo-level ui.editor is
+# ignored, and without a user tier $EDITOR still applies.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR='sh env-editor.sh'
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp repo-config.yaml .kira/config.yaml
+
+env XDG_CONFIG_HOME=$WORK/xdg
+exec kira create ticket --json
+stdout '"title": "From Ui Editor"'
+! stdout '"title": "From Repo Editor"'
+
+env XDG_CONFIG_HOME=$WORK/empty-xdg
+exec kira create ticket --json
+stdout '"title": "From Env Editor"'
+! stdout '"title": "From Repo Editor"'
+
+-- repo-config.yaml --
+version: 1
+project:
+  key: KIRA
+ui:
+  editor: sh repo-editor.sh
+-- xdg/kira/config.yaml --
+ui:
+  editor: sh cfg-editor.sh
+-- cfg-editor.sh --
+cp cfg.md "$1"
+-- env-editor.sh --
+cp env.md "$1"
+-- repo-editor.sh --
+cp repo.md "$1"
+-- cfg.md --
+---
+title: "From Ui Editor"
+type: ticket
+priority:
+owner:
+reporter:
+labels: []
+epic:
+estimate:
+---
+
+## Description
+
+## Acceptance criteria
+
+## Comments
+-- env.md --
+---
+title: "From Env Editor"
+type: ticket
+priority:
+owner:
+reporter:
+labels: []
+epic:
+estimate:
+---
+
+## Description
+
+## Acceptance criteria
+
+## Comments
+-- repo.md --
+---
+title: "From Repo Editor"
+type: ticket
+priority:
+owner:
+reporter:
+labels: []
+epic:
+estimate:
+---
+
+## Description
+
+## Acceptance criteria
+
+## Comments

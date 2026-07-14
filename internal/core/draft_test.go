@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/shivamshivanshu/kira/internal/editorx"
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
@@ -130,7 +131,7 @@ func TestRunEditorRetryLoop(t *testing.T) {
 	t.Setenv("EDITOR", "sh "+script)
 
 	calls := 0
-	got, err := runEditor("initial\n", func(content string) []error {
+	got, err := runEditor("", editorx.Stdio{}, "initial\n", func(content string) []error {
 		calls++
 		if !strings.Contains(content, "GOOD") {
 			return []error{errors.New("need GOOD")}
@@ -151,7 +152,7 @@ func TestRunEditorRetryLoop(t *testing.T) {
 func TestRunEditorUnsetIsEnvError(t *testing.T) {
 	t.Setenv("EDITOR", "")
 	t.Setenv("VISUAL", "")
-	_, err := runEditor("x", func(string) []error { return nil })
+	_, err := runEditor("", editorx.Stdio{}, "x", func(string) []error { return nil })
 	var ce *errx.Error
 	if !errors.As(err, &ce) || ce.Code != errx.ExitEnv {
 		t.Fatalf("want errx.ExitEnv, got %v", err)

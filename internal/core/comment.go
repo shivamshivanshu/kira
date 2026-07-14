@@ -7,6 +7,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/editorx"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 )
@@ -30,7 +31,7 @@ func (s *Store) Comment(cfg *datamodel.Config, ref string, opts CommentOpts) (*d
 		}
 	}
 
-	text, err := s.commentText(opts)
+	text, err := s.commentText(cfg.UI.Editor, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -71,14 +72,14 @@ func (s *Store) Comment(cfg *datamodel.Config, ref string, opts CommentOpts) (*d
 	return &datamodel.CommentResult{ID: orig.ID, Number: orig.Number, CommentID: c.ID}, nil
 }
 
-func (s *Store) commentText(opts CommentOpts) (string, error) {
+func (s *Store) commentText(editor string, opts CommentOpts) (string, error) {
 	if opts.HasMessage {
 		if strings.TrimSpace(opts.Message) == "" {
 			return "", errx.User("empty comment")
 		}
 		return opts.Message, nil
 	}
-	content, err := runEditor("", func(c string) []error {
+	content, err := runEditor(editor, editorx.Stdio{}, "", func(c string) []error {
 		if strings.TrimSpace(c) == "" {
 			return []error{errx.User("empty comment")}
 		}

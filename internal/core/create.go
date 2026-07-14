@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/editorx"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/ptr"
@@ -200,7 +201,7 @@ func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, boardKey,
 			return draft{}, err
 		}
 		sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, initialState)
-		content, err := runEditor(serializeDraft(base), validateBuffer(cfg, ld.resolver, opts.Force, func(c string) (*datamodel.Item, []error) {
+		content, err := runEditor(cfg.UI.Editor, editorx.Stdio{}, serializeDraft(base), validateBuffer(cfg, ld.resolver, opts.Force, func(c string) (*datamodel.Item, []error) {
 			d, perr := parseDraft(c)
 			if perr != nil {
 				return nil, []error{perr}
