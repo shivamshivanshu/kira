@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: bug
 title: "Exec contract: strings.Fields mangles quoted arguments in automation hooks and editor commands"
-state: IN_PROGRESS
+state: REVIEW
 priority: P1
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:34+05:30
-updated: 2026-07-15T02:19:34+05:30
+updated: 2026-07-15T02:47:10+05:30
 ---
 
 ## Description
