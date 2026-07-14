@@ -1,7 +1,7 @@
 ---
 id: 01KXEJ9KFC57WA1D2Z0GGE2EW6
-number: KIRA-83
-aliases: []
+number: CORE-2
+aliases: [KIRA-83]
 type: ticket
 subtype: feature
 title: "Git hooks surface: kira hooks install/uninstall/status/run, chain-dont-clobber, core.hooksPath (husky) detection, drift check, millisecond no-op budget - colocated"
