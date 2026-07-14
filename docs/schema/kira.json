@@ -1133,6 +1133,12 @@
             "null"
           ]
         },
+        "referenced_by": {
+          "items": {
+            "$ref": "#/$defs/CommitLink"
+          },
+          "type": "array"
+        },
         "reporter": {
           "type": [
             "string",
@@ -1197,6 +1203,7 @@
         "body",
         "comments",
         "linked_commits",
+        "referenced_by",
         "history_tail"
       ],
       "type": "object"

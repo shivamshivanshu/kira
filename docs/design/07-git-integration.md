@@ -5,16 +5,20 @@ Part of the kira design set — see [DESIGN.md](../../DESIGN.md) for decisions a
 
 ## 1. Commit-linking convention
 
-A commit is linked to an item via a git **trailer**:
+Association splits into two tiers: **linked** (primary, deliberate — one ticket per commit) and **referenced by** (secondary, weak — an incidental mention).
 
-```
-Kira-Ticket: KIRA-142
-```
+**Linked** — sources configured by `commit.link_markers` (list, default `[trailer, subject]`):
+- `trailer`: a git **trailer**, machine-written by kira's auto-commits:
+  ```
+  Kira-Ticket: KIRA-142
+  ```
+  Repeatable; key configurable (`commit.trailer`, default `Kira-Ticket`); parsed with `git interpret-trailers --parse`, not regex-first — trailers are a structured, tool-supported git feature (same mechanism as `Signed-off-by`, `Change-Id`, Gerrit's own tooling).
+- `subject`: a human marker `[[<project.key>-\d+]]` (e.g. `[[KIRA-142]]`, key never hardcoded) in the **subject line only**. At most one marker is promoted to linked (the first), and only when no trailer already links the commit — so a trailer always wins a conflict.
 
-- Repeatable (a commit can link multiple items).
-- Trailer key is configurable (`commit.trailer` in `config.yaml`, default `Kira-Ticket`).
-- Parsed with `git interpret-trailers --parse`, not regex-first — trailers are a structured, tool-supported git feature (same mechanism as `Signed-off-by`, `Change-Id`, Gerrit's own tooling), so parsing goes through the same interface those tools use.
-- **Lenient fallback**: a regex scan for bare `<project.key>-\d+` tokens (the configured project key, e.g. `KIRA-\d+` only under the default key — never hardcoded) anywhere in the commit message (subject or body, outside the trailer block) is also indexed, but at lower confidence — it catches commits written before a trailer habit formed, or hand-typed without `git commit --trailer`, without making it the primary mechanism.
+**Referenced by** — sources configured by `commit.reference_markers` (list, default `[bare]`):
+- `bare`: a regex scan for `<project.key>-\d+` tokens anywhere in the message (subject or body, outside the trailer block), with `[[..]]` brackets *stripped* rather than skipped so any marker that wasn't promoted — a second marker, a body marker, or one demoted by a trailer conflict — falls through as an ordinary bare ref. Catches commits written before a trailer habit formed, or hand-typed. There is exactly one uniform rule: linked is the trailer or the promoted marker, referenced is the bare scan over everything else. Setting `reference_markers: []` therefore silences the entire referenced tier (bare refs and demoted markers alike), for explicit-only teams.
+
+`kira show` lists linked commits and, when non-empty, a separate "Referenced by" section; `--json` exposes `linked_commits` and `referenced_by`.
 
 Rejected: the founder's original freeform `KIRA TICKET: xxxxxx` string convention. Trailers are the established, tool-supported pattern for exactly this (`Signed-off-by`, `Change-Id`, gerrit's review tooling) — reusing it means `git interpret-trailers`, existing git tooling, and reviewer muscle memory all already understand the format; a bespoke string does not.
 
@@ -24,7 +28,7 @@ Full history rescans are the thing to avoid — the scan is watermark-based per 
 
 - `.cache/meta.json` stores a per-ref **watermark SHA**: the last commit already scanned for trailers on that ref.
 - On each `kira index` (implicit or explicit), scan only `git log <watermark>..HEAD --pretty='%H%x00%(trailers:key=Kira-Ticket,valueonly,separator=%x01)'` (or equivalent) — O(new commits), not O(history).
-- Each new commit is upserted into the index as `(ulid, sha, subject, author, ts)` — resolving trailer values (`KIRA-142`) to `ulid` via the current number/alias table ([02-data-model.md §7](02-data-model.md#7-id-scheme)).
+- Each new commit is upserted into the index as `(ulid, sha, subject, author, ts, kind)` — resolving refs (`KIRA-142`) to `ulid` via the current number/alias table ([02-data-model.md §7](02-data-model.md#7-id-scheme)); `kind` records the linked/referenced tier.
 - **Rewrite detection**: before trusting the watermark, check `git merge-base --is-ancestor <watermark> HEAD`. If false, the watermark commit is no longer an ancestor of HEAD — history was rewritten (rebase, force-push, filter-branch) — and the scan falls back to a full rescan instead of silently missing or misattributing commits.
 - First-scan cost on a large pre-existing repo history is bounded by `git.scan_since` (a config-settable date/ref to start scanning from, rather than the repo's root commit) `(proposed)`.
 

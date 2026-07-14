@@ -43,10 +43,12 @@ type Vocab struct {
 }
 
 type Commit struct {
-	Mode          CommitMode `yaml:"mode"`
-	Trailer       string     `yaml:"trailer"`
-	CloseTrailer  string     `yaml:"close_trailer"`
-	SubjectPrefix string     `yaml:"subject_prefix"`
+	Mode             CommitMode        `yaml:"mode"`
+	Trailer          string            `yaml:"trailer"`
+	CloseTrailer     string            `yaml:"close_trailer"`
+	SubjectPrefix    string            `yaml:"subject_prefix"`
+	LinkMarkers      []LinkMarker      `yaml:"link_markers"`
+	ReferenceMarkers []ReferenceMarker `yaml:"reference_markers"`
 }
 
 type Merge struct {

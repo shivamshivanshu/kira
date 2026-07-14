@@ -129,6 +129,8 @@ commit:
   mode: auto                  # auto | manual | prompt
   trailer: Kira-Ticket        # trailer key that links a commit to its ticket
   close_trailer: Kira-Closes  # trailer key that closes a ticket when the commit lands
+  link_markers: [trailer, subject]  # what links a commit: trailer and/or a [[KIRA-n]] subject marker
+  reference_markers: [bare]   # what weakly references a commit: bare KIRA-n refs; [] to disable
 
 merge:
   policy: auto                # auto | manual: auto-resolve same-field kira conflicts vs leave markers

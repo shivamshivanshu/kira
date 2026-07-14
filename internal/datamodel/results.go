@@ -137,6 +137,7 @@ type ShowResult struct {
 	Body          string              `json:"body"`
 	Comments      []CommentView       `json:"comments"`
 	LinkedCommits []CommitLink        `json:"linked_commits"`
+	ReferencedBy  []CommitLink        `json:"referenced_by"`
 	HistoryTail   []HistoryEvent      `json:"history_tail"`
 	Skew          *Skew               `json:"skew,omitempty"`
 

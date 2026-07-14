@@ -54,10 +54,17 @@ func Default() *datamodel.Config {
 		// and sprint entries are illustrations, not defaults
 		Filters: map[string]string{},
 		Sprints: nil,
-		Commit:  datamodel.Commit{Mode: datamodel.CommitAuto, Trailer: "Kira-Ticket", CloseTrailer: "Kira-Closes", SubjectPrefix: "kira: "},
-		Merge:   datamodel.Merge{Policy: datamodel.MergeAuto},
-		Sync:    datamodel.Sync{Push: false, Dirty: datamodel.SyncDirtyAuto},
-		Workon:  datamodel.Workon{BranchPattern: "{key}/{number}-{slug}", Casing: datamodel.CasingKebab, WorktreeDir: datamodel.DefaultWorktreeDir},
+		Commit: datamodel.Commit{
+			Mode:             datamodel.CommitAuto,
+			Trailer:          "Kira-Ticket",
+			CloseTrailer:     "Kira-Closes",
+			SubjectPrefix:    "kira: ",
+			LinkMarkers:      []datamodel.LinkMarker{datamodel.LinkMarkerTrailer, datamodel.LinkMarkerSubject},
+			ReferenceMarkers: []datamodel.ReferenceMarker{datamodel.ReferenceMarkerBare},
+		},
+		Merge:  datamodel.Merge{Policy: datamodel.MergeAuto},
+		Sync:   datamodel.Sync{Push: false, Dirty: datamodel.SyncDirtyAuto},
+		Workon: datamodel.Workon{BranchPattern: "{key}/{number}-{slug}", Casing: datamodel.CasingKebab, WorktreeDir: datamodel.DefaultWorktreeDir},
 		UI: datamodel.UI{
 			Icons:      datamodel.IconAuto,
 			Background: datamodel.BackgroundAuto,

@@ -20,8 +20,21 @@ func Validate(c *datamodel.Config) error {
 	if err := validateEnum("commit.mode", c.Commit.Mode, datamodel.CommitModes...); err != nil {
 		return err
 	}
+	if strings.TrimSpace(c.Commit.Trailer) == "" {
+		return fmt.Errorf("config: commit.trailer: required; an empty trailer key disables all commit linking")
+	}
 	if strings.ContainsAny(c.Commit.SubjectPrefix, "\n\r") {
 		return fmt.Errorf("config: commit.subject_prefix: must be a single line, got %q", c.Commit.SubjectPrefix)
+	}
+	for i, m := range c.Commit.LinkMarkers {
+		if err := validateEnum(fmt.Sprintf("commit.link_markers[%d]", i), m, datamodel.LinkMarkers...); err != nil {
+			return err
+		}
+	}
+	for i, m := range c.Commit.ReferenceMarkers {
+		if err := validateEnum(fmt.Sprintf("commit.reference_markers[%d]", i), m, datamodel.ReferenceMarkers...); err != nil {
+			return err
+		}
 	}
 	if err := validateEnum("merge.policy", c.Merge.Policy, datamodel.MergePolicies...); err != nil {
 		return err

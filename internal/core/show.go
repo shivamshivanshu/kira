@@ -39,15 +39,18 @@ func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResu
 	if err != nil {
 		return nil, err
 	}
-	res.LinkedCommits = linkedCommitsView(links)
+	res.LinkedCommits = commitLinksView(links, index.LinkLinked)
+	res.ReferencedBy = commitLinksView(links, index.LinkReferenced)
 	res.HistoryTail = historyTailView(events)
 	return &res, nil
 }
 
-func linkedCommitsView(links []index.CommitLink) []datamodel.CommitLink {
-	out := make([]datamodel.CommitLink, len(links))
-	for i, l := range links {
-		out[i] = datamodel.CommitLink{SHA: l.SHA, Subject: l.Subject, Author: l.Author, Ts: l.Ts}
+func commitLinksView(links []index.CommitLink, kind index.LinkKind) []datamodel.CommitLink {
+	out := []datamodel.CommitLink{}
+	for _, l := range links {
+		if l.Kind == kind {
+			out = append(out, datamodel.CommitLink{SHA: l.SHA, Subject: l.Subject, Author: l.Author, Ts: l.Ts})
+		}
 	}
 	return out
 }
@@ -103,6 +106,7 @@ func showResultOf(cfg *datamodel.Config, it *datamodel.Item) datamodel.ShowResul
 		Body:          it.Body,
 		Comments:      views,
 		LinkedCommits: []datamodel.CommitLink{},
+		ReferencedBy:  []datamodel.CommitLink{},
 		HistoryTail:   []datamodel.HistoryEvent{},
 	}
 }

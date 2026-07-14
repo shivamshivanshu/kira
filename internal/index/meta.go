@@ -9,6 +9,7 @@ import (
 
 type meta struct {
 	SchemaVersion      int               `json:"schema_version"`
+	ScanConfigHash     string            `json:"scan_config_hash,omitempty"`
 	LastIndexedHeadSHA string            `json:"last_indexed_head_sha"`
 	DirtyHash          string            `json:"dirty_hash"`
 	DirtyPaths         []string          `json:"dirty_paths"`

@@ -113,6 +113,12 @@ func detailLines(t theme.Theme, ic iconSet, res *datamodel.ShowResult, width int
 			add(commitLine(t, c, i == sel, width))
 		}
 	}
+	if len(res.ReferencedBy) > 0 {
+		add("", t.Dim.Render("Referenced by"))
+		for _, c := range res.ReferencedBy {
+			add(commitLine(t, c, false, width))
+		}
+	}
 	if len(res.HistoryTail) > 0 {
 		add("", t.Dim.Render("History"))
 		for _, ev := range res.HistoryTail {

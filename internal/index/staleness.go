@@ -1,6 +1,7 @@
 package index
 
 import (
+	"maps"
 	"path/filepath"
 
 	"github.com/shivamshivanshu/kira/internal/errx"
@@ -43,6 +44,11 @@ func (i *Index) reindex(store *storage.FS, repo gitx.Repo, opts Options, force b
 	if err != nil {
 		return Result{}, err
 	}
+	configHash := scanConfigHash(opts)
+	configChanged := hasMeta && prev.ScanConfigHash != configHash
+	if p.decision.full || configChanged {
+		prev.TrailerWatermarks = withoutTrailerRef(prev.TrailerWatermarks)
+	}
 	headCommits, watermarks, err := i.scanTrailers(p.root, opts, p.head, prev, numbers)
 	if err != nil {
 		return Result{}, err
@@ -59,8 +65,9 @@ func (i *Index) reindex(store *storage.FS, repo gitx.Repo, opts Options, force b
 	if err != nil {
 		return Result{}, err
 	}
-	if p.decision.name != actionFresh {
+	if p.decision.name != actionFresh || configChanged {
 		if err := i.saveMeta(meta{
+			ScanConfigHash:     configHash,
 			LastIndexedHeadSHA: p.head,
 			DirtyHash:          p.dirtyHash,
 			DirtyPaths:         p.dirtyPaths,
@@ -149,6 +156,15 @@ func (i *Index) dispatch(store *storage.FS, d decision) ([]string, error) {
 	default:
 		return nil, nil
 	}
+}
+
+func withoutTrailerRef(wm map[string]string) map[string]string {
+	if wm == nil {
+		return nil
+	}
+	out := maps.Clone(wm)
+	delete(out, trailerRef)
+	return out
 }
 
 func ticketAbsPaths(toplevel string, relPaths []string) []string {

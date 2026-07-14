@@ -1,0 +1,67 @@
+# Two-tier commit linking: a trailer or a promoted [[KIRA-n]] subject marker is
+# LINKED; every other ref (bare tokens, plus non-primary or demoted markers with
+# their brackets stripped) is REFERENCED. Markers are configurable per repo, and a
+# marker-config change auto-reclassifies existing commits (no manual reindex).
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create ticket --title one --no-edit
+exec kira create ticket --title two --no-edit
+exec kira create ticket --title three --no-edit
+
+# a subject [[KIRA-1]] marker links the commit with no trailer; referenced stays empty
+exec git commit --allow-empty -m '[[KIRA-1]] implement via marker'
+exec kira show KIRA-1 --json
+stdout 'implement via marker'
+stdout '"referenced_by": \[\]'
+
+# a bare ref in the body is only REFERENCED, not linked
+exec git commit --allow-empty -m 'unrelated subject' -m 'this touches KIRA-2 in passing'
+exec kira show KIRA-2 --json
+stdout '"referenced_by": \[[^\]]*unrelated subject'
+! stdout '"linked_commits": \[[^\]]*unrelated subject'
+
+# trailer wins a conflict: subject [[KIRA-2]] loses to the KIRA-3 trailer
+exec git commit --allow-empty -m '[[KIRA-2]] conflicting subject' -m 'Kira-Ticket: KIRA-3'
+exec kira show KIRA-3 --json
+stdout 'conflicting subject'
+stdout '"referenced_by": \[\]'
+# for KIRA-2 the marker demotes to referenced (its bracket-stripped token is a bare ref)
+exec kira show KIRA-2 --json
+stdout 'conflicting subject'
+! stdout '"referenced_by": \[\]'
+
+# reference_markers: [] silences the referenced tier (bare refs AND demoted markers);
+# the config change alone re-scans existing commits, no kira index --full needed
+cp no-bare.yaml .kira/config.yaml
+exec git add .kira/config.yaml
+exec git commit -m 'disable bare references'
+exec kira show KIRA-2 --json
+! stdout 'unrelated subject'
+! stdout 'conflicting subject'
+
+# link_markers without subject: [[KIRA-1]] is ignored as a link but, with bare on,
+# demotes to referenced (brackets stripped) rather than vanishing
+cp no-subject.yaml .kira/config.yaml
+exec git add .kira/config.yaml
+exec git commit -m 'trailer-only linking'
+exec kira show KIRA-1 --json
+stdout 'implement via marker'
+! stdout '"referenced_by": \[\]'
+
+-- no-bare.yaml --
+project:
+  key: KIRA
+commit:
+  reference_markers: []
+
+-- no-subject.yaml --
+project:
+  key: KIRA
+commit:
+  link_markers: [trailer]

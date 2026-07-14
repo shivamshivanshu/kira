@@ -6,7 +6,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-const schemaVersion = 4
+const schemaVersion = 5
 
 const ddl = `
 CREATE TABLE IF NOT EXISTS items (
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS commit_links (
   subject TEXT NOT NULL,
   author  TEXT NOT NULL,
   ts      TEXT NOT NULL,
-  source  TEXT NOT NULL,
+  kind    TEXT NOT NULL,
   PRIMARY KEY (item_id, sha)
 );
 CREATE INDEX IF NOT EXISTS idx_commit_links_sha ON commit_links(sha);

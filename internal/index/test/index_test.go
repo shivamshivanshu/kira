@@ -59,7 +59,13 @@ func (f repoFixture) commitTrailer(t *testing.T, subject, trailer string) {
 }
 
 func trailerOpts() index.Options {
-	return index.Options{ProjectKey: "KIRA", TrailerKey: "Kira-Ticket", CloseTrailer: "Kira-Closes"}
+	return index.Options{
+		ProjectKey:       "KIRA",
+		TrailerKey:       "Kira-Ticket",
+		CloseTrailer:     "Kira-Closes",
+		LinkMarkers:      datamodel.LinkMarkers,
+		ReferenceMarkers: datamodel.ReferenceMarkers,
+	}
 }
 
 func run(t *testing.T, dir string, name string, args ...string) {
@@ -328,6 +334,128 @@ func TestCommitLinksIncrementalAndRewrite(t *testing.T) {
 		if l.Subject == "commit two" {
 			t.Fatalf("rewrite left a stale commit_link for the pre-amend sha")
 		}
+	}
+}
+
+func ticketWithAlias(ulid, number, alias, title string) string {
+	return "---\n" +
+		"id: " + ulid + "\n" +
+		"number: " + number + "\n" +
+		"aliases:\n  - " + alias + "\n" +
+		"type: ticket\n" +
+		"title: " + title + "\n" +
+		"state: TODO\n" +
+		"labels: []\n" +
+		"epic: null\n" +
+		"blocked_by: []\n" +
+		"created: 2026-07-10T09:14:00+05:30\n" +
+		"updated: 2026-07-10T09:14:00+05:30\n" +
+		"---\n\n## Description\n\nbody\n"
+}
+
+func kindsOf(links []index.CommitLink) map[string]index.LinkKind {
+	out := map[string]index.LinkKind{}
+	for _, l := range links {
+		out[l.Subject] = l.Kind
+	}
+	return out
+}
+
+func TestCommitLinkKinds(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticketWithAlias(a, "KIRA-1", "KIRA-9", "first"))
+	f.writeTicket(t, b, ticket(b, "KIRA-2", "second"))
+	f.commit(t, "seed tickets")
+	f.commitTrailer(t, "[[KIRA-1]] subject marker", "unrelated: x")
+	f.commitTrailer(t, "plain subject", "refs KIRA-2 in the body")
+	f.commitTrailer(t, "[[KIRA-2]] conflict", "Kira-Ticket: KIRA-1")
+	f.commitTrailer(t, "[[KIRA-9]] via alias", "unrelated: y")
+
+	idx := open(t, f)
+	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+		t.Fatalf("EnsureFresh: %v", err)
+	}
+
+	linksA, err := idx.CommitLinks(a)
+	if err != nil {
+		t.Fatalf("CommitLinks(a): %v", err)
+	}
+	kindsA := kindsOf(linksA)
+	for _, subj := range []string{"[[KIRA-1]] subject marker", "[[KIRA-2]] conflict", "[[KIRA-9]] via alias"} {
+		if kindsA[subj] != index.LinkLinked {
+			t.Fatalf("KIRA-1 commit %q kind=%q want linked; links=%+v", subj, kindsA[subj], linksA)
+		}
+	}
+	if len(linksA) != 3 {
+		t.Fatalf("KIRA-1 want 3 linked commits, got %d: %+v", len(linksA), linksA)
+	}
+
+	linksB, err := idx.CommitLinks(b)
+	if err != nil {
+		t.Fatalf("CommitLinks(b): %v", err)
+	}
+	kindsB := kindsOf(linksB)
+	if kindsB["plain subject"] != index.LinkReferenced {
+		t.Fatalf("KIRA-2 bare body ref should be referenced; got %q", kindsB["plain subject"])
+	}
+	if kindsB["[[KIRA-2]] conflict"] != index.LinkReferenced {
+		t.Fatalf("KIRA-2 subject marker losing to the trailer should demote to referenced; got %q", kindsB["[[KIRA-2]] conflict"])
+	}
+	if len(linksB) != 2 {
+		t.Fatalf("KIRA-2 want 2 referenced commits, got %d: %+v", len(linksB), linksB)
+	}
+}
+
+func TestCommitLinkMarkersDisable(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.commit(t, "seed")
+	f.commitTrailer(t, "[[KIRA-1]] marker only", "unrelated: x")
+	f.commitTrailer(t, "bare only", "mentions KIRA-1 here")
+
+	opts := trailerOpts()
+	opts.LinkMarkers = []datamodel.LinkMarker{datamodel.LinkMarkerTrailer}
+	opts.ReferenceMarkers = nil
+
+	idx := open(t, f)
+	if _, err := idx.EnsureFresh(f.store, f.repo, opts); err != nil {
+		t.Fatalf("EnsureFresh: %v", err)
+	}
+	links, err := idx.CommitLinks(a)
+	if err != nil {
+		t.Fatalf("CommitLinks: %v", err)
+	}
+	if len(links) != 0 {
+		t.Fatalf("subject markers ignored and bare disabled should yield no links, got %+v", links)
+	}
+}
+
+func TestCommitLinkNonPrimaryMarkerReferenced(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.writeTicket(t, b, ticket(b, "KIRA-2", "second"))
+	f.commit(t, "seed")
+	f.commitTrailer(t, "[[KIRA-1]] primary [[KIRA-2]] secondary", "unrelated: x")
+
+	idx := open(t, f)
+	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+		t.Fatalf("EnsureFresh: %v", err)
+	}
+	linksA, _ := idx.CommitLinks(a)
+	if len(linksA) != 1 || linksA[0].Kind != index.LinkLinked {
+		t.Fatalf("first subject marker should promote to linked: %+v", linksA)
+	}
+	linksB, _ := idx.CommitLinks(b)
+	if len(linksB) != 1 || linksB[0].Kind != index.LinkReferenced {
+		t.Fatalf("second subject marker should demote to referenced via the bracket-stripped bare scan: %+v", linksB)
 	}
 }
 

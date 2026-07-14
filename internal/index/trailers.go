@@ -1,28 +1,42 @@
 package index
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"maps"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 )
 
 type Options struct {
-	ProjectKey   string
-	TrailerKey   string
-	CloseTrailer string
-	LandedRef    string
-	Closes       bool
+	ProjectKey       string
+	TrailerKey       string
+	CloseTrailer     string
+	LandedRef        string
+	Closes           bool
+	LinkMarkers      []datamodel.LinkMarker
+	ReferenceMarkers []datamodel.ReferenceMarker
 }
+
+type LinkKind string
+
+const (
+	LinkLinked     LinkKind = "linked"
+	LinkReferenced LinkKind = "referenced"
+)
 
 type CommitLink struct {
 	SHA     string
 	Subject string
 	Author  string
 	Ts      string
+	Kind    LinkKind
 }
 
 type CloseCandidate struct {
@@ -37,11 +51,7 @@ type CloseScan struct {
 	Unknown    []string
 }
 
-const (
-	trailerRef    = "HEAD"
-	sourceTrailer = "trailer"
-	sourceLenient = "lenient"
-)
+const trailerRef = "HEAD"
 
 func (i *Index) scanTrailers(root gitx.Repo, opts Options, head string, prev meta, numbers map[string]string) ([]gitx.Commit, map[string]string, error) {
 	wm := maps.Clone(prev.TrailerWatermarks)
@@ -60,7 +70,7 @@ func (i *Index) scanTrailers(root gitx.Repo, opts Options, head string, prev met
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := i.upsertCommitLinks(commits, numbers, opts.ProjectKey, rewrite); err != nil {
+	if err := i.upsertCommitLinks(commits, numbers, opts, rewrite); err != nil {
 		return nil, nil, err
 	}
 	wm[trailerRef] = head
@@ -155,7 +165,46 @@ func trailerRange(root gitx.Repo, watermark, head string) (rangeExpr string, rew
 	return watermark + ".." + head, false, nil
 }
 
-func (i *Index) upsertCommitLinks(commits []gitx.Commit, numbers map[string]string, projectKey string, rewrite bool) error {
+type linkPolicy struct {
+	trailer bool
+	subject bool
+	bare    bool
+	marker  *regexp.Regexp
+	bareRef *regexp.Regexp
+}
+
+func scanConfigHash(opts Options) string {
+	var b strings.Builder
+	b.WriteString(opts.ProjectKey)
+	b.WriteByte(0)
+	b.WriteString(opts.TrailerKey)
+	b.WriteByte(0)
+	b.WriteString(opts.CloseTrailer)
+	b.WriteByte(0)
+	for _, m := range opts.LinkMarkers {
+		b.WriteString(string(m))
+		b.WriteByte(0x1f)
+	}
+	b.WriteByte(0)
+	for _, m := range opts.ReferenceMarkers {
+		b.WriteString(string(m))
+		b.WriteByte(0x1f)
+	}
+	sum := sha256.Sum256([]byte(b.String()))
+	return hex.EncodeToString(sum[:])
+}
+
+func newLinkPolicy(opts Options) linkPolicy {
+	return linkPolicy{
+		trailer: slices.Contains(opts.LinkMarkers, datamodel.LinkMarkerTrailer),
+		subject: slices.Contains(opts.LinkMarkers, datamodel.LinkMarkerSubject),
+		bare:    slices.Contains(opts.ReferenceMarkers, datamodel.ReferenceMarkerBare),
+		marker:  subjectMarkerPattern(opts.ProjectKey),
+		bareRef: lenientPattern(opts.ProjectKey),
+	}
+}
+
+func (i *Index) upsertCommitLinks(commits []gitx.Commit, numbers map[string]string, opts Options, rewrite bool) error {
 	tx, err := i.db.Begin()
 	if err != nil {
 		return errx.User("beginning commit-link tx: %v", err)
@@ -166,29 +215,29 @@ func (i *Index) upsertCommitLinks(commits []gitx.Commit, numbers map[string]stri
 			return errx.User("clearing commit links: %v", err)
 		}
 	}
-	insTrailer, err := tx.Prepare(`INSERT OR REPLACE INTO commit_links
-		(item_id, sha, subject, author, ts, source) VALUES (?,?,?,?,?,?)`)
+	insLinked, err := tx.Prepare(`INSERT OR REPLACE INTO commit_links
+		(item_id, sha, subject, author, ts, kind) VALUES (?,?,?,?,?,?)`)
 	if err != nil {
 		return errx.User("preparing commit-link insert: %v", err)
 	}
-	defer insTrailer.Close()
-	insLenient, err := tx.Prepare(`INSERT OR IGNORE INTO commit_links
-		(item_id, sha, subject, author, ts, source) VALUES (?,?,?,?,?,?)`)
+	defer insLinked.Close()
+	insReferenced, err := tx.Prepare(`INSERT OR IGNORE INTO commit_links
+		(item_id, sha, subject, author, ts, kind) VALUES (?,?,?,?,?,?)`)
 	if err != nil {
 		return errx.User("preparing commit-link insert: %v", err)
 	}
-	defer insLenient.Close()
+	defer insReferenced.Close()
 
-	lenient := lenientPattern(projectKey)
+	pol := newLinkPolicy(opts)
 	for _, c := range commits {
-		trailer, lenientHits := resolveItemRefs(c, numbers, lenient)
-		for _, ulid := range trailer {
-			if _, err := insTrailer.Exec(ulid, c.SHA, c.Subject, c.Author, c.Timestamp, sourceTrailer); err != nil {
+		linked, referenced := resolveItemRefs(c, numbers, pol)
+		for _, ulid := range linked {
+			if _, err := insLinked.Exec(ulid, c.SHA, c.Subject, c.Author, c.Timestamp, LinkLinked); err != nil {
 				return errx.User("inserting commit link: %v", err)
 			}
 		}
-		for _, ulid := range lenientHits {
-			if _, err := insLenient.Exec(ulid, c.SHA, c.Subject, c.Author, c.Timestamp, sourceLenient); err != nil {
+		for _, ulid := range referenced {
+			if _, err := insReferenced.Exec(ulid, c.SHA, c.Subject, c.Author, c.Timestamp, LinkReferenced); err != nil {
 				return errx.User("inserting commit link: %v", err)
 			}
 		}
@@ -196,23 +245,44 @@ func (i *Index) upsertCommitLinks(commits []gitx.Commit, numbers map[string]stri
 	return commit(tx)
 }
 
-func resolveItemRefs(c gitx.Commit, numbers map[string]string, lenient *regexp.Regexp) (trailer, lenientHits []string) {
-	seen := map[string]bool{}
-	add := func(dst *[]string, token string) {
-		if ulid, ok := numbers[strings.ToUpper(token)]; ok && !seen[ulid] {
-			seen[ulid] = true
-			*dst = append(*dst, ulid)
+func resolveItemRefs(c gitx.Commit, numbers map[string]string, pol linkPolicy) (linked, referenced []string) {
+	linkedSeen := map[string]bool{}
+	addLinked := func(token string) {
+		if ulid, ok := numbers[strings.ToUpper(token)]; ok && !linkedSeen[ulid] {
+			linkedSeen[ulid] = true
+			linked = append(linked, ulid)
 		}
 	}
-	for _, t := range c.Tickets {
-		add(&trailer, t)
-	}
-	if lenient != nil {
-		for _, tok := range lenient.FindAllString(bodyOutsideTrailers(c), -1) {
-			add(&lenientHits, tok)
+	if pol.trailer {
+		for _, t := range c.Tickets {
+			addLinked(t)
 		}
 	}
-	return trailer, lenientHits
+	if pol.subject && pol.marker != nil && len(linked) == 0 {
+		if m := pol.marker.FindString(c.Subject); m != "" {
+			addLinked(strings.Trim(m, "[]"))
+		}
+	}
+
+	refSeen := map[string]bool{}
+	if pol.bare && pol.bareRef != nil {
+		for _, tok := range pol.bareRef.FindAllString(stripMarkers(bodyOutsideTrailers(c), pol.marker), -1) {
+			if ulid, ok := numbers[strings.ToUpper(tok)]; ok && !linkedSeen[ulid] && !refSeen[ulid] {
+				refSeen[ulid] = true
+				referenced = append(referenced, ulid)
+			}
+		}
+	}
+	return linked, referenced
+}
+
+func stripMarkers(text string, marker *regexp.Regexp) string {
+	if marker == nil {
+		return text
+	}
+	return marker.ReplaceAllStringFunc(text, func(m string) string {
+		return strings.Trim(m, "[]")
+	})
 }
 
 func bodyOutsideTrailers(c gitx.Commit) string {
@@ -231,6 +301,13 @@ func lenientPattern(projectKey string) *regexp.Regexp {
 		return nil
 	}
 	return regexp.MustCompile(`\b` + regexp.QuoteMeta(projectKey) + `-\d+\b`)
+}
+
+func subjectMarkerPattern(projectKey string) *regexp.Regexp {
+	if projectKey == "" {
+		return nil
+	}
+	return regexp.MustCompile(`\[\[` + regexp.QuoteMeta(projectKey) + `-\d+\]\]`)
 }
 
 func (i *Index) numberToULID() (map[string]string, error) {
@@ -258,8 +335,8 @@ func (i *Index) numberToULID() (map[string]string, error) {
 }
 
 func (i *Index) CommitLinks(itemID string) ([]CommitLink, error) {
-	rows, err := i.db.Query(`SELECT sha, subject, author, ts FROM commit_links
-		WHERE item_id = ? ORDER BY source = ? DESC, ts DESC, rowid`, itemID, sourceTrailer)
+	rows, err := i.db.Query(`SELECT sha, subject, author, ts, kind FROM commit_links
+		WHERE item_id = ? ORDER BY kind = ? DESC, ts DESC, rowid`, itemID, LinkLinked)
 	if err != nil {
 		return nil, errx.User("querying commit links: %v", err)
 	}
@@ -267,7 +344,7 @@ func (i *Index) CommitLinks(itemID string) ([]CommitLink, error) {
 	var links []CommitLink
 	for rows.Next() {
 		var l CommitLink
-		if err := rows.Scan(&l.SHA, &l.Subject, &l.Author, &l.Ts); err != nil {
+		if err := rows.Scan(&l.SHA, &l.Subject, &l.Author, &l.Ts, &l.Kind); err != nil {
 			return nil, errx.User("scanning commit link: %v", err)
 		}
 		links = append(links, l)
