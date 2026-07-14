@@ -123,3 +123,18 @@ const (
 )
 
 var Categories = []Category{CategoryTodo, CategoryDoing, CategoryDone}
+
+type LogKind string
+
+const (
+	LogKindEvent  LogKind = "event"
+	LogKindCommit LogKind = "commit"
+)
+
+type BlameSource string
+
+const (
+	BlameSourceCommit    BlameSource = "commit"
+	BlameSourceCreated   BlameSource = "created"
+	BlameSourceSynthetic BlameSource = "synthetic"
+)

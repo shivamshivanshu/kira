@@ -96,3 +96,16 @@ func TestAppendKnownLabelsQuotesWhenNeeded(t *testing.T) {
 		t.Errorf("parsed known = %v, want it to contain %q", cfg.Labels.Known, "needs review")
 	}
 }
+
+func TestAppendKnownLabelsFlowBreakingNameRoundTrips(t *testing.T) {
+	t.Parallel()
+	name := "a,{b}"
+	out := appendLabels(t, labelConfig, name)
+	cfg, err := config.Parse([]byte(out))
+	if err != nil {
+		t.Fatalf("result does not parse: %v\n%s", err, out)
+	}
+	if !slices.Contains(cfg.Labels.Known, name) {
+		t.Errorf("flow-breaking label name did not round-trip: %v\n%s", cfg.Labels.Known, out)
+	}
+}

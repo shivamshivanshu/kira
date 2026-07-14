@@ -184,10 +184,14 @@ func (c *compiler) compileRefPred(n *predExpr, eq bool, matches func(*datamodel.
 func (c *compiler) compileIn(n *inExpr) (Predicate, error) {
 	orPreds := make([]Predicate, len(n.values))
 	for i, v := range n.values {
-		p, err := c.compilePred(&predExpr{
+		pred := &predExpr{
 			field: n.field, op: token{kind: tokEq, text: "=", pos: n.fieldPos},
 			value: v, valuePos: n.valuePos[i],
-		})
+		}
+		if err := typeCheckValue(n.field, token{text: v, pos: n.valuePos[i]}, &pred.date, &pred.num); err != nil {
+			return nil, err
+		}
+		p, err := c.compilePred(pred)
 		if err != nil {
 			return nil, err
 		}

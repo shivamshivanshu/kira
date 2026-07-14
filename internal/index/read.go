@@ -117,14 +117,23 @@ func (i *Index) eachChild(q string, byID map[string]*datamodel.Item, add func(*d
 	if err != nil {
 		return errx.User("querying index children: %v", err)
 	}
-	defer rows.Close()
-	for rows.Next() {
+	return eachPair(rows, func(r *sql.Rows) error {
 		var itemID, v string
-		if err := rows.Scan(&itemID, &v); err != nil {
+		if err := r.Scan(&itemID, &v); err != nil {
 			return errx.User("scanning index child: %v", err)
 		}
 		if it := byID[itemID]; it != nil {
 			add(it, v)
+		}
+		return nil
+	})
+}
+
+func eachPair(rows *sql.Rows, fn func(*sql.Rows) error) error {
+	defer rows.Close()
+	for rows.Next() {
+		if err := fn(rows); err != nil {
+			return err
 		}
 	}
 	return rows.Err()

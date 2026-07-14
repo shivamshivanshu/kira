@@ -62,15 +62,15 @@ func (s *Store) readRaw(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
 			return &loaded{items: items, resolver: resolver, cfg: cfg, notes: literalWarnings(res.Warnings)}, nil
 		}
 	}
-	items, _, resolver, warnings, err := s.load(cfg)
+	ld, err := s.load(cfg)
 	if err != nil {
 		return nil, err
 	}
-	notes := literalWarnings(warnings)
+	notes := literalWarnings(ld.warnings)
 	if opts.useIndex {
 		notes = append([]datamodel.Warning{{Code: datamodel.WarnIndexFallback}}, notes...)
 	}
-	return &loaded{items: items, resolver: resolver, cfg: cfg, notes: notes}, nil
+	return &loaded{items: ld.items, resolver: ld.resolver, cfg: cfg, notes: notes}, nil
 }
 
 func (s *Store) resolveAtRef(at string) (string, error) {

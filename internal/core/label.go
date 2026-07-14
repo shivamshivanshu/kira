@@ -56,7 +56,7 @@ func (s *Store) LabelCreate(cfg *datamodel.Config, names []string) (*datamodel.L
 	if err != nil {
 		return nil, errx.User("%v", err)
 	}
-	if err := os.WriteFile(fs.ConfigPath(), out, 0o644); err != nil {
+	if err := os.WriteFile(fs.ConfigPath(), out, filePerm); err != nil {
 		return nil, errx.User("writing config: %v", err)
 	}
 	subject := cfg.Commit.SubjectPrefix + "label create " + strings.Join(toAdd, ",")
@@ -68,7 +68,7 @@ func (s *Store) LabelCreate(cfg *datamodel.Config, names []string) (*datamodel.L
 }
 
 func (s *Store) LabelList(cfg *datamodel.Config) (*datamodel.LabelListResult, error) {
-	items, _, _, _, err := s.load(cfg)
+	ld, err := s.load(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (s *Store) LabelList(cfg *datamodel.Config) (*datamodel.LabelListResult, er
 	for _, n := range cfg.Labels.Known {
 		counts[n] = 0
 	}
-	for _, it := range items {
+	for _, it := range ld.items {
 		seen := make(map[string]bool, len(it.Labels))
 		for _, l := range it.Labels {
 			if seen[l] {

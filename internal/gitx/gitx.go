@@ -137,15 +137,22 @@ func (r Repo) AppendInfoAttribute(line string) error {
 	return AppendLineIfMissing(path, line)
 }
 
+func containsLine(content, line string) bool {
+	for _, l := range strings.Split(content, "\n") {
+		if strings.TrimSpace(l) == line {
+			return true
+		}
+	}
+	return false
+}
+
 func AppendLineIfMissing(path, line string) error {
 	existing, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("reading %s: %w", path, err)
 	}
-	for _, l := range strings.Split(string(existing), "\n") {
-		if strings.TrimSpace(l) == line {
-			return nil
-		}
+	if containsLine(string(existing), line) {
+		return nil
 	}
 	body := string(existing)
 	if body != "" && !strings.HasSuffix(body, "\n") {

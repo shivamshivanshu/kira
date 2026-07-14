@@ -43,9 +43,9 @@ func Run(store *core.Store, cfg *datamodel.Config, opts Options) error {
 		m.view = opts.InitialView
 		m.clip = clipx.System(out)
 		if !opts.InjectPanic {
-			if data, e := loadTreeData(store, cfg); e != nil {
+			if data, e := loadFilteredTree(store, cfg, ""); e != nil {
 				m.loadErr = e
-			} else if ts, ok := m.screens[viewTree].(*treeScreen); ok {
+			} else if ts, ok := m.treeScreen(); ok {
 				ts.setData(&m, data)
 			}
 		}

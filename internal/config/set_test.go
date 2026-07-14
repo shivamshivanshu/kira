@@ -119,6 +119,17 @@ func TestSetScalarInsertsLeafUnderExistingParent(t *testing.T) {
 	}
 }
 
+func TestSetScalarRejectsNonMapping(t *testing.T) {
+	for _, src := range []string{"", "- a\n- b\n", "just a scalar\n"} {
+		out, err := SetScalar([]byte(src), "commit.mode", "auto")
+		if err == nil {
+			t.Errorf("SetScalar on non-mapping %q: want error, got %q", src, out)
+		} else if !strings.Contains(err.Error(), "top level must be a mapping") {
+			t.Errorf("SetScalar on %q: error = %v, want top-level-mapping error", src, err)
+		}
+	}
+}
+
 func TestSetScalarRejects(t *testing.T) {
 	if _, err := SetScalar([]byte(setFixture), "nope.here", "x"); err == nil {
 		t.Error("unknown key accepted")

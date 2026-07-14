@@ -94,7 +94,7 @@ func (s *Store) commit(cfg *datamodel.Config, cs *datamodel.ChangeSet, warns []e
 	if err != nil {
 		return err
 	}
-	if len(cfg.Automation) > 0 {
+	if len(cfg.Automation) > 0 || len(cfg.UserAutomation) > 0 {
 		s.fireAutomation(cfg, cs, sha)
 	}
 	return nil

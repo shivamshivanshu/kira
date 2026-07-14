@@ -8,16 +8,25 @@ import (
 )
 
 func loadFilteredTree(store *core.Store, cfg *datamodel.Config, expr string) (treeData, error) {
-	if strings.TrimSpace(expr) == "" {
-		return loadTreeData(store, cfg)
-	}
 	tr, err := store.Tree(cfg, "", "")
 	if err != nil {
 		return treeData{}, err
 	}
-	rows, keep, err := store.ListWithMatches(cfg, expr)
-	if err != nil {
-		return treeData{}, err
+	nodes := tr.Nodes
+	var rows []datamodel.ListItem
+	if strings.TrimSpace(expr) == "" {
+		lr, err := store.List(cfg, core.ListOpts{})
+		if err != nil {
+			return treeData{}, err
+		}
+		rows = lr.Items
+	} else {
+		matched, keep, err := store.ListWithMatches(cfg, expr)
+		if err != nil {
+			return treeData{}, err
+		}
+		rows = matched
+		nodes = pruneNodes(tr.Nodes, keep)
 	}
 	pr, err := store.EpicProgress(cfg)
 	if err != nil {
@@ -27,7 +36,7 @@ func loadFilteredTree(store *core.Store, cfg *datamodel.Config, expr string) (tr
 	for _, it := range rows {
 		fields[it.ID] = it
 	}
-	return treeData{nodes: pruneNodes(tr.Nodes, keep), fields: fields, progress: pr}, nil
+	return treeData{nodes: nodes, fields: fields, progress: pr}, nil
 }
 
 func pruneNodes(nodes []datamodel.TreeNode, keep map[string]bool) []datamodel.TreeNode {

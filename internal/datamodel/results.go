@@ -368,14 +368,14 @@ type Event struct {
 }
 
 type LogEntry struct {
-	Kind    string `json:"kind"`
-	Ts      string `json:"ts"`
-	Field   string `json:"field,omitempty"`
-	Old     string `json:"old,omitempty"`
-	New     string `json:"new,omitempty"`
-	SHA     string `json:"sha,omitempty"`
-	Subject string `json:"subject,omitempty"`
-	Author  string `json:"author,omitempty"`
+	Kind    LogKind `json:"kind"`
+	Ts      string  `json:"ts"`
+	Field   string  `json:"field,omitempty"`
+	Old     string  `json:"old,omitempty"`
+	New     string  `json:"new,omitempty"`
+	SHA     string  `json:"sha,omitempty"`
+	Subject string  `json:"subject,omitempty"`
+	Author  string  `json:"author,omitempty"`
 }
 
 type LogResult struct {
@@ -430,12 +430,12 @@ type Reopens struct {
 }
 
 type BlameField struct {
-	Field      string `json:"field"`
-	Value      string `json:"value"`
-	When       string `json:"when"`
-	By         string `json:"by"`
-	SourceKind string `json:"source_kind"`
-	Degraded   bool   `json:"degraded,omitempty"`
+	Field      string      `json:"field"`
+	Value      string      `json:"value"`
+	When       string      `json:"when"`
+	By         string      `json:"by"`
+	SourceKind BlameSource `json:"source_kind"`
+	Degraded   bool        `json:"degraded,omitempty"`
 }
 
 type BlameResult struct {

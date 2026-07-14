@@ -36,6 +36,8 @@ func TestParseExample(t *testing.T) {
 		{Key: "2026-S13", Name: "Sprint 13", Start: "2026-06-29", End: "2026-07-12"},
 		{Key: "2026-S14", Name: "Sprint 14", Start: "2026-07-13", End: "2026-07-26"},
 	}
+	want.Labels = datamodel.Vocab{Known: []string{"bug", "feature", "perf", "tech-debt", "orderbook", "infra", "p0", "p1", "p2"}}
+	want.People = datamodel.People{Known: []datamodel.Person{{Name: "shivam"}, {Name: "alice"}}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("parsed example does not match documented defaults\n got: %#v\nwant: %#v", got, want)
 	}

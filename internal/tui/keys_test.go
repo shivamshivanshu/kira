@@ -81,6 +81,30 @@ func TestTreeCollapseAllSnapsCursorAndExpandAllRestores(t *testing.T) {
 	}
 }
 
+func TestTreeDetailPaneForwardsDetailKeysAndFallsThrough(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(100, 40, true)
+	ts := m.screens[viewTree].(*treeScreen)
+	ts.host.cache["E1"] = sampleDetail()
+	ts.tree.cursor = 0
+	ts.focus = paneDetail
+	ts.syncDetail(&m)
+
+	cursorBefore := ts.tree.cursor
+	ts.update(&m, "j")
+	if ts.host.panel.scroll == 0 {
+		t.Fatal("j is a detail key; it should scroll the detail panel")
+	}
+	if ts.tree.cursor != cursorBefore {
+		t.Fatalf("a forwarded detail key must not also move the tree cursor, cursor=%d", ts.tree.cursor)
+	}
+
+	ts.update(&m, "tab")
+	if ts.focus != paneTree {
+		t.Fatal("tab is not a detail key; it must fall through to toggle focus back to the tree")
+	}
+}
+
 func TestBoardGgGJumpsTopAndBottom(t *testing.T) {
 	t.Parallel()
 	m, bs := newBoardTestModel(100, 12, config.Default(), buildBoardResult())

@@ -42,12 +42,12 @@ func interleave(events []datamodel.Event, links []index.CommitLink) []datamodel.
 	entries := make([]datamodel.LogEntry, 0, len(events)+len(links))
 	for _, e := range events {
 		entries = append(entries, datamodel.LogEntry{
-			Kind: "event", Ts: e.Ts, Field: e.Field, Old: e.Old, New: e.New, SHA: e.CommitSHA,
+			Kind: datamodel.LogKindEvent, Ts: e.Ts, Field: e.Field, Old: e.Old, New: e.New, SHA: e.CommitSHA,
 		})
 	}
 	for _, l := range links {
 		entries = append(entries, datamodel.LogEntry{
-			Kind: "commit", Ts: l.Ts, SHA: l.SHA, Subject: l.Subject, Author: l.Author,
+			Kind: datamodel.LogKindCommit, Ts: l.Ts, SHA: l.SHA, Subject: l.Subject, Author: l.Author,
 		})
 	}
 	slices.SortStableFunc(entries, func(a, b datamodel.LogEntry) int {

@@ -79,7 +79,7 @@ func TestBlameNullFieldOmittedUnlessEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 	f := blameField(res, "epic")
-	if f == nil || f.Value != "null" || f.SourceKind != sourceCommit {
+	if f == nil || f.Value != "null" || f.SourceKind != datamodel.BlameSourceCommit {
 		t.Errorf("set-then-cleared epic = %+v, want null via commit", f)
 	}
 }
@@ -108,7 +108,7 @@ func TestBlameMergeLossIsSyntheticDegraded(t *testing.T) {
 		t.Fatal(err)
 	}
 	state := blameField(res, "state")
-	if state == nil || state.Value != "DONE" || state.SourceKind != sourceSynthetic || !state.Degraded {
+	if state == nil || state.Value != "DONE" || state.SourceKind != datamodel.BlameSourceSynthetic || !state.Degraded {
 		t.Errorf("state = %+v, want DONE flagged synthetic+degraded (merge-loss)", state)
 	}
 }

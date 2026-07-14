@@ -85,11 +85,15 @@ func TestValidateItemVocabAndFields(t *testing.T) {
 		wantErr  bool
 		wantWarn bool
 	}{
-		{"owner-known-strict", func(c *datamodel.Config) { c.People.Strict = true }, func(it *datamodel.Item) { it.Owner = strPtr("shivam") }, false, false, false},
+		{"owner-known-strict", func(c *datamodel.Config) {
+			c.People = datamodel.People{Known: []datamodel.Person{{Name: "shivam"}}, Strict: true}
+		}, func(it *datamodel.Item) { it.Owner = strPtr("shivam") }, false, false, false},
 		{"owner-unknown-strict", func(c *datamodel.Config) { c.People.Strict = true }, func(it *datamodel.Item) { it.Owner = strPtr("mallory") }, false, true, false},
 		{"owner-unknown-strict-force", func(c *datamodel.Config) { c.People.Strict = true }, func(it *datamodel.Item) { it.Owner = strPtr("mallory") }, true, false, true},
 		{"owner-unknown-lenient", nil, func(it *datamodel.Item) { it.Owner = strPtr("mallory") }, false, false, true},
-		{"owner-known-lenient", nil, func(it *datamodel.Item) { it.Owner = strPtr("alice") }, false, false, false},
+		{"owner-known-lenient", func(c *datamodel.Config) {
+			c.People.Known = []datamodel.Person{{Name: "alice"}}
+		}, func(it *datamodel.Item) { it.Owner = strPtr("alice") }, false, false, false},
 		{"subtype-known", nil, func(it *datamodel.Item) { it.Subtype = strPtr("bug") }, false, false, false},
 		{"subtype-unknown-lenient", nil, func(it *datamodel.Item) { it.Subtype = strPtr("saga") }, false, false, true},
 		{"subtype-unknown-strict", func(c *datamodel.Config) { c.Labels.Strict = true },

@@ -29,17 +29,17 @@ func (s *Store) PrepareCommitMsg(cfg *datamodel.Config, msgFile string) error {
 
 func (s *Store) trailerNumber(cfg *datamodel.Config, repo gitx.Repo) (string, bool) {
 	branch, _ := repo.CurrentBranch()
-	items, _, resolver, _, err := s.load(cfg)
+	ld, err := s.load(cfg)
 	if err != nil {
 		return "", false
 	}
 	if ptr, ok := s.readActive(); ok && ptr.Branch != "" && ptr.Branch == branch {
-		if number, ok := resolveNumber(items, resolver, ptr.Ticket); ok {
+		if number, ok := resolveNumber(ld.items, ld.resolver, ptr.Ticket); ok {
 			return number, true
 		}
 	}
 	if display, ok := workon.InferNumber(branch, cfg.BoardKeys()); ok {
-		if number, ok := resolveNumber(items, resolver, display); ok {
+		if number, ok := resolveNumber(ld.items, ld.resolver, display); ok {
 			return number, true
 		}
 	}

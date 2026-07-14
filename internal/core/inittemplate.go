@@ -42,10 +42,12 @@ workflows:
 
 labels:
   known: []                   # add project labels; strict rejects unknown ones (--force overrides)
+  # known: [bug, feature, perf, tech-debt, infra]   # example vocabulary
   strict: false
 
 people:
-  known: []
+  known: []                   # add known people; strict rejects unknown assignees
+  # known: [{ name: jdoe }, { name: asmith }]        # example roster
   strict: false
 
 priorities: [P0, P1, P2, P3]  # ordered high→low: validates priority, defines ranked sort

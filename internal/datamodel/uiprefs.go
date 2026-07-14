@@ -26,7 +26,7 @@ var ListColumns = []string{
 
 var DefaultListColumns = []string{"number", "state", "type", "priority", "title"}
 
-var ThemeSlots = []string{"accent", "dim", "todo", "doing", "done", "warm", "hot"}
+var ThemeSlots = []string{"accent", "dim", "todo", "doing", "done", "warm", "hot", "border"}
 
 func IsHexColor(s string) bool {
 	if len(s) != 4 && len(s) != 7 {

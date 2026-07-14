@@ -36,6 +36,35 @@ func TestLoadFilteredTreeNarrowsToMatch(t *testing.T) {
 	}
 }
 
+func TestLoadFilteredTreeUnfilteredReturnsFullTree(t *testing.T) {
+	t.Parallel()
+	s, cfg, _ := initRepo(t)
+	alpha := createTicket(t, s, cfg, "alpha ticket")
+	beta := createTicket(t, s, cfg, "beta ticket")
+
+	data, err := loadFilteredTree(s, cfg, "   ")
+	if err != nil {
+		t.Fatalf("loadFilteredTree: %v", err)
+	}
+	if len(data.nodes) != 2 {
+		t.Fatalf("blank expr must keep every node, got %+v", data.nodes)
+	}
+	for _, num := range []string{alpha, beta} {
+		found := false
+		for _, n := range data.nodes {
+			if n.Number == num {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("unfiltered tree missing %s", num)
+		}
+	}
+	if len(data.fields) != 2 {
+		t.Fatalf("unfiltered load must populate fields for every row, got %d", len(data.fields))
+	}
+}
+
 func TestApplyFilterEmitsTreeLoadedMsg(t *testing.T) {
 	t.Parallel()
 	s, cfg, _ := initRepo(t)

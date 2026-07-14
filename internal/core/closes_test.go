@@ -93,3 +93,42 @@ func TestApplyClosesWatermark(t *testing.T) {
 		}
 	})
 }
+
+func TestApplyClosesMultipleCandidates(t *testing.T) {
+	s := eventRepo(t)
+	cfg := config.Default()
+	cfg.Commit.Mode = datamodel.CommitManual
+
+	a, err := s.Create(cfg, CreateOpts{Type: "ticket", Title: "a", NoEdit: true})
+	if err != nil {
+		t.Fatalf("create a: %v", err)
+	}
+	b, err := s.Create(cfg, CreateOpts{Type: "ticket", Title: "b", NoEdit: true})
+	if err != nil {
+		t.Fatalf("create b: %v", err)
+	}
+	if _, err := index.Refresh(s.fs(), s.repo(), indexOptions(cfg), false); err != nil {
+		t.Fatalf("index refresh: %v", err)
+	}
+
+	const future = "2999-01-01T00:00:00Z"
+	scan := index.CloseScan{
+		LandedRef:  "main",
+		LandedHead: "0ddba11c0ddba11c0ddba11c0ddba11c0ddba11c",
+		Candidates: []index.CloseCandidate{
+			{ULID: a.ID, CommitterTs: future},
+			{ULID: b.ID, CommitterTs: future},
+		},
+	}
+	closed, notes, err := s.applyCloses(cfg, scan)
+	if err != nil {
+		t.Fatalf("applyCloses: %v", err)
+	}
+	if len(notes) != 0 {
+		t.Fatalf("unexpected notes: %v", notes)
+	}
+	want := map[string]bool{a.Number: true, b.Number: true}
+	if len(closed) != 2 || !want[closed[0]] || !want[closed[1]] || closed[0] == closed[1] {
+		t.Fatalf("want both %v closed, got %v", want, closed)
+	}
+}

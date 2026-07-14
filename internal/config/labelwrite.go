@@ -19,7 +19,7 @@ func AppendKnownLabels(data []byte, names []string) ([]byte, error) {
 }
 
 func appendKnownLabel(data []byte, name string) ([]byte, error) {
-	entry, err := singleLineScalar("labels.known", name)
+	entry, err := flowScalar("labels.known", name)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func appendKnownLabel(data []byte, name string) ([]byte, error) {
 	var out []string
 	switch {
 	case knownVal.Kind == yaml.SequenceNode && knownVal.Style&yaml.FlowStyle != 0:
-		if out, err = appendToFlowList(lines, knownVal, entry); err != nil {
+		if out, err = appendToFlowList(lines, "labels.known", knownVal, entry); err != nil {
 			return nil, err
 		}
 	case knownVal.Kind == yaml.SequenceNode && len(knownVal.Content) > 0:
@@ -60,12 +60,12 @@ func appendKnownLabel(data []byte, name string) ([]byte, error) {
 	return []byte(res), nil
 }
 
-func appendToFlowList(lines []string, val *yaml.Node, entry string) ([]string, error) {
+func appendToFlowList(lines []string, subsystem string, val *yaml.Node, entry string) ([]string, error) {
 	i := val.Line - 1
 	open := strings.IndexByte(lines[i], '[')
 	closing := strings.LastIndexByte(lines[i], ']')
 	if open < 0 || closing < open || maxLine(val) != val.Line {
-		return nil, fmt.Errorf("config: labels.known: cannot append to a multi-line flow list; reformat it as a block list")
+		return nil, fmt.Errorf("config: %s: cannot append to a multi-line flow list; reformat it as a block list", subsystem)
 	}
 	sep := ", "
 	if strings.TrimSpace(lines[i][open+1:closing]) == "" {

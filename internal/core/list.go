@@ -36,14 +36,7 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 		return nil, errx.User("%v", err)
 	}
 
-	matched := make([]*datamodel.Item, 0, len(items))
-	for _, it := range items {
-		if pred != nil && !pred(it, cfg) {
-			continue
-		}
-		matched = append(matched, it)
-	}
-	sortMatched(cfg, matched, order)
+	matched := filterSort(cfg, items, pred, order)
 
 	epicNumbers := epicNumberMap(items)
 	rows := make([]datamodel.ListItem, len(matched))
@@ -52,9 +45,29 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 	}
 	res := &datamodel.ListResult{Items: rows, Count: len(rows), StderrNotes: append(idxNotes, notes...)}
 	if opts.Tree {
-		res.Tree = groupByEpic(rows, items)
+		res.Tree = groupByEpic(rows, epicNumbers)
 	}
 	return res, nil
+}
+
+func (s *Store) matchSorted(cfg *datamodel.Config, ld *loaded, opts ListOpts) ([]*datamodel.Item, error) {
+	pred, order, _, err := opts.compile(cfg, s.queryOptions(cfg, ld.resolver))
+	if err != nil {
+		return nil, errx.User("%v", err)
+	}
+	return filterSort(cfg, ld.items, pred, order), nil
+}
+
+func filterSort(cfg *datamodel.Config, items []*datamodel.Item, pred query.Predicate, order *query.Order) []*datamodel.Item {
+	matched := make([]*datamodel.Item, 0, len(items))
+	for _, it := range items {
+		if pred != nil && !pred(it, cfg) {
+			continue
+		}
+		matched = append(matched, it)
+	}
+	sortMatched(cfg, matched, order)
+	return matched
 }
 
 func (s *Store) queryOptions(cfg *datamodel.Config, resolver *id.Resolver) query.Options {
@@ -63,18 +76,18 @@ func (s *Store) queryOptions(cfg *datamodel.Config, resolver *id.Resolver) query
 }
 
 func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel.ListItem, map[string]bool, error) {
-	items, _, resolver, _, err := s.load(cfg)
+	ld, err := s.load(cfg)
 	if err != nil {
 		return nil, nil, err
 	}
-	pred, _, _, err := ListOpts{Query: expr}.compile(cfg, s.queryOptions(cfg, resolver))
+	pred, _, _, err := ListOpts{Query: expr}.compile(cfg, s.queryOptions(cfg, ld.resolver))
 	if err != nil {
 		return nil, nil, errx.User("%v", err)
 	}
-	epicNumbers := epicNumberMap(items)
-	rows := make([]datamodel.ListItem, len(items))
-	matched := make(map[string]bool, len(items))
-	for i, it := range items {
+	epicNumbers := epicNumberMap(ld.items)
+	rows := make([]datamodel.ListItem, len(ld.items))
+	matched := make(map[string]bool, len(ld.items))
+	for i, it := range ld.items {
 		rows[i] = listItemOf(cfg, it, epicNumbers)
 		if pred == nil || pred(it, cfg) {
 			matched[it.ID] = true
@@ -176,13 +189,7 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 	return pred, order, notes, nil
 }
 
-func groupByEpic(rows []datamodel.ListItem, items []*datamodel.Item) []datamodel.TreeGroup {
-	numOf := map[string]string{}
-	for _, it := range items {
-		if it.Type == datamodel.TypeEpic {
-			numOf[it.ID] = it.Number
-		}
-	}
+func groupByEpic(rows []datamodel.ListItem, epicNumbers map[string]string) []datamodel.TreeGroup {
 	order := make([]string, 0)
 	buckets := map[string][]string{}
 	ensureGroup := func(key string) {
@@ -207,7 +214,7 @@ func groupByEpic(rows []datamodel.ListItem, items []*datamodel.Item) []datamodel
 		if key == "" {
 			return epicGroupKey{orphan: true}
 		}
-		return epicGroupKey{k: id.NewSortKey(numOf[key], key)}
+		return epicGroupKey{k: id.NewSortKey(epicNumbers[key], key)}
 	})
 	groups := make([]datamodel.TreeGroup, 0, len(order))
 	for _, key := range order {
@@ -215,7 +222,7 @@ func groupByEpic(rows []datamodel.ListItem, items []*datamodel.Item) []datamodel
 		if key != "" {
 			epic := key
 			g.Epic = &epic
-			if num, ok := numOf[key]; ok {
+			if num, ok := epicNumbers[key]; ok {
 				n := num
 				g.EpicNumber = &n
 			}

@@ -28,7 +28,7 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 }
 
 func createTypes(g *globalFlags) []string {
-	s, err := core.Discover(chdirArg(g))
+	s, err := core.Discover(chdirArg())
 	if err != nil {
 		return []string{datamodel.TypeTicket, datamodel.TypeEpic}
 	}
@@ -44,10 +44,7 @@ func createTypes(g *globalFlags) []string {
 	return types
 }
 
-func chdirArg(g *globalFlags) string {
-	if g.chdir != "" {
-		return g.chdir
-	}
+func chdirArg() string {
 	args := os.Args[1:]
 	for i, a := range args {
 		switch {

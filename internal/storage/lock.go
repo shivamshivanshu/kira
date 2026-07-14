@@ -9,6 +9,11 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
+const (
+	lockTimeout      = 2 * time.Second
+	lockPollInterval = 20 * time.Millisecond
+)
+
 func (s *FS) Lock() (func(), error) {
 	if err := os.MkdirAll(s.CacheDir(), 0o755); err != nil {
 		return nil, errx.User("creating cache dir: %v", err)
@@ -18,7 +23,7 @@ func (s *FS) Lock() (func(), error) {
 	if err != nil {
 		return nil, errx.User("opening lock: %v", err)
 	}
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(lockTimeout)
 	for {
 		if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err == nil {
 			return func() {
@@ -30,6 +35,6 @@ func (s *FS) Lock() (func(), error) {
 			f.Close()
 			return nil, errx.Conflict("another kira process holds the lock on %s", s.root)
 		}
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(lockPollInterval)
 	}
 }

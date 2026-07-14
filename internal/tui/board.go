@@ -117,32 +117,23 @@ func renderColumn(t theme.Theme, ic iconSet, col datamodel.BoardColumn, w, heigh
 
 func renderCard(t theme.Theme, ic iconSet, cat datamodel.Category, it datamodel.ListItem, w int, selected bool) string {
 	priority := deref(it.Priority)
-	tier := ic.priorityTier(priority)
 	glyph := ic.categoryGlyph(cat, it.Resolution)
 	prio := ic.priorityCell(priority)
-	over := ""
+	segments := []rowSegment{
+		{prio, priorityHue(t, ic.priorityTier(priority))}, {" ", t.Text},
+		{glyph, t.CategoryStyle(cat)}, {" ", t.Text},
+	}
 	if overdue(it.Due, it.Category) {
-		over = ic.overdueGlyph()
+		segments = append(segments, rowSegment{ic.overdueGlyph(), t.Heat.Hot}, rowSegment{" ", t.Text})
 	}
-	prefix := prio + " " + glyph + " "
-	if over != "" {
-		prefix += over + " "
-	}
-	prefix += it.Number + "  "
-	title := fitWidth(it.Title, w-2-lipgloss.Width(prefix))
+	segments = append(segments, rowSegment{it.Number, t.Dim}, rowSegment{"  ", t.Text})
+	title := fitWidth(it.Title, w-2-segmentsWidth(segments))
+	segments = append(segments, rowSegment{title, t.Text})
 	lead := " "
 	if selected {
 		lead = t.Accent.Render("▌")
 	}
-	line := lead +
-		styleText(priorityHue(t, tier), prio, selected) + " " +
-		styleText(t.CategoryStyle(cat), glyph, selected) + " "
-	if over != "" {
-		line += styleText(t.Heat.Hot, over, selected) + " "
-	}
-	return line +
-		styleText(t.Dim, it.Number, selected) + "  " +
-		styleText(t.Text, title, selected)
+	return lead + renderSegments(segments, selected)
 }
 
 func cardWindow(total, capacity, focusRow int) (start, slots, hidden int) {

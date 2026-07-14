@@ -47,26 +47,33 @@ func (s *Store) LoadAll() ([]*datamodel.Item, []string, error) { return s.fs().L
 
 func (s *Store) itemPath(ulid string) string { return s.fs().ItemPath(ulid) }
 
-func (s *Store) load(cfg *datamodel.Config) ([]*datamodel.Item, id.Snapshot, *id.Resolver, []string, error) {
+type loadResult struct {
+	items    []*datamodel.Item
+	snap     id.Snapshot
+	resolver *id.Resolver
+	warnings []string
+}
+
+func (s *Store) load(cfg *datamodel.Config) (loadResult, error) {
 	items, warnings, err := s.LoadAll()
 	if err != nil {
-		return nil, id.Snapshot{}, nil, nil, err
+		return loadResult{}, err
 	}
 	snap, resolver := snapshotAndResolver(cfg.Project.Key, items)
-	return items, snap, resolver, warnings, nil
+	return loadResult{items: items, snap: snap, resolver: resolver, warnings: warnings}, nil
 }
 
 func (s *Store) resolveRef(cfg *datamodel.Config, ref string) (*datamodel.Item, []*datamodel.Item, *id.Resolver, error) {
-	items, _, resolver, _, err := s.load(cfg)
+	ld, err := s.load(cfg)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	ulid, err := resolveID(resolver, ref)
+	ulid, err := resolveID(ld.resolver, ref)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if it := findByULID(items, ulid); it != nil {
-		return it, items, resolver, nil
+	if it := findByULID(ld.items, ulid); it != nil {
+		return it, ld.items, ld.resolver, nil
 	}
 	return nil, nil, nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
 }

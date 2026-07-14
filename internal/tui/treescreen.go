@@ -22,8 +22,6 @@ var treeKeys = []KeyBinding{
 	{"zM/zR", "collapse/expand"},
 }
 
-func init() { registerScreen(viewTree, func() screen { return newTreeScreen() }) }
-
 type treeScreen struct {
 	tree     treeModel
 	host     detailHost
@@ -39,7 +37,7 @@ func newTreeScreen() *treeScreen {
 func (s *treeScreen) keys() []KeyBinding { return treeKeys }
 
 func (s *treeScreen) setData(m *model, data treeData) {
-	(&s.tree).load(data.nodes, data.fields, data.progress)
+	s.tree.load(data.nodes, data.fields, data.progress)
 	s.host.resetCache()
 	m.jumps.dropMissing(func(id string) bool { _, ok := data.fields[id]; return ok })
 	s.syncDetail(m)
@@ -51,10 +49,10 @@ func (s *treeScreen) update(m *model, key string) tea.Cmd {
 		switch key {
 		case "p":
 			s.jumpFrom(m)
-			(&s.tree).jumpToParent()
+			s.tree.jumpToParent()
 			s.syncDetail(m)
 		case "g":
-			(&s.tree).toTop(m.mainHeight())
+			s.tree.toTop(m.mainHeight())
 			s.syncDetail(m)
 		}
 		return nil
@@ -63,42 +61,41 @@ func (s *treeScreen) update(m *model, key string) tea.Cmd {
 		s.pendingZ = false
 		switch key {
 		case "M":
-			(&s.tree).collapseAll()
+			s.tree.collapseAll()
 			s.syncDetail(m)
 		case "R":
-			(&s.tree).expandAll()
+			s.tree.expandAll()
 			s.syncDetail(m)
 		}
 		return nil
 	}
 	if s.focus == paneDetail {
-		switch key {
-		case "j", "down", "k", "up", "[", "]", "enter", "g", "G", "ctrl+d", "ctrl+u":
-			return s.host.update(m, key)
+		if cmd, handled := s.host.update(m, key); handled {
+			return cmd
 		}
 	}
 	switch key {
 	case "j", "down":
-		(&s.tree).move(1, m.mainHeight())
+		s.tree.move(1, m.mainHeight())
 		s.syncDetail(m)
 	case "k", "up":
-		(&s.tree).move(-1, m.mainHeight())
+		s.tree.move(-1, m.mainHeight())
 		s.syncDetail(m)
 	case "tab", "shift+tab":
 		s.toggleFocus()
 	case "l", "enter":
 		if s.tree.isCollapsedEpic() {
-			(&s.tree).setCollapsed(false)
+			s.tree.setCollapsed(false)
 		} else {
 			s.jumpFrom(m)
 			s.focus = paneDetail
 		}
 	case "h":
 		if !s.tree.isCollapsedEpic() && s.tree.isEpicRow() {
-			(&s.tree).setCollapsed(true)
+			s.tree.setCollapsed(true)
 		} else {
 			s.jumpFrom(m)
-			(&s.tree).jumpToParent()
+			s.tree.jumpToParent()
 			s.syncDetail(m)
 		}
 	case "g":
@@ -106,13 +103,13 @@ func (s *treeScreen) update(m *model, key string) tea.Cmd {
 	case "z":
 		s.pendingZ = true
 	case "G":
-		(&s.tree).toBottom(m.mainHeight())
+		s.tree.toBottom(m.mainHeight())
 		s.syncDetail(m)
 	case "ctrl+d":
-		(&s.tree).move(m.mainHeight()/2, m.mainHeight())
+		s.tree.move(m.mainHeight()/2, m.mainHeight())
 		s.syncDetail(m)
 	case "ctrl+u":
-		(&s.tree).move(-m.mainHeight()/2, m.mainHeight())
+		s.tree.move(-m.mainHeight()/2, m.mainHeight())
 		s.syncDetail(m)
 	}
 	return nil
@@ -127,9 +124,11 @@ func (s *treeScreen) back(m *model) bool {
 }
 
 func (s *treeScreen) focusItem(m *model, id string) {
-	(&s.tree).focusID(id)
+	s.tree.focusID(id)
 	s.syncDetail(m)
 }
+
+func (s *treeScreen) focusedID() string { return s.tree.selectedID() }
 
 func (s *treeScreen) view(m *model, width, height int) string {
 	if !splitDetail(width) {

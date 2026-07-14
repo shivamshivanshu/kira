@@ -33,8 +33,6 @@ const (
 	DirtyStash  DirtyPolicy = "stash"
 )
 
-// Reindexer rebuilds the derived index after a pull. Its own Step reports how
-// the step went.
 type Reindexer interface {
 	Reindex() Step
 }

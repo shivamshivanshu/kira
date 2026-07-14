@@ -14,10 +14,10 @@ func progressParts(rich bool, p datamodel.EpicProgress) (bar, label string) {
 		return "", ""
 	}
 	filled := p.Done * progressBarWidth / p.Total
-	fill, empty, open, close := "▰", "▱", "", ""
+	fill, empty, lbrace, rbrace := "▰", "▱", "", ""
 	if !rich {
-		fill, empty, open, close = "#", "-", "[", "]"
+		fill, empty, lbrace, rbrace = "#", "-", "[", "]"
 	}
-	bar = open + strings.Repeat(fill, filled) + strings.Repeat(empty, progressBarWidth-filled) + close
+	bar = lbrace + strings.Repeat(fill, filled) + strings.Repeat(empty, progressBarWidth-filled) + rbrace
 	return bar, fmt.Sprintf(" %d/%d", p.Done, p.Total)
 }

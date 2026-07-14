@@ -9,55 +9,61 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
-// splices lines rather than re-encoding the document: a whole-file yaml
-// re-encode would normalize comment alignment and flow styles across the
-// hand-edited config.yaml
 func AppendSprint(data []byte, sp datamodel.Sprint) ([]byte, error) {
 	entry, err := inlineSprintEntry(sp)
 	if err != nil {
 		return nil, err
 	}
-	var doc yaml.Node
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil, fmt.Errorf("config: %w", err)
+	out, err := appendToTopLevelList(data, "sprints", entry)
+	if err != nil {
+		return nil, err
 	}
-	lines := strings.Split(string(data), "\n")
-	key, val := findTopLevel(&doc, "sprints")
-
-	var out []string
-	switch {
-	case key == nil:
-		out = appendNewSprintsBlock(lines, entry)
-	case isEmptyList(val):
-		out = openBlockListUnderKey(lines, key, val, entry)
-	case val.Kind == yaml.SequenceNode && val.Style&yaml.FlowStyle != 0:
-		out, err = appendToSingleLineFlowList(lines, val, entry)
-		if err != nil {
-			return nil, err
-		}
-	case val.Kind == yaml.SequenceNode:
-		out = appendToBlockList(lines, val, entry)
-	default:
-		return nil, fmt.Errorf("config: sprints: expected a list, found %s", val.Tag)
-	}
-
-	res := strings.Join(out, "\n")
-	cfg, err := Parse([]byte(res))
+	cfg, err := Parse(out)
 	if err != nil {
 		return nil, err
 	}
 	if n := len(cfg.Sprints); n == 0 || cfg.Sprints[n-1] != sp {
 		return nil, fmt.Errorf("config: sprints: appended entry did not round-trip")
 	}
-	return []byte(res), nil
+	return out, nil
 }
 
-func appendNewSprintsBlock(lines []string, entry string) []string {
+// appendToTopLevelList splices entry onto data's top-level key list in place
+// rather than re-encoding the document: a whole-file yaml re-encode would
+// normalize comment alignment and flow styles across the hand-edited config.yaml
+func appendToTopLevelList(data []byte, key, entry string) ([]byte, error) {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return nil, fmt.Errorf("config: %w", err)
+	}
+	lines := strings.Split(string(data), "\n")
+	keyNode, val := findTopLevel(&doc, key)
+
+	var out []string
+	var err error
+	switch {
+	case keyNode == nil:
+		out = appendNewTopLevelBlock(lines, key, entry)
+	case isEmptyList(val):
+		out = openBlockListUnderKey(lines, keyNode, val, entry)
+	case val.Kind == yaml.SequenceNode && val.Style&yaml.FlowStyle != 0:
+		if out, err = appendToFlowList(lines, key, val, entry); err != nil {
+			return nil, err
+		}
+	case val.Kind == yaml.SequenceNode:
+		out = appendToBlockList(lines, val, entry)
+	default:
+		return nil, fmt.Errorf("config: %s: expected a list, found %s", key, val.Tag)
+	}
+	return []byte(strings.Join(out, "\n")), nil
+}
+
+func appendNewTopLevelBlock(lines []string, key, entry string) []string {
 	out := lines
 	if len(out) > 0 && out[len(out)-1] == "" {
 		out = out[:len(out)-1]
 	}
-	return append(out, "sprints:", "  - "+entry, "")
+	return append(out, key+":", "  - "+entry, "")
 }
 
 func openBlockListUnderKey(lines []string, key, val *yaml.Node, entry string) []string {
@@ -67,15 +73,6 @@ func openBlockListUnderKey(lines []string, key, val *yaml.Node, entry string) []
 		keyLineWithoutBrackets = strings.TrimRight(strings.Replace(keyLineWithoutBrackets, "[]", "", 1), " ")
 	}
 	return replaceLine(lines, i, keyLineWithoutBrackets, "  - "+entry)
-}
-
-func appendToSingleLineFlowList(lines []string, val *yaml.Node, entry string) ([]string, error) {
-	i := val.Line - 1
-	closingBracket := strings.LastIndexByte(lines[i], ']')
-	if closingBracket < 0 || maxLine(val) != val.Line {
-		return nil, fmt.Errorf("config: sprints: cannot append to a multi-line flow list; reformat it as a block list")
-	}
-	return replaceLine(lines, i, lines[i][:closingBracket]+", "+entry+lines[i][closingBracket:]), nil
 }
 
 func appendToBlockList(lines []string, val *yaml.Node, entry string) []string {
@@ -88,7 +85,7 @@ func appendToBlockList(lines []string, val *yaml.Node, entry string) []string {
 func inlineSprintEntry(sp datamodel.Sprint) (string, error) {
 	fields := [4]string{}
 	for i, v := range []string{sp.Key, sp.Name, sp.Start, sp.End} {
-		s, err := singleLineScalar("sprints", v)
+		s, err := flowScalar("sprints", v)
 		if err != nil {
 			return "", err
 		}

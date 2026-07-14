@@ -16,7 +16,6 @@ const (
 	markerEnd = "# /kira:chain"
 )
 
-// Default names the hooks installed unconditionally; PreCommit is opt-in.
 var Default = []string{"post-merge", "prepare-commit-msg"}
 
 const PreCommit = "pre-commit"
@@ -40,8 +39,6 @@ func Invokes(content, name string) bool {
 	return strings.Contains(content, "kira hooks "+name)
 }
 
-// Classify derives an installed hook's state from its content: whether it runs
-// kira at all, and whether kira is chained after a pre-existing hook.
 func Classify(content, name string) (installed, chained bool) {
 	chained = hasMarker(content)
 	return chained || Invokes(content, name), chained

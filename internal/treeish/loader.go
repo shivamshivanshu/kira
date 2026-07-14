@@ -13,11 +13,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
-const (
-	ticketsPrefix = storage.TicketsPrefix
-	configPath    = storage.ConfigRelPath
-)
-
 type Loaded struct {
 	Treeish  string
 	Items    []*datamodel.Item
@@ -27,7 +22,7 @@ type Loaded struct {
 }
 
 func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
-	names, err := repo.LsTreeNames(treeish, ticketsPrefix, configPath)
+	names, err := repo.LsTreeNames(treeish, storage.TicketsPrefix, storage.ConfigRelPath)
 	if err != nil {
 		return nil, err
 	}
@@ -35,18 +30,18 @@ func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
 	hasConfig := false
 	for _, n := range names {
 		switch {
-		case n == configPath:
+		case n == storage.ConfigRelPath:
 			hasConfig = true
 		case storage.IsItemPath(n):
 			ticketPaths = append(ticketPaths, n)
 		}
 	}
 	if !hasConfig {
-		return nil, fmt.Errorf("no %s at %s (cannot time-travel before kira init)", configPath, treeish)
+		return nil, errNoConfigAt(treeish)
 	}
 
 	specs := make([]string, 0, len(ticketPaths)+1)
-	specs = append(specs, treeish+":"+configPath)
+	specs = append(specs, treeish+":"+storage.ConfigRelPath)
 	for _, p := range ticketPaths {
 		specs = append(specs, treeish+":"+p)
 	}
@@ -56,7 +51,7 @@ func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
 	}
 
 	if !blobs[0].Found {
-		return nil, fmt.Errorf("no %s at %s (cannot time-travel before kira init)", configPath, treeish)
+		return nil, errNoConfigAt(treeish)
 	}
 	cfg, err := config.Parse([]byte(blobs[0].Content))
 	if err != nil {
@@ -84,4 +79,8 @@ func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
 		Snapshot: snap,
 		Resolver: id.NewResolver(snap),
 	}, nil
+}
+
+func errNoConfigAt(treeish string) error {
+	return fmt.Errorf("no %s at %s (cannot time-travel before kira init)", storage.ConfigRelPath, treeish)
 }

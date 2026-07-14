@@ -8,11 +8,10 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/doctor"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/hooks"
 	"github.com/shivamshivanshu/kira/internal/index"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
-
-const hookChainMarker = "# kira:chain v1"
 
 func gatherEnv(root string) doctor.Env {
 	env := doctor.Env{GitInstalled: gitx.Installed()}
@@ -96,8 +95,7 @@ func installedHooks(gitDir string, tracked []string) []string {
 		if err != nil {
 			continue
 		}
-		body := string(data)
-		if strings.Contains(body, hookChainMarker) || strings.Contains(body, ".kira/hooks/"+name) {
+		if installed, _ := hooks.Classify(string(data), name); installed {
 			out = append(out, name)
 		}
 	}

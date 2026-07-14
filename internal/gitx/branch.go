@@ -10,11 +10,6 @@ func (r Repo) Branches() ([]string, error) {
 	return r.splitLines("for-each-ref", "--format=%(refname:short)", "refs/heads")
 }
 
-func (r Repo) HasBranch(name string) bool {
-	_, err := r.Output("rev-parse", "--verify", "--quiet", "refs/heads/"+name)
-	return err == nil
-}
-
 func (r Repo) Checkout(branch string) error {
 	_, err := r.Output("checkout", branch)
 	return err

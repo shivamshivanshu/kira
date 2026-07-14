@@ -112,18 +112,7 @@ func newLabelMutateCmd(g *globalFlags, add bool) *cobra.Command {
 			}
 			line := func(res *datamodel.MutationResult) string { return labelLine(res, label, add) }
 			out := cmd.OutOrStdout()
-			if len(ids) == 1 {
-				res, err := apply(ids[0])
-				if err != nil {
-					return err
-				}
-				if g.json {
-					return emitJSON(out, res)
-				}
-				fmt.Fprintln(out, line(res))
-				return nil
-			}
-			return runBulk(out, cmd.ErrOrStderr(), g.json, ids, apply, line)
+			return runSingleOrBulk(out, cmd.ErrOrStderr(), g.json, ids, apply, line)
 		},
 	}
 	cmd.Flags().BoolVar(&force, "force", false, "accept a label outside the configured vocabulary")

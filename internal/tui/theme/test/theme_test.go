@@ -57,6 +57,14 @@ func TestThemeSlotOverride(t *testing.T) {
 	}
 }
 
+func TestBorderSlotOverride(t *testing.T) {
+	ui := datamodel.UI{Color: datamodel.ColorAlways, Theme: map[string]string{"border": "#00ff00"}}
+	got := theme.For(io.Discard, ui, false).Border.Render("x")
+	if !strings.Contains(got, "38;2;0;255;0") {
+		t.Errorf("border override not applied under TrueColor: %q", got)
+	}
+}
+
 func TestThemeSlotInvalidKeepsDefault(t *testing.T) {
 	base := datamodel.UI{Color: datamodel.ColorAlways}
 	def := theme.For(io.Discard, base, false).Accent.Render("x")

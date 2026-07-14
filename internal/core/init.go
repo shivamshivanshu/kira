@@ -54,7 +54,7 @@ func Init(startDir, key string, force bool, prompter ...Prompter) (*datamodel.In
 	}
 
 	for _, dir := range []string{fs.ItemsDir(), fs.TemplateDir()} {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		if err := os.MkdirAll(dir, dirPerm); err != nil {
 			return nil, errx.User("creating %s: %v", dir, err)
 		}
 	}
@@ -66,7 +66,7 @@ func Init(startDir, key string, force bool, prompter ...Prompter) (*datamodel.In
 		filepath.Join(fs.TemplateDir(), "epic.md"):   defaultTemplate(datamodel.TypeEpic),
 	}
 	for path, content := range files {
-		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		if err := os.WriteFile(path, []byte(content), filePerm); err != nil {
 			return nil, errx.User("writing %s: %v", fs.RelToRoot(path), err)
 		}
 	}

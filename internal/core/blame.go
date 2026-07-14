@@ -8,12 +8,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-const (
-	sourceCommit    = "commit"
-	sourceCreated   = "created"
-	sourceSynthetic = "synthetic"
-)
-
 type commitMeta struct {
 	author  string
 	ts      string
@@ -62,27 +56,27 @@ func (s *Store) Blame(cfg *datamodel.Config, ref string) (*datamodel.BlameResult
 		switch {
 		case hasEv:
 			cm := meta[ev.CommitSHA]
-			bf := datamodel.BlameField{Field: field, Value: val, When: ev.Ts, By: cm.author, SourceKind: sourceCommit, Degraded: cm.parents > 1}
+			bf := datamodel.BlameField{Field: field, Value: val, When: ev.Ts, By: cm.author, SourceKind: datamodel.BlameSourceCommit, Degraded: cm.parents > 1}
 			if hasVal && val != ev.New {
-				bf.SourceKind, bf.Degraded, bf.When, bf.By = sourceSynthetic, true, newest.ts, newest.author
+				bf.SourceKind, bf.Degraded, bf.When, bf.By = datamodel.BlameSourceSynthetic, true, newest.ts, newest.author
 			}
 			res.Fields = append(res.Fields, bf)
 		case hasVal:
 			if val == "null" {
 				continue
 			}
-			res.Fields = append(res.Fields, datamodel.BlameField{Field: field, Value: val, When: creation.ts, By: creation.author, SourceKind: sourceCreated})
+			res.Fields = append(res.Fields, datamodel.BlameField{Field: field, Value: val, When: creation.ts, By: creation.author, SourceKind: datamodel.BlameSourceCreated})
 		}
 	}
 	return res, nil
 }
 
-func (s *Store) fileCommitMeta(ulid string) (byShA map[string]commitMeta, newest, creation commitMeta, err error) {
+func (s *Store) fileCommitMeta(ulid string) (bySHA map[string]commitMeta, newest, creation commitMeta, err error) {
 	out, err := s.repo().FileCommitMeta(s.fs().RelToRoot(s.itemPath(ulid)))
 	if err != nil {
 		return nil, commitMeta{}, commitMeta{}, errx.User("%s", err)
 	}
-	byShA = map[string]commitMeta{}
+	bySHA = map[string]commitMeta{}
 	newestSeen := false
 	for _, line := range strings.Split(out, "\n") {
 		if line == "" {
@@ -93,14 +87,14 @@ func (s *Store) fileCommitMeta(ulid string) (byShA map[string]commitMeta, newest
 			continue
 		}
 		cm := commitMeta{author: f[1], ts: f[2], parents: len(strings.Fields(f[3]))}
-		byShA[f[0]] = cm
+		bySHA[f[0]] = cm
 		if !newestSeen {
 			newestSeen = true
 			newest = cm
 		}
 		creation = cm
 	}
-	return byShA, newest, creation, nil
+	return bySHA, newest, creation, nil
 }
 
 func scalarFieldValues(it *datamodel.Item) map[string]string {

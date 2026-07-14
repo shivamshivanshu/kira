@@ -361,3 +361,31 @@ func TestAppendComment(t *testing.T) {
 		t.Fatalf("appended comment mismatch: %+v", cs[1])
 	}
 }
+
+func TestSplitCommentsMalformedOpenMarker(t *testing.T) {
+	body := "Real description.\n<!-- kira:comment id=01ABC -->\nnot a real comment\n<!-- /kira:comment -->\n"
+	prose, comments := codec.SplitComments(body)
+	if len(comments) != 0 {
+		t.Fatalf("malformed marker must not parse as a comment, got %d", len(comments))
+	}
+	if prose != body {
+		t.Fatalf("malformed block dropped from prose:\nwant %q\ngot  %q", body, prose)
+	}
+	if got := codec.JoinComments(prose, comments); got != body {
+		t.Fatalf("round-trip changed body:\nwant %q\ngot  %q", body, got)
+	}
+}
+
+func TestSplitCommentsMarkerAtBodyStart(t *testing.T) {
+	body := "<!-- kira:comment id=01J8XA1F6Q2N9K3M7V0R5T8B4C author=shivam ts=2026-07-11T18:30:00+05:30 -->\nfirst line\n<!-- /kira:comment -->\n"
+	prose, comments := codec.SplitComments(body)
+	if len(comments) != 1 {
+		t.Fatalf("want 1 comment, got %d", len(comments))
+	}
+	if strings.Contains(prose, "kira:comment") {
+		t.Fatalf("comment leaked into prose: %q", prose)
+	}
+	if got := codec.ParseComments(codec.JoinComments(prose, comments)); len(got) != 1 {
+		t.Fatalf("round-trip duplicated the comment, got %d", len(got))
+	}
+}

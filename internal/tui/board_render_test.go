@@ -288,6 +288,25 @@ func TestBoardPeekMountsDetailComponent(t *testing.T) {
 	}
 }
 
+func TestJumpFromBoardRecordsSelectedCard(t *testing.T) {
+	t.Parallel()
+	m, bs := newBoardTestModel(100, 12, config.Default(), buildBoardResult())
+	bs.board.focusByID("t3")
+
+	updated, _ := m.Update(key("1"))
+	m = updated.(model)
+	if m.view != viewTree {
+		t.Fatalf("1 should switch to the tree view, got %v", m.view)
+	}
+	if len(m.jumps.entries) == 0 {
+		t.Fatal("switching away from the board should record a jump entry")
+	}
+	last := m.jumps.entries[len(m.jumps.entries)-1]
+	if last.view != viewBoard || last.itemID != "t3" {
+		t.Fatalf("jump from board should record the selected card, got %+v", last)
+	}
+}
+
 func stateOnDisk(t *testing.T, s *core.Store, cfg *datamodel.Config, id string) string {
 	t.Helper()
 	show, err := s.Show(cfg, id, "")

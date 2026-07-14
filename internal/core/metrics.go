@@ -61,9 +61,6 @@ func computeLead(items []metricItem) *datamodel.Percentiles {
 }
 
 func computeThroughput(items []metricItem, weeks int, today time.Time) []int {
-	if weeks <= 0 {
-		weeks = defaultWeeks
-	}
 	buckets := make([]int, weeks)
 	for _, it := range items {
 		if !it.hasDone || it.dropped {

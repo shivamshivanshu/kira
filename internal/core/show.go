@@ -61,16 +61,9 @@ func historyTailView(events []datamodel.Event) []datamodel.HistoryEvent {
 	}
 	out := make([]datamodel.HistoryEvent, len(events))
 	for i, e := range events {
-		out[i] = datamodel.HistoryEvent{Ts: e.Ts, Field: e.Field, From: strOrNil(e.Old), To: strOrNil(e.New)}
+		out[i] = datamodel.HistoryEvent{Ts: e.Ts, Field: e.Field, From: ptrOrNil(e.Old), To: ptrOrNil(e.New)}
 	}
 	return out
-}
-
-func strOrNil(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
 }
 
 func showResultOf(cfg *datamodel.Config, it *datamodel.Item) datamodel.ShowResult {

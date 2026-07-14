@@ -145,7 +145,7 @@ func (m *model) substituteFocused(argv []string) []string {
 }
 
 func (m *model) focusedNumber() string {
-	ts, ok := m.screens[viewTree].(*treeScreen)
+	ts, ok := m.treeScreen()
 	if !ok {
 		return ""
 	}

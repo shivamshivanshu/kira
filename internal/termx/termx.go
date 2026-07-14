@@ -27,12 +27,7 @@ func IsInteractive() bool {
 }
 
 func Confirm(prompt string) bool {
-	fmt.Fprint(os.Stderr, prompt)
-	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
-	if err != nil {
-		return false
-	}
-	switch strings.ToLower(strings.TrimSpace(line)) {
+	switch strings.ToLower(ReadLineDefault(prompt, "")) {
 	case "y", "yes":
 		return true
 	default:

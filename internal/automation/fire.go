@@ -25,7 +25,7 @@ func Fire(w io.Writer, root, cacheDir string, cfg *datamodel.Config, ev Event, a
 	}
 	repoMayFire := len(repo) == 0 || Trusted(cacheDir, cfg)
 	if len(repo) > 0 && !repoMayFire {
-		fmt.Fprintf(w, "kira: %d automation hooks defined but not trusted — run `kira automation trust`\n", len(cfg.Automation))
+		fmt.Fprintf(w, "kira: %d automation hooks defined but not trusted — run `kira automation trust`\n", len(repo))
 	}
 	run := firingSet(repoMayFire, repo, user)
 	if len(run) == 0 {

@@ -77,39 +77,25 @@ func readUserPrefs(path string, warn io.Writer) (*datamodel.UI, *datamodel.Worko
 			ignore("key %q is repo-authoritative", key)
 		}
 	}
-	return decodeUserUI(uiNode, ignore), decodeUserWorkon(workonNode, ignore)
+	def := Default()
+	return decodeUserSection(uiNode, def.UI, userKeyUI, validateUISection, ignore),
+		decodeUserSection(workonNode, def.Workon, userKeyWorkon, validateWorkonSection, ignore)
 }
 
-func decodeUserUI(node *yaml.Node, ignore ignoreFunc) *datamodel.UI {
+func decodeUserSection[T any](node *yaml.Node, def T, label string, validate func(T) error, ignore ignoreFunc) *T {
 	if node == nil {
 		return nil
 	}
-	ui := Default().UI
-	if err := node.Decode(&ui); err != nil {
-		ignore("ui: %v", err)
+	v := def
+	if err := node.Decode(&v); err != nil {
+		ignore("%s: %v", label, err)
 		return nil
 	}
-	if err := validateUISection(ui); err != nil {
+	if err := validate(v); err != nil {
 		ignore("%v", err)
 		return nil
 	}
-	return &ui
-}
-
-func decodeUserWorkon(node *yaml.Node, ignore ignoreFunc) *datamodel.Workon {
-	if node == nil {
-		return nil
-	}
-	w := Default().Workon
-	if err := node.Decode(&w); err != nil {
-		ignore("workon: %v", err)
-		return nil
-	}
-	if err := validateWorkonSection(w); err != nil {
-		ignore("%v", err)
-		return nil
-	}
-	return &w
+	return &v
 }
 
 func readUserHooks(dir string, warn io.Writer) []datamodel.AutomationHook {

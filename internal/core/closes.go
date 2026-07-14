@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/index"
 )
 
@@ -12,15 +13,24 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 	for _, value := range scan.Unknown {
 		notes = append(notes, datamodel.Warning{Code: datamodel.WarnCloseUnknown, Args: []string{value, cfg.Commit.CloseTrailer}})
 	}
+	ld, err := s.load(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
 	failed := false
 	closeFailed := func(ref string, cause error) {
 		failed = true
 		notes = append(notes, datamodel.Warning{Code: datamodel.WarnCloseFailed, Args: []string{ref, cause.Error()}})
 	}
 	for _, cand := range scan.Candidates {
-		it, _, _, resErr := s.resolveRef(cfg, cand.ULID)
+		ulid, resErr := resolveID(ld.resolver, cand.ULID)
 		if resErr != nil {
 			closeFailed(cand.ULID, resErr)
+			continue
+		}
+		it := findByULID(ld.items, ulid)
+		if it == nil {
+			closeFailed(cand.ULID, errx.User("resolved %s to %s, which has no file", cand.ULID, ulid))
 			continue
 		}
 		if isDoneState(cfg, it.Type, it.State) {

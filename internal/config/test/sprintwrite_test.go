@@ -178,3 +178,16 @@ func TestAppendSprintMultiLineValueRejected(t *testing.T) {
 		t.Error("multi-line field value accepted, want error")
 	}
 }
+
+func TestAppendSprintFlowBreakingNameRoundTrips(t *testing.T) {
+	t.Parallel()
+	sp := datamodel.Sprint{Key: "2026-S99", Name: "Alpha,{Beta}", Start: "2026-01-01", End: "2026-01-14"}
+	out := appendSprint(t, commentedConfig, sp)
+	cfg, err := config.Parse([]byte(out))
+	if err != nil {
+		t.Fatalf("result does not parse: %v\n%s", err, out)
+	}
+	if len(cfg.Sprints) != 1 || cfg.Sprints[0] != sp {
+		t.Errorf("flow-breaking sprint name did not round-trip: %+v\n%s", cfg.Sprints, out)
+	}
+}

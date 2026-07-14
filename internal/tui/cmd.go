@@ -41,26 +41,6 @@ func safeCmd(cmd tea.Cmd) tea.Cmd {
 	}
 }
 
-func loadTreeData(store *core.Store, cfg *datamodel.Config) (treeData, error) {
-	tr, err := store.Tree(cfg, "", "")
-	if err != nil {
-		return treeData{}, err
-	}
-	lr, err := store.List(cfg, core.ListOpts{})
-	if err != nil {
-		return treeData{}, err
-	}
-	pr, err := store.EpicProgress(cfg)
-	if err != nil {
-		return treeData{}, err
-	}
-	fields := make(map[string]datamodel.ListItem, len(lr.Items))
-	for _, it := range lr.Items {
-		fields[it.ID] = it
-	}
-	return treeData{nodes: tr.Nodes, fields: fields, progress: pr}, nil
-}
-
 func refreshCmd(store *core.Store, cfg *datamodel.Config, filter string) tea.Cmd {
 	return safeCmd(func() tea.Msg {
 		data, err := loadFilteredTree(store, cfg, filter)

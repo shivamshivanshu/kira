@@ -52,7 +52,7 @@ func newAutomationListCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			printAutomationList(cmd, res)
+			printAutomationList(cmd.OutOrStdout(), res)
 			return nil
 		},
 	}
@@ -69,7 +69,9 @@ func newAutomationTrustCmd(g *globalFlags) *cobra.Command {
 				return err
 			}
 			out := cmd.OutOrStdout()
-			printHookLines(out, s.AutomationList(cfg).Hooks)
+			if !g.json {
+				printHookLines(out, s.AutomationList(cfg).Hooks)
+			}
 			res, err := s.AutomationTrust(cfg)
 			if err != nil {
 				return err
@@ -83,8 +85,7 @@ func newAutomationTrustCmd(g *globalFlags) *cobra.Command {
 	}
 }
 
-func printAutomationList(cmd *cobra.Command, res *datamodel.AutomationListResult) {
-	out := cmd.OutOrStdout()
+func printAutomationList(out io.Writer, res *datamodel.AutomationListResult) {
 	if len(res.Hooks) == 0 {
 		fmt.Fprintln(out, "no automation hooks defined")
 		return

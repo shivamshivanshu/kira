@@ -68,16 +68,16 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 	}
 	defer release()
 
-	items, snap, resolver, _, err := s.load(cfg)
+	ld, err := s.load(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	sys := newSystemFields(cfg, snap, boardKey, opts.Type, wf.Initial)
+	sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, wf.Initial)
 	finalItem := itemFromDraft(d, sys)
-	hard, warns := validateAssembled(cfg, finalItem, resolver, opts.Force)
+	hard, warns := validateAssembled(cfg, finalItem, ld.resolver, opts.Force)
 	if len(hard) == 0 {
-		hard = validateGraph(finalItem, items)
+		hard = validateGraph(finalItem, ld.items)
 	}
 	if len(hard) > 0 {
 		return nil, errx.Invalid(hard)
@@ -114,7 +114,7 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 		Path:       path,
 	}
 	if finalItem.Epic != nil {
-		if num, ok := epicNumberMap(items)[*finalItem.Epic]; ok {
+		if num, ok := epicNumberMap(ld.items)[*finalItem.Epic]; ok {
 			res.EpicNumber = &num
 		}
 	}
@@ -136,12 +136,12 @@ func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, boardKey,
 	case opts.NoEdit:
 		return base, nil
 	default:
-		_, snap, resolver, _, err := s.load(cfg)
+		ld, err := s.load(cfg)
 		if err != nil {
 			return draft{}, err
 		}
-		sys := newSystemFields(cfg, snap, boardKey, opts.Type, initialState)
-		content, err := runEditor(serializeDraft(base), validateBuffer(cfg, resolver, opts.Force, func(c string) (*datamodel.Item, []error) {
+		sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, initialState)
+		content, err := runEditor(serializeDraft(base), validateBuffer(cfg, ld.resolver, opts.Force, func(c string) (*datamodel.Item, []error) {
 			d, perr := parseDraft(c)
 			if perr != nil {
 				return nil, []error{perr}
@@ -181,23 +181,27 @@ func itemFromDraft(d draft, sys systemFields) *datamodel.Item {
 		Number:    sys.number,
 		Aliases:   []string{},
 		Type:      sys.typ,
-		Subtype:   ptrOrNil(ptr.Deref(d.Subtype)),
+		Subtype:   normPtr(d.Subtype),
 		Title:     d.Title,
 		State:     sys.state,
-		Priority:  ptrOrNil(ptr.Deref(d.Priority)),
-		Rank:      ptrOrNil(ptr.Deref(d.Rank)),
-		Owner:     ptrOrNil(ptr.Deref(d.Owner)),
-		Reporter:  ptrOrNil(ptr.Deref(d.Reporter)),
+		Priority:  normPtr(d.Priority),
+		Rank:      normPtr(d.Rank),
+		Owner:     normPtr(d.Owner),
+		Reporter:  normPtr(d.Reporter),
 		Labels:    nonNil(d.Labels),
-		Epic:      ptrOrNil(ptr.Deref(d.Epic)),
+		Epic:      normPtr(d.Epic),
 		BlockedBy: []string{},
-		Sprint:    ptrOrNil(ptr.Deref(d.Sprint)),
-		Due:       ptrOrNil(ptr.Deref(d.Due)),
+		Sprint:    normPtr(d.Sprint),
+		Due:       normPtr(d.Due),
 		Estimate:  d.Estimate,
 		Created:   sys.created,
 		Updated:   sys.created,
 		Body:      d.Body,
 	}
+}
+
+func normPtr(p *string) *string {
+	return ptrOrNil(ptr.Deref(p))
 }
 
 func (s *Store) templateDraft(typ string) (draft, error) {

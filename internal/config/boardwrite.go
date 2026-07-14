@@ -48,38 +48,7 @@ func spliceBoard(data []byte, b datamodel.Board) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var doc yaml.Node
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil, fmt.Errorf("config: %w", err)
-	}
-	lines := strings.Split(string(data), "\n")
-	key, val := findTopLevel(&doc, "boards")
-
-	var out []string
-	switch {
-	case key == nil:
-		out = appendNewBoardsBlock(lines, entry)
-	case isEmptyList(val):
-		out = openBlockListUnderKey(lines, key, val, entry)
-	case val.Kind == yaml.SequenceNode && val.Style&yaml.FlowStyle != 0:
-		out, err = appendToSingleLineFlowList(lines, val, entry)
-		if err != nil {
-			return nil, err
-		}
-	case val.Kind == yaml.SequenceNode:
-		out = appendToBlockList(lines, val, entry)
-	default:
-		return nil, fmt.Errorf("config: boards: expected a list, found %s", val.Tag)
-	}
-	return []byte(strings.Join(out, "\n")), nil
-}
-
-func appendNewBoardsBlock(lines []string, entry string) []string {
-	out := lines
-	if len(out) > 0 && out[len(out)-1] == "" {
-		out = out[:len(out)-1]
-	}
-	return append(out, "boards:", "  - "+entry, "")
+	return appendToTopLevelList(data, "boards", entry)
 }
 
 func flowScalar(field, v string) (string, error) {
@@ -89,7 +58,11 @@ func flowScalar(field, v string) (string, error) {
 	if v == "" || v != strings.TrimSpace(v) || strings.ContainsAny(v, ",{}[]:#&*!|>'\"%@`") {
 		return "'" + strings.ReplaceAll(v, "'", "''") + "'", nil
 	}
-	return v, nil
+	b, err := yaml.Marshal(v)
+	if err != nil {
+		return "", fmt.Errorf("config: %s: %w", field, err)
+	}
+	return strings.TrimSpace(string(b)), nil
 }
 
 func inlineBoardEntry(b datamodel.Board) (string, error) {

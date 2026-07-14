@@ -39,18 +39,7 @@ func newAssignCmd(g *globalFlags) *cobra.Command {
 			apply := func(id string) (*datamodel.MutationResult, error) { return s.Assign(cfg, id, user, opts) }
 			line := func(res *datamodel.MutationResult) string { return assignLine(res, user) }
 			out := cmd.OutOrStdout()
-			if len(ids) == 1 {
-				res, err := apply(ids[0])
-				if err != nil {
-					return err
-				}
-				if g.json {
-					return emitJSON(out, res)
-				}
-				fmt.Fprintln(out, line(res))
-				return nil
-			}
-			return runBulk(out, cmd.ErrOrStderr(), g.json, ids, apply, line)
+			return runSingleOrBulk(out, cmd.ErrOrStderr(), g.json, ids, apply, line)
 		},
 	}
 	f := cmd.Flags()

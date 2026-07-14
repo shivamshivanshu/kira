@@ -58,24 +58,15 @@ func newEditCmd(g *globalFlags) *cobra.Command {
 			}
 			apply := func(id string) (*datamodel.MutationResult, error) { return s.Edit(cfg, id, opts) }
 			out := cmd.OutOrStdout()
-			if len(args) == 1 {
-				res, err := apply(args[0])
-				if err != nil {
-					return err
+			if len(args) != 1 {
+				if fromFile != "" {
+					return errx.User("--from-file cannot be combined with multiple ids")
 				}
-				if g.json {
-					return emitJSON(out, res)
+				if len(opts.Fields) == 0 {
+					return errx.User("editing multiple ids requires field flags; editor mode is single-id only")
 				}
-				fmt.Fprintln(out, editLine(res))
-				return nil
 			}
-			if fromFile != "" {
-				return errx.User("--from-file cannot be combined with multiple ids")
-			}
-			if len(opts.Fields) == 0 {
-				return errx.User("editing multiple ids requires field flags; editor mode is single-id only")
-			}
-			return runBulk(out, cmd.ErrOrStderr(), g.json, args, apply, editLine)
+			return runSingleOrBulk(out, cmd.ErrOrStderr(), g.json, args, apply, editLine)
 		},
 	}
 	f := cmd.Flags()

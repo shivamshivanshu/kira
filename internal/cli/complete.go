@@ -19,6 +19,7 @@ type completer = func(*cobra.Command, []string, string) ([]string, cobra.ShellCo
 func attachCompletions(root *cobra.Command, g *globalFlags) {
 	items := completeItems(g, "")
 	people := completeVocab(g, func(c *datamodel.Config) []string { return c.People.Names() })
+	labels := completeVocab(g, func(c *datamodel.Config) []string { return c.Labels.Known })
 
 	for _, name := range []string{"show", "edit", "comment", "log", "blame", "workon", "link"} {
 		if c := subCmd(root, name); c != nil {
@@ -35,7 +36,6 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 		c.ValidArgsFunction = positional(completeStatic(config.SetKeys()))
 	}
 	if lbl := subCmd(root, "label"); lbl != nil {
-		labels := completeVocab(g, func(c *datamodel.Config) []string { return c.Labels.Known })
 		for _, name := range []string{"add", "rm"} {
 			if c := subCmd(lbl, name); c != nil {
 				c.ValidArgsFunction = positional(items, labels)
@@ -44,7 +44,7 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 	}
 
 	flags := map[string]completer{
-		"label":      completeVocab(g, func(c *datamodel.Config) []string { return c.Labels.Known }),
+		"label":      labels,
 		"priority":   completeVocab(g, func(c *datamodel.Config) []string { return c.Priorities.Values }),
 		"owner":      people,
 		"reporter":   people,

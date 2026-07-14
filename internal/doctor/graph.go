@@ -23,7 +23,7 @@ func EpicCycles(items []*datamodel.Item, resolver *id.Resolver) []Finding {
 }
 
 func cyclePathFindings(class Class, field string, cycle []string, byID map[string]*datamodel.Item) []Finding {
-	trail := strings.Join(numbersOf(cycle, byID), " -> ")
+	trail := strings.Join(cycleTrail(cycle, byID), " -> ")
 	out := make([]Finding, 0, len(cycle))
 	for _, ulid := range cycle {
 		out = append(out, Finding{
@@ -38,7 +38,7 @@ func cyclePathFindings(class Class, field string, cycle []string, byID map[strin
 	return out
 }
 
-func numbersOf(ulids []string, byID map[string]*datamodel.Item) []string {
+func cycleTrail(ulids []string, byID map[string]*datamodel.Item) []string {
 	out := make([]string, len(ulids))
 	for i, u := range ulids {
 		out[i] = numberOf(u, byID)

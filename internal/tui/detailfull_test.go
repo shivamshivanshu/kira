@@ -67,16 +67,17 @@ func TestDetailPanelCommitSelection(t *testing.T) {
 	t.Parallel()
 	res := sampleDetail()
 	d := newDetailPanel()
-	d.update(nil, res, "]")
+	m := &model{}
+	d.update(m, res, "]")
 	if d.commitSel != 1 {
 		t.Fatalf("commitSel after ] = %d, want 1", d.commitSel)
 	}
-	d.update(nil, res, "]")
+	d.update(m, res, "]")
 	if d.commitSel != 1 {
 		t.Fatalf("commitSel clamped at last = %d, want 1", d.commitSel)
 	}
-	d.update(nil, res, "[")
-	d.update(nil, res, "[")
+	d.update(m, res, "[")
+	d.update(m, res, "[")
 	if d.commitSel != 0 {
 		t.Fatalf("commitSel clamped at first = %d, want 0", d.commitSel)
 	}
@@ -87,7 +88,7 @@ func TestDetailPanelCommitSelection(t *testing.T) {
 
 func TestDetailPanelEnterNoStoreNoCmd(t *testing.T) {
 	t.Parallel()
-	if cmd := newDetailPanel().update(&model{}, sampleDetail(), "enter"); cmd != nil {
+	if cmd, _ := newDetailPanel().update(&model{}, sampleDetail(), "enter"); cmd != nil {
 		t.Fatal("enter with nil store must not issue a command")
 	}
 }
@@ -130,11 +131,36 @@ func TestDetailCacheKeyedByResultPointer(t *testing.T) {
 	}
 }
 
+func TestDetailHostSurfacesLoadError(t *testing.T) {
+	t.Parallel()
+	s, cfg, _ := initRepo(t)
+	m := newModel(s, cfg, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
+	m.width, m.height = 100, 20
+	h := newDetailHost()
+
+	h.sync(&m, "DOES-NOT-EXIST")
+	if h.err == nil {
+		t.Fatal("sync of an unresolvable id must retain the load error, not silently blank")
+	}
+	got := h.render(asciiTheme(), iconSet{mode: datamodel.IconText}, 100, 20)
+	if !strings.Contains(got, "cannot load") {
+		t.Fatalf("detail host should surface the load failure instead of the empty-state prompt, got:\n%s", got)
+	}
+	if strings.Contains(got, "Select an item") {
+		t.Fatalf("a load failure must not render the empty-state prompt, got:\n%s", got)
+	}
+
+	h.sync(&m, "")
+	if h.err != nil {
+		t.Fatal("a subsequent successful sync must clear the retained error")
+	}
+}
+
 func TestDetailPanelScrollClamp(t *testing.T) {
 	t.Parallel()
 	d := newDetailPanel()
 	for i := 0; i < 50; i++ {
-		d.update(nil, sampleDetail(), "j")
+		d.update(&model{}, sampleDetail(), "j")
 	}
 	d.render(asciiTheme(), iconSet{mode: datamodel.IconText}, sampleDetail(), 100, 8)
 	lines := d.contentLines(asciiTheme(), iconSet{mode: datamodel.IconText}, sampleDetail(), 100)

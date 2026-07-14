@@ -57,6 +57,9 @@ func SetScalar(src []byte, dottedKey, value string) ([]byte, error) {
 	segs := strings.Split(dottedKey, ".")
 
 	node, matched := descend(&doc, segs)
+	if node == nil {
+		return nil, fmt.Errorf("config: top level must be a mapping")
+	}
 	switch {
 	case matched == len(segs):
 		if node.Kind != yaml.ScalarNode {

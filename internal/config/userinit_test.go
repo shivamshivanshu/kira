@@ -26,7 +26,7 @@ func TestUserConfigTemplateMatchesDefaults(t *testing.T) {
 		UI     datamodel.UI     `yaml:"ui"`
 		Workon datamodel.Workon `yaml:"workon"`
 	}
-	if err := yaml.Unmarshal([]byte(uncomment(UserConfigTemplate())), &got); err != nil {
+	if err := yaml.Unmarshal([]byte(uncomment(mustTemplate(userConfigFileName))), &got); err != nil {
 		t.Fatalf("uncommented template is not valid YAML: %v", err)
 	}
 
@@ -54,7 +54,7 @@ func TestUserConfigTemplateMatchesDefaults(t *testing.T) {
 func TestUserHooksTemplateIsValid(t *testing.T) {
 	t.Parallel()
 	var hooks []datamodel.AutomationHook
-	if err := yaml.Unmarshal([]byte(uncomment(UserHooksTemplate())), &hooks); err != nil {
+	if err := yaml.Unmarshal([]byte(uncomment(mustTemplate(userHooksYAMLName))), &hooks); err != nil {
 		t.Fatalf("uncommented hooks template is not valid YAML: %v", err)
 	}
 	if len(hooks) == 0 {

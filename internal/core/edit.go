@@ -2,9 +2,7 @@ package core
 
 import (
 	"errors"
-	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
@@ -49,16 +47,11 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		return nil, errx.Conflict("%s changed on disk during edit", orig.Number).WithHint("re-run the edit to start from the current version")
 	}
 
-	assemble := func(it *datamodel.Item) (*datamodel.Item, []error, []error) {
-		restoreImmutable(it, orig)
-		hard, warns := validateMutation(cfg, it, resolver, items, opts.Force)
-		return it, hard, warns
-	}
-
 	var updated *datamodel.Item
 	var warns []error
 	finish := func(it *datamodel.Item) error {
-		it, errs, w := assemble(it)
+		restoreImmutable(it, orig)
+		errs, w := validateMutation(cfg, it, resolver, items, opts.Force)
 		if len(errs) > 0 {
 			return errx.Invalid(errs)
 		}
@@ -156,59 +149,11 @@ func restoreImmutable(it, orig *datamodel.Item) {
 }
 
 func applyFieldEdit(it *datamodel.Item, key, value string) error {
-	switch key {
-	case datamodel.KeyTitle:
-		it.Title = value
-	case datamodel.KeyState:
-		it.State = value
-	case datamodel.KeySubtype:
-		it.Subtype = ptrOrNil(value)
-	case datamodel.KeyResolution:
-		it.Resolution = ptrOrNil(value)
-	case datamodel.KeyPriority:
-		it.Priority = ptrOrNil(value)
-	case datamodel.KeyRank:
-		it.Rank = ptrOrNil(value)
-	case datamodel.KeySprint:
-		it.Sprint = ptrOrNil(value)
-	case datamodel.KeyDue:
-		it.Due = ptrOrNil(value)
-	case datamodel.KeyOwner:
-		it.Owner = ptrOrNil(value)
-	case datamodel.KeyReporter:
-		it.Reporter = ptrOrNil(value)
-	case datamodel.KeyEpic:
-		it.Epic = ptrOrNil(value)
-	case datamodel.KeyEstimate:
-		if value == "" {
-			it.Estimate = nil
-			return nil
-		}
-		f, err := strconv.ParseFloat(value, 64)
-		if err != nil {
-			return fmt.Errorf("--field estimate: invalid number %q", value)
-		}
-		it.Estimate = &f
-	case datamodel.KeyLabels:
-		it.Labels = splitList(value)
-	default:
+	d, ok := datamodel.Field(key)
+	if !ok || d.Set == nil {
 		return errx.User("--field: unknown or immutable field %q", key).WithHint("%s", fieldHint(key))
 	}
-	return nil
-}
-
-func splitList(value string) []string {
-	if strings.TrimSpace(value) == "" {
-		return []string{}
-	}
-	parts := strings.Split(value, ",")
-	out := make([]string, 0, len(parts))
-	for _, p := range parts {
-		if t := strings.TrimSpace(p); t != "" {
-			out = append(out, t)
-		}
-	}
-	return out
+	return d.Set(it, value)
 }
 
 func ptrOrNil(value string) *string {

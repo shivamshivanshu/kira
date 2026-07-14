@@ -2,6 +2,7 @@ package index
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"maps"
 	"regexp"
@@ -12,6 +13,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/id"
 )
 
 type Options struct {
@@ -78,14 +80,14 @@ func (i *Index) scanTrailers(root gitx.Repo, opts Options, head string, prev met
 	return commits, wm, nil
 }
 
-func (i *Index) collectCloses(root gitx.Repo, opts Options, prev meta, numbers map[string]string, head string, landedRef string, headCommits []gitx.Commit) (CloseScan, error) {
-	cs := CloseScan{LandedRef: landedRef}
-	landedHead, err := root.Output("rev-parse", "--verify", "--quiet", landedRef)
+func (i *Index) collectCloses(root gitx.Repo, opts Options, prev meta, numbers map[string]string, head string, headCommits []gitx.Commit) (CloseScan, error) {
+	cs := CloseScan{LandedRef: opts.LandedRef}
+	landedHead, err := root.Output("rev-parse", "--verify", "--quiet", opts.LandedRef)
 	if err != nil || landedHead == "" {
 		return cs, nil
 	}
 	cs.LandedHead = landedHead
-	prevWm := prev.TrailerWatermarks[landedRef]
+	prevWm := prev.TrailerWatermarks[opts.LandedRef]
 	if prevWm == landedHead {
 		return cs, nil
 	}
@@ -316,9 +318,7 @@ func lenientPattern(boardKeys []string, numbers map[string]string) *regexp.Regex
 		add(k)
 	}
 	for full := range numbers {
-		if i := strings.LastIndexByte(full, '-'); i > 0 {
-			add(full[:i])
-		}
+		add(id.KeyOf(full))
 	}
 	if len(prefixes) == 0 {
 		return nil
@@ -350,19 +350,16 @@ func (i *Index) numberToULID() (map[string]string, error) {
 		if err != nil {
 			return nil, errx.User("querying numbers: %v", err)
 		}
-		for rows.Next() {
+		if err := eachPair(rows, func(r *sql.Rows) error {
 			var number, ulid string
-			if err := rows.Scan(&number, &ulid); err != nil {
-				rows.Close()
-				return nil, errx.User("scanning number: %v", err)
+			if err := r.Scan(&number, &ulid); err != nil {
+				return errx.User("scanning number: %v", err)
 			}
 			numbers[strings.ToUpper(number)] = ulid
-		}
-		if err := rows.Err(); err != nil {
-			rows.Close()
+			return nil
+		}); err != nil {
 			return nil, err
 		}
-		rows.Close()
 	}
 	return numbers, nil
 }

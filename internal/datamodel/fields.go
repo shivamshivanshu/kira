@@ -1,6 +1,7 @@
 package datamodel
 
 import (
+	"fmt"
 	"maps"
 	"slices"
 	"strconv"
@@ -19,12 +20,24 @@ type FieldDescriptor struct {
 	Changed func(a, b *Item) bool
 	Get     func(*Item) string
 	Copy    func(dst, src *Item)
+	Set     func(it *Item, value string) error
+	Present func(*Item) bool
+}
+
+func (d FieldDescriptor) withoutSet() FieldDescriptor {
+	d.Set = nil
+	return d
+}
+
+func (d FieldDescriptor) withoutPresent() FieldDescriptor {
+	d.Present = nil
+	return d
 }
 
 var Fields = []FieldDescriptor{
 	ptrField(KeySubtype, func(it *Item) **string { return &it.Subtype }),
 	strField(KeyTitle, func(it *Item) *string { return &it.Title }),
-	strField(KeyState, func(it *Item) *string { return &it.State }),
+	strField(KeyState, func(it *Item) *string { return &it.State }).withoutPresent(),
 	ptrField(KeyResolution, func(it *Item) **string { return &it.Resolution }),
 	ptrField(KeyPriority, func(it *Item) **string { return &it.Priority }),
 	ptrField(KeyRank, func(it *Item) **string { return &it.Rank }),
@@ -32,13 +45,24 @@ var Fields = []FieldDescriptor{
 	ptrField(KeyReporter, func(it *Item) **string { return &it.Reporter }),
 	listField(KeyLabels, func(it *Item) *[]string { return &it.Labels }),
 	ptrField(KeyEpic, func(it *Item) **string { return &it.Epic }),
-	listField(KeyBlockedBy, func(it *Item) *[]string { return &it.BlockedBy }),
+	listField(KeyBlockedBy, func(it *Item) *[]string { return &it.BlockedBy }).withoutSet().withoutPresent(),
 	linksField(),
 	ptrField(KeySprint, func(it *Item) **string { return &it.Sprint }),
 	ptrField(KeyDue, func(it *Item) **string { return &it.Due }),
 	estimateField(),
 	bodyField(),
 }
+
+var EditableFields = func() []string {
+	var out []string
+	for _, d := range Fields {
+		if d.Set != nil {
+			out = append(out, d.Key)
+		}
+	}
+	slices.Sort(out)
+	return out
+}()
 
 var fieldByKey = func() map[string]FieldDescriptor {
 	m := make(map[string]FieldDescriptor, len(Fields))
@@ -69,6 +93,8 @@ func strField(key string, ref func(*Item) *string) FieldDescriptor {
 		Changed: func(a, b *Item) bool { return *ref(a) != *ref(b) },
 		Get:     func(it *Item) string { return *ref(it) },
 		Copy:    func(dst, src *Item) { *ref(dst) = *ref(src) },
+		Set:     func(it *Item, value string) error { *ref(it) = value; return nil },
+		Present: func(it *Item) bool { return *ref(it) != "" },
 	}
 }
 
@@ -78,6 +104,8 @@ func ptrField(key string, ref func(*Item) **string) FieldDescriptor {
 		Changed: func(a, b *Item) bool { return !EqualPtr(*ref(a), *ref(b)) },
 		Get:     func(it *Item) string { return derefOrDash(*ref(it)) },
 		Copy:    func(dst, src *Item) { *ref(dst) = *ref(src) },
+		Set:     func(it *Item, value string) error { *ref(it) = emptyToNil(value); return nil },
+		Present: func(it *Item) bool { p := *ref(it); return p != nil && *p != "" },
 	}
 }
 
@@ -87,6 +115,8 @@ func listField(key string, ref func(*Item) *[]string) FieldDescriptor {
 		Changed: func(a, b *Item) bool { return !slices.Equal(*ref(a), *ref(b)) },
 		Get:     func(it *Item) string { return listString(*ref(it)) },
 		Copy:    func(dst, src *Item) { *ref(dst) = slices.Clone(*ref(src)) },
+		Set:     func(it *Item, value string) error { *ref(it) = splitCSV(value); return nil },
+		Present: func(it *Item) bool { return len(*ref(it)) > 0 },
 	}
 }
 
@@ -110,6 +140,19 @@ func estimateField() FieldDescriptor {
 			return strconv.FormatFloat(*it.Estimate, 'f', -1, 64)
 		},
 		Copy: func(dst, src *Item) { dst.Estimate = src.Estimate },
+		Set: func(it *Item, value string) error {
+			if value == "" {
+				it.Estimate = nil
+				return nil
+			}
+			f, err := strconv.ParseFloat(value, 64)
+			if err != nil {
+				return fmt.Errorf("--field estimate: invalid number %q", value)
+			}
+			it.Estimate = &f
+			return nil
+		},
+		Present: func(it *Item) bool { return it.Estimate != nil },
 	}
 }
 
@@ -127,6 +170,27 @@ func derefOrDash(p *string) string {
 		return "-"
 	}
 	return *p
+}
+
+func emptyToNil(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func splitCSV(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return []string{}
+	}
+	parts := strings.Split(value, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if t := strings.TrimSpace(p); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 func listString(xs []string) string {

@@ -1,9 +1,6 @@
 package gitx
 
-import (
-	"os"
-	"strings"
-)
+import "os"
 
 const infoAttributesPath = "info/attributes"
 
@@ -16,10 +13,5 @@ func (r Repo) InfoAttributeHasLine(line string) bool {
 	if err != nil {
 		return false
 	}
-	for _, l := range strings.Split(string(content), "\n") {
-		if strings.TrimSpace(l) == line {
-			return true
-		}
-	}
-	return false
+	return containsLine(string(content), line)
 }

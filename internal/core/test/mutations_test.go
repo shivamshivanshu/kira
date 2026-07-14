@@ -482,6 +482,40 @@ func TestMoveWipWarning(t *testing.T) {
 	}
 }
 
+func TestMoveWipBlock(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	wf := cfg.Workflows[datamodel.TypeTicket]
+	wf.WipPolicy = datamodel.WipBlock
+	cfg.Workflows[datamodel.TypeTicket] = wf
+
+	var nums []string
+	for _, title := range []string{"w1", "w2", "w3", "w4"} {
+		nums = append(nums, mustCreate(t, s, cfg, title).Number)
+	}
+	for _, num := range nums[:3] {
+		if _, err := s.Move(cfg, num, "IN_PROGRESS", core.MoveOpts{}); err != nil {
+			t.Fatalf("move %s to IN_PROGRESS: %v", num, err)
+		}
+	}
+	if _, err := s.Move(cfg, nums[3], "IN_PROGRESS", core.MoveOpts{}); err == nil {
+		t.Fatal("move over WIP limit under block policy must fail")
+	}
+	if got := stateOf(t, s, cfg, nums[3]); got == "IN_PROGRESS" {
+		t.Fatal("blocked move must not change state")
+	}
+	mres, err := s.Move(cfg, nums[3], "IN_PROGRESS", core.MoveOpts{Force: true})
+	if err != nil {
+		t.Fatalf("forced move over WIP limit: %v", err)
+	}
+	if len(mres.Warnings) != 1 || !strings.Contains(mres.Warnings[0], "WIP limit") {
+		t.Fatalf("forced over-limit move warnings = %v, want one WIP-limit warning", mres.Warnings)
+	}
+	if got := stateOf(t, s, cfg, nums[3]); got != "IN_PROGRESS" {
+		t.Fatalf("forced move state = %s, want IN_PROGRESS", got)
+	}
+}
+
 func TestMoveWipCountsPerType(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)

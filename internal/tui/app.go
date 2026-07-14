@@ -37,6 +37,24 @@ var globalKeys = []KeyBinding{
 	{"q", "quit"},
 }
 
+type screen interface {
+	keys() []KeyBinding
+	update(m *model, key string) tea.Cmd
+	view(m *model, width, height int) string
+	back(m *model) bool
+	focusItem(m *model, id string)
+	focusedID() string
+	settle(m *model)
+}
+
+func buildScreens() map[view]screen {
+	return map[view]screen{
+		viewTree:  newTreeScreen(),
+		viewBoard: newBoardScreen(),
+		viewStats: newStatsScreen(),
+	}
+}
+
 type model struct {
 	store *core.Store
 	cfg   *datamodel.Config
@@ -53,8 +71,8 @@ type model struct {
 	screens   map[view]screen
 	bar       bar
 	clip      clipx.Clipboard
-	yank      *yankPicker
-	boardPick *boardPicker
+	yank      *picker
+	boardPick *picker
 
 	crash       *crashInfo
 	injectPanic bool
@@ -102,13 +120,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.afterDrain(cmd)
 		}
 		m.loadErr = nil
-		if ts, ok := m.screens[viewTree].(*treeScreen); ok {
+		if ts, ok := m.treeScreen(); ok {
 			ts.setData(&m, msg.data)
 		}
-		if bs, ok := m.screens[viewBoard].(*boardScreen); ok {
+		if bs, ok := m.boardScreen(); ok {
 			bs.invalidate()
 		}
-		if ss, ok := m.screens[viewStats].(*statsScreen); ok {
+		if ss, ok := m.statsScreen(); ok {
 			ss.invalidate()
 		}
 		return m, m.afterDrain(cmd)
@@ -121,7 +139,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.afterDrain(m.drain())
 	case boardMovedMsg:
 		cmd := m.drain()
-		if bs, ok := m.screens[viewBoard].(*boardScreen); ok {
+		if bs, ok := m.boardScreen(); ok {
 			bs.applyMove(&m, msg)
 		}
 		return m, m.afterDrain(cmd)
@@ -247,9 +265,24 @@ func (m *model) drain() tea.Cmd {
 
 func (m *model) current() screen { return m.screens[m.view] }
 
+func (m model) treeScreen() (*treeScreen, bool) {
+	ts, ok := m.screens[viewTree].(*treeScreen)
+	return ts, ok
+}
+
+func (m model) boardScreen() (*boardScreen, bool) {
+	bs, ok := m.screens[viewBoard].(*boardScreen)
+	return bs, ok
+}
+
+func (m model) statsScreen() (*statsScreen, bool) {
+	ss, ok := m.screens[viewStats].(*statsScreen)
+	return ss, ok
+}
+
 func (m *model) switchView(v view) {
 	if s := m.current(); s != nil {
-		m.jumps.push(jumpEntry{view: m.view, itemID: focusedItem(s)})
+		m.jumps.push(jumpEntry{view: m.view, itemID: s.focusedID()})
 	}
 	m.view = v
 }
@@ -274,15 +307,13 @@ func (m model) View() string {
 	var main string
 	switch {
 	case m.yank != nil:
-		main = m.renderYankPicker(h)
+		main = m.yank.render(m.theme, m.width, h)
 	case m.boardPick != nil:
-		main = m.renderBoardScope(h)
+		main = m.boardPick.render(m.theme, m.width, h)
 	case m.help:
 		main = m.renderHelp(h)
-	case m.current() != nil:
-		main = m.current().view(&m, m.width, h)
 	default:
-		main = m.renderMissing(h)
+		main = m.current().view(&m, m.width, h)
 	}
 	return m.renderTitle() + "\n" + main + "\n" + m.footer()
 }
@@ -321,22 +352,6 @@ func (m model) renderHelp(h int) string {
 	return m.theme.Renderer().NewStyle().Width(m.width).Height(h).Padding(1, 2).Render(body)
 }
 
-func (m model) renderMissing(h int) string {
-	name := viewLabel[m.view]
-	if name != "" {
-		name = strings.ToUpper(name[:1]) + name[1:]
-	}
-	msg := m.theme.Dim.Render(name + " is not available yet — press 1 for the tree")
-	return centered(m.theme, m.width, h, msg)
-}
-
 func centered(t theme.Theme, width, height int, s string) string {
 	return t.Renderer().NewStyle().Width(width).Height(height).Align(lipgloss.Center, lipgloss.Center).Render(s)
-}
-
-func focusedItem(s screen) string {
-	if ts, ok := s.(*treeScreen); ok {
-		return ts.tree.selectedID()
-	}
-	return ""
 }

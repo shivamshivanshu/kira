@@ -46,7 +46,7 @@ func (i *Index) reindex(store *storage.FS, repo gitx.Repo, opts Options, force b
 	}
 	configHash := scanConfigHash(opts)
 	configChanged := hasMeta && prev.ScanConfigHash != configHash
-	if p.decision.full || configChanged {
+	if p.decision.name == actionFull || configChanged {
 		prev.TrailerWatermarks = withoutTrailerRef(prev.TrailerWatermarks)
 	}
 	headCommits, watermarks, err := i.scanTrailers(p.root, opts, p.head, prev, numbers)
@@ -55,7 +55,7 @@ func (i *Index) reindex(store *storage.FS, repo gitx.Repo, opts Options, force b
 	}
 	var closes CloseScan
 	if opts.Closes {
-		closes, err = i.collectCloses(p.root, opts, prev, numbers, p.head, opts.LandedRef, headCommits)
+		closes, err = i.collectCloses(p.root, opts, prev, numbers, p.head, headCommits)
 		if err != nil {
 			return Result{}, err
 		}
@@ -112,16 +112,15 @@ func plan(store *storage.FS, repo gitx.Repo, force, hasMeta bool, prev meta) (pl
 type decision struct {
 	name    action
 	reason  string
-	full    bool
 	refresh []string
 }
 
 func decide(root gitx.Repo, toplevel, pathspec string, force, hasMeta bool, head string, prev meta, dirtyHash string, dirtyPaths []string) (decision, error) {
 	switch {
 	case force:
-		return decision{name: actionFull, reason: "forced", full: true}, nil
+		return decision{name: actionFull, reason: "forced"}, nil
 	case !hasMeta:
-		return decision{name: actionFull, reason: "missing", full: true}, nil
+		return decision{name: actionFull, reason: "missing"}, nil
 	case head == prev.LastIndexedHeadSHA && dirtyHash == prev.DirtyHash:
 		return decision{name: actionFresh, reason: "up-to-date"}, nil
 	case head != prev.LastIndexedHeadSHA:
@@ -134,7 +133,7 @@ func decide(root gitx.Repo, toplevel, pathspec string, force, hasMeta bool, head
 			anc = ok
 		}
 		if !anc {
-			return decision{name: actionFull, reason: "history-rewritten", full: true}, nil
+			return decision{name: actionFull, reason: "history-rewritten"}, nil
 		}
 		committed, err := root.DiffNameStatus(gitx.DiffFrom(prev.LastIndexedHeadSHA), gitx.DiffTo(head), pathspec)
 		if err != nil {
@@ -149,7 +148,7 @@ func decide(root gitx.Repo, toplevel, pathspec string, force, hasMeta bool, head
 
 func (i *Index) dispatch(store *storage.FS, d decision) ([]string, error) {
 	switch {
-	case d.full:
+	case d.name == actionFull:
 		return i.full(store)
 	case d.name == actionIncremental:
 		return i.refresh(d.refresh)

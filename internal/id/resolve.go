@@ -139,17 +139,17 @@ func (r *Resolver) resolveBare(token, up string) (string, error) {
 		return "", &NotFoundError{Token: token, Suggestion: errx.Nearest(up, r.numbers)}
 	}
 	seen := map[string]bool{}
-	var ulid string
+	var holder string
 	for _, f := range fulls {
 		for _, u := range r.holdersOf(f) {
 			if !seen[u] {
 				seen[u] = true
-				ulid = u
+				holder = u
 			}
 		}
 	}
 	if len(seen) == 1 {
-		return ulid, nil
+		return holder, nil
 	}
 	cands := append([]string(nil), fulls...)
 	slices.Sort(cands)

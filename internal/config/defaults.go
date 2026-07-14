@@ -43,17 +43,15 @@ func Default() *datamodel.Config {
 				},
 			},
 		},
-		Labels:      datamodel.Vocab{Known: []string{"bug", "feature", "perf", "tech-debt", "orderbook", "infra", "p0", "p1", "p2"}},
-		People:      datamodel.People{Known: []datamodel.Person{{Name: "shivam"}, {Name: "alice"}}},
+		Labels:      datamodel.Vocab{},
+		People:      datamodel.People{},
 		Priorities:  datamodel.EnumVocab{Values: []string{"P0", "P1", "P2", "P3"}},
 		Subtypes:    datamodel.EnumVocab{Values: []string{"bug", "story", "task", "spike"}},
 		Resolutions: datamodel.EnumVocab{Values: []string{"done", "dropped", "duplicate", "cannot-reproduce"}},
 
 		ResolutionsDropped: []string{datamodel.ResolutionDropped},
-		// deliberately empty, unlike the 02-data-model §9 example: its filter
-		// and sprint entries are illustrations, not defaults
-		Filters: map[string]string{},
-		Sprints: nil,
+		Filters:            map[string]string{},
+		Sprints:            nil,
 		Commit: datamodel.Commit{
 			Mode:             datamodel.CommitAuto,
 			Trailer:          "Kira-Ticket",

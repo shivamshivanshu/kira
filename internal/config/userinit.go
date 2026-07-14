@@ -12,10 +12,6 @@ import (
 //go:embed templates/config.yaml templates/hooks.yaml
 var userTemplateFS embed.FS
 
-func UserConfigTemplate() string { return mustTemplate(userConfigFileName) }
-
-func UserHooksTemplate() string { return mustTemplate(userHooksYAMLName) }
-
 func mustTemplate(name string) string {
 	data, err := userTemplateFS.ReadFile("templates/" + name)
 	if err != nil {
@@ -29,10 +25,7 @@ func InitUser(env func(string) string) (*datamodel.ConfigInitResult, error) {
 	if !ok {
 		return nil, errx.Env("cannot resolve user config directory: set HOME or XDG_CONFIG_HOME")
 	}
-	if err := os.MkdirAll(filepath.Dir(dir), 0o755); err != nil {
-		return nil, errx.User("creating %s: %v", dir, err)
-	}
-	if err := os.Mkdir(dir, 0o755); err != nil && !os.IsExist(err) {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, errx.User("creating %s: %v", dir, err)
 	}
 	if present := PresentUserFiles(dir); len(present) > 0 {

@@ -19,35 +19,11 @@ func (w *vocabWarning) Error() string {
 }
 
 func fieldPresent(it *datamodel.Item, field string) bool {
-	set := func(p *string) bool { return p != nil && *p != "" }
-	switch field {
-	case datamodel.KeyTitle:
-		return it.Title != ""
-	case datamodel.KeySubtype:
-		return set(it.Subtype)
-	case datamodel.KeyResolution:
-		return set(it.Resolution)
-	case datamodel.KeyPriority:
-		return set(it.Priority)
-	case datamodel.KeyRank:
-		return set(it.Rank)
-	case datamodel.KeyOwner:
-		return set(it.Owner)
-	case datamodel.KeyReporter:
-		return set(it.Reporter)
-	case datamodel.KeyLabels:
-		return len(it.Labels) > 0
-	case datamodel.KeyEpic:
-		return set(it.Epic)
-	case datamodel.KeySprint:
-		return set(it.Sprint)
-	case datamodel.KeyDue:
-		return set(it.Due)
-	case datamodel.KeyEstimate:
-		return it.Estimate != nil
-	default:
+	d, ok := datamodel.Field(field)
+	if !ok || d.Present == nil {
 		return false
 	}
+	return d.Present(it)
 }
 
 func validateItem(cfg *datamodel.Config, it *datamodel.Item, force bool) (errs, warns []error) {

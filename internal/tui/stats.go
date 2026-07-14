@@ -20,14 +20,11 @@ var statsKeys = []KeyBinding{
 	{"^d/^u", "half-page"},
 }
 
-func init() { registerScreen(viewStats, func() screen { return newStatsScreen() }) }
-
 type statsScreen struct {
-	loaded     bool
-	res        *datamodel.StatsResult
-	err        error
-	scroll     int
-	pendingG   bool
+	loaded bool
+	res    *datamodel.StatsResult
+	err    error
+	scroller
 	cacheRes   *datamodel.StatsResult
 	cacheLines []string
 }
@@ -37,27 +34,7 @@ func newStatsScreen() *statsScreen { return &statsScreen{} }
 func (s *statsScreen) keys() []KeyBinding { return statsKeys }
 
 func (s *statsScreen) update(m *model, key string) tea.Cmd {
-	if s.pendingG {
-		s.pendingG = false
-		if key == "g" {
-			s.scroll = 0
-		}
-		return nil
-	}
-	switch key {
-	case "j", "down":
-		s.scroll++
-	case "k", "up":
-		s.scroll--
-	case "ctrl+d":
-		s.scroll += m.mainHeight() / 2
-	case "ctrl+u":
-		s.scroll -= m.mainHeight() / 2
-	case "g":
-		s.pendingG = true
-	case "G":
-		s.scroll = 1 << 30
-	}
+	s.scroller.update(key, m.mainHeight()/2)
 	return nil
 }
 
@@ -65,12 +42,9 @@ func (s *statsScreen) back(m *model) bool { return false }
 
 func (s *statsScreen) focusItem(m *model, id string) {}
 
-func (s *statsScreen) settle(m *model) {}
+func (s *statsScreen) focusedID() string { return "" }
 
-func (s *statsScreen) setResult(res *datamodel.StatsResult) {
-	s.res = res
-	s.loaded = true
-}
+func (s *statsScreen) settle(m *model) {}
 
 func (s *statsScreen) invalidate() { s.loaded = false }
 
@@ -135,21 +109,27 @@ func statsLines(t theme.Theme, rich bool, res *datamodel.StatsResult) []string {
 		lines = append(lines, sparkRow(t, "throughput", sparkline(vals, rich), fmt.Sprintf("%d in %dw", total, len(res.Throughput))))
 	}
 	if r := res.Reopens; r != nil && r.Count > 0 {
-		lines = append(lines, t.Dim.Render(fmt.Sprintf("  %-12s", "reopens"))+strings.Join(r.Items, ", "))
+		lines = append(lines, statLabel(t, "reopens")+strings.Join(r.Items, ", "))
 	}
 	return lines
 }
 
+const statLabelGutter = 12
+
+func statLabel(t theme.Theme, label string) string {
+	return t.Dim.Render(fmt.Sprintf("  %-*s", statLabelGutter, label))
+}
+
 func percentileLine(t theme.Theme, label string, p *datamodel.Percentiles) string {
 	if p == nil || p.N == 0 {
-		return t.Dim.Render(fmt.Sprintf("  %-12s", label)) + "no data"
+		return statLabel(t, label) + "no data"
 	}
-	return t.Dim.Render(fmt.Sprintf("  %-12s", label)) +
+	return statLabel(t, label) +
 		fmt.Sprintf("p50 %s  p90 %s  n=%d", codec.EmitFloat(p.P50), codec.EmitFloat(p.P90), p.N)
 }
 
 func sparkRow(t theme.Theme, label, spark, suffix string) string {
-	row := t.Dim.Render(fmt.Sprintf("  %-12s", label)) + spark
+	row := statLabel(t, label) + spark
 	if suffix != "" {
 		row += "  " + suffix
 	}

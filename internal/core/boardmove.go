@@ -22,15 +22,15 @@ func (s *Store) BoardMove(cfg *datamodel.Config, ref, targetKey string) (*datamo
 	}
 	defer release()
 
-	items, snap, resolver, _, err := s.load(cfg)
+	ld, err := s.load(cfg)
 	if err != nil {
 		return nil, err
 	}
-	ulid, err := resolveID(resolver, ref)
+	ulid, err := resolveID(ld.resolver, ref)
 	if err != nil {
 		return nil, err
 	}
-	it := findByULID(items, ulid)
+	it := findByULID(ld.items, ulid)
 	if it == nil {
 		return nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
 	}
@@ -47,10 +47,7 @@ func (s *Store) BoardMove(cfg *datamodel.Config, ref, targetKey string) (*datamo
 	if err != nil {
 		return nil, errx.User("item %s has an invalid ULID: %v", from, err)
 	}
-	to := allocateNumber(cfg, snap, board.Key, u)
-	if strings.EqualFold(to, from) {
-		return nil, errx.User("%s is already on board %s", from, board.Key)
-	}
+	to := allocateNumber(cfg, ld.snap, board.Key, u)
 
 	it.Number = to
 	it.Aliases = slices.DeleteFunc(it.Aliases, func(a string) bool { return strings.EqualFold(a, to) })

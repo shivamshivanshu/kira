@@ -25,7 +25,7 @@ func statsScreenWith(res *datamodel.StatsResult) (model, *statsScreen) {
 	m := newTestModel(100, 20, false)
 	ss := m.screens[viewStats].(*statsScreen)
 	if res != nil {
-		ss.setResult(res)
+		ss.res, ss.loaded = res, true
 	}
 	return m, ss
 }
@@ -74,7 +74,7 @@ func TestStatsCacheKeyedByResultPointer(t *testing.T) {
 
 	other := sampleStats()
 	other.Scope.Sprint = "a-distinctly-different-sprint"
-	ss.setResult(other)
+	ss.res, ss.loaded = other, true
 	fresh := strings.Join(ss.contentLines(m.theme, false), "\n")
 	if fresh == first {
 		t.Fatal("a fresh result pointer must invalidate the cache and rebuild, not reuse the first render")
@@ -88,7 +88,7 @@ func TestStatsInvalidateReloads(t *testing.T) {
 	t.Parallel()
 	_, ss := statsScreenWith(sampleStats())
 	if !ss.loaded {
-		t.Fatal("setResult should mark loaded")
+		t.Fatal("statsScreenWith should mark loaded")
 	}
 	ss.invalidate()
 	if ss.loaded {

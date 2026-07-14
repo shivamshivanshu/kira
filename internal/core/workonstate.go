@@ -13,10 +13,10 @@ func (s *Store) activePath() string {
 }
 
 func (s *Store) writeActive(p workon.ActivePointer) error {
-	if err := os.MkdirAll(s.fs().CacheDir(), 0o755); err != nil {
+	if err := os.MkdirAll(s.fs().CacheDir(), dirPerm); err != nil {
 		return errx.User("creating cache dir: %v", err)
 	}
-	if err := os.WriteFile(s.activePath(), p.Marshal(), 0o644); err != nil {
+	if err := os.WriteFile(s.activePath(), p.Marshal(), filePerm); err != nil {
 		return errx.User("writing active pointer: %v", err)
 	}
 	return nil

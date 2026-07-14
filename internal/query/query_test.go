@@ -184,6 +184,26 @@ func TestEvalSprintActive(t *testing.T) {
 	}
 }
 
+func TestEvalInEstimate(t *testing.T) {
+	items, opts, cfg := fixture()
+	zero := &datamodel.Item{
+		ID: id.Mint().String(), Number: "KIRA-0", Type: datamodel.TypeTicket, Title: "Zero estimate",
+		State: "TODO", Estimate: f64p(0), Created: "2026-07-05T00:00:00Z", Updated: "2026-07-05T00:00:00Z",
+	}
+	items = append(items, zero)
+
+	if got := matchNums(t, "estimate IN (3)", items, opts, cfg); strings.Join(got, ",") != "KIRA-1" {
+		t.Errorf("estimate IN (3) matched %v, want [KIRA-1] (only estimate==3, never estimate==0)", got)
+	}
+}
+
+func TestEvalInCreatedDate(t *testing.T) {
+	items, opts, cfg := fixture()
+	if got := matchNums(t, "created IN (2026-07-01)", items, opts, cfg); strings.Join(got, ",") != "KIRA-100" {
+		t.Errorf("created IN (2026-07-01) matched %v, want [KIRA-100]", got)
+	}
+}
+
 func TestCompileErrors(t *testing.T) {
 	_, opts, _ := fixture()
 	noPrio := opts

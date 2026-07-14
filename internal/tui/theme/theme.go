@@ -50,7 +50,7 @@ func newTheme(r *lipgloss.Renderer, overrides map[string]string) Theme {
 		Text:   r.NewStyle(),
 		Accent: fg(p.accent),
 		Dim:    fg(p.dim),
-		Border: fg(border),
+		Border: fg(p.border),
 		category: map[datamodel.Category]lipgloss.Style{
 			datamodel.CategoryTodo:  fg(p.todo),
 			datamodel.CategoryDoing: fg(p.doing),
@@ -61,11 +61,11 @@ func newTheme(r *lipgloss.Renderer, overrides map[string]string) Theme {
 }
 
 type themePalette struct {
-	accent, dim, todo, doing, done, warm, hot lipgloss.AdaptiveColor
+	accent, dim, border, todo, doing, done, warm, hot lipgloss.AdaptiveColor
 }
 
 func palette(overrides map[string]string) themePalette {
-	p := themePalette{accent: accent, dim: dim, todo: categoryTodo, doing: categoryDoing, done: categoryDone, warm: heatWarm, hot: heatHot}
+	p := themePalette{accent: accent, dim: dim, border: border, todo: categoryTodo, doing: categoryDoing, done: categoryDone, warm: heatWarm, hot: heatHot}
 	slots := paletteSlots(&p)
 	for slot, hex := range overrides {
 		if dst, ok := slots[slot]; ok && datamodel.IsHexColor(hex) {
@@ -77,7 +77,7 @@ func palette(overrides map[string]string) themePalette {
 
 func paletteSlots(p *themePalette) map[string]*lipgloss.AdaptiveColor {
 	return map[string]*lipgloss.AdaptiveColor{
-		"accent": &p.accent, "dim": &p.dim, "todo": &p.todo,
+		"accent": &p.accent, "dim": &p.dim, "border": &p.border, "todo": &p.todo,
 		"doing": &p.doing, "done": &p.done, "warm": &p.warm, "hot": &p.hot,
 	}
 }

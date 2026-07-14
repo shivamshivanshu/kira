@@ -22,9 +22,8 @@ var detailKeys = []KeyBinding{
 }
 
 type detailPanel struct {
-	scroll    int
+	scroller
 	commitSel int
-	pendingG  bool
 	cache     detailContent
 }
 
@@ -43,27 +42,11 @@ func (d *detailPanel) reset() {
 	d.commitSel = 0
 }
 
-func (d *detailPanel) update(m *model, res *datamodel.ShowResult, key string) tea.Cmd {
-	if d.pendingG {
-		d.pendingG = false
-		if key == "g" {
-			d.scroll = 0
-		}
-		return nil
+func (d *detailPanel) update(m *model, res *datamodel.ShowResult, key string) (tea.Cmd, bool) {
+	if d.scroller.update(key, m.mainHeight()/2) {
+		return nil, true
 	}
 	switch key {
-	case "j", "down":
-		d.scroll++
-	case "k", "up":
-		d.scroll--
-	case "ctrl+d":
-		d.scroll += m.mainHeight() / 2
-	case "ctrl+u":
-		d.scroll -= m.mainHeight() / 2
-	case "g":
-		d.pendingG = true
-	case "G":
-		d.scroll = 1 << 30
 	case "[":
 		d.commitSel = max(0, d.commitSel-1)
 	case "]":
@@ -72,10 +55,12 @@ func (d *detailPanel) update(m *model, res *datamodel.ShowResult, key string) te
 		}
 	case "enter":
 		if sha := selectedCommit(res, d.commitSel); sha != "" && m.store != nil {
-			return tea.ExecProcess(m.store.CommitShowCmd(sha), func(error) tea.Msg { return nil })
+			return tea.ExecProcess(m.store.CommitShowCmd(sha), func(error) tea.Msg { return nil }), true
 		}
+	default:
+		return nil, false
 	}
-	return nil
+	return nil, true
 }
 
 func selectedCommit(res *datamodel.ShowResult, sel int) string {

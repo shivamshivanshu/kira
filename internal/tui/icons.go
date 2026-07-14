@@ -140,12 +140,14 @@ func (ic iconSet) priorityTier(value string) int {
 	return slices.Index(ic.priorities, value)
 }
 
+const maxPriorityMarks = 3
+
 func priorityMarks(tier int) int {
 	switch {
 	case tier < 0:
 		return 0
 	case tier == 0:
-		return 3
+		return maxPriorityMarks
 	case tier == 1:
 		return 2
 	default:
@@ -157,7 +159,7 @@ func (ic iconSet) priorityCell(value string) string {
 	unit := glyphPriority.pick(ic.mode)
 	gutter := lipgloss.Width(unit)
 	if len(ic.priorities) > 0 {
-		gutter *= 3
+		gutter *= maxPriorityMarks
 	}
 	cell := strings.Repeat(unit, priorityMarks(ic.priorityTier(value)))
 	return cell + strings.Repeat(" ", gutter-lipgloss.Width(cell))

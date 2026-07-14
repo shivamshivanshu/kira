@@ -46,26 +46,14 @@ func inSprint(it *datamodel.Item, key string) bool {
 }
 
 func (s *Store) SprintCreate(cfg *datamodel.Config, sp datamodel.Sprint) (*datamodel.SprintCreateResult, error) {
-	fs := s.fs()
-	release, err := fs.Lock()
+	err := s.mutateConfig(func(data []byte, _ *datamodel.Config) (configEdit, error) {
+		out, err := config.AppendSprint(data, sp)
+		if err != nil {
+			return configEdit{}, errx.User("%v", err)
+		}
+		return configEdit{data: out, commit: cfg.Commit, subject: "sprint create " + sp.Key}, nil
+	})
 	if err != nil {
-		return nil, err
-	}
-	defer release()
-
-	data, err := os.ReadFile(fs.ConfigPath())
-	if err != nil {
-		return nil, errx.User("reading config: %v", err)
-	}
-	out, err := config.AppendSprint(data, sp)
-	if err != nil {
-		return nil, errx.User("%v", err)
-	}
-	if err := os.WriteFile(fs.ConfigPath(), out, 0o644); err != nil {
-		return nil, errx.User("writing config: %v", err)
-	}
-	subject := cfg.Commit.SubjectPrefix + "sprint create " + sp.Key
-	if _, err := s.finalize(cfg.Commit.Mode, commitSpec{trailerKey: cfg.Commit.Trailer, subject: subject}, fs.RelToRoot(fs.ConfigPath())); err != nil {
 		return nil, err
 	}
 	return &datamodel.SprintCreateResult{Created: true, Sprint: sprintView(sp)}, nil
@@ -100,10 +88,10 @@ func (s *Store) SprintActivate(cfg *datamodel.Config, key string) (*datamodel.Sp
 	}
 	prev := s.ActiveSprintKey()
 	fs := s.fs()
-	if err := os.MkdirAll(fs.CacheDir(), 0o755); err != nil {
+	if err := os.MkdirAll(fs.CacheDir(), dirPerm); err != nil {
 		return nil, errx.User("creating cache dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(fs.CacheDir(), activeSprintFile), []byte(key+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(fs.CacheDir(), activeSprintFile), []byte(key+"\n"), filePerm); err != nil {
 		return nil, errx.User("writing active-sprint pointer: %v", err)
 	}
 	return &datamodel.SprintActivateResult{Activated: key, Previous: prev}, nil

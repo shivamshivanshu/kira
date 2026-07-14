@@ -2,12 +2,14 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/termx"
 	"github.com/shivamshivanshu/kira/internal/tui"
 )
@@ -44,7 +46,9 @@ func newBoardCmd(g *globalFlags) *cobra.Command {
 			if len(args) == 1 {
 				epic = args[0]
 			}
-			if cfg.UI.AutoTUI && !plain && !g.json && epic == "" && at == "" && owner == "" && label == "" && query == "" && filter == "" && termx.IsTerminal(os.Stdout) {
+			noFilters := epic == "" && at == "" && owner == "" && label == "" && query == "" && filter == ""
+			shouldLaunchBoardTUI := cfg.UI.AutoTUI && !plain && !g.json && noFilters && termx.IsTerminal(os.Stdout)
+			if shouldLaunchBoardTUI {
 				return tui.Run(s, cfg, tui.Options{NoColor: g.noColor, RunCommand: commandRunner(g), InitialView: tui.ViewBoard})
 			}
 			res, err := s.Board(cfg, core.BoardOpts{Epic: epic, Owner: owner, Label: label, Query: query, Filter: filter, At: at})
@@ -68,26 +72,36 @@ func newBoardCmd(g *globalFlags) *cobra.Command {
 	return cmd
 }
 
+func storeActionRunE[T any](g *globalFlags, action func(*core.Store, *datamodel.Config, []string) (T, error), print func(io.Writer, T)) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		s, cfg, err := openStore(g)
+		if err != nil {
+			return err
+		}
+		res, err := action(s, cfg, args)
+		if err != nil {
+			return err
+		}
+		if g.json {
+			return emitJSON(cmd.OutOrStdout(), res)
+		}
+		print(cmd.OutOrStdout(), res)
+		return nil
+	}
+}
+
 func newBoardUnarchiveCmd(g *globalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "unarchive <KEY>",
 		Short: "Restore an archived board",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res, err := s.BoardUnarchive(cfg, args[0])
-			if err != nil {
-				return err
-			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Unarchived board %s\n", res.Board.Key)
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, args []string) (*datamodel.BoardUpdateResult, error) {
+				return s.BoardUnarchive(cfg, args[0])
+			},
+			func(w io.Writer, res *datamodel.BoardUpdateResult) {
+				fmt.Fprintf(w, "Unarchived board %s\n", res.Board.Key)
+			}),
 	}
 }
 
@@ -96,21 +110,13 @@ func newBoardRenameCmd(g *globalFlags) *cobra.Command {
 		Use:   "rename <KEY> <name>",
 		Short: "Change a board's display name",
 		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res, err := s.BoardRename(cfg, args[0], args[1])
-			if err != nil {
-				return err
-			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Renamed board %s to %s\n", res.Board.Key, res.Board.Name)
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, args []string) (*datamodel.BoardUpdateResult, error) {
+				return s.BoardRename(cfg, args[0], args[1])
+			},
+			func(w io.Writer, res *datamodel.BoardUpdateResult) {
+				fmt.Fprintf(w, "Renamed board %s to %s\n", res.Board.Key, res.Board.Name)
+			}),
 	}
 }
 
@@ -119,21 +125,13 @@ func newBoardArchiveCmd(g *globalFlags) *cobra.Command {
 		Use:   "archive <KEY>",
 		Short: "Archive a board (hidden from pickers; its tickets still resolve and list)",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res, err := s.BoardArchive(cfg, args[0])
-			if err != nil {
-				return err
-			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Archived board %s\n", res.Board.Key)
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, args []string) (*datamodel.BoardUpdateResult, error) {
+				return s.BoardArchive(cfg, args[0])
+			},
+			func(w io.Writer, res *datamodel.BoardUpdateResult) {
+				fmt.Fprintf(w, "Archived board %s\n", res.Board.Key)
+			}),
 	}
 }
 
@@ -142,21 +140,13 @@ func newBoardMoveCmd(g *globalFlags) *cobra.Command {
 		Use:   "move <item> <KEY>",
 		Short: "Move an item to another board (renumbers; old number is kept as an alias)",
 		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res, err := s.BoardMove(cfg, args[0], args[1])
-			if err != nil {
-				return err
-			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Moved %s -> %s\n", res.From, res.To)
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, args []string) (*datamodel.BoardMoveResult, error) {
+				return s.BoardMove(cfg, args[0], args[1])
+			},
+			func(w io.Writer, res *datamodel.BoardMoveResult) {
+				fmt.Fprintf(w, "Moved %s -> %s\n", res.From, res.To)
+			}),
 	}
 }
 
@@ -166,21 +156,13 @@ func newBoardCreateCmd(g *globalFlags) *cobra.Command {
 		Use:   "create <KEY>",
 		Short: "Add a board to the config (committed like any config mutation)",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res, err := s.BoardCreate(cfg, args[0], name, description)
-			if err != nil {
-				return err
-			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Created board %s\n", res.Board.Key)
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, args []string) (*datamodel.BoardCreateResult, error) {
+				return s.BoardCreate(cfg, args[0], name, description)
+			},
+			func(w io.Writer, res *datamodel.BoardCreateResult) {
+				fmt.Fprintf(w, "Created board %s\n", res.Board.Key)
+			}),
 	}
 	f := cmd.Flags()
 	f.StringVar(&name, "name", "", "display name (defaults to the key)")

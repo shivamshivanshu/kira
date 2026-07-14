@@ -23,18 +23,7 @@ func newMoveCmd(g *globalFlags) *cobra.Command {
 			}
 			apply := func(id string) (*datamodel.MoveResult, error) { return s.Move(cfg, id, state, opts) }
 			out := cmd.OutOrStdout()
-			if len(ids) == 1 {
-				res, err := apply(ids[0])
-				if err != nil {
-					return err
-				}
-				if g.json {
-					return emitJSON(out, res)
-				}
-				fmt.Fprintln(out, moveLine(res))
-				return nil
-			}
-			return runBulk(out, cmd.ErrOrStderr(), g.json, ids, apply, moveLine)
+			return runSingleOrBulk(out, cmd.ErrOrStderr(), g.json, ids, apply, moveLine)
 		},
 	}
 	f := cmd.Flags()

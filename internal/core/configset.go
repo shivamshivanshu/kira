@@ -1,8 +1,6 @@
 package core
 
 import (
-	"os"
-
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
@@ -17,26 +15,14 @@ func Filters(cfg *datamodel.Config) *datamodel.FilterListResult {
 }
 
 func (s *Store) ConfigSet(cfg *datamodel.Config, key, value string) (*datamodel.ConfigSetResult, error) {
-	fs := s.fs()
-	release, err := fs.Lock()
+	err := s.mutateConfig(func(data []byte, _ *datamodel.Config) (configEdit, error) {
+		out, err := config.SetScalar(data, key, value)
+		if err != nil {
+			return configEdit{}, errx.User("%v", err)
+		}
+		return configEdit{data: out, commit: cfg.Commit, subject: "config set " + key}, nil
+	})
 	if err != nil {
-		return nil, err
-	}
-	defer release()
-
-	data, err := os.ReadFile(fs.ConfigPath())
-	if err != nil {
-		return nil, errx.User("reading config: %v", err)
-	}
-	out, err := config.SetScalar(data, key, value)
-	if err != nil {
-		return nil, errx.User("%v", err)
-	}
-	if err := os.WriteFile(fs.ConfigPath(), out, 0o644); err != nil {
-		return nil, errx.User("writing config: %v", err)
-	}
-	subject := cfg.Commit.SubjectPrefix + "config set " + key
-	if _, err := s.finalize(cfg.Commit.Mode, commitSpec{trailerKey: cfg.Commit.Trailer, subject: subject}, fs.RelToRoot(fs.ConfigPath())); err != nil {
 		return nil, err
 	}
 	return &datamodel.ConfigSetResult{Key: key, Value: value}, nil

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -43,7 +44,7 @@ func newHooksInstallCmd(g *globalFlags) *cobra.Command {
 				if g.json {
 					return emitJSON(cmd.OutOrStdout(), res)
 				}
-				printHooksValidate(cmd, res)
+				printHooksValidate(cmd.OutOrStdout(), res)
 				return nil
 			}
 			res, err := s.InstallHooks(cfg, opts)
@@ -53,7 +54,7 @@ func newHooksInstallCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			printHooksInstall(cmd, res)
+			printHooksInstall(cmd.OutOrStdout(), res)
 			return nil
 		},
 	}
@@ -126,8 +127,7 @@ func newHooksPreCommitCmd(g *globalFlags) *cobra.Command {
 	}
 }
 
-func printHooksInstall(cmd *cobra.Command, res *datamodel.HooksInstallResult) {
-	out := cmd.OutOrStdout()
+func printHooksInstall(out io.Writer, res *datamodel.HooksInstallResult) {
 	for _, h := range res.Hooks {
 		switch {
 		case h.Chained:
@@ -143,8 +143,7 @@ func printHooksInstall(cmd *cobra.Command, res *datamodel.HooksInstallResult) {
 	}
 }
 
-func printHooksValidate(cmd *cobra.Command, res *datamodel.HooksValidateResult) {
-	out := cmd.OutOrStdout()
+func printHooksValidate(out io.Writer, res *datamodel.HooksValidateResult) {
 	for _, h := range res.Hooks {
 		state := "missing"
 		if h.Installed {

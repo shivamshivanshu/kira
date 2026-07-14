@@ -15,7 +15,7 @@ type payload struct {
 	Ts             string                 `json:"ts"`
 	Repo           string                 `json:"repo"`
 	Actor          Actor                  `json:"actor"`
-	Item           any                    `json:"item,omitempty"`
+	Item           *datamodel.ShowResult  `json:"item,omitempty"`
 	Changes        map[string]Change      `json:"changes,omitempty"`
 	From           string                 `json:"from,omitempty"`
 	To             string                 `json:"to,omitempty"`
@@ -36,9 +36,7 @@ func Payload(ev Event, repo, ts string, actor Actor) ([]byte, error) {
 		To:             ev.To,
 		ToCategory:     ev.ToCategory,
 		Sync:           ev.Sync,
-	}
-	if ev.Item != nil {
-		p.Item = ev.Item
+		Item:           ev.Item,
 	}
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)

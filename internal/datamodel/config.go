@@ -166,11 +166,11 @@ func (c *Config) BoardKeys() []string {
 
 func (c *Config) VocabFor(field string) ([]string, bool) {
 	switch field {
-	case "priority":
+	case KeyPriority:
 		return c.Priorities.Values, true
-	case "subtype":
+	case KeySubtype:
 		return c.Subtypes.Values, true
-	case "resolution":
+	case KeyResolution:
 		return c.Resolutions.Values, true
 	}
 	return nil, false

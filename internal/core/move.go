@@ -63,22 +63,14 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 			it.Resolution = nil
 		}
 
-		if from != state && target.Wip > 0 {
-			inTargetState := 1
-			for _, other := range items {
-				if other.ID != it.ID && other.Type == it.Type && other.State == state {
-					inTargetState++
-				}
-			}
-			if inTargetState > target.Wip {
-				if wf.EffectiveWipPolicy() == datamodel.WipBlock && !opts.Force {
-					return []error{errx.User("%s is over its WIP limit (%d > %d)", state, inTargetState, target.Wip).WithHint("move an item out of %s first, or use `--force` to override", state)}, nil
-				}
-				w := fmt.Errorf("%s is over its WIP limit (%d > %d)", state, inTargetState, target.Wip)
-				wipWarnings = append(wipWarnings, w.Error())
-				warns = append(warns, w)
-			}
+		h, w := wipGuard(wf, it, items, from, state, target.Wip, opts.Force)
+		if len(h) > 0 {
+			return h, nil
 		}
+		for _, e := range w {
+			wipWarnings = append(wipWarnings, e.Error())
+		}
+		warns = append(warns, w...)
 		return nil, warns
 	}
 	subjectOf := func(orig *datamodel.Item) string {
@@ -141,6 +133,25 @@ func applyTransitionEffects(cfg *datamodel.Config, it *datamodel.Item, tr *datam
 		}
 	}
 	return nil, warns
+}
+
+func wipGuard(wf datamodel.Workflow, it *datamodel.Item, items []*datamodel.Item, from, state string, wip int, force bool) (hard, warns []error) {
+	if from == state || wip <= 0 {
+		return nil, nil
+	}
+	inTargetState := 1
+	for _, other := range items {
+		if other.ID != it.ID && other.Type == it.Type && other.State == state {
+			inTargetState++
+		}
+	}
+	if inTargetState <= wip {
+		return nil, nil
+	}
+	if wf.EffectiveWipPolicy() == datamodel.WipBlock && !force {
+		return []error{errx.User("%s is over its WIP limit (%d > %d)", state, inTargetState, wip).WithHint("move an item out of %s first, or use `--force` to override", state)}, nil
+	}
+	return nil, []error{fmt.Errorf("%s is over its WIP limit (%d > %d)", state, inTargetState, wip)}
 }
 
 func blockersClosedGuard(cfg *datamodel.Config, it *datamodel.Item, items []*datamodel.Item, from, state string, force bool) (hard, warns []error) {

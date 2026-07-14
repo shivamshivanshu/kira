@@ -27,8 +27,6 @@ var boardKeys = []KeyBinding{
 	{"gg/G", "top/bottom"},
 }
 
-func init() { registerScreen(viewBoard, func() screen { return newBoardScreen() }) }
-
 type boardScreen struct {
 	board    boardModel
 	host     detailHost
@@ -83,7 +81,8 @@ func (s *boardScreen) applyScope() {
 func (s *boardScreen) update(m *model, key string) tea.Cmd {
 	s.ensureLoaded(m)
 	if s.peek == peekOverlay {
-		return s.host.update(m, key)
+		cmd, _ := s.host.update(m, key)
+		return cmd
 	}
 	if s.pendingG {
 		s.pendingG = false
@@ -205,6 +204,13 @@ func (s *boardScreen) back(m *model) bool {
 func (s *boardScreen) focusItem(m *model, id string) {
 	s.ensureLoaded(m)
 	s.board.focusByID(id)
+}
+
+func (s *boardScreen) focusedID() string {
+	if card, ok := s.board.selected(); ok {
+		return card.ID
+	}
+	return ""
 }
 
 func (s *boardScreen) view(m *model, width, height int) string {

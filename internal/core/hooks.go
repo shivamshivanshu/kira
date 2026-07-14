@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	filePerm = 0o644
 	dirPerm  = 0o755
 	execPerm = 0o755
 )

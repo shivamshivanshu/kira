@@ -51,8 +51,8 @@ func TestYankPickerCopiesChosenForm(t *testing.T) {
 	if m.yank == nil {
 		t.Fatal("Y did not open the yank picker")
 	}
-	if m.yank.number != "KIRA-100" {
-		t.Fatalf("picker bound to %q, want the selected epic KIRA-100", m.yank.number)
+	if m.yank.title != "yank KIRA-100" {
+		t.Fatalf("picker titled %q, want the selected epic KIRA-100", m.yank.title)
 	}
 
 	chosen, _ := m.Update(key("5"))

@@ -9,10 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
-var editableFields = []string{
-	"due", "epic", "estimate", "labels", "owner", "priority", "rank",
-	"reporter", "resolution", "sprint", "state", "subtype", "title",
-}
+var editableFields = datamodel.EditableFields
 
 func fieldHint(key string) string {
 	if n := errx.Nearest(key, editableFields); n != "" {
