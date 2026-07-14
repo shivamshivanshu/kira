@@ -4,12 +4,12 @@ number: KIRA-57
 aliases: []
 type: epic
 title: "Professionalize: solo-review readability program"
-state: PLANNED
+state: DONE
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-13T18:22:15+05:30
-updated: 2026-07-13T18:22:15+05:30
+updated: 2026-07-14T14:57:35+05:30
 ---
 
 ## Description

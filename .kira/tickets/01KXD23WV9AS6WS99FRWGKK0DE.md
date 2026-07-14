@@ -4,13 +4,14 @@ number: KIRA-42
 aliases: []
 type: ticket
 title: "Test parallelism: t.Parallel for hermetic subprocess-bound suites after shared-state audit"
-state: TODO
+state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: 01KXCWAN7PK346KK28DTB1BCRQ
 blocked_by: []
 created: 2026-07-13T11:50:02+05:30
-updated: 2026-07-13T11:50:02+05:30
+updated: 2026-07-14T14:56:56+05:30
 ---
 
 ## Description

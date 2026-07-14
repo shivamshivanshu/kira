@@ -6,11 +6,11 @@ type: ticket
 title: "M1: extract shared create/edit mutation pipeline"
 state: DONE
 resolution: done
-labels: [""]
+labels: []
 epic: null
 blocked_by: []
 created: 2026-07-12T21:01:17+05:30
-updated: 2026-07-13T03:01:57+05:30
+updated: 2026-07-13T22:16:21+05:30
 ---
 
 ## Description
