@@ -50,6 +50,7 @@ func appendSprint(t *testing.T, data string, sp datamodel.Sprint) string {
 }
 
 func TestAppendSprintEmptyFlowListPreservesComments(t *testing.T) {
+	t.Parallel()
 	out := appendSprint(t, commentedConfig, s15)
 
 	want := strings.Replace(commentedConfig,
@@ -70,6 +71,7 @@ func TestAppendSprintEmptyFlowListPreservesComments(t *testing.T) {
 }
 
 func TestAppendSprintBlockListAppendsAfterLastEntry(t *testing.T) {
+	t.Parallel()
 	first := appendSprint(t, commentedConfig, s15)
 	out := appendSprint(t, first, s16)
 
@@ -91,6 +93,7 @@ func TestAppendSprintBlockListAppendsAfterLastEntry(t *testing.T) {
 }
 
 func TestAppendSprintBlockListMultiLineEntries(t *testing.T) {
+	t.Parallel()
 	data := `sprints:
   - key: 2026-S14
     name: Sprint 14
@@ -111,6 +114,7 @@ func TestAppendSprintBlockListMultiLineEntries(t *testing.T) {
 }
 
 func TestAppendSprintInlineFlowList(t *testing.T) {
+	t.Parallel()
 	data := "sprints: [{ key: 2026-S14, name: Sprint 14, start: 2026-07-13, end: 2026-07-26 }]\n"
 	out := appendSprint(t, data, s15)
 	cfg, err := config.Parse([]byte(out))
@@ -123,6 +127,7 @@ func TestAppendSprintInlineFlowList(t *testing.T) {
 }
 
 func TestAppendSprintMissingKeyAppendsBlock(t *testing.T) {
+	t.Parallel()
 	data := "version: 1\nproject:\n  key: KIRA\n"
 	out := appendSprint(t, data, s15)
 	cfg, err := config.Parse([]byte(out))
@@ -138,6 +143,7 @@ func TestAppendSprintMissingKeyAppendsBlock(t *testing.T) {
 }
 
 func TestAppendSprintNullValue(t *testing.T) {
+	t.Parallel()
 	data := "sprints:\n"
 	out := appendSprint(t, data, s15)
 	cfg, err := config.Parse([]byte(out))
@@ -150,6 +156,7 @@ func TestAppendSprintNullValue(t *testing.T) {
 }
 
 func TestAppendSprintDuplicateKeyRejected(t *testing.T) {
+	t.Parallel()
 	first := appendSprint(t, commentedConfig, s15)
 	if _, err := config.AppendSprint([]byte(first), s15); err == nil || !strings.Contains(err.Error(), "duplicate key") {
 		t.Errorf("duplicate append error = %v, want duplicate key", err)
@@ -157,6 +164,7 @@ func TestAppendSprintDuplicateKeyRejected(t *testing.T) {
 }
 
 func TestAppendSprintEmptyNameRejected(t *testing.T) {
+	t.Parallel()
 	sp := datamodel.Sprint{Key: "K", Start: "2026-01-01", End: "2026-01-02"}
 	if _, err := config.AppendSprint([]byte(commentedConfig), sp); err == nil || !strings.Contains(err.Error(), "empty name") {
 		t.Errorf("unnamed sprint error = %v, want empty name", err)
@@ -164,6 +172,7 @@ func TestAppendSprintEmptyNameRejected(t *testing.T) {
 }
 
 func TestAppendSprintMultiLineValueRejected(t *testing.T) {
+	t.Parallel()
 	sp := datamodel.Sprint{Key: "K", Name: "a\nb", Start: "2026-01-01", End: "2026-01-02"}
 	if _, err := config.AppendSprint([]byte(commentedConfig), sp); err == nil {
 		t.Error("multi-line field value accepted, want error")

@@ -11,6 +11,11 @@ const (
 	WarnOrphanType     WarnCode = "orphan_type"
 )
 
+var WarnCodes = []WarnCode{
+	WarnIndexFallback, WarnNoActiveSprint, WarnCloseUnknown,
+	WarnCloseFailed, WarnLiteral, WarnOrphanType,
+}
+
 type Warning struct {
 	Code WarnCode
 	Args []string
@@ -183,6 +188,8 @@ const (
 	DiffDeleted DiffStatus = "deleted"
 	DiffChanged DiffStatus = "changed"
 )
+
+var DiffStatuses = []DiffStatus{DiffCreated, DiffDeleted, DiffChanged}
 
 type ChangesResult struct {
 	Since string        `json:"since"`

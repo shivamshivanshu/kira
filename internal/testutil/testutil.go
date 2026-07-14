@@ -22,11 +22,14 @@ func GitInit(dir string) error {
 	return nil
 }
 
+func init() {
+	os.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	os.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+	os.Setenv("EDITOR", "true")
+}
+
 func InitGitRepo(t *testing.T) string {
 	t.Helper()
-	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
-	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
-	t.Setenv("EDITOR", "true")
 	root := t.TempDir()
 	if err := GitInit(root); err != nil {
 		t.Fatalf("git init: %v", err)

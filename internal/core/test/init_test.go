@@ -10,6 +10,7 @@ import (
 )
 
 func TestConfigTemplateParses(t *testing.T) {
+	t.Parallel()
 	root := testutil.InitGitRepo(t)
 	if _, err := core.Init(root, "ACME", false); err != nil {
 		t.Fatalf("Init: %v", err)

@@ -32,16 +32,19 @@ func sampleDetail() *datamodel.ShowResult {
 }
 
 func TestDetailPanelFull(t *testing.T) {
+	t.Parallel()
 	got := newDetailPanel().render(asciiTheme(), iconSet{mode: datamodel.IconText}, sampleDetail(), 100, 40)
 	golden.RequireEqual(t, []byte(got))
 }
 
 func TestDetailPanelNarrowGuard(t *testing.T) {
+	t.Parallel()
 	got := newDetailPanel().render(asciiTheme(), iconSet{mode: datamodel.IconText}, sampleDetail(), 20, 40)
 	golden.RequireEqual(t, []byte(got))
 }
 
 func TestDetailPanelRendersSubtypeWhenSet(t *testing.T) {
+	t.Parallel()
 	res := sampleDetail()
 	res.Subtype = strptr("bug")
 	got := newDetailPanel().render(asciiTheme(), iconSet{mode: datamodel.IconText}, res, 100, 40)
@@ -54,12 +57,14 @@ func TestDetailPanelRendersSubtypeWhenSet(t *testing.T) {
 }
 
 func TestDetailPanelNil(t *testing.T) {
+	t.Parallel()
 	if got := newDetailPanel().render(asciiTheme(), iconSet{mode: datamodel.IconText}, nil, 100, 40); got == "" {
 		t.Fatal("nil result should render a placeholder")
 	}
 }
 
 func TestDetailPanelCommitSelection(t *testing.T) {
+	t.Parallel()
 	res := sampleDetail()
 	d := newDetailPanel()
 	d.update(nil, res, "]")
@@ -81,12 +86,14 @@ func TestDetailPanelCommitSelection(t *testing.T) {
 }
 
 func TestDetailPanelEnterNoStoreNoCmd(t *testing.T) {
+	t.Parallel()
 	if cmd := newDetailPanel().update(&model{}, sampleDetail(), "enter"); cmd != nil {
 		t.Fatal("enter with nil store must not issue a command")
 	}
 }
 
 func TestTreeDetailPanelShowsLinkedData(t *testing.T) {
+	t.Parallel()
 	m := newTestModel(100, 40, true)
 	ts := m.screens[viewTree].(*treeScreen)
 	ts.host.cache["E1"] = sampleDetail()
@@ -101,6 +108,7 @@ func TestTreeDetailPanelShowsLinkedData(t *testing.T) {
 }
 
 func TestDetailCacheKeyedByResultPointer(t *testing.T) {
+	t.Parallel()
 	res := sampleDetail()
 	d := newDetailPanel()
 	first := strings.Join(d.contentLines(asciiTheme(), iconSet{mode: datamodel.IconText}, res, 100), "\n")
@@ -123,6 +131,7 @@ func TestDetailCacheKeyedByResultPointer(t *testing.T) {
 }
 
 func TestDetailPanelScrollClamp(t *testing.T) {
+	t.Parallel()
 	d := newDetailPanel()
 	for i := 0; i < 50; i++ {
 		d.update(nil, sampleDetail(), "j")

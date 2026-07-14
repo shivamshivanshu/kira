@@ -10,6 +10,7 @@ import (
 )
 
 func TestPriorityWeightByVocabPosition(t *testing.T) {
+	t.Parallel()
 	vocab := []string{"high", "medium", "low"}
 	ic := iconSet{mode: datamodel.IconText, priorities: vocab}
 
@@ -32,6 +33,7 @@ func TestPriorityWeightByVocabPosition(t *testing.T) {
 }
 
 func TestPriorityHueByTier(t *testing.T) {
+	t.Parallel()
 	th := colorTheme()
 	const probe = "x"
 	if priorityHue(th, 0).Render(probe) != th.Heat.Hot.Render(probe) {
@@ -48,6 +50,7 @@ func TestPriorityHueByTier(t *testing.T) {
 }
 
 func TestTreeRowPriorityMarksFromVocab(t *testing.T) {
+	t.Parallel()
 	high := "high"
 	nodes := []datamodel.TreeNode{{ID: "T1", Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "Hot"}}
 	fields := map[string]datamodel.ListItem{

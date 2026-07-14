@@ -139,6 +139,7 @@ func registerDriver(t *testing.T, root string) {
 }
 
 func TestResolveCleansPlainMergeConflict(t *testing.T) {
+	t.Parallel()
 	root := initGitRepo(t)
 	initStore(t, root)
 	repo := gitx.Repo{Dir: root}
@@ -198,6 +199,7 @@ func writeScratch(t *testing.T, root, name, content string) string {
 }
 
 func TestMergeFileManualPolicyConflictExit(t *testing.T) {
+	t.Parallel()
 	root := initGitRepo(t)
 	initStore(t, root)
 	setMergePolicyManual(t, root)
@@ -222,6 +224,7 @@ func TestMergeFileManualPolicyConflictExit(t *testing.T) {
 }
 
 func TestMergeFileManualPolicyCleanTextMerge(t *testing.T) {
+	t.Parallel()
 	root := initGitRepo(t)
 	initStore(t, root)
 	setMergePolicyManual(t, root)

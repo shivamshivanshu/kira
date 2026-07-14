@@ -41,6 +41,7 @@ var mdCorpus = []mdCase{
 }
 
 func TestMarkdownGolden(t *testing.T) {
+	t.Parallel()
 	for _, c := range mdCorpus {
 		t.Run(c.name, func(t *testing.T) {
 			golden.RequireEqual(t, []byte(renderMarkdown(c.body, c.width)))

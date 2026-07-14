@@ -24,6 +24,7 @@ func testSnapshot() id.Snapshot {
 }
 
 func TestResolve(t *testing.T) {
+	t.Parallel()
 	r := id.NewResolver(testSnapshot())
 	cases := []struct {
 		name  string
@@ -54,6 +55,7 @@ func TestResolve(t *testing.T) {
 }
 
 func TestResolveAmbiguousPrefixListsCandidates(t *testing.T) {
+	t.Parallel()
 	r := id.NewResolver(testSnapshot())
 	_, err := r.Resolve("01BX5Z")
 	var amb *id.AmbiguousError
@@ -66,6 +68,7 @@ func TestResolveAmbiguousPrefixListsCandidates(t *testing.T) {
 }
 
 func TestResolvePrefixPrecedesBareNumber(t *testing.T) {
+	t.Parallel()
 	r := id.NewResolver(testSnapshot())
 	_, err := r.Resolve("01")
 	var amb *id.AmbiguousError
@@ -78,6 +81,7 @@ func TestResolvePrefixPrecedesBareNumber(t *testing.T) {
 }
 
 func TestResolveLiveNumberBeatsAlias(t *testing.T) {
+	t.Parallel()
 	r := id.NewResolver(id.Snapshot{Key: "KIRA", Items: []id.Item{
 		{ULID: uB, Number: "KIRA-3", Aliases: []string{"KIRA-5"}},
 		{ULID: uA, Number: "KIRA-5"},
@@ -89,6 +93,7 @@ func TestResolveLiveNumberBeatsAlias(t *testing.T) {
 }
 
 func TestResolveNotFound(t *testing.T) {
+	t.Parallel()
 	r := id.NewResolver(testSnapshot())
 	for _, token := range []string{
 		"",

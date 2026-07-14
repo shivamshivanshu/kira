@@ -14,6 +14,7 @@ import (
 )
 
 func TestUninitTypedConfirmCreatesKira(t *testing.T) {
+	t.Parallel()
 	dir := testutil.InitGitRepo(t)
 	m := newUninitModel(dir, asciiTheme())
 
@@ -46,6 +47,7 @@ func TestUninitTypedConfirmCreatesKira(t *testing.T) {
 }
 
 func TestUninitEmptyKeyDoesNotInit(t *testing.T) {
+	t.Parallel()
 	dir := testutil.InitGitRepo(t)
 	m := newUninitModel(dir, asciiTheme())
 	m.width, m.height = 80, 20

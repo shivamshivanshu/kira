@@ -11,6 +11,7 @@ import (
 )
 
 func TestTreeCycleReported(t *testing.T) {
+	t.Parallel()
 	root := testutil.InitGitRepo(t)
 	if _, err := core.Init(root, "KIRA", false); err != nil {
 		t.Fatalf("Init: %v", err)
@@ -36,6 +37,7 @@ func TestTreeCycleReported(t *testing.T) {
 }
 
 func TestListQueryAndsWithFlags(t *testing.T) {
+	t.Parallel()
 	root := testutil.InitGitRepo(t)
 	if _, err := core.Init(root, "KIRA", false); err != nil {
 		t.Fatalf("Init: %v", err)

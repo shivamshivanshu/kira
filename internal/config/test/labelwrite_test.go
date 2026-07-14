@@ -29,6 +29,7 @@ func appendLabels(t *testing.T, data string, names ...string) string {
 }
 
 func TestAppendKnownLabelsEmptyFlowListPreservesComments(t *testing.T) {
+	t.Parallel()
 	out := appendLabels(t, labelConfig, "backend", "frontend")
 
 	want := `version: 1
@@ -54,6 +55,7 @@ labels:
 }
 
 func TestAppendKnownLabelsBlockList(t *testing.T) {
+	t.Parallel()
 	src := `labels:
   known:
     - backend
@@ -70,6 +72,7 @@ func TestAppendKnownLabelsBlockList(t *testing.T) {
 }
 
 func TestAppendKnownLabelsNamesOwnSubsystemOnError(t *testing.T) {
+	t.Parallel()
 	_, err := config.AppendKnownLabels([]byte(labelConfig), []string{"a\nb"})
 	if err == nil {
 		t.Fatal("expected an error for a multi-line label name")
@@ -83,6 +86,7 @@ func TestAppendKnownLabelsNamesOwnSubsystemOnError(t *testing.T) {
 }
 
 func TestAppendKnownLabelsQuotesWhenNeeded(t *testing.T) {
+	t.Parallel()
 	out := appendLabels(t, labelConfig, "needs review")
 	cfg, err := config.Parse([]byte(out))
 	if err != nil {

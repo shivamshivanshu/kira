@@ -33,6 +33,7 @@ func wfDoneState(wf datamodel.Workflow, state string) bool {
 }
 
 func TestMoveTransitionMatrix(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	wf := cfg.Workflows[datamodel.TypeTicket]
 	states := make([]string, len(wf.States))
@@ -70,6 +71,7 @@ func TestMoveTransitionMatrix(t *testing.T) {
 }
 
 func TestMoveInvalidStateAlwaysErrors(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "bogus")
 	for _, force := range []bool{false, true} {
@@ -80,6 +82,7 @@ func TestMoveInvalidStateAlwaysErrors(t *testing.T) {
 }
 
 func TestMoveActivateWritesPointer(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "activate")
 	if _, err := s.Move(cfg, res.Number, "IN_PROGRESS", core.MoveOpts{Activate: true}); err != nil {
@@ -96,6 +99,7 @@ func TestMoveActivateWritesPointer(t *testing.T) {
 }
 
 func TestCommentPureSuffix(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "comment")
 	path := filepath.Join(s.Root(), res.Path)
@@ -136,6 +140,7 @@ func TestCommentPureSuffix(t *testing.T) {
 }
 
 func TestCommentEmptyRejected(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "empty")
 	if _, err := s.Comment(cfg, res.Number, core.CommentOpts{Message: "  ", HasMessage: true}); err == nil {
@@ -144,6 +149,7 @@ func TestCommentEmptyRejected(t *testing.T) {
 }
 
 func TestLinkTouchesOneFile(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	a := mustCreate(t, s, cfg, "A")
 	b := mustCreate(t, s, cfg, "B")
@@ -178,6 +184,7 @@ func TestLinkTouchesOneFile(t *testing.T) {
 }
 
 func TestLinkRejections(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	a := mustCreate(t, s, cfg, "A")
 	epicRes, err := s.Create(cfg, core.CreateOpts{Type: datamodel.TypeEpic, Title: "E", NoEdit: true})
@@ -200,6 +207,7 @@ func TestLinkRejections(t *testing.T) {
 }
 
 func TestLinkTyped(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	a := mustCreate(t, s, cfg, "A")
 	b := mustCreate(t, s, cfg, "B")
@@ -243,6 +251,7 @@ func TestLinkTyped(t *testing.T) {
 }
 
 func TestEditPathSelfLinkRejected(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	a := mustCreate(t, s, cfg, "A")
 
@@ -269,6 +278,7 @@ func TestEditPathSelfLinkRejected(t *testing.T) {
 }
 
 func TestMoveRecordsResolution(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "resolved")
 	if _, err := s.Move(cfg, res.Number, "WONT_DO", core.MoveOpts{Resolution: "duplicate"}); err != nil {
@@ -284,6 +294,7 @@ func TestMoveRecordsResolution(t *testing.T) {
 }
 
 func TestMoveRequireGuard(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "guarded")
 	positionTo(t, s, cfg, res.Number, "REVIEW")
@@ -306,6 +317,7 @@ func TestMoveRequireGuard(t *testing.T) {
 }
 
 func TestMoveRequireForceBypass(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "forced")
 	positionTo(t, s, cfg, res.Number, "REVIEW")
@@ -323,6 +335,7 @@ func TestMoveRequireForceBypass(t *testing.T) {
 }
 
 func TestMoveRequireMultiMissing(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	withTicketTransitions(cfg, "TODO", []datamodel.Transition{
 		{To: "IN_PROGRESS", Require: []string{"owner", "due"}},
@@ -352,6 +365,7 @@ func TestMoveRequireMultiMissing(t *testing.T) {
 }
 
 func TestMoveSetApplied(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	withTicketTransitions(cfg, "TODO", []datamodel.Transition{
 		{To: "IN_PROGRESS", Set: map[string]string{"owner": "alice", "priority": "P1", "estimate": "5"}},
@@ -374,6 +388,7 @@ func TestMoveSetApplied(t *testing.T) {
 }
 
 func TestMoveSetVocabViolation(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	cfg.Labels.Strict = true
 	withTicketTransitions(cfg, "TODO", []datamodel.Transition{
@@ -391,6 +406,7 @@ func TestMoveSetVocabViolation(t *testing.T) {
 }
 
 func TestMoveResolutionLifecycle(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "lifecycle")
 
@@ -438,6 +454,7 @@ func TestMoveResolutionLifecycle(t *testing.T) {
 }
 
 func TestMoveWipWarning(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	var nums []string
 	for _, title := range []string{"w1", "w2", "w3", "w4"} {
@@ -466,6 +483,7 @@ func TestMoveWipWarning(t *testing.T) {
 }
 
 func TestMoveWipCountsPerType(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	states := cfg.Workflows[datamodel.TypeTicket].States
 	for i := range states {
@@ -507,6 +525,7 @@ func TestMoveWipCountsPerType(t *testing.T) {
 }
 
 func TestAssignStrictBypass(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	cfg.People.Known = []string{"shivam", "alice"}
 	cfg.People.Strict = true
@@ -531,6 +550,7 @@ func TestAssignStrictBypass(t *testing.T) {
 }
 
 func TestMoveBlockersClosedGuard(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	withTicketTransitions(cfg, "TODO", []datamodel.Transition{
 		{To: "IN_PROGRESS", Require: []string{datamodel.RequireBlockersClosed}},

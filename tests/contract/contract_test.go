@@ -284,6 +284,7 @@ func editBody(t *testing.T, dir, number, text string) {
 }
 
 func TestJSONContract(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name     string
 		repo     func(*testing.T) string
@@ -326,6 +327,7 @@ func TestJSONContract(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			dir := c.repo(t)
 			out, stderr, code := kira(t, dir, withJSON(c.args)...)
 			if code != 0 {
@@ -344,6 +346,7 @@ func TestJSONContract(t *testing.T) {
 }
 
 func TestJSONErrors(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name     string
 		repo     func(*testing.T) string
@@ -361,6 +364,7 @@ func TestJSONErrors(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			dir := c.repo(t)
 			out, stderr, code := kira(t, dir, withJSON(c.args)...)
 			if code != c.wantCode {

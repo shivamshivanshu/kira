@@ -69,16 +69,19 @@ func newBoardTestModel(w, h int, cfg *datamodel.Config, res *datamodel.BoardResu
 }
 
 func TestBoardView(t *testing.T) {
+	t.Parallel()
 	m, _ := newBoardTestModel(100, 12, config.Default(), buildBoardResult())
 	golden.RequireEqual(t, []byte(m.View()))
 }
 
 func TestBoardEmptyState(t *testing.T) {
+	t.Parallel()
 	m, _ := newBoardTestModel(100, 12, config.Default(), buildEmptyBoard())
 	golden.RequireEqual(t, []byte(m.View()))
 }
 
 func TestBoardGreyedTargetIsNoOp(t *testing.T) {
+	t.Parallel()
 	m, bs := newBoardTestModel(100, 12, config.Default(), buildBoardResult())
 	bs.board.focusByID("t7")
 	updated, _ := m.Update(key("L"))
@@ -89,6 +92,7 @@ func TestBoardGreyedTargetIsNoOp(t *testing.T) {
 }
 
 func TestBoardTeatestSnapshot(t *testing.T) {
+	t.Parallel()
 	m, _ := newBoardTestModel(100, 12, config.Default(), buildBoardResult())
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 12))
 	tm.Type("l")
@@ -99,6 +103,7 @@ func TestBoardTeatestSnapshot(t *testing.T) {
 }
 
 func TestColumnHeaderTintReflectsWipPressure(t *testing.T) {
+	t.Parallel()
 	th := colorTheme()
 	over := datamodel.BoardColumn{State: "IN_PROGRESS", Wip: 3, Count: 4}
 	atLimit := datamodel.BoardColumn{State: "IN_PROGRESS", Wip: 3, Count: 3}
@@ -126,12 +131,12 @@ func TestColumnHeaderTintReflectsWipPressure(t *testing.T) {
 
 func boardStore(t *testing.T) (*core.Store, *datamodel.Config) {
 	t.Helper()
-	t.Setenv("EDITOR", "true")
 	s, cfg, _ := initRepo(t)
 	return s, cfg
 }
 
 func TestBoardMoveHitsCoreMovePath(t *testing.T) {
+	t.Parallel()
 	s, cfg := boardStore(t)
 	cr, err := s.Create(cfg, core.CreateOpts{Type: datamodel.TypeTicket, Title: "M", NoEdit: true})
 	if err != nil {
@@ -163,6 +168,7 @@ func TestBoardMoveHitsCoreMovePath(t *testing.T) {
 }
 
 func TestBoardMoveGreyedTargetDoesNotMutate(t *testing.T) {
+	t.Parallel()
 	s, cfg := boardStore(t)
 	cr, err := s.Create(cfg, core.CreateOpts{Type: datamodel.TypeTicket, Title: "D", NoEdit: true})
 	if err != nil {
@@ -185,6 +191,7 @@ func TestBoardMoveGreyedTargetDoesNotMutate(t *testing.T) {
 }
 
 func TestBoardPeekMountsDetailComponent(t *testing.T) {
+	t.Parallel()
 	m, bs := newBoardTestModel(100, 12, config.Default(), buildBoardResult())
 	bs.update(&m, "p")
 	if bs.peek != peekDocked {
@@ -227,6 +234,7 @@ func gitOutput(t *testing.T, dir string, args ...string) string {
 }
 
 func TestBoardCardPlumbsPriorityAndResolution(t *testing.T) {
+	t.Parallel()
 	p0 := "P0"
 	dropped := datamodel.ResolutionDropped
 	res := &datamodel.BoardResult{Type: datamodel.TypeTicket, Columns: []datamodel.BoardColumn{

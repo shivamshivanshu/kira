@@ -21,6 +21,7 @@ func readExampleConfig(t *testing.T) []byte {
 }
 
 func TestParseExample(t *testing.T) {
+	t.Parallel()
 	got, err := config.Parse(readExampleConfig(t))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
@@ -41,6 +42,7 @@ func TestParseExample(t *testing.T) {
 }
 
 func TestMinimalYieldsDefaults(t *testing.T) {
+	t.Parallel()
 	got, err := config.Parse([]byte("version: 1\n"))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
@@ -51,6 +53,7 @@ func TestMinimalYieldsDefaults(t *testing.T) {
 }
 
 func TestParseAppliesOverrides(t *testing.T) {
+	t.Parallel()
 	got, err := config.Parse([]byte("version: 1\ncommit:\n  mode: manual\nestimate:\n  unit: hours\n"))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
@@ -67,6 +70,7 @@ func TestParseAppliesOverrides(t *testing.T) {
 }
 
 func TestLoadReadsFromKiraDir(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, ".kira"), 0o755); err != nil {
 		t.Fatal(err)
@@ -83,6 +87,7 @@ func TestLoadReadsFromKiraDir(t *testing.T) {
 }
 
 func TestFilterSprintOverrides(t *testing.T) {
+	t.Parallel()
 	got, err := config.Parse([]byte("version: 1\nfilters:\n  only: \"state=TODO\"\nsprints:\n  - {key: S1, name: a, start: 2026-01-01, end: 2026-01-14}\n"))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
@@ -96,6 +101,7 @@ func TestFilterSprintOverrides(t *testing.T) {
 }
 
 func TestEmptyVocabIsFreeForm(t *testing.T) {
+	t.Parallel()
 	yaml := "version: 1\nresolutions: []\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: A\n    transitions:\n      A: [{to: A, set: {resolution: bogus}}]\n"
 	if _, err := config.Parse([]byte(yaml)); err != nil {
 		t.Errorf("set with empty resolutions vocabulary must be free-form, got %v", err)
@@ -103,6 +109,7 @@ func TestEmptyVocabIsFreeForm(t *testing.T) {
 }
 
 func TestRequireBlockersClosedAccepted(t *testing.T) {
+	t.Parallel()
 	yaml := "version: 1\nworkflows:\n  ticket:\n    states:\n      - {key: A, category: todo}\n      - {key: B, category: done}\n    initial: A\n    transitions:\n      A: [{to: B, require: [blockers_closed]}]\n"
 	if _, err := config.Parse([]byte(yaml)); err != nil {
 		t.Errorf("require: [blockers_closed] must be accepted, got %v", err)
@@ -110,6 +117,7 @@ func TestRequireBlockersClosedAccepted(t *testing.T) {
 }
 
 func TestValidationRejections(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		yaml    string

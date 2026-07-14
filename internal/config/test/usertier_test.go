@@ -61,6 +61,7 @@ func loadWith(t *testing.T, repoBody string, env func(string) string) (*datamode
 }
 
 func TestUserConfigDirResolution(t *testing.T) {
+	t.Parallel()
 	xdg := func(k string) string {
 		switch k {
 		case "XDG_CONFIG_HOME":
@@ -90,6 +91,7 @@ func TestUserConfigDirResolution(t *testing.T) {
 }
 
 func TestSandboxUnsetHomeYieldsNoTier(t *testing.T) {
+	t.Parallel()
 	cfg, warn := loadWith(t, minimalRepo, func(string) string { return "" })
 	if warn != "" {
 		t.Fatalf("unset home must not warn, got %q", warn)
@@ -100,6 +102,7 @@ func TestSandboxUnsetHomeYieldsNoTier(t *testing.T) {
 }
 
 func TestUIUserOverridesBuiltinRepoOverridesUser(t *testing.T) {
+	t.Parallel()
 	dir, env := userTierEnv(t)
 	writeUserFile(t, dir, "config.yaml", "ui:\n  icons: text\n")
 
@@ -121,6 +124,7 @@ func TestUIUserOverridesBuiltinRepoOverridesUser(t *testing.T) {
 }
 
 func TestRepoAuthoritativeKeyIgnoredWithWarning(t *testing.T) {
+	t.Parallel()
 	dir, env := userTierEnv(t)
 	writeUserFile(t, dir, "config.yaml", "project:\n  key: HIJACK\npriorities:\n  - X\n")
 	cfg, warn := loadWith(t, minimalRepo, env)
@@ -136,6 +140,7 @@ func TestRepoAuthoritativeKeyIgnoredWithWarning(t *testing.T) {
 }
 
 func TestMisplacedAutomationKeyInConfigWarns(t *testing.T) {
+	t.Parallel()
 	dir, env := userTierEnv(t)
 	writeUserFile(t, dir, "config.yaml", "automation:\n  - on: item.created\n    run: 'true'\n")
 	cfg, warn := loadWith(t, minimalRepo, env)
@@ -149,6 +154,7 @@ func TestMisplacedAutomationKeyInConfigWarns(t *testing.T) {
 }
 
 func TestMalformedUserFileWarnsNotFatal(t *testing.T) {
+	t.Parallel()
 	dir, env := userTierEnv(t)
 	writeUserFile(t, dir, "config.yaml", "ui: [unterminated\n")
 	cfg, warn := loadWith(t, minimalRepo, env)
@@ -161,6 +167,7 @@ func TestMalformedUserFileWarnsNotFatal(t *testing.T) {
 }
 
 func TestEmptyUserFileSilentlyIgnored(t *testing.T) {
+	t.Parallel()
 	dir, env := userTierEnv(t)
 	writeUserFile(t, dir, "config.yaml", "")
 	cfg, warn := loadWith(t, minimalRepo, env)
@@ -173,6 +180,7 @@ func TestEmptyUserFileSilentlyIgnored(t *testing.T) {
 }
 
 func TestInvalidUserUIIgnored(t *testing.T) {
+	t.Parallel()
 	dir, env := userTierEnv(t)
 	writeUserFile(t, dir, "config.yaml", "ui:\n  icons: bogus\n")
 	cfg, warn := loadWith(t, minimalRepo, env)
@@ -185,6 +193,7 @@ func TestInvalidUserUIIgnored(t *testing.T) {
 }
 
 func TestUserHooksFromHooksYAML(t *testing.T) {
+	t.Parallel()
 	dir, env := userTierEnv(t)
 	writeUserFile(t, dir, "hooks.yaml", "- name: mine\n  on: item.created\n  run: touch marker\n")
 	cfg, warn := loadWith(t, minimalRepo, env)
@@ -200,6 +209,7 @@ func TestUserHooksFromHooksYAML(t *testing.T) {
 }
 
 func TestOnlyHooksYAMLIsRead(t *testing.T) {
+	t.Parallel()
 	dir, env := userTierEnv(t)
 	writeUserFile(t, dir, "hooks.yaml", "- name: fromyaml\n  on: item.created\n  run: 'true'\n")
 	writeUserFile(t, dir, "hooks.json", `[{"name":"fromjson","on":"item.created","run":"true"}]`)
@@ -214,6 +224,7 @@ func TestOnlyHooksYAMLIsRead(t *testing.T) {
 }
 
 func TestInvalidUserHooksIgnored(t *testing.T) {
+	t.Parallel()
 	dir, env := userTierEnv(t)
 	writeUserFile(t, dir, "hooks.yaml", "- name: bad\n  on: not.an.event\n  run: 'true'\n")
 	cfg, warn := loadWith(t, minimalRepo, env)

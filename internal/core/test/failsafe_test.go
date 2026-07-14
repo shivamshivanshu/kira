@@ -51,6 +51,7 @@ func assertUpgradeRefusal(t *testing.T, err error) {
 }
 
 func TestReadsSucceedWithUnknowns(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "Has future fields")
 	overwriteItem(t, s, res.ID, withUnknownLink(withUnknownKey(mustReadItem(t, s, res.ID))))
@@ -68,6 +69,7 @@ func TestReadsSucceedWithUnknowns(t *testing.T) {
 }
 
 func TestWriteVerbsRefuseOnUnknown(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "Has future fields")
 	overwriteItem(t, s, res.ID, withUnknownKey(mustReadItem(t, s, res.ID)))
@@ -106,6 +108,7 @@ func TestWriteVerbsRefuseOnUnknown(t *testing.T) {
 }
 
 func TestWriteVerbsRefuseOnCRLF(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "LF native")
 	crlf := strings.ReplaceAll(mustReadItem(t, s, res.ID), "\n", "\r\n")
@@ -135,6 +138,7 @@ func TestWriteVerbsRefuseOnCRLF(t *testing.T) {
 }
 
 func TestEditorModeRefusesBeforeReserializingOriginal(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "Has future fields")
 	overwriteItem(t, s, res.ID, withUnknownKey(mustReadItem(t, s, res.ID)))
@@ -148,6 +152,7 @@ func TestEditorModeRefusesBeforeReserializingOriginal(t *testing.T) {
 }
 
 func TestEditFullEditorRefusesBeforeDroppingUnknowns(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "Has future fields")
 	overwriteItem(t, s, res.ID, withUnknownKey(mustReadItem(t, s, res.ID)))
@@ -159,6 +164,7 @@ func TestEditFullEditorRefusesBeforeDroppingUnknowns(t *testing.T) {
 }
 
 func TestReconcileRefusesOnUnknown(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	one := mustCreate(t, s, cfg, "one")
 	two := mustCreate(t, s, cfg, "two")
@@ -172,6 +178,7 @@ func TestReconcileRefusesOnUnknown(t *testing.T) {
 }
 
 func TestMergeFileRefusesOnUnknown(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "mergeable")
 	clean := mustReadItem(t, s, res.ID)
@@ -189,6 +196,7 @@ func TestMergeFileRefusesOnUnknown(t *testing.T) {
 }
 
 func TestResolveRefusesOnUnknown(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "conflicted")
 	repo := gitx.Repo{Dir: s.Root()}

@@ -14,6 +14,7 @@ func snap(items ...id.Item) id.Snapshot {
 }
 
 func TestNoCollisionNoPlan(t *testing.T) {
+	t.Parallel()
 	s := snap(
 		id.Item{ULID: "A", Number: "KIRA-1"},
 		id.Item{ULID: "B", Number: "KIRA-2"},
@@ -24,6 +25,7 @@ func TestNoCollisionNoPlan(t *testing.T) {
 }
 
 func TestLiveCollisionRenumbersLaterULID(t *testing.T) {
+	t.Parallel()
 	s := snap(
 		id.Item{ULID: "A", Number: "KIRA-1"},
 		id.Item{ULID: "B", Number: "KIRA-1"},
@@ -38,6 +40,7 @@ func TestLiveCollisionRenumbersLaterULID(t *testing.T) {
 }
 
 func TestNextFreeSkipsAliasReservedNumbers(t *testing.T) {
+	t.Parallel()
 	s := snap(
 		id.Item{ULID: "A", Number: "KIRA-1"},
 		id.Item{ULID: "B", Number: "KIRA-1"},
@@ -50,6 +53,7 @@ func TestNextFreeSkipsAliasReservedNumbers(t *testing.T) {
 }
 
 func TestThreeWayCollisionKeepsEarliestRenumbersRest(t *testing.T) {
+	t.Parallel()
 	s := snap(
 		id.Item{ULID: "C", Number: "KIRA-5"},
 		id.Item{ULID: "A", Number: "KIRA-5"},
@@ -68,6 +72,7 @@ func TestThreeWayCollisionKeepsEarliestRenumbersRest(t *testing.T) {
 }
 
 func TestDeterministic(t *testing.T) {
+	t.Parallel()
 	s := snap(
 		id.Item{ULID: "B", Number: "KIRA-1"},
 		id.Item{ULID: "A", Number: "KIRA-1"},

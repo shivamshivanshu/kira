@@ -12,6 +12,7 @@ import (
 )
 
 func TestDiffDeletedAndBody(t *testing.T) {
+	t.Parallel()
 	root := initGitRepo(t)
 	initStore(t, root)
 	repo := gitx.Repo{Dir: root}
@@ -70,6 +71,7 @@ func TestDiffDeletedAndBody(t *testing.T) {
 }
 
 func TestDiffNonAliasNumberChangeVisible(t *testing.T) {
+	t.Parallel()
 	root := initGitRepo(t)
 	initStore(t, root)
 	repo := gitx.Repo{Dir: root}
@@ -113,6 +115,7 @@ func TestDiffNonAliasNumberChangeVisible(t *testing.T) {
 }
 
 func TestDiffDefaultIsMyChangesVsIncoming(t *testing.T) {
+	t.Parallel()
 	root := initGitRepo(t)
 	initStore(t, root)
 	repo := gitx.Repo{Dir: root}

@@ -223,6 +223,31 @@ func matrixScenarios() []scenario {
 			},
 		},
 		{
+			name:      "both_edit_body_prose_lww",
+			conflicts: true,
+			loser:     recoverable{ulid: ulidX, value: "theirs prose"},
+			seed:      func(w *world) { w.write(matrixItem(ulidX, "KIRA-1", "X")) },
+			ours: func(w *world) {
+				it := matrixItem(ulidX, "KIRA-1", "X")
+				it.Body, it.Updated = "## Description\n\nours prose\n", tsLate
+				w.write(it)
+			},
+			theirs: func(w *world) {
+				it := matrixItem(ulidX, "KIRA-1", "X")
+				it.Body, it.Updated = "## Description\n\ntheirs prose\n", tsEarly
+				w.write(it)
+			},
+			assert: func(t *testing.T, w *world) {
+				body := w.item(ulidX).Body
+				if !strings.Contains(body, "ours prose") {
+					t.Fatalf("body = %q, want ours prose (later-updated side wins body-prose conflict)", body)
+				}
+				if strings.Contains(body, "theirs prose") {
+					t.Fatalf("body = %q, must not retain the losing prose after LWW", body)
+				}
+			},
+		},
+		{
 			name:      "concurrent_creates_number_collision",
 			conflicts: false,
 			seed:      func(w *world) { w.write(matrixItem(ulidX, "KIRA-1", "X")) },
@@ -242,12 +267,6 @@ func matrixScenarios() []scenario {
 			},
 		},
 	}
-}
-
-func isolateGit(t *testing.T) {
-	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
-	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
-	t.Setenv("EDITOR", "true")
 }
 
 func configUser(t *testing.T, repo gitx.Repo) {
@@ -286,7 +305,6 @@ func setManual(t *testing.T, w *world) {
 }
 
 func runSyncPath(t *testing.T, sc scenario, policy datamodel.MergePolicy) (*world, *core.Store, *datamodel.Config, error) {
-	isolateGit(t)
 	bare := bareRemote(t)
 
 	seed := cloneWorld(t, bare)
@@ -374,6 +392,7 @@ type mergePath struct {
 }
 
 func TestMergeRegressionMatrix(t *testing.T) {
+	t.Parallel()
 	paths := []mergePath{
 		{"sync", runSyncPath, onSyncSurfaced},
 		{"driver", runDriverPath, onDriverSurfaced},
@@ -433,6 +452,7 @@ func onDriverSurfaced(t *testing.T, w *world, s *core.Store, cfg *datamodel.Conf
 }
 
 func TestByteIdenticalSyncVsDriver(t *testing.T) {
+	t.Parallel()
 	for _, sc := range matrixScenarios() {
 		t.Run(sc.name, func(t *testing.T) {
 			syncW, _, _, err := runSyncPath(t, sc, datamodel.MergeAuto)
@@ -493,6 +513,7 @@ func assertDriverMatchesEngine(t *testing.T, w *world) {
 }
 
 func TestTemplateFileStillConflictsRaw(t *testing.T) {
+	t.Parallel()
 	for _, pol := range []datamodel.MergePolicy{datamodel.MergeAuto, datamodel.MergeManual} {
 		t.Run(string(pol), func(t *testing.T) {
 			root := initGitRepo(t)

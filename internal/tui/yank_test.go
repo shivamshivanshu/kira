@@ -31,6 +31,7 @@ func yankModel() (model, *bytes.Buffer) {
 }
 
 func TestYankSelectedID(t *testing.T) {
+	t.Parallel()
 	m, buf := yankModel()
 	updated, _ := m.Update(key("y"))
 	if want := clipx.OSC52("E1", false); buf.String() != want {
@@ -42,6 +43,7 @@ func TestYankSelectedID(t *testing.T) {
 }
 
 func TestYankPickerCopiesChosenForm(t *testing.T) {
+	t.Parallel()
 	m, buf := yankModel()
 
 	opened, _ := m.Update(key("Y"))
@@ -63,6 +65,7 @@ func TestYankPickerCopiesChosenForm(t *testing.T) {
 }
 
 func TestYankPickerCancels(t *testing.T) {
+	t.Parallel()
 	m, buf := yankModel()
 	opened, _ := m.Update(key("Y"))
 	cancelled, _ := opened.(model).Update(tea.KeyMsg{Type: tea.KeyEsc})
@@ -75,6 +78,7 @@ func TestYankPickerCancels(t *testing.T) {
 }
 
 func TestYankPickerTeatest(t *testing.T) {
+	t.Parallel()
 	m, buf := yankModel()
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 12))
 	tm.Type("Y")

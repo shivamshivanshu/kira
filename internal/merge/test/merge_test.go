@@ -38,6 +38,7 @@ func gitMerger(b, o, t string) (string, bool) {
 }
 
 func TestScalarOneSidedChangeTaken(t *testing.T) {
+	t.Parallel()
 	b := base(nil)
 	ours := base(nil)
 	theirs := base(func(it *datamodel.Item) { it.State = "IN_PROGRESS" })
@@ -48,6 +49,7 @@ func TestScalarOneSidedChangeTaken(t *testing.T) {
 }
 
 func TestScalarBothChangedLaterUpdatedWins(t *testing.T) {
+	t.Parallel()
 	b := base(nil)
 	ours := base(func(it *datamodel.Item) { it.State = "REVIEW"; it.Updated = "2026-02-02T00:00:00Z" })
 	theirs := base(func(it *datamodel.Item) { it.State = "DONE"; it.Updated = "2026-02-01T00:00:00Z" })
@@ -58,6 +60,7 @@ func TestScalarBothChangedLaterUpdatedWins(t *testing.T) {
 }
 
 func TestScalarTieBreakGoesToRemote(t *testing.T) {
+	t.Parallel()
 	b := base(nil)
 	ours := base(func(it *datamodel.Item) { it.State = "REVIEW" })
 	theirs := base(func(it *datamodel.Item) { it.State = "DONE" })
@@ -70,6 +73,7 @@ func TestScalarTieBreakGoesToRemote(t *testing.T) {
 }
 
 func TestPointerScalarNilBaseLWW(t *testing.T) {
+	t.Parallel()
 	b := base(nil)
 	ours := base(func(it *datamodel.Item) { it.Owner = strptr("alice"); it.Updated = "2026-02-02T00:00:00Z" })
 	theirs := base(func(it *datamodel.Item) { it.Owner = strptr("bob"); it.Updated = "2026-02-01T00:00:00Z" })
@@ -80,6 +84,7 @@ func TestPointerScalarNilBaseLWW(t *testing.T) {
 }
 
 func TestLabelsSetMerge(t *testing.T) {
+	t.Parallel()
 	b := base(func(it *datamodel.Item) { it.Labels = []string{"a", "b"} })
 	ours := base(func(it *datamodel.Item) { it.Labels = []string{"a", "b", "c"} })
 	theirs := base(func(it *datamodel.Item) { it.Labels = []string{"b"} })
@@ -91,6 +96,7 @@ func TestLabelsSetMerge(t *testing.T) {
 }
 
 func TestAliasesUnionNeverDrops(t *testing.T) {
+	t.Parallel()
 	b := base(func(it *datamodel.Item) { it.Aliases = []string{"x"} })
 	ours := base(func(it *datamodel.Item) { it.Aliases = nil })
 	theirs := base(func(it *datamodel.Item) { it.Aliases = []string{"x", "y"} })
@@ -102,6 +108,7 @@ func TestAliasesUnionNeverDrops(t *testing.T) {
 }
 
 func TestLinksUnionByType(t *testing.T) {
+	t.Parallel()
 	ours := base(func(it *datamodel.Item) { it.Links = map[string][]string{"relates": {"K1"}} })
 	theirs := base(func(it *datamodel.Item) { it.Links = map[string][]string{"duplicate_of": {"K2"}} })
 	got := merge.Merge(nil, ours, theirs, merge.Theirs, conflictMerger).Item
@@ -111,6 +118,7 @@ func TestLinksUnionByType(t *testing.T) {
 }
 
 func TestCommentsUnionSortedByTs(t *testing.T) {
+	t.Parallel()
 	c1 := datamodel.Comment{ID: "c1", Author: "a", Ts: "2026-03-01T00:00:00Z", Body: "first"}
 	c2 := datamodel.Comment{ID: "c2", Author: "a", Ts: "2026-03-02T00:00:00Z", Body: "second"}
 	ours := base(func(it *datamodel.Item) { it.Body = codec.AppendComment("Prose", c1) })
@@ -123,6 +131,7 @@ func TestCommentsUnionSortedByTs(t *testing.T) {
 }
 
 func TestBodyOneSidedChangeTaken(t *testing.T) {
+	t.Parallel()
 	b := base(func(it *datamodel.Item) { it.Body = "original" })
 	ours := base(func(it *datamodel.Item) { it.Body = "original" })
 	theirs := base(func(it *datamodel.Item) { it.Body = "rewritten" })
@@ -133,6 +142,7 @@ func TestBodyOneSidedChangeTaken(t *testing.T) {
 }
 
 func TestBodyBothChangedCleanTextMerge(t *testing.T) {
+	t.Parallel()
 	b := base(func(it *datamodel.Item) { it.Body = "l1\nl2\nl3\n" })
 	ours := base(func(it *datamodel.Item) { it.Body = "OURS\nl2\nl3\n" })
 	theirs := base(func(it *datamodel.Item) { it.Body = "l1\nl2\nTHEIRS\n" })
@@ -143,6 +153,7 @@ func TestBodyBothChangedCleanTextMerge(t *testing.T) {
 }
 
 func TestBodyConflictFallsBackToLWW(t *testing.T) {
+	t.Parallel()
 	b := base(func(it *datamodel.Item) { it.Body = "original" })
 	ours := base(func(it *datamodel.Item) { it.Body = "ours version"; it.Updated = "2026-02-02T00:00:00Z" })
 	theirs := base(func(it *datamodel.Item) { it.Body = "theirs version"; it.Updated = "2026-02-01T00:00:00Z" })
@@ -153,6 +164,7 @@ func TestBodyConflictFallsBackToLWW(t *testing.T) {
 }
 
 func TestUpdatedIsMax(t *testing.T) {
+	t.Parallel()
 	ours := base(func(it *datamodel.Item) { it.Updated = "2026-02-02T00:00:00Z" })
 	theirs := base(func(it *datamodel.Item) { it.Updated = "2026-05-05T00:00:00Z" })
 	if got := merge.Merge(base(nil), ours, theirs, merge.Theirs, conflictMerger).Item; got.Updated != "2026-05-05T00:00:00Z" {
@@ -161,6 +173,7 @@ func TestUpdatedIsMax(t *testing.T) {
 }
 
 func TestImmutableFieldsFromOurs(t *testing.T) {
+	t.Parallel()
 	ours := base(func(it *datamodel.Item) { it.Number = "KIRA-1" })
 	theirs := base(func(it *datamodel.Item) { it.Number = "KIRA-9" })
 	got := merge.Merge(base(nil), ours, theirs, merge.Theirs, conflictMerger).Item
@@ -170,6 +183,7 @@ func TestImmutableFieldsFromOurs(t *testing.T) {
 }
 
 func TestDeterministicAcrossRuns(t *testing.T) {
+	t.Parallel()
 	b := base(func(it *datamodel.Item) { it.Body = "l1\nl2\nl3\n"; it.Labels = []string{"a"} })
 	ours := base(func(it *datamodel.Item) {
 		it.Body = "OURS\nl2\nl3\n"
@@ -191,6 +205,7 @@ func TestDeterministicAcrossRuns(t *testing.T) {
 }
 
 func TestArbitratedReportsOnlyBothSidesDivergedFromBase(t *testing.T) {
+	t.Parallel()
 	b := base(nil)
 	ours := base(func(it *datamodel.Item) { it.State = "REVIEW"; it.Owner = strptr("alice") })
 	theirs := base(func(it *datamodel.Item) { it.State = "DONE"; it.Title = "other" })

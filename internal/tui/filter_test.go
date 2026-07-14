@@ -7,6 +7,7 @@ import (
 )
 
 func TestPruneNodesKeepsMatchesAndAncestors(t *testing.T) {
+	t.Parallel()
 	nodes := []datamodel.TreeNode{
 		{ID: "E1", Children: []datamodel.TreeNode{{ID: "T1"}, {ID: "T2"}}},
 		{ID: "E2", Children: []datamodel.TreeNode{{ID: "T3"}}},
@@ -21,6 +22,7 @@ func TestPruneNodesKeepsMatchesAndAncestors(t *testing.T) {
 }
 
 func TestLoadFilteredTreeNarrowsToMatch(t *testing.T) {
+	t.Parallel()
 	s, cfg, _ := initRepo(t)
 	alpha := createTicket(t, s, cfg, "alpha ticket")
 	createTicket(t, s, cfg, "beta ticket")
@@ -35,6 +37,7 @@ func TestLoadFilteredTreeNarrowsToMatch(t *testing.T) {
 }
 
 func TestApplyFilterEmitsTreeLoadedMsg(t *testing.T) {
+	t.Parallel()
 	s, cfg, _ := initRepo(t)
 	alpha := createTicket(t, s, cfg, "alpha ticket")
 	createTicket(t, s, cfg, "beta ticket")
@@ -63,6 +66,7 @@ func TestApplyFilterEmitsTreeLoadedMsg(t *testing.T) {
 }
 
 func TestCommandRefreshKeepsActiveFilter(t *testing.T) {
+	t.Parallel()
 	s, cfg, _ := initRepo(t)
 	alpha := createTicket(t, s, cfg, "alpha ticket")
 	createTicket(t, s, cfg, "beta ticket")

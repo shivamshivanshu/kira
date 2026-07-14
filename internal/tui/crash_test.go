@@ -14,6 +14,7 @@ import (
 )
 
 func TestHandleCrashRestoresAndReports(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	var buf bytes.Buffer
 	ce := handleCrash(root, crashInfo{value: "boom", stack: []byte("goroutine 1 [running]")}, &buf)
@@ -38,6 +39,7 @@ func TestHandleCrashRestoresAndReports(t *testing.T) {
 }
 
 func TestInjectPanicRecoversThroughUpdateToQuit(t *testing.T) {
+	t.Parallel()
 	m := newModel(nil, nil, asciiTheme(), iconSet{mode: datamodel.IconText}, true)
 
 	cmd := m.Init()
@@ -70,6 +72,7 @@ func TestInjectPanicRecoversThroughUpdateToQuit(t *testing.T) {
 }
 
 func TestGuardRunCatchesSetupPanic(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	var buf bytes.Buffer
 	err := guardRun(root, &buf, func() error { panic("setup boom") })
@@ -87,6 +90,7 @@ func TestGuardRunCatchesSetupPanic(t *testing.T) {
 }
 
 func TestWriteCrashLogFallsBackToTempDir(t *testing.T) {
+	t.Parallel()
 	blocker := filepath.Join(t.TempDir(), "afile")
 	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
 		t.Fatal(err)

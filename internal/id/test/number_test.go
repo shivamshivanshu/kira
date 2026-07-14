@@ -10,12 +10,14 @@ import (
 )
 
 func TestAllocateEmptyStartsAtOne(t *testing.T) {
+	t.Parallel()
 	if got := id.Allocate(id.Snapshot{Key: "KIRA"}); got.N != 1 || got.String() != "KIRA-1" {
 		t.Fatalf("Allocate(empty) = %v, want KIRA-1", got)
 	}
 }
 
 func TestAllocateIsMaxUnionPlusOne(t *testing.T) {
+	t.Parallel()
 	rng := rand.New(rand.NewSource(1))
 	for trial := 0; trial < 500; trial++ {
 		var items []id.Item
@@ -55,6 +57,7 @@ func TestAllocateIsMaxUnionPlusOne(t *testing.T) {
 }
 
 func TestAllocateCountsAliasesAndIgnoresForeignKeys(t *testing.T) {
+	t.Parallel()
 	snap := id.Snapshot{Key: "KIRA", Items: []id.Item{
 		{Number: "KIRA-3"},
 		{Number: "kira-5"},
@@ -68,6 +71,7 @@ func TestAllocateCountsAliasesAndIgnoresForeignKeys(t *testing.T) {
 }
 
 func TestParseNumber(t *testing.T) {
+	t.Parallel()
 	ok := map[string]id.Number{
 		"KIRA-142": {Key: "KIRA", N: 142},
 		"kira-1":   {Key: "kira", N: 1},
@@ -87,6 +91,7 @@ func TestParseNumber(t *testing.T) {
 }
 
 func TestHashNumberDerivesFromULID(t *testing.T) {
+	t.Parallel()
 	u := id.Mint()
 	got := id.HashNumber("KIRA", u)
 	if got != id.HashNumber("KIRA", u) {

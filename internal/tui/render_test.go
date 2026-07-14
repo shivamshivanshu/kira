@@ -58,16 +58,19 @@ func newTestModel(w, h int, withData bool) model {
 }
 
 func TestViewEmptyState(t *testing.T) {
+	t.Parallel()
 	m := newTestModel(100, 12, false)
 	golden.RequireEqual(t, []byte(m.View()))
 }
 
 func TestViewTreeSplit(t *testing.T) {
+	t.Parallel()
 	m := newTestModel(100, 12, true)
 	golden.RequireEqual(t, []byte(m.View()))
 }
 
 func TestViewMediumTier(t *testing.T) {
+	t.Parallel()
 	m := newTestModel(60, 12, true)
 	if splitDetail(m.width) {
 		t.Fatalf("width %d should be below MinWidth %d", m.width, MinWidth)
@@ -76,12 +79,14 @@ func TestViewMediumTier(t *testing.T) {
 }
 
 func TestCollapseViaKey(t *testing.T) {
+	t.Parallel()
 	m := newTestModel(100, 12, true)
 	updated, _ := m.Update(key("h"))
 	golden.RequireEqual(t, []byte(updated.(model).View()))
 }
 
 func TestIconsAsciiVsNerd(t *testing.T) {
+	t.Parallel()
 	th := asciiTheme()
 	tm := loadedTree()
 
@@ -100,16 +105,19 @@ func TestIconsAsciiVsNerd(t *testing.T) {
 }
 
 func TestTreeNerdIconsSnapshot(t *testing.T) {
+	t.Parallel()
 	tm := loadedTree()
 	golden.RequireEqual(t, []byte(tm.render(asciiTheme(), iconSet{mode: datamodel.IconNerd}, 100, 6, true, true)))
 }
 
 func TestTreeEmojiIconsSnapshot(t *testing.T) {
+	t.Parallel()
 	tm := loadedTree()
 	golden.RequireEqual(t, []byte(tm.render(asciiTheme(), iconSet{mode: datamodel.IconEmoji}, 100, 6, true, true)))
 }
 
 func TestIconWidthsUniformPerMode(t *testing.T) {
+	t.Parallel()
 	groups := map[string][]glyph{
 		"type":     {glyphEpic, glyphTicket},
 		"category": {glyphTodo, glyphDoing, glyphDone, glyphDropped},
@@ -134,6 +142,7 @@ func TestIconWidthsUniformPerMode(t *testing.T) {
 }
 
 func TestCategoryGlyphDroppedVsDone(t *testing.T) {
+	t.Parallel()
 	dropped := datamodel.ResolutionDropped
 	other := "fixed"
 	for _, mode := range []datamodel.IconMode{datamodel.IconNerd, datamodel.IconEmoji, datamodel.IconText} {
@@ -151,6 +160,7 @@ func TestCategoryGlyphDroppedVsDone(t *testing.T) {
 }
 
 func TestTreeRowPlumbsPriorityAndResolution(t *testing.T) {
+	t.Parallel()
 	p0 := "P0"
 	dropped := datamodel.ResolutionDropped
 	nodes := []datamodel.TreeNode{{ID: "T1", Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "Dropped work"}}
@@ -176,6 +186,7 @@ func key(s string) tea.KeyMsg {
 }
 
 func TestDetailMemoServesCacheWithoutStore(t *testing.T) {
+	t.Parallel()
 	m := newTestModel(100, 12, true)
 	ts := m.screens[viewTree].(*treeScreen)
 	cached := &datamodel.ShowResult{ID: "E1", Title: "cached"}

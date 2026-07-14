@@ -11,6 +11,7 @@ func envFrom(m map[string]string) func(string) string {
 }
 
 func TestResolveIconMode(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		mode datamodel.IconMode
@@ -46,6 +47,7 @@ func TestResolveIconMode(t *testing.T) {
 }
 
 func TestUTF8Locale(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		env  map[string]string
 		want bool

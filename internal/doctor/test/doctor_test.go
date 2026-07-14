@@ -53,6 +53,7 @@ func hasClass(findings []doctor.Finding, class doctor.Class) bool {
 }
 
 func TestLintMalformedFrontmatter(t *testing.T) {
+	t.Parallel()
 	it, parsed, findings := doctor.Lint("no fence here\n")
 	if parsed {
 		t.Fatal("expected parsed=false for content without a frontmatter fence")
@@ -66,6 +67,7 @@ func TestLintMalformedFrontmatter(t *testing.T) {
 }
 
 func TestLintUnknownFieldWarns(t *testing.T) {
+	t.Parallel()
 	content := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
 		"state: TODO\nlabels: []\nblocked_by: []\nepic: null\nbogus_key: 1\n" +
 		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n## Description\n"
@@ -82,6 +84,7 @@ func TestLintUnknownFieldWarns(t *testing.T) {
 }
 
 func TestLintMalformedComment(t *testing.T) {
+	t.Parallel()
 	body := "## Comments\n<!-- kira:comment id=X author=y ts=bogus -->\nunterminated body\n"
 	_, _, findings := doctor.Lint("---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\n" +
 		"title: t\nstate: TODO\nlabels: []\nblocked_by: []\nepic: null\n" +
@@ -98,6 +101,7 @@ func TestLintMalformedComment(t *testing.T) {
 }
 
 func TestCheckCleanItemHasNoFindings(t *testing.T) {
+	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
 	if f := doctor.Check(config.Default(), resolver(it), it); len(f) != 0 {
 		t.Fatalf("expected no findings for a clean item, got %+v", f)
@@ -105,6 +109,7 @@ func TestCheckCleanItemHasNoFindings(t *testing.T) {
 }
 
 func TestCheckUnknownStateAndSprintAndDue(t *testing.T) {
+	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
 	it.State = "NOPE"
 	it.Sprint = strp("2099-S1")
@@ -120,6 +125,7 @@ func TestCheckUnknownStateAndSprintAndDue(t *testing.T) {
 }
 
 func TestCheckVocabStrictVsWarn(t *testing.T) {
+	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
 	it.Labels = []string{"not-a-label"}
 
@@ -137,6 +143,7 @@ func TestCheckVocabStrictVsWarn(t *testing.T) {
 }
 
 func TestCheckEnumVocabFollowsStrict(t *testing.T) {
+	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
 	it.Priority = strp("P9")
 
@@ -154,6 +161,7 @@ func TestCheckEnumVocabFollowsStrict(t *testing.T) {
 }
 
 func TestCheckDanglingAndSelfRef(t *testing.T) {
+	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
 	it.Epic = strp(ulidB)
 	it.BlockedBy = []string{ulidA}
@@ -176,6 +184,7 @@ func TestCheckDanglingAndSelfRef(t *testing.T) {
 }
 
 func TestCollisionsLiveLive(t *testing.T) {
+	t.Parallel()
 	a := valid(ulidA, "KIRA-1")
 	b := valid(ulidB, "KIRA-1")
 	findings := doctor.Collisions([]*datamodel.Item{a, b})
@@ -195,6 +204,7 @@ func TestCollisionsLiveLive(t *testing.T) {
 }
 
 func TestCollisionsLiveAlias(t *testing.T) {
+	t.Parallel()
 	a := valid(ulidA, "KIRA-5")
 	b := valid(ulidB, "KIRA-9")
 	b.Aliases = []string{"KIRA-5"}
@@ -212,6 +222,7 @@ func TestCollisionsLiveAlias(t *testing.T) {
 }
 
 func TestCollisionsNoneWhenAliasIsOwnRetiredNumber(t *testing.T) {
+	t.Parallel()
 	a := valid(ulidA, "KIRA-2")
 	a.Aliases = []string{"KIRA-1"}
 	b := valid(ulidB, "KIRA-3")
@@ -221,6 +232,7 @@ func TestCollisionsNoneWhenAliasIsOwnRetiredNumber(t *testing.T) {
 }
 
 func TestCollisionsAliasAlias(t *testing.T) {
+	t.Parallel()
 	a := valid(ulidA, "KIRA-8")
 	a.Aliases = []string{"KIRA-1"}
 	b := valid(ulidB, "KIRA-9")
@@ -239,6 +251,7 @@ func TestCollisionsAliasAlias(t *testing.T) {
 }
 
 func TestCheckEmptyRankIsSchemaError(t *testing.T) {
+	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
 	it.Rank = strp("")
 	findings := doctor.Check(config.Default(), resolver(it), it)
@@ -251,6 +264,7 @@ func TestCheckEmptyRankIsSchemaError(t *testing.T) {
 }
 
 func TestNonEpicParentSkipsMissingParent(t *testing.T) {
+	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
 	child.Epic = strp(ulidC)
 	items := []*datamodel.Item{child}
@@ -260,6 +274,7 @@ func TestNonEpicParentSkipsMissingParent(t *testing.T) {
 }
 
 func TestEnvOptionalBinsAndHookFindings(t *testing.T) {
+	t.Parallel()
 	env := doctor.Env{
 		GitInstalled:        true,
 		InsideWorkTree:      true,
@@ -293,6 +308,7 @@ func TestEnvOptionalBinsAndHookFindings(t *testing.T) {
 }
 
 func TestEpicCycle(t *testing.T) {
+	t.Parallel()
 	a := valid(ulidA, "KIRA-1")
 	b := valid(ulidB, "KIRA-2")
 	a.Epic = strp(ulidB)
@@ -310,6 +326,7 @@ func TestEpicCycle(t *testing.T) {
 }
 
 func TestEpicChainAcyclic(t *testing.T) {
+	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
 	parent := valid(ulidB, "KIRA-2")
 	child.Epic = strp(ulidB)
@@ -320,6 +337,7 @@ func TestEpicChainAcyclic(t *testing.T) {
 }
 
 func TestNonEpicParentDetected(t *testing.T) {
+	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
 	parent := valid(ulidB, "KIRA-2")
 	child.Epic = strp(ulidB)
@@ -331,6 +349,7 @@ func TestNonEpicParentDetected(t *testing.T) {
 }
 
 func TestEpicParentAccepted(t *testing.T) {
+	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
 	parent := valid(ulidB, "KIRA-2")
 	parent.Type = datamodel.TypeEpic
@@ -342,6 +361,7 @@ func TestEpicParentAccepted(t *testing.T) {
 }
 
 func TestRefCycleDetected(t *testing.T) {
+	t.Parallel()
 	a := valid(ulidA, "KIRA-1")
 	b := valid(ulidB, "KIRA-2")
 	a.BlockedBy = []string{ulidB}
@@ -359,6 +379,7 @@ func TestRefCycleDetected(t *testing.T) {
 }
 
 func TestRefCycleIgnoresLinearAndSymmetric(t *testing.T) {
+	t.Parallel()
 	a := valid(ulidA, "KIRA-1")
 	b := valid(ulidB, "KIRA-2")
 	a.BlockedBy = []string{ulidB}
@@ -371,6 +392,7 @@ func TestRefCycleIgnoresLinearAndSymmetric(t *testing.T) {
 }
 
 func TestRunAggregatesAndFlagsIdentity(t *testing.T) {
+	t.Parallel()
 	good := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
 		"state: TODO\nlabels: []\nblocked_by: []\nepic: null\n" +
 		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n## Description\n"
@@ -407,6 +429,7 @@ func TestRunAggregatesAndFlagsIdentity(t *testing.T) {
 }
 
 func TestRunFreshnessSeam(t *testing.T) {
+	t.Parallel()
 	env := doctor.Env{GitInstalled: true, InsideWorkTree: true}
 	report := doctor.Run(config.Default(), nil, env)
 	if !report.OK {
@@ -435,6 +458,7 @@ type fakeReporter struct {
 func (r fakeReporter) Freshness() (doctor.Freshness, error) { return r.f, r.err }
 
 func TestResolveFreshnessSeam(t *testing.T) {
+	t.Parallel()
 	if doctor.ResolveFreshness(nil) != nil {
 		t.Error("a nil reporter should resolve to nil (absent)")
 	}
@@ -454,6 +478,7 @@ type stubErr string
 func (e stubErr) Error() string { return string(e) }
 
 func TestValidateScopesToTargets(t *testing.T) {
+	t.Parallel()
 	store := doctor.File{Path: ulidA + ".md", Content: "---\nid: " + ulidA +
 		"\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\nstate: TODO\nlabels: []\n" +
 		"blocked_by: []\nepic: null\ncreated: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n"}

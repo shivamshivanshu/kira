@@ -31,6 +31,7 @@ func commitCount(t *testing.T, root string) int {
 }
 
 func TestAutoModeOneCommitPerMutation(t *testing.T) {
+	t.Parallel()
 	root := initGitRepo(t)
 	if _, err := core.Init(root, "KIRA", false); err != nil {
 		t.Fatalf("Init: %v", err)
@@ -76,6 +77,7 @@ func TestAutoModeOneCommitPerMutation(t *testing.T) {
 }
 
 func TestManualModeStagesNoCommit(t *testing.T) {
+	t.Parallel()
 	root := initGitRepo(t)
 	if _, err := core.Init(root, "KIRA", false); err != nil {
 		t.Fatalf("Init: %v", err)
@@ -119,6 +121,7 @@ func TestManualModeStagesNoCommit(t *testing.T) {
 }
 
 func TestEditFromFileRoundTrip(t *testing.T) {
+	t.Parallel()
 	root := initGitRepo(t)
 	if _, err := core.Init(root, "KIRA", false); err != nil {
 		t.Fatalf("Init: %v", err)
@@ -203,6 +206,7 @@ func TestEditEditorRepresentsSoftError(t *testing.T) {
 }
 
 func TestListFilters(t *testing.T) {
+	t.Parallel()
 	root := initGitRepo(t)
 	if _, err := core.Init(root, "KIRA", false); err != nil {
 		t.Fatalf("Init: %v", err)

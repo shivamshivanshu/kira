@@ -42,6 +42,7 @@ func sampleItem(ulid, number, title string) string {
 }
 
 func TestDiscoverWalksUp(t *testing.T) {
+	t.Parallel()
 	root := writeStore(t, nil)
 	sub := filepath.Join(root, "a", "b")
 	if err := os.MkdirAll(sub, 0o755); err != nil {
@@ -59,6 +60,7 @@ func TestDiscoverWalksUp(t *testing.T) {
 }
 
 func TestDiscoverMissingIsEnvError(t *testing.T) {
+	t.Parallel()
 	_, err := storage.Discover(t.TempDir())
 	var ce *errx.Error
 	if !errors.As(err, &ce) || ce.Code != errx.ExitEnv {

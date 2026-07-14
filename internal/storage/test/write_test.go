@@ -10,6 +10,7 @@ import (
 )
 
 func TestWriteItemRawRemovesTempOnFailure(t *testing.T) {
+	t.Parallel()
 	root := writeStore(t, nil)
 	s := storage.New(root)
 	ulid := "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
@@ -35,6 +36,7 @@ func TestWriteItemRawRemovesTempOnFailure(t *testing.T) {
 }
 
 func TestWriteItemRawLeavesNoTempOnSuccess(t *testing.T) {
+	t.Parallel()
 	root := writeStore(t, nil)
 	s := storage.New(root)
 	ulid := "01J8X8Q7RZTN5Y3VXW2A9K4E7F"

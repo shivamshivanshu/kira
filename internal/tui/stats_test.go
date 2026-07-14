@@ -31,11 +31,13 @@ func statsScreenWith(res *datamodel.StatsResult) (model, *statsScreen) {
 }
 
 func TestStatsScreenRender(t *testing.T) {
+	t.Parallel()
 	m, ss := statsScreenWith(sampleStats())
 	golden.RequireEqual(t, []byte(ss.view(&m, 100, 18)))
 }
 
 func TestStatsScreenEmptyState(t *testing.T) {
+	t.Parallel()
 	m, ss := statsScreenWith(nil)
 	got := ss.view(&m, 100, 18)
 	if !strings.Contains(got, "No metrics yet") {
@@ -45,6 +47,7 @@ func TestStatsScreenEmptyState(t *testing.T) {
 }
 
 func TestStatsScreenSwitchViaKey(t *testing.T) {
+	t.Parallel()
 	m, _ := statsScreenWith(sampleStats())
 	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(100, 20))
 	tm.Type("3")
@@ -59,6 +62,7 @@ func TestStatsScreenSwitchViaKey(t *testing.T) {
 }
 
 func TestStatsCacheKeyedByResultPointer(t *testing.T) {
+	t.Parallel()
 	m, ss := statsScreenWith(sampleStats())
 	first := strings.Join(ss.contentLines(m.theme, false), "\n")
 
@@ -81,6 +85,7 @@ func TestStatsCacheKeyedByResultPointer(t *testing.T) {
 }
 
 func TestStatsInvalidateReloads(t *testing.T) {
+	t.Parallel()
 	_, ss := statsScreenWith(sampleStats())
 	if !ss.loaded {
 		t.Fatal("setResult should mark loaded")

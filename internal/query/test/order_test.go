@@ -78,6 +78,7 @@ func orderNums(t *testing.T, expr string, items []*datamodel.Item, cfg *datamode
 }
 
 func TestOrderBy(t *testing.T) {
+	t.Parallel()
 	items, cfg := fixture()
 	tests := []struct {
 		expr string
@@ -104,6 +105,7 @@ func TestOrderBy(t *testing.T) {
 }
 
 func TestOrderLessEqualStringKeys(t *testing.T) {
+	t.Parallel()
 	items, cfg := fixture()
 	q, err := query.Parse("x ORDER BY owner")
 	if err != nil {

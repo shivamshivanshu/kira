@@ -64,11 +64,6 @@ func ValidDate(s string) bool {
 	return err == nil
 }
 
-var MutableFields = []string{
-	KeySubtype, KeyTitle, KeyResolution, KeyPriority, KeyRank, KeyOwner,
-	KeyReporter, KeyLabels, KeyEpic, KeySprint, KeyDue, KeyEstimate,
-}
-
 const (
 	KeyID         = "id"
 	KeyNumber     = "number"
@@ -94,12 +89,50 @@ const (
 	KeyBody       = "body"
 )
 
-var FrontmatterKeys = []string{
-	KeyID, KeyNumber, KeyAliases, KeyType, KeySubtype, KeyTitle, KeyState,
-	KeyResolution, KeyPriority, KeyRank, KeyOwner, KeyReporter, KeyLabels,
-	KeyEpic, KeyBlockedBy, KeyLinks, KeySprint, KeyDue, KeyEstimate,
-	KeyCreated, KeyUpdated,
+type itemKey struct {
+	key         string
+	frontmatter bool
+	mutable     bool
 }
+
+var itemKeys = []itemKey{
+	{KeyID, true, false},
+	{KeyNumber, true, false},
+	{KeyAliases, true, false},
+	{KeyType, true, false},
+	{KeySubtype, true, true},
+	{KeyTitle, true, true},
+	{KeyState, true, false},
+	{KeyResolution, true, true},
+	{KeyPriority, true, true},
+	{KeyRank, true, true},
+	{KeyOwner, true, true},
+	{KeyReporter, true, true},
+	{KeyLabels, true, true},
+	{KeyEpic, true, true},
+	{KeyBlockedBy, true, false},
+	{KeyLinks, true, false},
+	{KeySprint, true, true},
+	{KeyDue, true, true},
+	{KeyEstimate, true, true},
+	{KeyCreated, true, false},
+	{KeyUpdated, true, false},
+	{KeyBody, false, false},
+}
+
+func selectItemKeys(pred func(itemKey) bool) []string {
+	out := make([]string, 0, len(itemKeys))
+	for _, k := range itemKeys {
+		if pred(k) {
+			out = append(out, k.key)
+		}
+	}
+	return out
+}
+
+var FrontmatterKeys = selectItemKeys(func(k itemKey) bool { return k.frontmatter })
+
+var MutableFields = selectItemKeys(func(k itemKey) bool { return k.mutable })
 
 var frontmatterKeySet = func() map[string]bool {
 	m := make(map[string]bool, len(FrontmatterKeys))

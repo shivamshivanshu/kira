@@ -46,6 +46,7 @@ func commitItem(t *testing.T, repo gitx.Repo, root string, it *datamodel.Item, m
 }
 
 func TestLoadAtTreeish(t *testing.T) {
+	t.Parallel()
 	root, repo := initRepo(t)
 	commitItem(t, repo, root, item("01J8X8Q7RZTN5Y3VXW2A9K4E7F", "KIRA-1", "TODO", nil), "one")
 	first, err := repo.ResolveTreeish("HEAD")
@@ -75,6 +76,7 @@ func TestLoadAtTreeish(t *testing.T) {
 }
 
 func TestLoadResolvesAlias(t *testing.T) {
+	t.Parallel()
 	root, repo := initRepo(t)
 	commitItem(t, repo, root, item("01J8X8Q7RZTN5Y3VXW2A9K4E7F", "KIRA-5", "TODO", []string{"KIRA-1"}), "renumbered")
 

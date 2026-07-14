@@ -18,6 +18,7 @@ func columnByState(res *datamodel.BoardResult, state string) datamodel.BoardColu
 }
 
 func TestBoardColumnsFollowWorkflowOrder(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	res, err := s.Board(cfg, core.BoardOpts{})
 	if err != nil {
@@ -37,6 +38,7 @@ func TestBoardColumnsFollowWorkflowOrder(t *testing.T) {
 }
 
 func TestBoardBucketsAndGlobalCounts(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	a := mustCreate(t, s, cfg, "a")
 	mustCreate(t, s, cfg, "b")
@@ -57,6 +59,7 @@ func TestBoardBucketsAndGlobalCounts(t *testing.T) {
 }
 
 func TestBoardCountsAreGlobalWhileItemsAreEpicScoped(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	epic, err := s.Create(cfg, core.CreateOpts{Type: datamodel.TypeEpic, Title: "E", NoEdit: true})
 	if err != nil {
@@ -87,6 +90,7 @@ func TestBoardCountsAreGlobalWhileItemsAreEpicScoped(t *testing.T) {
 }
 
 func TestBoardAtRendersHistoricalState(t *testing.T) {
+	t.Parallel()
 	s, cfg := newStore(t)
 	a := mustCreate(t, s, cfg, "a")
 	if _, err := s.Move(cfg, a.ID, "IN_PROGRESS", core.MoveOpts{}); err != nil {
@@ -114,6 +118,7 @@ func TestBoardAtRendersHistoricalState(t *testing.T) {
 }
 
 func TestAdjacentAllowedMirrorsTransitionGraph(t *testing.T) {
+	t.Parallel()
 	_, cfg := newStore(t)
 	cases := []struct {
 		from, to string

@@ -17,6 +17,7 @@ func typeInto(m *model, s string) {
 }
 
 func TestTokenizeRespectsQuotes(t *testing.T) {
+	t.Parallel()
 	got := tokenize(`edit KIRA-2 --title "order book merge" 'p3'`)
 	want := []string{"edit", "KIRA-2", "--title", "order book merge", "p3"}
 	if !reflect.DeepEqual(got, want) {
@@ -25,6 +26,7 @@ func TestTokenizeRespectsQuotes(t *testing.T) {
 }
 
 func TestBarClosedIgnoresOtherKeys(t *testing.T) {
+	t.Parallel()
 	m := newTestModel(100, 12, true)
 	if _, done := m.barRoute(key("j")); done {
 		t.Fatal("closed bar must not swallow navigation keys")
@@ -32,6 +34,7 @@ func TestBarClosedIgnoresOtherKeys(t *testing.T) {
 }
 
 func TestCommandBarForwardsTokenizedArgvAndRefreshes(t *testing.T) {
+	t.Parallel()
 	m := newTestModel(100, 12, true)
 	var got []string
 	m.bar.run = func(argv []string) (string, error) {
@@ -75,6 +78,7 @@ func TestCommandBarForwardsTokenizedArgvAndRefreshes(t *testing.T) {
 }
 
 func TestCommandBarShowsErrorAndSkipsRefresh(t *testing.T) {
+	t.Parallel()
 	m := newTestModel(100, 12, true)
 	m.bar.run = func([]string) (string, error) { return "", errStub("no such state") }
 	m.barRoute(key(":"))
@@ -96,6 +100,7 @@ func TestCommandBarShowsErrorAndSkipsRefresh(t *testing.T) {
 }
 
 func TestCommandResultTriggersRefresh(t *testing.T) {
+	t.Parallel()
 	m := newTestModel(100, 12, true)
 	updated, cmd := m.Update(commandResultMsg{text: "Moved KIRA-100", refresh: true})
 	if got := updated.(model).bar.msg; got != "Moved KIRA-100" {
@@ -107,6 +112,7 @@ func TestCommandResultTriggersRefresh(t *testing.T) {
 }
 
 func TestCommandBarRejectsNestedTUI(t *testing.T) {
+	t.Parallel()
 	m := newTestModel(100, 12, true)
 	called := false
 	m.bar.run = func([]string) (string, error) { called = true; return "", nil }
@@ -124,6 +130,7 @@ func TestCommandBarRejectsNestedTUI(t *testing.T) {
 }
 
 func TestBarEscCloses(t *testing.T) {
+	t.Parallel()
 	m := newTestModel(100, 12, true)
 	m.barRoute(key(":"))
 	typeInto(&m, "move")
@@ -136,6 +143,7 @@ func TestBarEscCloses(t *testing.T) {
 }
 
 func TestHelpIncludesCommandBarKeys(t *testing.T) {
+	t.Parallel()
 	m := newTestModel(100, 12, true)
 	help := helpBody(m.activeKeys())
 	for _, want := range []string{"command", "filter"} {

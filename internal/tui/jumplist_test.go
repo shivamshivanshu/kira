@@ -8,6 +8,7 @@ import (
 )
 
 func TestJumplistPushDedupsConsecutiveDuplicateOnly(t *testing.T) {
+	t.Parallel()
 	var j jumplist
 	j.push(jumpEntry{view: viewTree, itemID: "T1"})
 	j.push(jumpEntry{view: viewTree, itemID: "T1"})
@@ -25,6 +26,7 @@ func TestJumplistPushDedupsConsecutiveDuplicateOnly(t *testing.T) {
 }
 
 func TestJumplistPushCapsDroppingOldest(t *testing.T) {
+	t.Parallel()
 	const pushed = jumplistCap + 10
 	var j jumplist
 	for i := 0; i < pushed; i++ {
@@ -45,6 +47,7 @@ func TestJumplistPushCapsDroppingOldest(t *testing.T) {
 }
 
 func TestJumplistPushAfterBackTruncatesForwardHistory(t *testing.T) {
+	t.Parallel()
 	var j jumplist
 	j.push(jumpEntry{view: viewTree, itemID: "A"})
 	j.push(jumpEntry{view: viewBoard, itemID: "B"})
@@ -70,6 +73,7 @@ func TestJumplistPushAfterBackTruncatesForwardHistory(t *testing.T) {
 }
 
 func TestJumplistBackForwardBounds(t *testing.T) {
+	t.Parallel()
 	var j jumplist
 	if _, ok := j.back(); ok {
 		t.Fatal("back() on an empty jumplist must return ok=false")
@@ -105,6 +109,7 @@ func TestJumplistBackForwardBounds(t *testing.T) {
 }
 
 func TestJumplistRoutingViaCtrlOAndCtrlCloseBracket(t *testing.T) {
+	t.Parallel()
 	m := newTestModel(100, 12, true)
 	m.jumps.push(jumpEntry{view: viewTree, itemID: "T1"})
 	m.jumps.push(jumpEntry{view: viewBoard, itemID: ""})

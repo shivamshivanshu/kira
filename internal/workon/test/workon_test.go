@@ -8,6 +8,7 @@ import (
 )
 
 func TestSlugCasing(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		title  string
 		casing datamodel.Casing
@@ -27,6 +28,7 @@ func TestSlugCasing(t *testing.T) {
 }
 
 func TestRenderBranch(t *testing.T) {
+	t.Parallel()
 	got := workon.RenderBranch("{key}/{number}-{slug}", "KIRA", "KIRA-142", "Fix the bug", datamodel.CasingKebab)
 	if want := "kira/kira-142-fix-the-bug"; got != want {
 		t.Fatalf("RenderBranch = %q, want %q", got, want)
@@ -38,6 +40,7 @@ func TestRenderBranch(t *testing.T) {
 }
 
 func TestMatchBranchIsIdempotentAcrossSlugs(t *testing.T) {
+	t.Parallel()
 	branches := []string{"main", "kira/kira-142-original-title", "kira/kira-2-other"}
 	pat := "{key}/{number}-{slug}"
 
@@ -59,6 +62,7 @@ func TestMatchBranchIsIdempotentAcrossSlugs(t *testing.T) {
 }
 
 func TestInferNumber(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		branch string
 		want   string
@@ -78,6 +82,7 @@ func TestInferNumber(t *testing.T) {
 }
 
 func TestActivePointerRoundTrip(t *testing.T) {
+	t.Parallel()
 	p := workon.ActivePointer{Ticket: "01ULID", Branch: "kira/kira-1-x"}
 	got, ok := workon.ParseActive(p.Marshal())
 	if !ok || got != p {
@@ -86,6 +91,7 @@ func TestActivePointerRoundTrip(t *testing.T) {
 }
 
 func TestParseActiveLegacyBareULID(t *testing.T) {
+	t.Parallel()
 	got, ok := workon.ParseActive([]byte("01ULID\n"))
 	if !ok || got.Ticket != "01ULID" || got.Branch != "" {
 		t.Fatalf("legacy parse = (%+v, %v), want ticket only", got, ok)
@@ -93,6 +99,7 @@ func TestParseActiveLegacyBareULID(t *testing.T) {
 }
 
 func TestParseActiveEmpty(t *testing.T) {
+	t.Parallel()
 	if _, ok := workon.ParseActive([]byte("  \n")); ok {
 		t.Fatal("empty pointer must not parse")
 	}

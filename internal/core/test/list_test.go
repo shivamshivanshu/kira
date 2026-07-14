@@ -46,6 +46,7 @@ func listNumbers(res *datamodel.ListResult) string {
 }
 
 func TestListDefaultPrecedenceAndOrderBy(t *testing.T) {
+	t.Parallel()
 	s, cfg := listFixture(t)
 
 	res, err := s.List(cfg, core.ListOpts{})
@@ -73,6 +74,7 @@ func TestListDefaultPrecedenceAndOrderBy(t *testing.T) {
 }
 
 func TestListFlagFilters(t *testing.T) {
+	t.Parallel()
 	s, cfg := listFixture(t)
 
 	res, err := s.List(cfg, core.ListOpts{Priority: "P0"})
@@ -104,6 +106,7 @@ func TestListFlagFilters(t *testing.T) {
 }
 
 func TestListSavedFilters(t *testing.T) {
+	t.Parallel()
 	s, cfg := listFixture(t)
 
 	res, err := s.List(cfg, core.ListOpts{Filter: "mine"})
@@ -145,6 +148,7 @@ func TestListSavedFilters(t *testing.T) {
 }
 
 func TestFiltersView(t *testing.T) {
+	t.Parallel()
 	cfg := config.Default()
 	cfg.Filters = map[string]string{"b": "owner=x", "a": "label=y"}
 	res := core.Filters(cfg)

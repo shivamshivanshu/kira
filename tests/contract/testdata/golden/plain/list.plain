@@ -1,0 +1,4 @@
+NUMBER  STATE        TYPE    PRIORITY  TITLE
+KIRA-2  IN_PROGRESS  ticket  P1        Rich ticket
+KIRA-1  PLANNED      epic    -         Epic one
+KIRA-3  TODO         ticket  -         Blocker

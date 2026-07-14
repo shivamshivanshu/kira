@@ -7,6 +7,7 @@ import (
 )
 
 func TestLoadAllSortedByULID(t *testing.T) {
+	t.Parallel()
 	root := writeStore(t, map[string]string{
 		"01J8X8Q7RZTN5Y3VXW2A9K4E7F.md": sampleItem("01J8X8Q7RZTN5Y3VXW2A9K4E7F", "KIRA-2", "second"),
 		"01J8X7B1Q2W3E4R5T6Y7U8I9O0.md": sampleItem("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first"),
@@ -30,6 +31,7 @@ func TestLoadAllSortedByULID(t *testing.T) {
 }
 
 func TestLoadAllSkipsMalformed(t *testing.T) {
+	t.Parallel()
 	root := writeStore(t, map[string]string{
 		"01J8X7B1Q2W3E4R5T6Y7U8I9O0.md": sampleItem("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first"),
 		"01J8X8Q7RZTN5Y3VXW2A9K4E7F.md": "no frontmatter here",

@@ -98,6 +98,7 @@ func ulids(items []*datamodel.Item) []string {
 }
 
 func TestLoadReconstructsLosslessly(t *testing.T) {
+	t.Parallel()
 	f := newRepo(t)
 	f.writeTicket(t, "01J8X8Q7RZTN5Y3VXW2A9K4E7F", ticket("01J8X8Q7RZTN5Y3VXW2A9K4E7F", "KIRA-2", "second"))
 	f.writeTicket(t, "01J8X7B1Q2W3E4R5T6Y7U8I9O0", ticket("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first"))
@@ -149,6 +150,7 @@ func normalize(it *datamodel.Item) datamodel.Item {
 }
 
 func TestOrderPreservedForLabelsAndLinks(t *testing.T) {
+	t.Parallel()
 	f := newRepo(t)
 	content := "---\n" +
 		"id: 01J8X8Q7RZTN5Y3VXW2A9K4E7F\n" +
@@ -180,6 +182,7 @@ func TestOrderPreservedForLabelsAndLinks(t *testing.T) {
 }
 
 func TestStalenessFreshThenIncrementalThenRewrite(t *testing.T) {
+	t.Parallel()
 	f := newRepo(t)
 	f.writeTicket(t, "01J8X7B1Q2W3E4R5T6Y7U8I9O0", ticket("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first"))
 	f.commit(t, "one")
@@ -207,6 +210,7 @@ func TestStalenessFreshThenIncrementalThenRewrite(t *testing.T) {
 }
 
 func TestIncrementalHandlesDeletionAndDirtyRevert(t *testing.T) {
+	t.Parallel()
 	f := newRepo(t)
 	f.writeTicket(t, "01J8X7B1Q2W3E4R5T6Y7U8I9O0", ticket("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "keep"))
 	f.writeTicket(t, "01J8X8Q7RZTN5Y3VXW2A9K4E7F", ticket("01J8X8Q7RZTN5Y3VXW2A9K4E7F", "KIRA-2", "drop"))
@@ -239,6 +243,7 @@ func TestIncrementalHandlesDeletionAndDirtyRevert(t *testing.T) {
 }
 
 func TestSuccessiveDirtyEditsReindex(t *testing.T) {
+	t.Parallel()
 	f := newRepo(t)
 	f.writeTicket(t, "01J8X7B1Q2W3E4R5T6Y7U8I9O0", ticket("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "v1"))
 	f.commit(t, "one")
@@ -257,6 +262,7 @@ func TestSuccessiveDirtyEditsReindex(t *testing.T) {
 }
 
 func TestCommitLinksTrailerAndLenient(t *testing.T) {
+	t.Parallel()
 	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
 	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
 	f := newRepo(t)
@@ -287,6 +293,7 @@ func TestCommitLinksTrailerAndLenient(t *testing.T) {
 }
 
 func TestCommitLinksIncrementalAndRewrite(t *testing.T) {
+	t.Parallel()
 	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
 	f := newRepo(t)
 	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
@@ -325,6 +332,7 @@ func TestCommitLinksIncrementalAndRewrite(t *testing.T) {
 }
 
 func TestEventCacheRefreshesOnHeadChange(t *testing.T) {
+	t.Parallel()
 	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
 	f := newRepo(t)
 	f.writeTicket(t, a, ticket(a, "KIRA-1", "x"))
@@ -351,6 +359,7 @@ func TestEventCacheRefreshesOnHeadChange(t *testing.T) {
 }
 
 func TestCorruptedDBRecovers(t *testing.T) {
+	t.Parallel()
 	f := newRepo(t)
 	f.writeTicket(t, "01J8X7B1Q2W3E4R5T6Y7U8I9O0", ticket("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first"))
 	f.commit(t, "one")
@@ -370,6 +379,7 @@ func TestCorruptedDBRecovers(t *testing.T) {
 }
 
 func TestForcedRefreshRebuildsAfterCorruption(t *testing.T) {
+	t.Parallel()
 	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
 	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
 	f := newRepo(t)
@@ -401,6 +411,7 @@ func TestForcedRefreshRebuildsAfterCorruption(t *testing.T) {
 }
 
 func TestTransientGitFailureKeepsCache(t *testing.T) {
+	t.Parallel()
 	f := newRepo(t)
 	f.writeTicket(t, "01J8X7B1Q2W3E4R5T6Y7U8I9O0", ticket("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first"))
 	f.commit(t, "one")
@@ -432,6 +443,7 @@ func TestTransientGitFailureKeepsCache(t *testing.T) {
 }
 
 func TestForeignKeyCascadeOnDelete(t *testing.T) {
+	t.Parallel()
 	const ulid = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
 	f := newRepo(t)
 	content := "---\nid: " + ulid + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
@@ -462,6 +474,7 @@ func TestForeignKeyCascadeOnDelete(t *testing.T) {
 }
 
 func TestSchemaVersionMismatchRebuilds(t *testing.T) {
+	t.Parallel()
 	f := newRepo(t)
 	f.writeTicket(t, "01J8X7B1Q2W3E4R5T6Y7U8I9O0", ticket("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first"))
 	f.commit(t, "one")
@@ -496,6 +509,7 @@ func TestSchemaVersionMismatchRebuilds(t *testing.T) {
 }
 
 func TestProbeReportsFreshnessReadOnly(t *testing.T) {
+	t.Parallel()
 	f := newRepo(t)
 	f.writeTicket(t, "01J8X7B1Q2W3E4R5T6Y7U8I9O0", ticket("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first"))
 	f.commit(t, "one")
