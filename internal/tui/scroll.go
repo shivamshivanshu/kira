@@ -11,14 +11,13 @@ import (
 const scrollToEnd = 1 << 30
 
 type scroller struct {
-	scroll   int
-	pendingG bool
+	scroll int
+	chord  chord
 }
 
 func (s *scroller) update(key string, halfPage int) bool {
-	if s.pendingG {
-		s.pendingG = false
-		if key == "g" {
+	if p, ok := s.chord.take(); ok {
+		if p+key == "gg" {
 			s.scroll = 0
 		}
 		return true
@@ -33,7 +32,7 @@ func (s *scroller) update(key string, halfPage int) bool {
 	case "ctrl+u":
 		s.scroll -= halfPage
 	case "g":
-		s.pendingG = true
+		s.chord.arm(key)
 	case "G":
 		s.scroll = scrollToEnd
 	default:

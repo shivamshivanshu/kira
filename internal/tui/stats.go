@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -60,7 +61,7 @@ func (s *statsScreen) ensure(m *model) {
 func (s *statsScreen) view(m *model, width, height int) string {
 	s.ensure(m)
 	if s.err != nil {
-		return centered(m.theme, width, height, m.theme.Dim.Render("cannot load stats: "+s.err.Error()))
+		return centered(m.theme, width, height, m.theme.Heat.Hot.Render("cannot load stats: "+firstNonEmptyLine(s.err.Error())))
 	}
 	lines := s.contentLines(m.theme, m.icons.rich())
 	if len(lines) == 0 {
@@ -78,10 +79,11 @@ func (s *statsScreen) contentLines(t theme.Theme, rich bool) []string {
 }
 
 func loadStats(store *core.Store, cfg *datamodel.Config) (*datamodel.StatsResult, error) {
-	if res, err := store.Stats(cfg, core.StatsOpts{Sprint: "active"}); err == nil {
-		return res, nil
+	res, err := store.Stats(cfg, core.StatsOpts{Sprint: "active"})
+	if errors.Is(err, core.ErrNoActiveSprint) {
+		return store.Stats(cfg, core.StatsOpts{})
 	}
-	return store.Stats(cfg, core.StatsOpts{})
+	return res, err
 }
 
 func statsLines(t theme.Theme, rich bool, res *datamodel.StatsResult) []string {

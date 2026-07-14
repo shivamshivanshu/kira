@@ -1,12 +1,14 @@
 package tui
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/charmbracelet/x/exp/golden"
 	"github.com/charmbracelet/x/exp/teatest"
 
+	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
@@ -81,6 +83,29 @@ func TestStatsCacheKeyedByResultPointer(t *testing.T) {
 	}
 	if !strings.Contains(fresh, other.Scope.Sprint) {
 		t.Fatalf("rebuilt content must reflect the new result's data, got:\n%s", fresh)
+	}
+}
+
+func TestLoadStatsFallsBackOnlyOnNoActiveSprint(t *testing.T) {
+	t.Parallel()
+	s, cfg, _ := initRepo(t)
+	createTicket(t, s, cfg, "counted")
+
+	_, err := s.Stats(cfg, core.StatsOpts{Sprint: "active"})
+	if !errors.Is(err, core.ErrNoActiveSprint) {
+		t.Fatalf("stats without an active sprint must yield ErrNoActiveSprint, got %v", err)
+	}
+	_, err = s.Stats(cfg, core.StatsOpts{Sprint: "no-such-sprint"})
+	if err == nil || errors.Is(err, core.ErrNoActiveSprint) {
+		t.Fatalf("an unknown sprint key must not classify as ErrNoActiveSprint, got %v", err)
+	}
+
+	res, err := loadStats(s, cfg)
+	if err != nil {
+		t.Fatalf("loadStats must fall back to unscoped stats when no sprint is active: %v", err)
+	}
+	if res == nil || res.Completion == nil || res.Completion.Total != 1 {
+		t.Fatalf("fallback stats must cover the whole repo, got %+v", res)
 	}
 }
 

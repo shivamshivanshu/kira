@@ -22,7 +22,7 @@ func newDetailHost() detailHost {
 
 func (h *detailHost) render(t theme.Theme, ic iconSet, width, height int) string {
 	if h.err != nil {
-		return frameOf(t, width, height).Render(t.Dim.Render("cannot load: " + h.err.Error()))
+		return frameOf(t, width, height).Render(t.Heat.Hot.Render("cannot load: " + firstNonEmptyLine(h.err.Error())))
 	}
 	return h.panel.render(t, ic, h.detail, width, height)
 }

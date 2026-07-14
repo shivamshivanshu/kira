@@ -108,6 +108,21 @@ func TestJumplistBackForwardBounds(t *testing.T) {
 	}
 }
 
+func TestSwitchViewToCurrentViewPushesNoJump(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(100, 12, true)
+	updated, _ := m.Update(key("1"))
+	m2 := updated.(model)
+	if len(m2.jumps.entries) != 0 {
+		t.Fatalf("re-selecting the current view must not record a jump, got %+v", m2.jumps.entries)
+	}
+	updated, _ = m2.Update(key("2"))
+	m3 := updated.(model)
+	if len(m3.jumps.entries) != 1 {
+		t.Fatalf("a real view switch must record exactly one jump, got %+v", m3.jumps.entries)
+	}
+}
+
 func TestJumplistRoutingViaCtrlOAndCtrlCloseBracket(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(100, 12, true)

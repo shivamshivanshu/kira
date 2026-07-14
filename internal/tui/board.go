@@ -103,12 +103,15 @@ func renderColumn(t theme.Theme, ic iconSet, col datamodel.BoardColumn, w, heigh
 
 	cat := datamodel.Category(col.Category)
 	capacity := height - len(lines)
-	start, cardSlots, hidden := cardWindow(len(col.Items), capacity, focusRow)
+	start, cardSlots, above, below := cardWindow(len(col.Items), capacity, focusRow)
+	if above > 0 {
+		lines = append(lines, fit.Render(t.Dim.Render("+"+strconv.Itoa(above)+" above")))
+	}
 	for i := start; i < start+cardSlots; i++ {
 		lines = append(lines, fit.Render(renderCard(t, ic, cat, col.Items[i], w, focused && i == focusRow)))
 	}
-	if hidden > 0 {
-		lines = append(lines, fit.Render(t.Dim.Render("+"+strconv.Itoa(hidden)+" more")))
+	if below > 0 {
+		lines = append(lines, fit.Render(t.Dim.Render("+"+strconv.Itoa(below)+" more")))
 	}
 	for len(lines) < height {
 		lines = append(lines, fit.Render(""))
@@ -137,24 +140,29 @@ func renderCard(t theme.Theme, ic iconSet, cat datamodel.Category, it datamodel.
 	return lead + renderSegments(segments, selected)
 }
 
-func cardWindow(total, capacity, focusRow int) (start, slots, hidden int) {
-	if capacity <= 0 {
-		return 0, 0, 0
+func cardWindow(total, capacity, focusRow int) (start, slots, above, below int) {
+	if capacity <= 0 || total <= 0 {
+		return 0, 0, 0, 0
 	}
 	if total <= capacity {
-		return 0, total, 0
+		return 0, total, 0, 0
+	}
+	if capacity <= 2 {
+		slots = capacity
+		start = clamp(focusRow-slots+1, 0, total-slots)
+		return start, slots, 0, 0
 	}
 	slots = capacity - 1
-	if focusRow >= slots {
-		start = focusRow - slots + 1
+	if focusRow < slots {
+		return 0, slots, 0, total - slots
 	}
-	if start+slots > total {
-		start = total - slots
+	start = total - slots
+	if focusRow >= start {
+		return start, slots, start, 0
 	}
-	if start < 0 {
-		start = 0
-	}
-	return start, slots, total - start - slots
+	slots = capacity - 2
+	start = focusRow - slots + 1
+	return start, slots, start, total - start - slots
 }
 
 func columnLabel(col datamodel.BoardColumn) string {
@@ -197,7 +205,7 @@ func renderBoardEmpty(t theme.Theme, res *datamodel.BoardResult, width, height i
 		b.WriteString(t.Dim.Render("Columns: " + strings.Join(names, "  ·  ")))
 	}
 	b.WriteString("\n\n")
-	b.WriteString(t.Dim.Render("Create a ticket — n new · : command"))
+	b.WriteString(t.Dim.Render("Create a ticket — n create · : command"))
 	return centered(t, width, height, b.String())
 }
 

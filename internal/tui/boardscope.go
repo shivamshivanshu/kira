@@ -20,21 +20,17 @@ func (m *model) openBoardScope(current string) {
 			break
 		}
 	}
-	m.boardPick = &picker{title: "board scope", cursor: cursor, entries: entries}
-}
-
-func (m *model) updateBoardScope(key string) {
-	commit, done := m.boardPick.update(key)
-	if !done {
-		return
+	m.picker = &picker{
+		title:   "board scope",
+		cursor:  cursor,
+		entries: entries,
+		onCommit: func(m *model, entry pickerEntry) {
+			if bs, ok := m.boardScreen(); ok {
+				bs.scope = entry.value
+				bs.applyScope()
+			}
+		},
 	}
-	if commit >= 0 {
-		if bs, ok := m.boardScreen(); ok {
-			bs.scope = m.boardPick.entries[commit].value
-			bs.applyScope()
-		}
-	}
-	m.boardPick = nil
 }
 
 func boardScopeLabel(b datamodel.Board) string {

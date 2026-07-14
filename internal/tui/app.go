@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -47,6 +48,7 @@ type screen interface {
 	back(m *model) bool
 	focusItem(m *model, id string)
 	focusedItem() (showfmt.Item, bool)
+	invalidate()
 	settle(m *model)
 }
 
@@ -70,12 +72,11 @@ type model struct {
 	jumps   jumplist
 	loadErr error
 
-	view      view
-	screens   map[view]screen
-	bar       bar
-	clip      clipx.Clipboard
-	yank      *picker
-	boardPick *picker
+	view    view
+	screens map[view]screen
+	bar     bar
+	clip    clipx.Clipboard
+	picker  *picker
 
 	crash       *crashInfo
 	injectPanic bool
@@ -126,11 +127,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if ts, ok := m.treeScreen(); ok {
 			ts.setData(&m, msg.data)
 		}
-		if bs, ok := m.boardScreen(); ok {
-			bs.invalidate()
-		}
-		if ss, ok := m.statsScreen(); ok {
-			ss.invalidate()
+		for _, s := range m.screens {
+			s.invalidate()
 		}
 		return m, m.afterDrain(cmd)
 	case commandResultMsg:
@@ -174,12 +172,8 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if cmd, done := m.barRoute(msg); done {
 		return m, cmd
 	}
-	if m.yank != nil {
-		m.updateYank(key)
-		return m, nil
-	}
-	if m.boardPick != nil {
-		m.updateBoardScope(key)
+	if m.picker != nil {
+		m.updatePicker(key)
 		return m, nil
 	}
 	switch key {
@@ -189,6 +183,9 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "Y":
 		m.openYankPicker()
 		return m, nil
+	case "n":
+		m.bar.open(barCommand, "create ")
+		return m, textinput.Blink
 	case "q", "esc":
 		if m.help {
 			m.help = false
@@ -292,6 +289,9 @@ func (m model) statsScreen() (*statsScreen, bool) {
 }
 
 func (m *model) switchView(v view) {
+	if v == m.view {
+		return
+	}
 	if s := m.current(); s != nil {
 		it, _ := s.focusedItem()
 		m.jumps.push(jumpEntry{view: m.view, itemID: it.ID})
@@ -318,10 +318,8 @@ func (m model) View() string {
 	h := m.mainHeight()
 	var main string
 	switch {
-	case m.yank != nil:
-		main = m.yank.render(m.theme, m.width, h)
-	case m.boardPick != nil:
-		main = m.boardPick.render(m.theme, m.width, h)
+	case m.picker != nil:
+		main = m.picker.render(m.theme, m.width, h)
 	case m.help:
 		main = m.renderHelp(h)
 	default:

@@ -71,6 +71,45 @@ func TestInjectPanicRecoversThroughUpdateToQuit(t *testing.T) {
 	}
 }
 
+type panicOnKeyModel struct{}
+
+func (panicOnKeyModel) Init() tea.Cmd { return nil }
+
+func (panicOnKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if _, ok := msg.(tea.KeyMsg); ok {
+		panic("update boom")
+	}
+	return panicOnKeyModel{}, nil
+}
+
+func (panicOnKeyModel) View() string { return "" }
+
+func TestUpdatePanicPropagatesToGuardRunWithRealStack(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	var buf bytes.Buffer
+	err := guardRun(root, &buf, func() error {
+		_, runErr := tea.NewProgram(panicOnKeyModel{},
+			programOptions(Options{InjectPanic: true, Input: strings.NewReader("x")}, nil)...).Run()
+		return runErr
+	})
+
+	var ce *CrashError
+	if !errors.As(err, &ce) {
+		t.Fatalf("an Update panic must funnel into guardRun's CrashError, got %v", err)
+	}
+	data, readErr := os.ReadFile(ce.LogPath)
+	if readErr != nil {
+		t.Fatalf("crash log unreadable: %v", readErr)
+	}
+	if !strings.Contains(string(data), "update boom") {
+		t.Errorf("crash log missing the panic value:\n%s", data)
+	}
+	if !strings.Contains(string(data), "panicOnKeyModel") {
+		t.Errorf("crash log stack must contain the panicking Update frame, not the caller's:\n%s", data)
+	}
+}
+
 func TestGuardRunCatchesSetupPanic(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()

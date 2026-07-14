@@ -21,12 +21,12 @@ func loadFilteredTree(store *core.Store, cfg *datamodel.Config, expr string) (tr
 		}
 		rows = lr.Items
 	} else {
-		matched, keep, err := store.ListWithMatches(cfg, expr)
+		var matched map[string]bool
+		rows, matched, err = store.ListWithMatches(cfg, expr)
 		if err != nil {
 			return treeData{}, err
 		}
-		rows = matched
-		nodes = pruneNodes(tr.Nodes, keep)
+		nodes = pruneNodes(tr.Nodes, matched)
 	}
 	pr, err := store.EpicProgress(cfg)
 	if err != nil {

@@ -2,12 +2,17 @@ package clipx_test
 
 import (
 	"bytes"
-	"encoding/base64"
 	"errors"
 	"strings"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/clipx"
+)
+
+const (
+	sampleText  = "hello"
+	samplePlain = "\x1b]52;c;aGVsbG8=\x07"
+	sampleTmux  = "\x1bPtmux;\x1b\x1b]52;c;aGVsbG8=\x07\x1b\\"
 )
 
 func envFunc(pairs map[string]string) func(string) string {
@@ -34,23 +39,24 @@ type execCall struct {
 }
 
 func TestCopyChainMatrix(t *testing.T) {
-	const text = "KIRA-140"
 	cases := []struct {
 		name     string
 		env      map[string]string
 		goos     string
 		tools    []string
-		wantTmux bool
+		wantTerm string
 		wantExec string
 		wantArgs []string
 	}{
-		{name: "linux no display", env: nil, goos: "linux", tools: []string{"xclip"}, wantExec: ""},
-		{name: "tmux wraps osc52", env: map[string]string{"TMUX": "/tmp/tmux-1000/default"}, goos: "linux", wantTmux: true, wantExec: ""},
-		{name: "x11 xclip", env: map[string]string{"DISPLAY": ":0"}, goos: "linux", tools: []string{"xclip"}, wantExec: "xclip", wantArgs: []string{"-selection", "clipboard"}},
-		{name: "x11 falls back to xsel", env: map[string]string{"DISPLAY": ":0"}, goos: "linux", tools: []string{"xsel"}, wantExec: "xsel", wantArgs: []string{"--clipboard", "--input"}},
-		{name: "x11 no tool", env: map[string]string{"DISPLAY": ":0"}, goos: "linux", tools: nil, wantExec: ""},
-		{name: "wayland wl-copy", env: map[string]string{"WAYLAND_DISPLAY": "wayland-0"}, goos: "linux", tools: []string{"wl-copy"}, wantExec: "wl-copy"},
-		{name: "darwin pbcopy", env: nil, goos: "darwin", tools: []string{"pbcopy"}, wantExec: "pbcopy"},
+		{name: "linux no display", env: nil, goos: "linux", tools: []string{"xclip"}, wantTerm: samplePlain, wantExec: ""},
+		{name: "tmux wraps osc52", env: map[string]string{"TMUX": "/tmp/tmux-1000/default"}, goos: "linux", wantTerm: sampleTmux, wantExec: ""},
+		{name: "x11 xclip", env: map[string]string{"DISPLAY": ":0"}, goos: "linux", tools: []string{"xclip"}, wantTerm: samplePlain, wantExec: "xclip", wantArgs: []string{"-selection", "clipboard"}},
+		{name: "x11 falls back to xsel", env: map[string]string{"DISPLAY": ":0"}, goos: "linux", tools: []string{"xsel"}, wantTerm: samplePlain, wantExec: "xsel", wantArgs: []string{"--clipboard", "--input"}},
+		{name: "x11 no tool", env: map[string]string{"DISPLAY": ":0"}, goos: "linux", tools: nil, wantTerm: samplePlain, wantExec: ""},
+		{name: "wayland wl-copy", env: map[string]string{"WAYLAND_DISPLAY": "wayland-0"}, goos: "linux", tools: []string{"wl-copy"}, wantTerm: samplePlain, wantExec: "wl-copy"},
+		{name: "xwayland falls back to xclip", env: map[string]string{"WAYLAND_DISPLAY": "wayland-0", "DISPLAY": ":0"}, goos: "linux", tools: []string{"xclip"}, wantTerm: samplePlain, wantExec: "xclip", wantArgs: []string{"-selection", "clipboard"}},
+		{name: "darwin pbcopy", env: nil, goos: "darwin", tools: []string{"pbcopy"}, wantTerm: samplePlain, wantExec: "pbcopy"},
+		{name: "darwin ignores display tools", env: map[string]string{"DISPLAY": ":0"}, goos: "darwin", tools: []string{"xclip"}, wantTerm: samplePlain, wantExec: ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -66,12 +72,12 @@ func TestCopyChainMatrix(t *testing.T) {
 				},
 				Term: &term,
 			}
-			if err := cb.Copy(text); err != nil {
+			if err := cb.Copy(sampleText); err != nil {
 				t.Fatalf("Copy: %v", err)
 			}
 
-			if got := term.String(); got != clipx.OSC52(text, tc.wantTmux) {
-				t.Errorf("OSC52 payload mismatch (tmux=%v)\n got %q", tc.wantTmux, got)
+			if got := term.String(); got != tc.wantTerm {
+				t.Errorf("terminal bytes = %q, want %q", got, tc.wantTerm)
 			}
 
 			if tc.wantExec == "" {
@@ -90,44 +96,80 @@ func TestCopyChainMatrix(t *testing.T) {
 			if tc.wantArgs != nil && strings.Join(c.args, " ") != strings.Join(tc.wantArgs, " ") {
 				t.Errorf("args = %v, want %v", c.args, tc.wantArgs)
 			}
-			if c.stdin != text {
-				t.Errorf("stdin = %q, want %q", c.stdin, text)
+			if c.stdin != sampleText {
+				t.Errorf("stdin = %q, want %q", c.stdin, sampleText)
 			}
 		})
 	}
 }
 
-func TestOSC52Encoding(t *testing.T) {
-	const text = "hello"
-	b64 := base64.StdEncoding.EncodeToString([]byte(text))
-
-	plain := clipx.OSC52(text, false)
-	if want := "\x1b]52;c;" + b64 + "\x07"; plain != want {
-		t.Fatalf("plain OSC52 = %q, want %q", plain, want)
+func TestOSC52LiteralBytes(t *testing.T) {
+	if got := clipx.OSC52(sampleText, false); got != samplePlain {
+		t.Errorf("plain OSC52 = %q, want %q", got, samplePlain)
 	}
-
-	wrapped := clipx.OSC52(text, true)
-	if !strings.HasPrefix(wrapped, "\x1bPtmux;\x1b") || !strings.HasSuffix(wrapped, "\x1b\\") {
-		t.Fatalf("tmux wrap missing DCS passthrough envelope: %q", wrapped)
+	if got := clipx.OSC52(sampleText, true); got != sampleTmux {
+		t.Errorf("tmux OSC52 = %q, want %q", got, sampleTmux)
 	}
-	inner := strings.TrimSuffix(strings.TrimPrefix(wrapped, "\x1bPtmux;\x1b"), "\x1b\\")
-	if want := strings.ReplaceAll(plain, "\x1b", "\x1b\x1b"); inner != want {
-		t.Errorf("inner ESC not doubled for tmux passthrough:\n got %q\nwant %q", inner, want)
+}
+
+func TestCopyWithoutTermSkipsSequence(t *testing.T) {
+	var calls []execCall
+	cb := clipx.Clipboard{
+		Getenv:   envFunc(map[string]string{"DISPLAY": ":0"}),
+		GOOS:     "linux",
+		LookPath: lookPath("xclip"),
+		Exec: func(name string, args []string, stdin []byte) error {
+			calls = append(calls, execCall{name, args, string(stdin)})
+			return nil
+		},
+	}
+	if err := cb.Copy(sampleText); err != nil {
+		t.Fatalf("Copy with nil Term: %v", err)
+	}
+	if len(calls) != 1 || calls[0].name != "xclip" {
+		t.Fatalf("external tool must still run without a terminal, got %+v", calls)
+	}
+}
+
+func TestCopyWrapsToolFailureWithToolName(t *testing.T) {
+	var term bytes.Buffer
+	toolErr := errors.New("exit status 1")
+	cb := clipx.Clipboard{
+		Getenv:   envFunc(map[string]string{"DISPLAY": ":0"}),
+		GOOS:     "linux",
+		LookPath: lookPath("xclip"),
+		Exec:     func(string, []string, []byte) error { return toolErr },
+		Term:     &term,
+	}
+	err := cb.Copy(sampleText)
+	if !errors.Is(err, toolErr) {
+		t.Fatalf("Copy must surface the tool failure, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "xclip: ") {
+		t.Errorf("tool failure must name the tool, got %q", err.Error())
+	}
+	if term.String() != samplePlain {
+		t.Errorf("OSC 52 must still be emitted when the tool fails, got %q", term.String())
 	}
 }
 
 func TestCopyReportsTerminalWriteError(t *testing.T) {
+	writeErr := errors.New("closed")
 	cb := clipx.Clipboard{
 		Getenv:   envFunc(nil),
 		GOOS:     "linux",
 		LookPath: lookPath(),
-		Term:     failWriter{},
+		Term:     failWriter{writeErr},
 	}
-	if err := cb.Copy("x"); err == nil {
-		t.Fatal("expected error when terminal write fails")
+	err := cb.Copy("x")
+	if !errors.Is(err, writeErr) {
+		t.Fatalf("Copy must surface the terminal write failure, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "terminal: ") {
+		t.Errorf("terminal failure must name the sink, got %q", err.Error())
 	}
 }
 
-type failWriter struct{}
+type failWriter struct{ err error }
 
-func (failWriter) Write([]byte) (int, error) { return 0, errors.New("closed") }
+func (w failWriter) Write([]byte) (int, error) { return 0, w.err }

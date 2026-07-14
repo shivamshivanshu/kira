@@ -40,14 +40,18 @@ func RunUninit(root string, opts Options) (bool, error) {
 	th := theme.For(out, datamodel.UI{}, opts.NoColor)
 	m := newUninitModel(root, th)
 
-	final, err := tea.NewProgram(m, programOptions(opts, out)...).Run()
-	if err != nil {
-		return false, err
-	}
-	if fm, ok := final.(uninitModel); ok {
-		return fm.initialized, nil
-	}
-	return false, nil
+	initialized := false
+	err := guardRun(root, os.Stderr, func() error {
+		final, runErr := tea.NewProgram(m, programOptions(opts, out)...).Run()
+		if runErr != nil {
+			return runErr
+		}
+		if fm, ok := final.(uninitModel); ok {
+			initialized = fm.initialized
+		}
+		return nil
+	})
+	return initialized, err
 }
 
 func (m uninitModel) Init() tea.Cmd { return textinput.Blink }

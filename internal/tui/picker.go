@@ -14,9 +14,21 @@ type pickerEntry struct {
 }
 
 type picker struct {
-	title   string
-	cursor  int
-	entries []pickerEntry
+	title    string
+	cursor   int
+	entries  []pickerEntry
+	onCommit func(m *model, entry pickerEntry)
+}
+
+func (m *model) updatePicker(key string) {
+	commit, done := m.picker.update(key)
+	if !done {
+		return
+	}
+	if commit >= 0 {
+		m.picker.onCommit(m, m.picker.entries[commit])
+	}
+	m.picker = nil
 }
 
 func (p *picker) update(key string) (commit int, done bool) {

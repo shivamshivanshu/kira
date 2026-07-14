@@ -77,7 +77,7 @@ func programOptions(opts Options, out io.Writer) []tea.ProgramOption {
 		if in == nil {
 			in = strings.NewReader("")
 		}
-		return []tea.ProgramOption{tea.WithInput(in), tea.WithOutput(io.Discard)}
+		return []tea.ProgramOption{tea.WithoutCatchPanics(), tea.WithInput(in), tea.WithOutput(io.Discard)}
 	}
 	po := []tea.ProgramOption{tea.WithAltScreen(), tea.WithOutput(out)}
 	if opts.Input != nil {

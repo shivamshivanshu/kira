@@ -29,14 +29,15 @@ var boardKeys = []KeyBinding{
 }
 
 type boardScreen struct {
-	board    boardModel
-	host     detailHost
-	raw      *datamodel.BoardResult
-	scope    string
-	notice   string
-	loaded   bool
-	peek     peekMode
-	pendingG bool
+	board     boardModel
+	host      detailHost
+	raw       *datamodel.BoardResult
+	scope     string
+	notice    string
+	noticeErr bool
+	loaded    bool
+	peek      peekMode
+	chord     chord
 }
 
 func newBoardScreen() *boardScreen {
@@ -67,11 +68,19 @@ func (s *boardScreen) ensureLoaded(m *model) {
 func (s *boardScreen) reload(m *model) {
 	res, err := m.store.Board(m.cfg, core.BoardOpts{})
 	if err != nil {
-		s.notice = err.Error()
+		s.setError(err.Error())
 		return
 	}
 	s.raw = res
 	s.applyScope()
+}
+
+func (s *boardScreen) setNotice(text string) {
+	s.notice, s.noticeErr = text, false
+}
+
+func (s *boardScreen) setError(text string) {
+	s.notice, s.noticeErr = firstNonEmptyLine(text), true
 }
 
 func (s *boardScreen) applyScope() {
@@ -85,9 +94,8 @@ func (s *boardScreen) update(m *model, key string) tea.Cmd {
 		cmd, _ := s.host.update(m, key)
 		return cmd
 	}
-	if s.pendingG {
-		s.pendingG = false
-		if key == "g" {
+	if p, ok := s.chord.take(); ok {
+		if p+key == "gg" {
 			s.board.toTop()
 			s.syncPeek(m)
 		}
@@ -113,7 +121,7 @@ func (s *boardScreen) update(m *model, key string) tea.Cmd {
 	case "b":
 		m.openBoardScope(s.scope)
 	case "g":
-		s.pendingG = true
+		s.chord.arm(key)
 	case "G":
 		s.board.toBottom()
 		s.syncPeek(m)
@@ -145,7 +153,7 @@ func (s *boardScreen) syncPeek(m *model) {
 }
 
 func (s *boardScreen) moveCard(m *model, dir int) tea.Cmd {
-	s.notice = ""
+	s.setNotice("")
 	card, ok := s.board.selected()
 	if !ok {
 		return nil
@@ -157,7 +165,7 @@ func (s *boardScreen) moveCard(m *model, dir int) tea.Cmd {
 	}
 	to := cols[target].State
 	if m.cfg == nil || !core.AdjacentAllowed(m.cfg, s.board.result.Type, card.State, to) {
-		s.notice = card.Number + ": " + card.State + " -> " + to + " is not an allowed transition"
+		s.setNotice(card.Number + ": " + card.State + " -> " + to + " is not an allowed transition")
 		return nil
 	}
 	if m.store == nil {
@@ -168,13 +176,13 @@ func (s *boardScreen) moveCard(m *model, dir int) tea.Cmd {
 
 func (s *boardScreen) applyMove(m *model, msg boardMovedMsg) {
 	if msg.res == nil {
-		s.notice = msg.err.Error()
+		s.setError(msg.err.Error())
 		return
 	}
 	if len(msg.res.Warnings) > 0 {
-		s.notice = strings.Join(msg.res.Warnings, "; ")
+		s.setNotice(strings.Join(msg.res.Warnings, "; "))
 	} else {
-		s.notice = "Moved " + msg.res.Number + ": " + msg.res.From + " -> " + msg.res.To
+		s.setNotice("Moved " + msg.res.Number + ": " + msg.res.From + " -> " + msg.res.To)
 	}
 	if msg.err != nil || msg.board == nil {
 		s.loaded = false
@@ -198,8 +206,7 @@ func (s *boardScreen) back(m *model) bool {
 		s.peek = peekOff
 		return true
 	}
-	m.view = viewTree
-	return true
+	return false
 }
 
 func (s *boardScreen) focusItem(m *model, id string) {
@@ -232,7 +239,11 @@ func (s *boardScreen) view(m *model, width, height int) string {
 	}
 	lines = append(lines, main)
 	if s.notice != "" {
-		lines = append(lines, m.theme.Dim.Render(m.theme.Renderer().NewStyle().MaxWidth(width).Render(s.notice)))
+		style := m.theme.Dim
+		if s.noticeErr {
+			style = m.theme.Heat.Hot
+		}
+		lines = append(lines, style.Render(m.theme.Renderer().NewStyle().MaxWidth(width).Render(s.notice)))
 	}
 	return strings.Join(lines, "\n")
 }

@@ -33,6 +33,22 @@ func TestBarClosedIgnoresOtherKeys(t *testing.T) {
 	}
 }
 
+func TestNKeyPrefillsCreateInCommandBar(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(100, 12, true)
+	updated, cmd := m.Update(key("n"))
+	m2 := updated.(model)
+	if m2.bar.mode != barCommand {
+		t.Fatalf("n must open the command bar, mode=%d", m2.bar.mode)
+	}
+	if got := m2.bar.input.Value(); got != "create " {
+		t.Fatalf("n must prefill the create command, got %q", got)
+	}
+	if cmd == nil {
+		t.Fatal("n must return the input blink command")
+	}
+}
+
 func TestCommandBarForwardsTokenizedArgvAndRefreshes(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(100, 12, true)

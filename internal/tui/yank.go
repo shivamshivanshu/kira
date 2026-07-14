@@ -11,10 +11,16 @@ func selectedItem(m *model) (showfmt.Item, bool) {
 	return showfmt.Item{}, false
 }
 
+func (m *model) copyToClipboard(text string) {
+	if err := m.clip.Copy(text); err != nil {
+		m.bar.setError("copy: " + firstNonEmptyLine(err.Error()))
+	}
+}
+
 func (m *model) yankSelected() {
 	if it, ok := selectedItem(m); ok {
 		if text, err := showfmt.Format(showfmt.FormID, it); err == nil {
-			_ = m.clip.Copy(text)
+			m.copyToClipboard(text)
 		}
 	}
 }
@@ -32,16 +38,9 @@ func (m *model) openYankPicker() {
 		}
 		entries = append(entries, pickerEntry{label: f.Label(), detail: preview, value: preview})
 	}
-	m.yank = &picker{title: "yank " + it.Number, entries: entries}
-}
-
-func (m *model) updateYank(key string) {
-	commit, done := m.yank.update(key)
-	if !done {
-		return
+	m.picker = &picker{
+		title:    "yank " + it.Number,
+		entries:  entries,
+		onCommit: func(m *model, entry pickerEntry) { m.copyToClipboard(entry.value) },
 	}
-	if commit >= 0 {
-		_ = m.clip.Copy(m.yank.entries[commit].value)
-	}
-	m.yank = nil
 }

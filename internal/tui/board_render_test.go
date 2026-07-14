@@ -1,8 +1,10 @@
 package tui
 
 import (
+	"errors"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -156,8 +158,8 @@ func TestBoardScopePickerSelectsBoard(t *testing.T) {
 
 	up, _ := m.Update(key("b"))
 	m = up.(model)
-	if m.boardPick == nil || len(m.boardPick.entries) != 3 {
-		t.Fatalf("b should open a picker with All + 2 boards, got %+v", m.boardPick)
+	if m.picker == nil || len(m.picker.entries) != 3 {
+		t.Fatalf("b should open a picker with All + 2 boards, got %+v", m.picker)
 	}
 	up, _ = m.Update(key("j"))
 	m = up.(model)
@@ -165,7 +167,7 @@ func TestBoardScopePickerSelectsBoard(t *testing.T) {
 	m = up.(model)
 	up, _ = m.Update(key("enter"))
 	m = up.(model)
-	if m.boardPick != nil {
+	if m.picker != nil {
 		t.Fatal("enter should close the picker")
 	}
 	if bs.scope != "XYZ" {
@@ -242,6 +244,123 @@ func TestColumnHeaderTintReflectsWipPressure(t *testing.T) {
 	}
 	if columnLabel(within) != "TODO" {
 		t.Errorf("no-wip header = %q, want TODO", columnLabel(within))
+	}
+}
+
+func TestCardWindow(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name                                       string
+		total, capacity, focusRow                  int
+		wantStart, wantSlots, wantAbove, wantBelow int
+	}{
+		{"all fit", 3, 5, 0, 0, 3, 0, 0},
+		{"exact fit", 5, 5, 4, 0, 5, 0, 0},
+		{"unfocused column tops out", 10, 5, -1, 0, 4, 0, 6},
+		{"top window", 10, 5, 0, 0, 4, 0, 6},
+		{"top window last slot", 10, 5, 3, 0, 4, 0, 6},
+		{"middle both indicators", 10, 5, 4, 2, 3, 2, 5},
+		{"middle shifted", 10, 5, 5, 3, 3, 3, 4},
+		{"bottom window start", 10, 5, 6, 6, 4, 6, 0},
+		{"bottom focus fills all slots", 10, 5, 9, 6, 4, 6, 0},
+		{"tiny middle", 5, 3, 2, 2, 1, 2, 2},
+		{"capacity one follows focus", 10, 1, 5, 5, 1, 0, 0},
+		{"capacity two at end", 10, 2, 9, 8, 2, 0, 0},
+		{"capacity two at start", 10, 2, 0, 0, 2, 0, 0},
+		{"no items", 0, 5, 0, 0, 0, 0, 0},
+		{"no capacity", 10, 0, 0, 0, 0, 0, 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			start, slots, above, below := cardWindow(tc.total, tc.capacity, tc.focusRow)
+			if start != tc.wantStart || slots != tc.wantSlots || above != tc.wantAbove || below != tc.wantBelow {
+				t.Fatalf("cardWindow(%d,%d,%d) = (%d,%d,%d,%d), want (%d,%d,%d,%d)",
+					tc.total, tc.capacity, tc.focusRow, start, slots, above, below,
+					tc.wantStart, tc.wantSlots, tc.wantAbove, tc.wantBelow)
+			}
+			lines := slots
+			if above > 0 {
+				lines++
+			}
+			if below > 0 {
+				lines++
+			}
+			if tc.capacity > 0 && lines > tc.capacity {
+				t.Fatalf("window uses %d lines, exceeding capacity %d", lines, tc.capacity)
+			}
+			if tc.focusRow >= 0 && tc.focusRow < tc.total && slots > 0 &&
+				(tc.focusRow < start || tc.focusRow >= start+slots) {
+				t.Fatalf("focused row %d outside window [%d,%d)", tc.focusRow, start, start+slots)
+			}
+		})
+	}
+}
+
+func TestBoardBottomFocusShowsAboveIndicatorNotBlank(t *testing.T) {
+	t.Parallel()
+	items := make([]datamodel.ListItem, 10)
+	for i := range items {
+		items[i] = bItem("id"+strconv.Itoa(i), "KIRA-"+strconv.Itoa(i), "T"+strconv.Itoa(i), "TODO", "todo")
+	}
+	res := &datamodel.BoardResult{Type: datamodel.TypeTicket, Columns: []datamodel.BoardColumn{
+		{State: "TODO", Category: "todo", Count: 10, Items: items},
+	}}
+	out := renderBoard(asciiTheme(), iconSet{mode: datamodel.IconText}, res, 40, 7, 0, 9)
+	if !strings.Contains(out, "+6 above") {
+		t.Errorf("bottom-focused overflowing column must show the above-window indicator:\n%s", out)
+	}
+	if !strings.Contains(out, "KIRA-9") {
+		t.Errorf("focused last card must be rendered:\n%s", out)
+	}
+	if strings.Contains(out, "more") {
+		t.Errorf("nothing is hidden below; no below indicator expected:\n%s", out)
+	}
+}
+
+func TestBoardQQuitsInsteadOfJumpingToTree(t *testing.T) {
+	t.Parallel()
+	m, bs := newBoardTestModel(100, 12, config.Default(), buildBoardResult())
+
+	bs.peek = peekDocked
+	u, cmd := m.Update(key("q"))
+	m = u.(model)
+	if bs.peek != peekOff {
+		t.Fatal("q must close the peek pane first")
+	}
+	if cmd != nil {
+		t.Fatal("closing the peek pane must not quit")
+	}
+
+	u, cmd = m.Update(key("q"))
+	m = u.(model)
+	if m.view != viewBoard {
+		t.Fatalf("q on the board must not bounce to the tree, view=%v", m.view)
+	}
+	if cmd == nil {
+		t.Fatal("q on the board with no peek must quit")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Fatalf("q must return a quit command, got %T", cmd())
+	}
+}
+
+func TestBoardMoveErrorNoticeIsFirstLineAndHot(t *testing.T) {
+	t.Parallel()
+	m, bs := newBoardTestModel(100, 12, config.Default(), buildBoardResult())
+	bs.applyMove(&m, boardMovedMsg{err: errors.New("boom first line\n  context second line")})
+	if bs.notice != "boom first line" {
+		t.Fatalf("error notice = %q, want the first non-empty line only", bs.notice)
+	}
+	if !bs.noticeErr {
+		t.Fatal("a failed move must mark the notice as an error")
+	}
+	bs.applyMove(&m, boardMovedMsg{
+		res:    &datamodel.MoveResult{Number: "KIRA-1", From: "TODO", To: "IN_PROGRESS"},
+		board:  buildBoardResult(),
+		cardID: "t1",
+	})
+	if bs.noticeErr {
+		t.Fatal("a successful move must clear the error mark")
 	}
 }
 

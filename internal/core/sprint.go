@@ -15,6 +15,8 @@ import (
 
 const activeSprintFile = "active-sprint"
 
+var ErrNoActiveSprint = errors.New("no active sprint is set")
+
 func (s *Store) ActiveSprintKey() string {
 	b, err := os.ReadFile(filepath.Join(s.fs().CacheDir(), activeSprintFile))
 	if err != nil {
@@ -31,7 +33,7 @@ func (s *Store) ResolveSprintKey(cfg *datamodel.Config, key string) (string, err
 	if key == "active" {
 		active := s.ActiveSprintKey()
 		if active == "" {
-			return "", errx.User("no active sprint is set (run `kira sprint activate <key>`)")
+			return "", &errx.Error{Code: errx.ExitUser, Err: fmt.Errorf("%w (run `kira sprint activate <key>`)", ErrNoActiveSprint)}
 		}
 		key = active
 	}

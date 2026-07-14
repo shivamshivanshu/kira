@@ -29,11 +29,10 @@ var treeKeys = []KeyBinding{
 }
 
 type treeScreen struct {
-	tree     treeModel
-	host     detailHost
-	focus    pane
-	pendingG bool
-	pendingZ bool
+	tree  treeModel
+	host  detailHost
+	focus pane
+	chord chord
 }
 
 func newTreeScreen() *treeScreen {
@@ -41,6 +40,8 @@ func newTreeScreen() *treeScreen {
 }
 
 func (s *treeScreen) keys() []KeyBinding { return treeKeys }
+
+func (s *treeScreen) invalidate() {}
 
 func (s *treeScreen) setData(m *model, data treeData) {
 	s.tree.load(data.nodes, data.fields, data.progress)
@@ -50,26 +51,19 @@ func (s *treeScreen) setData(m *model, data treeData) {
 }
 
 func (s *treeScreen) update(m *model, key string) tea.Cmd {
-	if s.pendingG {
-		s.pendingG = false
-		switch key {
-		case "p":
+	if p, ok := s.chord.take(); ok {
+		switch p + key {
+		case "gp":
 			s.jumpFrom(m)
 			s.tree.jumpToParent()
 			s.syncDetail(m)
-		case "g":
+		case "gg":
 			s.tree.toTop(m.mainHeight())
 			s.syncDetail(m)
-		}
-		return nil
-	}
-	if s.pendingZ {
-		s.pendingZ = false
-		switch key {
-		case "M":
+		case "zM":
 			s.tree.collapseAll()
 			s.syncDetail(m)
-		case "R":
+		case "zR":
 			s.tree.expandAll()
 			s.syncDetail(m)
 		}
@@ -104,10 +98,8 @@ func (s *treeScreen) update(m *model, key string) tea.Cmd {
 			s.tree.jumpToParent()
 			s.syncDetail(m)
 		}
-	case "g":
-		s.pendingG = true
-	case "z":
-		s.pendingZ = true
+	case "g", "z":
+		s.chord.arm(key)
 	case "G":
 		s.tree.toBottom(m.mainHeight())
 		s.syncDetail(m)

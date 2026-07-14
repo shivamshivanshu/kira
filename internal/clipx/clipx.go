@@ -1,6 +1,12 @@
 // Package clipx copies text to the terminal clipboard via OSC 52 (always
 // emitted, tmux-passthrough-wrapped inside tmux) and, when a display is
 // present, an external tool (pbcopy / wl-copy / xclip / xsel).
+//
+// Copy writes the OSC 52 sequence directly to Term. When Term is also driven
+// by a concurrent renderer (bubbletea flushes frames from its own goroutine),
+// the escape sequence can interleave with a frame; bubbletea v1 offers no API
+// to emit raw sequences through the program, so callers accept this hazard
+// until the program can route the emission itself.
 package clipx
 
 import (
@@ -37,10 +43,10 @@ func (c Clipboard) Copy(text string) error {
 	var errs []error
 	if c.Term != nil {
 		if _, err := io.WriteString(c.Term, OSC52(text, c.Getenv("TMUX") != "")); err != nil {
-			errs = append(errs, err)
+			errs = append(errs, fmt.Errorf("terminal: %w", err))
 		}
 	}
-	if name, args := externalTool(c.Getenv, c.GOOS, c.LookPath); name != "" {
+	if name, args := c.externalTool(); name != "" {
 		if err := c.Exec(name, args, []byte(text)); err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", name, err))
 		}
@@ -51,23 +57,23 @@ func (c Clipboard) Copy(text string) error {
 func OSC52(text string, tmux bool) string {
 	seq := "\x1b]52;c;" + base64.StdEncoding.EncodeToString([]byte(text)) + "\x07"
 	if tmux {
-		return "\x1bPtmux;\x1b" + strings.ReplaceAll(seq, "\x1b", "\x1b\x1b") + "\x1b\\"
+		return "\x1bPtmux;" + strings.ReplaceAll(seq, "\x1b", "\x1b\x1b") + "\x1b\\"
 	}
 	return seq
 }
 
-func externalTool(getenv func(string) string, goos string, look func(string) (string, error)) (string, []string) {
-	installed := func(name string) bool { _, err := look(name); return err == nil }
-	if goos == "darwin" {
+func (c Clipboard) externalTool() (string, []string) {
+	installed := func(name string) bool { _, err := c.LookPath(name); return err == nil }
+	if c.GOOS == "darwin" {
 		if installed("pbcopy") {
 			return "pbcopy", nil
 		}
 		return "", nil
 	}
-	if getenv("WAYLAND_DISPLAY") != "" && installed("wl-copy") {
+	if c.Getenv("WAYLAND_DISPLAY") != "" && installed("wl-copy") {
 		return "wl-copy", nil
 	}
-	if getenv("DISPLAY") != "" {
+	if c.Getenv("DISPLAY") != "" {
 		if installed("xclip") {
 			return "xclip", []string{"-selection", "clipboard"}
 		}

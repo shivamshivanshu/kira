@@ -50,7 +50,7 @@ func TestTreeUnknownGChordIsNoOp(t *testing.T) {
 	if ts.tree.cursor != 1 {
 		t.Fatalf("an unrecognized second key must not move the cursor, cursor=%d", ts.tree.cursor)
 	}
-	if ts.pendingG {
+	if ts.chord.pending != "" {
 		t.Fatal("the g chord must be dropped after the second key")
 	}
 }
