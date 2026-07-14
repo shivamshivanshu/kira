@@ -5,7 +5,8 @@ aliases: [KIRA-83]
 type: ticket
 subtype: feature
 title: "Git hooks surface: kira hooks install/uninstall/status/run, chain-dont-clobber, core.hooksPath (husky) detection, drift check, millisecond no-op budget - colocated"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P2
 labels: [core]
 epic: null
