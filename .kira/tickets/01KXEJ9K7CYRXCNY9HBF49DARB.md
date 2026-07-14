@@ -1,7 +1,7 @@
 ---
 id: 01KXEJ9K7CYRXCNY9HBF49DARB
-number: KIRA-82
-aliases: []
+number: CORE-1
+aliases: [KIRA-82]
 type: ticket
 subtype: feature
 title: "kira commit: package all local ticket changes into one commit (companion to commit.mode manual); message heading/template configurable in user tier"
