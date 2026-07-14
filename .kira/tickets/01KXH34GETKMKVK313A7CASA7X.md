@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: bug
 title: "Board screen: applyMove reloads unscoped board and leaves stale raw snapshot"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
