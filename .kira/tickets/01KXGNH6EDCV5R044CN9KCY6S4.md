@@ -7,11 +7,11 @@ subtype: feature
 title: "blocked computed query field + default next saved filter (reuses blockers_closed resolution)"
 state: TODO
 priority: P1
-labels: []
+labels: [core]
 epic: null
 blocked_by: []
 created: 2026-07-14T21:27:04+05:30
-updated: 2026-07-14T21:27:04+05:30
+updated: 2026-07-14T21:27:05+05:30
 ---
 
 ## Description
