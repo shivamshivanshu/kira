@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: bug
 title: "EmitList emits flow-unsafe plain scalars — silent list corruption"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
