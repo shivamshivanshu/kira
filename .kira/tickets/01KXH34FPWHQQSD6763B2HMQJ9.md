@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: bug
 title: "TUI batch: cardWindow math, synchronous IO in View, notice handling, picker/chord dedup"
-state: IN_PROGRESS
+state: REVIEW
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:47+05:30
-updated: 2026-07-15T02:22:43+05:30
+updated: 2026-07-15T03:04:59+05:30
 ---
 
 ## Description
