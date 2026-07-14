@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: feature
 title: "Per-subtype create templates: .kira/templates/ticket.<subtype>.md fallback ladder"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P2
 labels: [core]
 epic: null
