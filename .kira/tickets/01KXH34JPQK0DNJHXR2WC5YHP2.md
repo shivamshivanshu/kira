@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: bug
 title: "clipx: fix tmux DCS wrapping; surface clipboard copy errors"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
