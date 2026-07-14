@@ -5,7 +5,7 @@ aliases: []
 type: ticket
 subtype: feature
 title: "TUI editor integration: e edit via draft flow, v readonly view, ui.editor knob"
-state: TODO
+state: IN_PROGRESS
 labels: [tui]
 epic: null
 blocked_by: []
