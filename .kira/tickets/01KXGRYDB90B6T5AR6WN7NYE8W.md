@@ -1,7 +1,7 @@
 ---
 id: 01KXGRYDB90B6T5AR6WN7NYE8W
-number: KIRA-101
-aliases: []
+number: DX-2
+aliases: [KIRA-101]
 type: ticket
 subtype: task
 title: "Conventions audit: inventory every baked-in rule; keep / config-knob / drop verdict"
