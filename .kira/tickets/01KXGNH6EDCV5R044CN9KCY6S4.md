@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: feature
 title: "blocked computed query field + default next saved filter (reuses blockers_closed resolution)"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P1
 labels: [core]
 epic: null
