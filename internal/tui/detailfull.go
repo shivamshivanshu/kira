@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -101,13 +102,14 @@ func detailLines(t theme.Theme, ic iconSet, res *datamodel.ShowResult, width int
 			lines = append(lines, strings.Split(s, "\n")...)
 		}
 	}
-	add(t.Accent.Render(fitWidth(res.Number+"  "+res.Title, width)))
-	add(fitWidth(detailMeta(t, ic, res), width))
-	add("", body)
+	wrap := func(s string) string { return ansi.Wrap(s, width, "") }
+	add(t.Accent.Render(wrap(res.Number + "  " + res.Title)))
+	add(wrap(detailMeta(t, ic, res)))
+	add("", wrap(body))
 	if len(res.Comments) > 0 {
 		add("", t.Dim.Render("Comments"))
 		for _, c := range res.Comments {
-			add(t.Dim.Render(c.Author+"  "+c.Ts), strings.TrimRight(c.Text, "\n"))
+			add(t.Dim.Render(wrap(c.Author+"  "+c.Ts)), wrap(strings.TrimRight(c.Text, "\n")))
 		}
 	}
 	if len(res.LinkedCommits) > 0 {
