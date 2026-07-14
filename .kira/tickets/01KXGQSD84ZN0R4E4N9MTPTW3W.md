@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 subtype: feature
 title: "TUI editor integration: e edit via draft flow, v readonly view, ui.editor knob"
-state: REVIEW
+state: DONE
+resolution: done
 labels: [tui]
 epic: null
 blocked_by: []
 created: 2026-07-14T22:06:30+05:30
-updated: 2026-07-14T23:06:00+05:30
+updated: 2026-07-14T23:06:01+05:30
 ---
 
 ## Description
