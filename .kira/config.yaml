@@ -19,7 +19,7 @@ workflows:
     transitions:
       TODO:        [IN_PROGRESS, WONT_DO]
       IN_PROGRESS: [REVIEW, TODO, WONT_DO]
-      REVIEW:      [DONE, IN_PROGRESS]
+      REVIEW:      [{ to: DONE, require: [blockers_closed] }, IN_PROGRESS]
       DONE:        []
       WONT_DO:     []
     enforce_transitions: true
