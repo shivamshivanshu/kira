@@ -37,7 +37,7 @@ workflows:
 priorities: [P0, P1, P2, P3]
 resolutions: [done, dropped, duplicate, cannot-reproduce]
 labels:
-  known: []                   # add project labels; strict rejects unknown ones (--force overrides)
+  known: [core, tui, cli, data, infra, dx]                   # add project labels; strict rejects unknown ones (--force overrides)
   strict: false
 
 people:
