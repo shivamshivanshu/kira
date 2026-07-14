@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: bug
 title: "edit --field state bypasses move guards and leaves stale resolution"
-state: IN_PROGRESS
+state: REVIEW
 priority: P1
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:32+05:30
-updated: 2026-07-15T01:26:34+05:30
+updated: 2026-07-15T02:07:00+05:30
 ---
 
 ## Description
