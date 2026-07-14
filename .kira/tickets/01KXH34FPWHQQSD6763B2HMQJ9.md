@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: bug
 title: "TUI batch: cardWindow math, synchronous IO in View, notice handling, picker/chord dedup"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
