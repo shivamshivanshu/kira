@@ -34,12 +34,12 @@ type AmbiguousError struct {
 }
 
 func (e *AmbiguousError) Error() string {
-	return fmt.Sprintf("id: prefix %q is ambiguous between %s", e.Token, strings.Join(e.Candidates, ", "))
+	return fmt.Sprintf("%q is ambiguous between %s", e.Token, strings.Join(e.Candidates, ", "))
 }
 
 type Resolver struct {
 	sortedULIDs      []string
-	liveByNumber     map[string]string
+	liveByNumber     map[string][]string
 	aliasHolders     map[string][]string
 	liveNumberByULID map[string]string
 	numbers          []string
@@ -49,15 +49,14 @@ type Resolver struct {
 func NewResolver(snap Snapshot) *Resolver {
 	r := &Resolver{
 		sortedULIDs:      make([]string, len(snap.Items)),
-		liveByNumber:     make(map[string]string, len(snap.Items)),
+		liveByNumber:     make(map[string][]string, len(snap.Items)),
 		aliasHolders:     map[string][]string{},
 		liveNumberByULID: make(map[string]string, len(snap.Items)),
 		numbers:          make([]string, len(snap.Items)),
 		numberByBareN:    map[string][]string{},
 	}
 	addBare := func(up string) {
-		if i := strings.LastIndexByte(up, '-'); i >= 0 {
-			bare := up[i+1:]
+		if _, bare, ok := splitLastDash(up); ok {
 			if !slices.Contains(r.numberByBareN[bare], up) {
 				r.numberByBareN[bare] = append(r.numberByBareN[bare], up)
 			}
@@ -68,7 +67,7 @@ func NewResolver(snap Snapshot) *Resolver {
 		live := strings.ToUpper(it.Number)
 		r.sortedULIDs[i] = u
 		r.numbers[i] = live
-		r.liveByNumber[live] = u
+		r.liveByNumber[live] = append(r.liveByNumber[live], u)
 		r.liveNumberByULID[u] = live
 		addBare(live)
 		for _, a := range it.Aliases {
@@ -84,10 +83,26 @@ func NewResolver(snap Snapshot) *Resolver {
 }
 
 func (r *Resolver) holdersOf(full string) []string {
-	if u, ok := r.liveByNumber[full]; ok {
-		return []string{u}
+	if h, ok := r.liveByNumber[full]; ok {
+		return h
 	}
 	return r.aliasHolders[full]
+}
+
+func (r *Resolver) ambiguous(token string, holders []string) error {
+	seen := map[string]bool{}
+	var cands []string
+	for _, u := range holders {
+		if n := r.liveNumberByULID[u]; !seen[n] {
+			seen[n] = true
+			cands = append(cands, n)
+		}
+	}
+	if len(cands) < len(holders) {
+		cands = slices.Clone(holders)
+	}
+	slices.Sort(cands)
+	return &AmbiguousError{Token: token, Candidates: cands}
 }
 
 func (r *Resolver) Resolve(token string) (string, error) {
@@ -122,38 +137,29 @@ func (r *Resolver) Resolve(token string) (string, error) {
 		case 1:
 			return h[0], nil
 		default:
-			cands := make([]string, len(h))
-			for i, u := range h {
-				cands[i] = r.liveNumberByULID[u]
-			}
-			slices.Sort(cands)
-			return "", &AmbiguousError{Token: token, Candidates: cands}
+			return "", r.ambiguous(token, h)
 		}
 	}
 	return r.resolveBare(token, up)
 }
 
 func (r *Resolver) resolveBare(token, up string) (string, error) {
-	fulls := r.numberByBareN[up]
-	if len(fulls) == 0 {
-		return "", &NotFoundError{Token: token, Suggestion: errx.Nearest(up, r.numbers)}
-	}
-	seen := map[string]bool{}
-	var holder string
-	for _, f := range fulls {
+	var holders []string
+	for _, f := range r.numberByBareN[up] {
 		for _, u := range r.holdersOf(f) {
-			if !seen[u] {
-				seen[u] = true
-				holder = u
+			if !slices.Contains(holders, u) {
+				holders = append(holders, u)
 			}
 		}
 	}
-	if len(seen) == 1 {
-		return holder, nil
+	switch len(holders) {
+	case 0:
+		return "", &NotFoundError{Token: token, Suggestion: errx.Nearest(up, r.numbers)}
+	case 1:
+		return holders[0], nil
+	default:
+		return "", r.ambiguous(token, holders)
 	}
-	cands := append([]string(nil), fulls...)
-	slices.Sort(cands)
-	return "", &AmbiguousError{Token: token, Candidates: cands}
 }
 
 func (r *Resolver) contains(u string) bool {

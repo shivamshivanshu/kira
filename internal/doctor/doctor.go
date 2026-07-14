@@ -57,6 +57,7 @@ func Run(cfg *datamodel.Config, files []File, env Env) *Report {
 		findings = append(findings, fileFindings(cfg, resolver, s, true)...)
 	}
 	findings = append(findings, stampByID(Collisions(items), pathByID)...)
+	findings = append(findings, stampByID(SequentialOutliers(items), pathByID)...)
 	findings = append(findings, stampByID(EpicCycles(items, resolver), pathByID)...)
 	findings = append(findings, stampByID(NonEpicParents(items, resolver), pathByID)...)
 	findings = append(findings, stampByID(RefCycles(items, resolver), pathByID)...)

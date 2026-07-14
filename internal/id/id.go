@@ -2,7 +2,7 @@
 package id
 
 import (
-	"math/rand"
+	"crypto/rand"
 	"time"
 
 	"github.com/oklog/ulid/v2"
@@ -11,7 +11,7 @@ import (
 type ULID = ulid.ULID
 
 var entropy = &ulid.LockedMonotonicReader{
-	MonotonicReader: ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0),
+	MonotonicReader: ulid.Monotonic(rand.Reader, 0),
 }
 
 func Mint() ULID { return mint(time.Now()) }

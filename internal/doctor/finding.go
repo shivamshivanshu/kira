@@ -13,19 +13,20 @@ const (
 type Class string
 
 const (
-	ClassSchema    Class = "schema"
-	ClassState     Class = "state"
-	ClassVocab     Class = "vocab"
-	ClassRef       Class = "dangling-ref"
-	ClassCollision Class = "id-collision"
-	ClassCycle     Class = "epic-cycle"
-	ClassRefCycle  Class = "ref-cycle"
-	ClassEpicKind  Class = "epic-kind"
-	ClassComment   Class = "comment"
-	ClassFreshness Class = "index-freshness"
-	ClassHooks     Class = "hooks"
-	ClassEnv       Class = "environment"
-	ClassBoard     Class = "board"
+	ClassSchema        Class = "schema"
+	ClassState         Class = "state"
+	ClassVocab         Class = "vocab"
+	ClassRef           Class = "dangling-ref"
+	ClassCollision     Class = "id-collision"
+	ClassCycle         Class = "epic-cycle"
+	ClassRefCycle      Class = "ref-cycle"
+	ClassEpicKind      Class = "epic-kind"
+	ClassComment       Class = "comment"
+	ClassFreshness     Class = "index-freshness"
+	ClassHooks         Class = "hooks"
+	ClassEnv           Class = "environment"
+	ClassBoard         Class = "board"
+	ClassNumberOutlier Class = "number-outlier"
 )
 
 type CollisionKind string

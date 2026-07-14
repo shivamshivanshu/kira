@@ -14,6 +14,14 @@ import (
 type Opts struct {
 	Size int
 	Seed int64
+	Mint func() id.ULID
+}
+
+func (o Opts) mint() func() id.ULID {
+	if o.Mint != nil {
+		return o.Mint
+	}
+	return id.Mint
 }
 
 type Summary struct {
@@ -34,11 +42,11 @@ func Run(root string, cfg *datamodel.Config, opts Opts) (Summary, error) {
 	if err != nil {
 		return Summary{}, err
 	}
-	boardKey := seedBoardKey(cfg)
-	baseN := id.Allocate(storage.Snapshot(boardKey, existing)).N
+	snap := storage.Snapshot(seedBoardKey(cfg), existing)
+	alloc := id.NewAllocator(cfg.ID.Style == datamodel.IDStyleHash, snap, snap.Key)
 
 	specs := Recipe(opts.Size, opts.Seed)
-	sum, err := walk(specs, rawSink(store, cfg, boardKey, baseN))
+	sum, err := walk(specs, rawSink(store, cfg, alloc, opts.mint()))
 	if err != nil {
 		return sum, err
 	}
@@ -83,11 +91,10 @@ func seedBoardKey(cfg *datamodel.Config) string {
 	return cfg.Project.Key
 }
 
-func rawSink(st *storage.FS, cfg *datamodel.Config, boardKey string, baseN int) materializer {
-	hashStyle := cfg.ID.Style == datamodel.IDStyleHash
+func rawSink(st *storage.FS, cfg *datamodel.Config, alloc *id.Allocator, mint func() id.ULID) materializer {
 	return func(i int, sp Spec, parent string) (string, Summary, error) {
-		u := id.Mint()
-		number := id.AllocFor(hashStyle, boardKey, baseN+i, u)
+		u := mint()
+		number := alloc.Alloc(u)
 		ts := seedEpoch.Add(time.Duration(i) * time.Hour)
 		it := buildItem(cfg, sp, u.String(), number, ts)
 		if parent != "" {

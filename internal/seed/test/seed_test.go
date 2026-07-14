@@ -1,12 +1,14 @@
 package seed_test
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/seed"
 	"github.com/shivamshivanshu/kira/internal/testutil"
 )
@@ -102,5 +104,49 @@ func TestSeedProducesItems(t *testing.T) {
 		t.Fatalf("git status: %v", err)
 	} else if out != "" {
 		t.Fatalf("seeded tree not clean:\n%s", out)
+	}
+}
+
+func TestSeedHashStyleSurvivesSuffixCollisions(t *testing.T) {
+	root := testutil.InitGitRepo(t)
+	if _, err := core.Init(root, "KIRA", false); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	s, err := core.Discover(root)
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	cfg, err := s.Config()
+	if err != nil {
+		t.Fatalf("Config: %v", err)
+	}
+	cfg.ID.Style = datamodel.IDStyleHash
+
+	minted := 0
+	mint := func() id.ULID {
+		u, err := id.ParseULID(fmt.Sprintf("01%018d9X4MV3", minted))
+		if err != nil {
+			t.Fatalf("mint %d: %v", minted, err)
+		}
+		minted++
+		return u
+	}
+	if _, err := seed.Run(root, cfg, seed.Opts{Size: 12, Seed: 3, Mint: mint}); err != nil {
+		t.Fatalf("Seed: %v", err)
+	}
+
+	items, _, err := s.LoadAll()
+	if err != nil {
+		t.Fatalf("LoadAll: %v", err)
+	}
+	if len(items) != 12 {
+		t.Fatalf("loaded %d items, want 12", len(items))
+	}
+	seen := map[string]bool{}
+	for _, it := range items {
+		if seen[it.Number] {
+			t.Fatalf("duplicate live number %q allocated within one seed run", it.Number)
+		}
+		seen[it.Number] = true
 	}
 }

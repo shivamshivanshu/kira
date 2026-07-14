@@ -92,6 +92,37 @@ func TestResolveLiveNumberBeatsAlias(t *testing.T) {
 	}
 }
 
+func TestResolveLiveNumberHeldByTwoItemsIsAmbiguous(t *testing.T) {
+	t.Parallel()
+	r := id.NewResolver(id.Snapshot{Key: "KIRA", Items: []id.Item{
+		{ULID: uB, Number: "KIRA-5"},
+		{ULID: uA, Number: "KIRA-5"},
+	}})
+	for _, token := range []string{"KIRA-5", "5"} {
+		_, err := r.Resolve(token)
+		var amb *id.AmbiguousError
+		if !errors.As(err, &amb) {
+			t.Fatalf("Resolve(%q) with two live holders err = %v, want *AmbiguousError", token, err)
+		}
+		if want := []string{uA, uB}; !reflect.DeepEqual(amb.Candidates, want) {
+			t.Fatalf("Resolve(%q) candidates = %v, want distinguishing ULIDs %v", token, amb.Candidates, want)
+		}
+	}
+}
+
+func TestResolveNotFoundSuggestsNearestNumber(t *testing.T) {
+	t.Parallel()
+	r := id.NewResolver(testSnapshot())
+	_, err := r.Resolve("KIRA-1X")
+	var nf *id.NotFoundError
+	if !errors.As(err, &nf) {
+		t.Fatalf("Resolve(KIRA-1X) err = %v, want *NotFoundError", err)
+	}
+	if nf.Suggestion != "KIRA-1" {
+		t.Fatalf("Suggestion = %q, want KIRA-1", nf.Suggestion)
+	}
+}
+
 func TestResolveNotFound(t *testing.T) {
 	t.Parallel()
 	r := id.NewResolver(testSnapshot())

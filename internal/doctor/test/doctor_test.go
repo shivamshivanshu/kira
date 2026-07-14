@@ -199,6 +199,54 @@ func TestCheckDanglingAndSelfRef(t *testing.T) {
 	}
 }
 
+func TestSequentialOutliers(t *testing.T) {
+	t.Parallel()
+	items := []*datamodel.Item{
+		valid(ulidA, "KIRA-1"),
+		valid(ulidB, "KIRA-42"),
+		valid(ulidC, "KIRA-971436"),
+	}
+	findings := doctor.SequentialOutliers(items)
+	if len(findings) != 1 {
+		t.Fatalf("expected exactly one outlier, got %+v", findings)
+	}
+	f := findings[0]
+	if f.Class != doctor.ClassNumberOutlier || f.Severity != doctor.SeverityWarning {
+		t.Fatalf("expected a %s warning, got %+v", doctor.ClassNumberOutlier, f)
+	}
+	if f.ItemID != ulidC || f.Number != "KIRA-971436" {
+		t.Fatalf("outlier misattributed: %+v", f)
+	}
+	if !strings.Contains(f.Message, "board move") {
+		t.Fatalf("message must name the renumber repair, got %q", f.Message)
+	}
+}
+
+func TestSequentialOutliersNeedBaselineAndGap(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name    string
+		numbers []string
+	}{
+		{"no small baseline", []string{"KIRA-971436", "KIRA-812345"}},
+		{"continuous six-digit board", []string{"KIRA-99999", "KIRA-100001"}},
+		{"hash suffix with letters", []string{"KIRA-1", "KIRA-9X4MV3"}},
+		{"foreign board unaffected", []string{"KIRA-971436", "XYZ-1"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ulids := []string{ulidA, ulidB, ulidC}
+			var items []*datamodel.Item
+			for i, n := range tc.numbers {
+				items = append(items, valid(ulids[i], n))
+			}
+			if findings := doctor.SequentialOutliers(items); len(findings) != 0 {
+				t.Fatalf("expected no outliers, got %+v", findings)
+			}
+		})
+	}
+}
+
 func TestCollisionsLiveLive(t *testing.T) {
 	t.Parallel()
 	a := valid(ulidA, "KIRA-1")

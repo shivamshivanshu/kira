@@ -331,11 +331,7 @@ func applyFlags(d draft, opts CreateOpts) draft {
 }
 
 func allocateNumber(cfg *datamodel.Config, snap id.Snapshot, boardKey string, u id.ULID) string {
-	if cfg.ID.Style == datamodel.IDStyleHash {
-		return id.HashNumber(boardKey, u)
-	}
-	snap.Key = boardKey
-	return id.Allocate(snap).String()
+	return id.NewAllocator(cfg.ID.Style == datamodel.IDStyleHash, snap, boardKey).Alloc(u)
 }
 
 func readSource(src string) (string, error) {
