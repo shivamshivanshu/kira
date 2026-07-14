@@ -9,9 +9,9 @@ state: TODO
 priority: P2
 labels: [core]
 epic: null
-blocked_by: [01KXEJ9JZD8V2N2MX2WPKBX5GZ]
+blocked_by: []
 created: 2026-07-14T01:52:00+05:30
-updated: 2026-07-14T20:48:41+05:30
+updated: 2026-07-14T21:12:51+05:30
 ---
 
 ## Description
