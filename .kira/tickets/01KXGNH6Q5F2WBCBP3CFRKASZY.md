@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: feature
 title: "activity index column: max(updated, last linked commit ts) as queryable date field"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P1
 labels: [core]
 epic: null
