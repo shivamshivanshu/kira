@@ -1,7 +1,7 @@
 ---
 id: 01KXGQX2SHW30DM49ZV7GF08G3
-number: KIRA-98
-aliases: []
+number: DX-1
+aliases: [KIRA-98]
 type: ticket
 subtype: task
 title: "Systematic agent-team code review of all sections"
