@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 )
+
+var subtypePattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
 type CreateOpts struct {
 	Type     string
@@ -33,7 +36,7 @@ type CreateOpts struct {
 }
 
 func (s *Store) ResolveTemplate(opts CreateOpts) (string, error) {
-	base, err := s.templateDraft(opts.Type)
+	base, err := s.templateDraft(opts.Type, opts.Subtype)
 	if err != nil {
 		return "", err
 	}
@@ -51,7 +54,7 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 		return nil, err
 	}
 
-	base, err := s.templateDraft(opts.Type)
+	base, err := s.templateDraft(opts.Type, opts.Subtype)
 	if err != nil {
 		return nil, err
 	}
@@ -204,8 +207,11 @@ func normPtr(p *string) *string {
 	return ptrOrNil(ptr.Deref(p))
 }
 
-func (s *Store) templateDraft(typ string) (draft, error) {
-	data, err := os.ReadFile(s.templatePath(typ))
+func (s *Store) templateDraft(typ, subtype string) (draft, error) {
+	if subtype != "" && !subtypePattern.MatchString(subtype) {
+		return draft{}, errx.User("invalid subtype %q: allowed characters are letters, digits, '-' and '_'", subtype)
+	}
+	data, err := os.ReadFile(s.templatePath(typ, subtype))
 	if err != nil {
 		if os.IsNotExist(err) {
 			d, _ := parseDraft(defaultTemplate(typ))
@@ -221,8 +227,15 @@ func (s *Store) templateDraft(typ string) (draft, error) {
 	return d, nil
 }
 
-func (s *Store) templatePath(typ string) string {
-	return filepath.Join(s.fs().TemplateDir(), typ+".md")
+func (s *Store) templatePath(typ, subtype string) string {
+	dir := s.fs().TemplateDir()
+	if subtype != "" {
+		p := filepath.Join(dir, typ+"."+subtype+".md")
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return filepath.Join(dir, typ+".md")
 }
 
 func applyFlags(d draft, opts CreateOpts) draft {

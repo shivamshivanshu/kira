@@ -1,0 +1,45 @@
+# per-subtype create templates: .kira/templates/<type>.<subtype>.md is used when
+# it exists, else <type>.md. --print-template reflects the resolution. Also pins
+# the number-first auto-commit subject (subject-unify).
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp base.md .kira/templates/ticket.md
+cp bug.md .kira/templates/ticket.bug.md
+
+# a matching subtype template wins
+exec kira create ticket --subtype bug --print-template
+stdout 'from the bug template'
+! stdout 'from the base template'
+
+# a subtype with no template falls back to ticket.md
+exec kira create ticket --subtype story --print-template
+stdout 'from the base template'
+
+# no subtype uses ticket.md
+exec kira create ticket --print-template
+stdout 'from the base template'
+
+# auto-commit subjects are number-first: "<prefix><number> create ..."
+exec kira create ticket --title Real --subtype bug --no-edit
+exec git log -1 --format=%s
+stdout '^kira: KIRA-1 create'
+
+-- base.md --
+---
+title:
+type: ticket
+---
+
+## from the base template
+-- bug.md --
+---
+title:
+type: ticket
+---
+
+## from the bug template
