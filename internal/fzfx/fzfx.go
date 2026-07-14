@@ -13,31 +13,39 @@ type Options struct {
 	PreviewCmd string
 }
 
+var ErrCancelled = errors.New("fzf: cancelled")
+
 func Installed() bool {
 	_, err := exec.LookPath("fzf")
 	return err == nil
 }
 
-func Pick(rows []string, opts Options) (string, bool, error) {
-	var stdin strings.Builder
-	for _, r := range rows {
-		stdin.WriteString(r)
-		stdin.WriteByte('\n')
+func Pick(rows []string, opts Options) (string, error) {
+	var args []string
+	if opts.Prompt != "" {
+		args = append(args, "--prompt", opts.Prompt)
 	}
-	args := []string{"--with-nth", "1..", "--prompt", opts.Prompt}
 	if opts.PreviewCmd != "" {
 		args = append(args, "--preview", opts.PreviewCmd)
 	}
 	cmd := exec.Command("fzf", args...)
-	cmd.Stdin = strings.NewReader(stdin.String())
+	cmd.Stdin = strings.NewReader(strings.Join(rows, "\n") + "\n")
 	cmd.Stderr = os.Stderr
 	out, err := cmd.Output()
 	if err != nil {
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
-			return "", true, nil
-		}
-		return "", false, fmt.Errorf("running fzf: %v", err)
+		return "", classify(err)
 	}
-	return strings.TrimSuffix(string(out), "\n"), false, nil
+	return strings.TrimSuffix(string(out), "\n"), nil
+}
+
+func classify(err error) error {
+	var ee *exec.ExitError
+	if !errors.As(err, &ee) {
+		return fmt.Errorf("running fzf: %w", err)
+	}
+	switch ee.ExitCode() {
+	case 1, 130:
+		return ErrCancelled
+	}
+	return fmt.Errorf("fzf failed with exit code %d", ee.ExitCode())
 }
