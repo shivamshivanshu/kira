@@ -202,6 +202,98 @@ func TestUpdateBoardPreservesTrailingComment(t *testing.T) {
 	}
 }
 
+func TestAddBoardWithoutVersionLineInsertsIt(t *testing.T) {
+	noVersion := strings.Replace(boardBaseConfig, "version: 1\n\n", "", 1)
+	imp := implicitKIRA
+	out := addBoard(t, noVersion, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)
+	if !strings.HasPrefix(out, "version: 2\n") {
+		t.Errorf("version: 2 not inserted at the top:\n%s", out)
+	}
+	cfg, err := config.Parse([]byte(out))
+	if err != nil {
+		t.Fatalf("result does not parse: %v", err)
+	}
+	if cfg.Version != datamodel.BoardsSchemaVersion || len(cfg.Boards) != 2 {
+		t.Errorf("parsed version = %d boards = %+v", cfg.Version, cfg.Boards)
+	}
+}
+
+func TestUpdateBoardPreservesCommentContainingBrace(t *testing.T) {
+	imp := implicitKIRA
+	base := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)
+	base = strings.Replace(base, "{ key: XYZ, name: Beta }", "{ key: XYZ, name: Beta }  # squad {ops}", 1)
+	out, err := config.UpdateBoard([]byte(base), "XYZ", func(b datamodel.Board) datamodel.Board {
+		b.Name = "Beta Squad"
+		return b
+	})
+	if err != nil {
+		t.Fatalf("UpdateBoard: %v", err)
+	}
+	if !strings.Contains(string(out), "# squad {ops}") {
+		t.Errorf("comment containing '}' mangled:\n%s", out)
+	}
+	cfg, err := config.Parse(out)
+	if err != nil {
+		t.Fatalf("result does not parse: %v", err)
+	}
+	if b, _ := cfg.BoardByKey("XYZ"); b.Name != "Beta Squad" {
+		t.Fatalf("rename not applied: %+v", cfg.Boards)
+	}
+}
+
+func TestUpdateBoardQuotedNameWithBraceRoundTrips(t *testing.T) {
+	imp := implicitKIRA
+	base := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Ops}Live"}, &imp)
+	out, err := config.UpdateBoard([]byte(base), "XYZ", func(b datamodel.Board) datamodel.Board {
+		b.Archived = true
+		return b
+	})
+	if err != nil {
+		t.Fatalf("UpdateBoard: %v", err)
+	}
+	cfg, err := config.Parse(out)
+	if err != nil {
+		t.Fatalf("result does not parse: %v", err)
+	}
+	if b, _ := cfg.BoardByKey("XYZ"); b.Name != "Ops}Live" || !b.Archived {
+		t.Fatalf("quoted-brace entry did not round-trip: %+v", cfg.Boards)
+	}
+}
+
+func TestUpdateBoardRefusesMultiLineEntry(t *testing.T) {
+	base := strings.Replace(boardBaseConfig, "version: 1", "version: 2", 1) +
+		"boards:\n  - key: XYZ\n    name: Beta\n"
+	_, err := config.UpdateBoard([]byte(base), "XYZ", func(b datamodel.Board) datamodel.Board {
+		b.Name = "Beta Squad"
+		return b
+	})
+	if err == nil || !strings.Contains(err.Error(), "multi-line entry") {
+		t.Fatalf("error = %v, want multi-line refusal", err)
+	}
+}
+
+func TestUpdateBoardInsideInlineFlowList(t *testing.T) {
+	base := strings.Replace(boardBaseConfig, "version: 1", "version: 2", 1) +
+		"boards: [{ key: KIRA, name: kira, default: true }, { key: XYZ, name: Beta }]\n"
+	out, err := config.UpdateBoard([]byte(base), "XYZ", func(b datamodel.Board) datamodel.Board {
+		b.Name = "Beta Squad"
+		return b
+	})
+	if err != nil {
+		t.Fatalf("UpdateBoard: %v", err)
+	}
+	cfg, err := config.Parse(out)
+	if err != nil {
+		t.Fatalf("result does not parse: %v", err)
+	}
+	if b, _ := cfg.BoardByKey("XYZ"); b.Name != "Beta Squad" {
+		t.Fatalf("flow-list update not applied: %+v", cfg.Boards)
+	}
+	if b, _ := cfg.BoardByKey("KIRA"); !b.Default {
+		t.Fatalf("sibling flow entry damaged: %+v", cfg.Boards)
+	}
+}
+
 func TestAddBoardPreservesUnrelatedLines(t *testing.T) {
 	imp := implicitKIRA
 	out := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)

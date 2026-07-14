@@ -130,6 +130,46 @@ func TestSetScalarRejectsNonMapping(t *testing.T) {
 	}
 }
 
+func TestSetScalarRejectsNonBlockMappingIntermediate(t *testing.T) {
+	cases := []struct{ name, src string }{
+		{"empty flow mapping", "version: 1\ngit: {}\n"},
+		{"populated flow mapping", "version: 1\ngit: { landed_ref: origin/dev }\n"},
+		{"null value", "version: 1\ngit:\n"},
+		{"scalar value", "version: 1\ngit: oops\n"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			out, err := SetScalar([]byte(c.src), "git.landed_ref", "origin/main")
+			if err == nil {
+				t.Fatalf("want error, got:\n%s", out)
+			}
+			if !strings.Contains(err.Error(), "git: not a block mapping") {
+				t.Errorf("error = %v, want a targeted not-a-block-mapping error", err)
+			}
+		})
+	}
+}
+
+func TestSetScalarRejectsHashInLiteral(t *testing.T) {
+	out, err := SetScalar([]byte(setFixture), "commit.mode", "manual # x")
+	if err == nil {
+		t.Fatalf("comment-injecting literal accepted:\n%s", out)
+	}
+	if !strings.Contains(err.Error(), "#") {
+		t.Errorf("error = %v, want it to name the '#'", err)
+	}
+}
+
+func TestVerifySetCatchesSilentlyDroppedEdit(t *testing.T) {
+	res := []byte("version: 1\ncommit:\n  mode: auto\n")
+	if err := verifySet(res, []string{"commit", "mode"}, "commit.mode", "manual"); err == nil {
+		t.Error("verifySet accepted a document whose leaf does not hold the requested value")
+	}
+	if err := verifySet(res, []string{"commit", "mode"}, "commit.mode", "auto"); err != nil {
+		t.Errorf("verifySet rejected a correct document: %v", err)
+	}
+}
+
 func TestSetScalarRejects(t *testing.T) {
 	if _, err := SetScalar([]byte(setFixture), "nope.here", "x"); err == nil {
 		t.Error("unknown key accepted")

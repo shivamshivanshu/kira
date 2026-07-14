@@ -51,20 +51,6 @@ func spliceBoard(data []byte, b datamodel.Board) ([]byte, error) {
 	return appendToTopLevelList(data, "boards", entry)
 }
 
-func flowScalar(field, v string) (string, error) {
-	if strings.ContainsAny(v, "\n\r") {
-		return "", fmt.Errorf("config: %s: value %q does not fit on one line", field, v)
-	}
-	if v == "" || v != strings.TrimSpace(v) || strings.ContainsAny(v, ",{}[]:#&*!|>'\"%@`") {
-		return "'" + strings.ReplaceAll(v, "'", "''") + "'", nil
-	}
-	b, err := yaml.Marshal(v)
-	if err != nil {
-		return "", fmt.Errorf("config: %s: %w", field, err)
-	}
-	return strings.TrimSpace(string(b)), nil
-}
-
 func inlineBoardEntry(b datamodel.Board) (string, error) {
 	key, err := flowScalar("boards", b.Key)
 	if err != nil {
@@ -131,12 +117,15 @@ func UpdateBoard(data []byte, key string, mutate func(datamodel.Board) datamodel
 			return nil, fmt.Errorf("config: boards: cannot rewrite a multi-line entry for %q; reformat it inline", key)
 		}
 		i := node.Line - 1
-		dash := strings.IndexByte(lines[i], '-')
-		brace := strings.LastIndexByte(lines[i], '}')
-		if dash < 0 || brace < 0 {
+		open := node.Column - 1
+		closing := -1
+		if open >= 0 && open < len(lines[i]) && lines[i][open] == '{' {
+			closing = flowCloseIndex(lines[i], open)
+		}
+		if closing < 0 {
 			return nil, fmt.Errorf("config: boards: malformed entry for %q", key)
 		}
-		out := replaceLine(lines, i, lines[i][:dash+1]+" "+entry+lines[i][brace+1:])
+		out := replaceLine(lines, i, lines[i][:open]+entry+lines[i][closing+1:])
 		res := []byte(strings.Join(out, "\n"))
 		reread, err := Parse(res)
 		if err != nil {
@@ -156,12 +145,18 @@ func bumpVersionToBoards(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("config: %w", err)
 	}
 	_, val := findTopLevel(&doc, "version")
-	if val == nil || val.Value != fmt.Sprint(datamodel.InitialSchemaVersion) {
+	lines := strings.Split(string(data), "\n")
+	token := fmt.Sprint(datamodel.BoardsSchemaVersion)
+	switch {
+	case val == nil:
+		lines = append([]string{"version: " + token}, lines...)
+	case val.Value == fmt.Sprint(datamodel.InitialSchemaVersion):
+		var err error
+		if lines, err = replaceScalarLine(lines, val, token); err != nil {
+			return nil, err
+		}
+	default:
 		return data, nil
 	}
-	lines := strings.Split(string(data), "\n")
-	i := val.Line - 1
-	col := val.Column - 1
-	newLine := lines[i][:col] + fmt.Sprint(datamodel.BoardsSchemaVersion) + lines[i][col+len(val.Value):]
-	return []byte(strings.Join(replaceLine(lines, i, newLine), "\n")), nil
+	return []byte(strings.Join(lines, "\n")), nil
 }

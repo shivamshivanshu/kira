@@ -85,6 +85,25 @@ func TestAppendKnownLabelsNamesOwnSubsystemOnError(t *testing.T) {
 	}
 }
 
+func TestAppendKnownLabelsFlowListWithBracketInComment(t *testing.T) {
+	t.Parallel()
+	src := `labels:
+  known: [backend]   # keep sorted [a-z]
+  strict: false
+`
+	out := appendLabels(t, src, "frontend")
+	if !strings.Contains(out, "known: [backend, frontend]   # keep sorted [a-z]") {
+		t.Errorf("append landed outside the list or mangled the comment:\n%s", out)
+	}
+	cfg, err := config.Parse([]byte(out))
+	if err != nil {
+		t.Fatalf("result does not parse: %v", err)
+	}
+	if !slices.Equal(cfg.Labels.Known, []string{"backend", "frontend"}) {
+		t.Errorf("parsed known = %v", cfg.Labels.Known)
+	}
+}
+
 func TestAppendKnownLabelsQuotesWhenNeeded(t *testing.T) {
 	t.Parallel()
 	out := appendLabels(t, labelConfig, "needs review")

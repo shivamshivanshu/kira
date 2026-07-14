@@ -56,9 +56,9 @@ func SetScalar(src []byte, dottedKey, value string) ([]byte, error) {
 	lines := strings.Split(string(src), "\n")
 	segs := strings.Split(dottedKey, ".")
 
-	node, matched := descend(&doc, segs)
-	if node == nil {
-		return nil, fmt.Errorf("config: top level must be a mapping")
+	node, matched, err := descend(&doc, segs)
+	if err != nil {
+		return nil, err
 	}
 	switch {
 	case matched == len(segs):
@@ -73,51 +73,50 @@ func SetScalar(src []byte, dottedKey, value string) ([]byte, error) {
 		lines = insertUnder(lines, node, segs[matched:], token)
 	}
 
-	res := strings.Join(lines, "\n")
-	if _, err := Parse([]byte(res)); err != nil {
+	res := []byte(strings.Join(lines, "\n"))
+	if _, err := Parse(res); err != nil {
 		return nil, err
 	}
-	return []byte(res), nil
+	if err := verifySet(res, segs, dottedKey, value); err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
-func descend(doc *yaml.Node, segs []string) (node *yaml.Node, matched int) {
+func verifySet(res []byte, segs []string, dottedKey, want string) error {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(res, &doc); err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
+	leaf, matched, err := descend(&doc, segs)
+	if err != nil || matched != len(segs) || leaf.Kind != yaml.ScalarNode || leaf.Value != want {
+		return fmt.Errorf("config: %s: edit did not round-trip cleanly (a value may need reformatting)", dottedKey)
+	}
+	return nil
+}
+
+func descend(doc *yaml.Node, segs []string) (node *yaml.Node, matched int, err error) {
 	if len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
-		return nil, 0
+		return nil, 0, fmt.Errorf("config: top level must be a mapping")
 	}
 	m := doc.Content[0]
+	if m.Style&yaml.FlowStyle != 0 {
+		return nil, 0, fmt.Errorf("config: top level must be a block mapping")
+	}
 	for i, seg := range segs {
 		val := childValue(m, seg)
 		if val == nil {
-			return m, i
+			return m, i, nil
 		}
 		if i == len(segs)-1 {
-			return val, len(segs)
+			return val, len(segs), nil
 		}
-		if val.Kind != yaml.MappingNode {
-			return m, i
+		if val.Kind != yaml.MappingNode || val.Style&yaml.FlowStyle != 0 {
+			return nil, 0, fmt.Errorf("config: %s: not a block mapping; rewrite it as `%s:` with its keys indented on the lines below", strings.Join(segs[:i+1], "."), seg)
 		}
 		m = val
 	}
-	return m, len(segs)
-}
-
-func childValue(m *yaml.Node, name string) *yaml.Node {
-	_, v := mapEntry(m, name)
-	return v
-}
-
-func replaceScalarLine(lines []string, leaf *yaml.Node, token string) ([]string, error) {
-	i := leaf.Line - 1
-	if i < 0 || i >= len(lines) {
-		return nil, fmt.Errorf("config: value node points outside the file")
-	}
-	line := lines[i]
-	col := leaf.Column - 1
-	old := marshalScalar(leaf)
-	if col < 0 || col+len(old) > len(line) || line[col:col+len(old)] != old {
-		return nil, fmt.Errorf("config: cannot locate value on line %d", leaf.Line)
-	}
-	return replaceLine(lines, i, line[:col]+token+line[col+len(old):]), nil
+	return m, len(segs), nil
 }
 
 func insertUnder(lines []string, parent *yaml.Node, suffix []string, token string) []string {
@@ -141,21 +140,15 @@ func childIndent(m *yaml.Node) int {
 	return 0
 }
 
-func marshalScalar(n *yaml.Node) string {
-	bare := yaml.Node{Kind: yaml.ScalarNode, Tag: n.Tag, Value: n.Value, Style: n.Style}
-	b, err := yaml.Marshal(&bare)
-	if err != nil {
-		return n.Value
-	}
-	return strings.TrimRight(string(b), "\n")
-}
-
 func renderToken(kind setKind, dottedKey, value string) (string, error) {
 	if kind == kindStr {
 		return singleLineScalar(dottedKey, value)
 	}
-	if strings.ContainsAny(value, "\n\r") {
-		return "", fmt.Errorf("config: value %q does not fit on one line", value)
+	if err := oneLine(dottedKey, value); err != nil {
+		return "", err
+	}
+	if strings.ContainsRune(value, '#') {
+		return "", fmt.Errorf("config: %s: value %q must not contain '#'", dottedKey, value)
 	}
 	return value, nil
 }

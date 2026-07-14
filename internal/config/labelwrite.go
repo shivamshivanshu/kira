@@ -59,17 +59,3 @@ func appendKnownLabel(data []byte, name string) ([]byte, error) {
 	}
 	return []byte(res), nil
 }
-
-func appendToFlowList(lines []string, subsystem string, val *yaml.Node, entry string) ([]string, error) {
-	i := val.Line - 1
-	open := strings.IndexByte(lines[i], '[')
-	closing := strings.LastIndexByte(lines[i], ']')
-	if open < 0 || closing < open || maxLine(val) != val.Line {
-		return nil, fmt.Errorf("config: %s: cannot append to a multi-line flow list; reformat it as a block list", subsystem)
-	}
-	sep := ", "
-	if strings.TrimSpace(lines[i][open+1:closing]) == "" {
-		sep = ""
-	}
-	return replaceLine(lines, i, lines[i][:closing]+sep+entry+lines[i][closing:]), nil
-}
