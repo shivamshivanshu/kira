@@ -1,0 +1,23 @@
+# ui.auto_tui defaults on, but stdout here is not a tty: bare `kira` prints help, never TUI bytes.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira
+stdout 'Usage:'
+stdout 'Available Commands:'
+! stdout '\x1b\['
+
+exec kira --json
+stdout 'Usage:'
+
+# `kira board` (no args) on a non-tty stays on the static table instead of escalating.
+exec kira create ticket --title 'First' --no-edit
+exec kira board
+stdout 'TODO'
+stdout 'IN_PROGRESS'
+! stdout '\x1b\['

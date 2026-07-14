@@ -58,10 +58,11 @@ func renderError(w io.Writer, err error, jsonMode bool) int {
 }
 
 type globalFlags struct {
-	json    bool
-	noColor bool
-	chdir   string
-	quiet   bool
+	json           bool
+	noColor        bool
+	chdir          string
+	quiet          bool
+	nonInteractive bool
 }
 
 func newRootCmd() (*cobra.Command, *globalFlags) {
@@ -81,6 +82,8 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 	pf.BoolVar(&g.noColor, "no-color", false, "disable ANSI color in human output")
 	pf.StringVarP(&g.chdir, "C", "C", "", "run as if invoked from `path`")
 	pf.BoolVar(&g.quiet, "quiet", false, "suppress non-essential human output")
+	pf.BoolVar(&g.nonInteractive, "non-interactive", false, "")
+	_ = pf.MarkHidden("non-interactive")
 
 	root.AddCommand(
 		newTUICmd(g),
@@ -124,7 +127,7 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 }
 
 func openStore(g *globalFlags) (*core.Store, *datamodel.Config, error) {
-	s, err := core.Discover(g.chdir, terminalPrompter{})
+	s, err := core.Discover(g.chdir, g.prompter())
 	if err != nil {
 		return nil, nil, err
 	}

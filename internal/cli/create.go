@@ -74,6 +74,10 @@ func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Type = typ
+			opts.NoEdit = opts.NoEdit || g.nonInteractive
+			if err := g.rejectStdinSource(opts.FromFile); err != nil {
+				return err
+			}
 			if len(args) == 1 {
 				if cmd.Flags().Changed("title") {
 					return errx.User("provide the title positionally or via --title, not both")
@@ -156,7 +160,7 @@ func pickBoardIfAmbiguous(cmd *cobra.Command, g *globalFlags, cfg *datamodel.Con
 	if _, ok := cfg.DefaultBoard(); ok {
 		return nil
 	}
-	if g.json || !(terminalPrompter{}).Interactive() {
+	if g.json || !g.prompter().Interactive() {
 		return nil
 	}
 	out := cmd.ErrOrStderr()

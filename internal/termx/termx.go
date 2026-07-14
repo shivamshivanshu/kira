@@ -3,6 +3,7 @@ package termx
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -12,6 +13,11 @@ import (
 func IsTerminal(f *os.File) bool {
 	fi, err := f.Stat()
 	return err == nil && fi.Mode()&os.ModeCharDevice != 0
+}
+
+func WriterIsTTY(w io.Writer) bool {
+	f, ok := w.(*os.File)
+	return ok && IsTerminal(f)
 }
 
 func Width(f *os.File) (int, bool) {

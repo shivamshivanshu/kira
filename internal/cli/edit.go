@@ -52,6 +52,12 @@ func newEditCmd(g *globalFlags) *cobra.Command {
 			if cmd.Flags().Changed("label") {
 				opts.Fields = append(opts.Fields, core.FieldEdit{Key: datamodel.KeyLabels, Value: strings.Join(labels, ",")})
 			}
+			if err := g.rejectStdinSource(fromFile); err != nil {
+				return err
+			}
+			if g.nonInteractive && fromFile == "" && len(opts.Fields) == 0 {
+				return errx.User("edit without field flags opens $EDITOR").WithHint("the editor is unavailable in non-interactive mode; use --field key=value or --from-file <path>")
+			}
 			s, cfg, err := openStore(g)
 			if err != nil {
 				return err

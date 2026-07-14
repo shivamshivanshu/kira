@@ -12,6 +12,8 @@ func (silentPrompter) Interactive() bool             { return false }
 func (silentPrompter) Confirm(string) bool           { return false }
 func (silentPrompter) ReadLine(_, def string) string { return def }
 
+func SilentPrompter() Prompter { return silentPrompter{} }
+
 func firstPrompter(prompter []Prompter) Prompter {
 	if len(prompter) > 0 && prompter[0] != nil {
 		return prompter[0]

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 
@@ -40,6 +41,7 @@ func (s *Store) finalize(mode datamodel.CommitMode, spec commitSpec, paths ...st
 		return "", nil
 	case datamodel.CommitPrompt:
 		if !s.prompter.Interactive() {
+			emitWarnings([]error{errors.New("staged, not committed (commit.mode=prompt, non-interactive); run `kira commit`")})
 			return "", nil
 		}
 		if !s.prompter.Confirm(fmt.Sprintf("commit %q? [y/N] ", spec.subject)) {

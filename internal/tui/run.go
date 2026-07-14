@@ -12,6 +12,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/clipx"
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/termx"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
@@ -38,7 +39,7 @@ func Run(store *core.Store, cfg *datamodel.Config, opts Options) error {
 		out = os.Stdout
 	}
 	return guardRun(store.Root(), os.Stderr, func() error {
-		m := newModel(store, cfg, theme.For(out, cfg.UI, opts.NoColor), detectIcons(cfg.UI.Icons, cfg.Priorities.Values, cfg.ResolutionsDropped, osEnv, writerIsTTY(out)), opts.InjectPanic)
+		m := newModel(store, cfg, theme.For(out, cfg.UI, opts.NoColor), detectIcons(cfg.UI.Icons, cfg.Priorities.Values, cfg.ResolutionsDropped, osEnv, termx.WriterIsTTY(out)), opts.InjectPanic)
 		m.bar.run = opts.RunCommand
 		m.view = opts.InitialView
 		m.clip = clipx.System(out)

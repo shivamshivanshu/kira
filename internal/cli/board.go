@@ -16,9 +16,11 @@ import (
 
 const fallbackBoardWidth = 80
 
-func boardWidth() int {
-	if w, ok := termx.Width(os.Stdout); ok {
-		return w
+func boardWidth(out io.Writer) int {
+	if f, ok := out.(*os.File); ok {
+		if w, ok := termx.Width(f); ok {
+			return w
+		}
 	}
 	if w, err := strconv.Atoi(os.Getenv("COLUMNS")); err == nil && w > 0 {
 		return w
@@ -47,9 +49,9 @@ func newBoardCmd(g *globalFlags) *cobra.Command {
 				epic = args[0]
 			}
 			noFilters := epic == "" && at == "" && owner == "" && label == "" && query == "" && filter == ""
-			shouldLaunchBoardTUI := cfg.UI.AutoTUI && !plain && !g.json && noFilters && termx.IsTerminal(os.Stdout)
+			shouldLaunchBoardTUI := shouldAutoTUI(cmd, g, cfg) && !plain && noFilters
 			if shouldLaunchBoardTUI {
-				return tui.Run(s, cfg, tui.Options{NoColor: g.noColor, RunCommand: commandRunner(g), InitialView: tui.ViewBoard})
+				return tui.Run(s.WithPrompter(core.SilentPrompter()), cfg, tui.Options{NoColor: g.noColor, RunCommand: commandRunner(g), InitialView: tui.ViewBoard})
 			}
 			res, err := s.Board(cfg, core.BoardOpts{Epic: epic, Owner: owner, Label: label, Query: query, Filter: filter, At: at})
 			if err != nil {
@@ -58,7 +60,7 @@ func newBoardCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			return tui.RenderBoardPlain(cmd.OutOrStdout(), cfg, res, boardWidth(), g.noColor)
+			return tui.RenderBoardPlain(cmd.OutOrStdout(), cfg, res, boardWidth(cmd.OutOrStdout()), g.noColor)
 		},
 	}
 	f := cmd.Flags()

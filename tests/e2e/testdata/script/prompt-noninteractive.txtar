@@ -1,0 +1,67 @@
+# under commit.mode: prompt with no interactive terminal, a mutation stages,
+# warns visibly, and leaves the commit to `kira commit`.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+cp prompt-config.yaml .kira/config.yaml
+exec git add .kira/config.yaml
+exec git commit -m 'switch to prompt mode'
+
+exec git rev-list --count HEAD
+stdout '^2$'
+
+# the create stages but does not commit, and says so on stderr
+exec kira create ticket --title Staged --no-edit
+stdout 'Created KIRA-1'
+stderr 'staged, not committed \(commit.mode=prompt, non-interactive\); run `kira commit`'
+exec git rev-list --count HEAD
+stdout '^2$'
+exec git status --porcelain
+stdout '^A  \.kira/tickets/'
+
+# kira commit flushes the staged mutation
+exec kira commit
+stdout 'committed '
+exec git rev-list --count HEAD
+stdout '^3$'
+
+-- prompt-config.yaml --
+version: 1
+
+project:
+  key: KIRA
+  name: kira
+
+id:
+  style: sequential
+
+workflows:
+  ticket:
+    states:
+      - { key: TODO,        category: todo }
+      - { key: IN_PROGRESS, category: doing }
+      - { key: DONE,        category: done }
+    initial: TODO
+    transitions:
+      TODO:        [IN_PROGRESS]
+      IN_PROGRESS: [DONE]
+      DONE:        []
+  epic:
+    states:
+      - { key: PLANNED, category: todo }
+      - { key: ACTIVE,  category: doing }
+      - { key: DONE,    category: done }
+    initial: PLANNED
+    transitions:
+      PLANNED: [ACTIVE]
+      ACTIVE:  [DONE]
+      DONE:    []
+
+commit:
+  mode: prompt
+  trailer: Kira-Ticket

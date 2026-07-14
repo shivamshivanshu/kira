@@ -6,6 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/storage"
 	"github.com/shivamshivanshu/kira/internal/termx"
@@ -29,6 +32,9 @@ func newTUICmd(g *globalFlags) *cobra.Command {
 }
 
 func runTUI(cmd *cobra.Command, g *globalFlags, injectPanic, auto bool) error {
+	if g.nonInteractive && !auto {
+		return errx.User("cannot launch the tui in non-interactive mode")
+	}
 	s, cfg, err := openStore(g)
 	if err != nil {
 		if !canOfferInit(g, err) {
@@ -42,14 +48,22 @@ func runTUI(cmd *cobra.Command, g *globalFlags, injectPanic, auto bool) error {
 			return err
 		}
 	}
-	if auto && !cfg.UI.AutoTUI {
+	if auto && !shouldAutoTUI(cmd, g, cfg) {
 		return cmd.Help()
 	}
-	return tui.Run(s, cfg, tui.Options{NoColor: g.noColor, InjectPanic: injectPanic, RunCommand: commandRunner(g)})
+	return tui.Run(s.WithPrompter(core.SilentPrompter()), cfg, tui.Options{NoColor: g.noColor, InjectPanic: injectPanic, RunCommand: commandRunner(g)})
+}
+
+func shouldAutoTUI(cmd *cobra.Command, g *globalFlags, cfg *datamodel.Config) bool {
+	return autoTUIAllowed(g, cfg) && termx.WriterIsTTY(cmd.OutOrStdout())
+}
+
+func autoTUIAllowed(g *globalFlags, cfg *datamodel.Config) bool {
+	return cfg.UI.AutoTUI && !g.json && !g.nonInteractive
 }
 
 func canOfferInit(g *globalFlags, err error) bool {
-	if !errors.Is(err, storage.ErrStoreNotFound) || !termx.IsInteractive() {
+	if g.nonInteractive || !errors.Is(err, storage.ErrStoreNotFound) || !termx.IsInteractive() {
 		return false
 	}
 	return gitx.Repo{Dir: g.chdir}.InsideWorkTree() == nil
@@ -61,7 +75,7 @@ func commandRunner(g *globalFlags) func([]string) (string, error) {
 		root, _ := newRootCmd()
 		root.SetOut(&buf)
 		root.SetErr(&buf)
-		full := []string{"--no-color"}
+		full := []string{"--no-color", "--non-interactive"}
 		if g.chdir != "" {
 			full = append(full, "-C", g.chdir)
 		}

@@ -12,7 +12,7 @@ import (
 
 // The global `-C <path>` chdir is deliberately absent: inside `find`, `-C`
 // means ripgrep's context flag and must pass through.
-var knownGlobalFlags = []string{"--json", "--no-color", "--quiet"}
+var knownGlobalFlags = []string{"--json", "--no-color", "--quiet", "--non-interactive"}
 
 func newFindCmd(g *globalFlags) *cobra.Command {
 	cmd := &cobra.Command{

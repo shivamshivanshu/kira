@@ -78,7 +78,7 @@ func newHooksUninstallCmd(g *globalFlags) *cobra.Command {
 		Short: "Remove kira's hook shims, restore chained hooks, and unregister the merge driver",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			s, err := core.Discover(g.chdir, terminalPrompter{})
+			s, err := core.Discover(g.chdir, g.prompter())
 			if err != nil {
 				return err
 			}
@@ -101,7 +101,7 @@ func newHooksStatusCmd(g *globalFlags) *cobra.Command {
 		Short: "Report the state of each kira git hook: installed, chained, missing, drifted, or foreign",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			s, err := core.Discover(g.chdir, terminalPrompter{})
+			s, err := core.Discover(g.chdir, g.prompter())
 			if err != nil {
 				return err
 			}
@@ -143,7 +143,7 @@ func newHooksRunCmd(g *globalFlags) *cobra.Command {
 }
 
 func hookStore(g *globalFlags) (*core.Store, error) {
-	s, err := core.Discover(g.chdir, terminalPrompter{})
+	s, err := core.Discover(g.chdir, g.prompter())
 	if err != nil && errors.Is(err, storage.ErrStoreNotFound) {
 		return nil, nil
 	}

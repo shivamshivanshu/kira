@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/termx"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
@@ -228,7 +229,7 @@ func splitWidth(total, n int) []int {
 
 func RenderBoardPlain(w io.Writer, cfg *datamodel.Config, res *datamodel.BoardResult, width int, noColor bool) error {
 	th := theme.For(w, cfg.UI, noColor)
-	out := renderBoard(th, detectIcons(cfg.UI.Icons, cfg.Priorities.Values, cfg.ResolutionsDropped, osEnv, writerIsTTY(w)), res, width, plainHeight(res), -1, -1)
+	out := renderBoard(th, detectIcons(cfg.UI.Icons, cfg.Priorities.Values, cfg.ResolutionsDropped, osEnv, termx.WriterIsTTY(w)), res, width, plainHeight(res), -1, -1)
 	_, err := io.WriteString(w, out+"\n")
 	return err
 }

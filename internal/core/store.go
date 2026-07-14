@@ -31,6 +31,12 @@ func Discover(startDir string, prompter ...Prompter) (*Store, error) {
 	return &Store{root: store.Root(), store: store, prompter: firstPrompter(prompter)}, nil
 }
 
+func (s *Store) WithPrompter(p Prompter) *Store {
+	c := *s
+	c.prompter = firstPrompter([]Prompter{p})
+	return &c
+}
+
 func (s *Store) fs() *storage.FS { return s.store }
 
 func (s *Store) Root() string { return s.root }

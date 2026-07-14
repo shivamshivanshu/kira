@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"io"
 	"os"
 	"slices"
 	"strings"
@@ -9,7 +8,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/termx"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
@@ -48,11 +46,6 @@ type iconSet struct {
 }
 
 func (ic iconSet) rich() bool { return ic.mode != datamodel.IconText }
-
-func writerIsTTY(w io.Writer) bool {
-	f, ok := w.(*os.File)
-	return ok && termx.IsTerminal(f)
-}
 
 func detectIcons(mode datamodel.IconMode, priorities, dropped []string, env func(string) string, isTTY bool) iconSet {
 	return iconSet{mode: resolveIconMode(mode, env, isTTY), priorities: priorities, dropped: dropped}

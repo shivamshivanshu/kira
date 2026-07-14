@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 func newCommentCmd(g *globalFlags) *cobra.Command {
@@ -16,6 +17,9 @@ func newCommentCmd(g *globalFlags) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts := core.CommentOpts{Message: message, HasMessage: cmd.Flags().Changed("message")}
+			if g.nonInteractive && !opts.HasMessage {
+				return errx.User("comment without --message opens $EDITOR").WithHint("the editor is unavailable in non-interactive mode; use -m")
+			}
 			s, cfg, err := openStore(g)
 			if err != nil {
 				return err

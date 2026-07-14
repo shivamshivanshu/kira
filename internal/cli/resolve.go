@@ -15,7 +15,7 @@ func newResolveCmd(g *globalFlags) *cobra.Command {
 		Use:   "resolve [id...]",
 		Short: "Auto-resolve conflicted kira items in an in-progress merge",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s, err := core.Discover(g.chdir, terminalPrompter{})
+			s, err := core.Discover(g.chdir, g.prompter())
 			if err != nil {
 				return err
 			}

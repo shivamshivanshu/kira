@@ -16,7 +16,7 @@ func newInitCmd(g *globalFlags) *cobra.Command {
 		Short: "Initialize a .kira/ store in the current git repository",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			res, err := core.Init(g.chdir, key, force, terminalPrompter{})
+			res, err := core.Init(g.chdir, key, force, g.prompter())
 			if err != nil {
 				return err
 			}
