@@ -19,7 +19,7 @@ func (r Repo) Push(remote string) error {
 }
 
 func (r Repo) RebaseContinue() error {
-	_, err := r.Output("-c", "core.editor=true", "rebase", "--continue")
+	_, err := r.outputRaw([]string{"GIT_EDITOR=true"}, "rebase", "--continue")
 	return err
 }
 

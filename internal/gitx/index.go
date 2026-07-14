@@ -33,7 +33,7 @@ type Ancestor string
 type Descendant string
 
 func (r Repo) IsAncestor(ancestor Ancestor, descendant Descendant) (bool, error) {
-	cmd := gitCommand(r.Dir, "merge-base", "--is-ancestor", string(ancestor), string(descendant))
+	cmd := gitCommand(r.Dir, nil, "merge-base", "--is-ancestor", string(ancestor), string(descendant))
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	err := cmd.Run()

@@ -24,15 +24,19 @@ func (r Repo) Output(args ...string) (string, error) {
 	return strings.TrimSpace(out), err
 }
 
-func gitCommand(dir string, args ...string) *exec.Cmd {
+func gitCommand(dir string, env []string, args ...string) *exec.Cmd {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "LC_ALL=C", "LANG=C")
+	cmd.Env = append(append(os.Environ(), "LC_ALL=C", "LANG=C"), env...)
 	return cmd
 }
 
 func (r Repo) OutputRaw(args ...string) (string, error) {
-	cmd := gitCommand(r.Dir, args...)
+	return r.outputRaw(nil, args...)
+}
+
+func (r Repo) outputRaw(env []string, args ...string) (string, error) {
+	cmd := gitCommand(r.Dir, env, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -276,7 +280,7 @@ type BatchObject struct {
 }
 
 func (r Repo) CatFileBatch(specs []string) ([]BatchObject, error) {
-	cmd := gitCommand(r.Dir, "cat-file", "--batch")
+	cmd := gitCommand(r.Dir, nil, "cat-file", "--batch")
 	cmd.Stdin = strings.NewReader(strings.Join(specs, "\n") + "\n")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -342,7 +346,7 @@ func MergeText(base, ours, theirs string) (merged string, conflict bool, err err
 		return "", false, err
 	}
 
-	cmd := gitCommand("", "merge-file", "-p", op, bp, tp)
+	cmd := gitCommand("", nil, "merge-file", "-p", op, bp, tp)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

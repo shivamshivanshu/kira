@@ -51,7 +51,7 @@ func (r Repo) NumstatNoIndex(a, b string) (added, removed int, err error) {
 	if err := os.WriteFile(bp, []byte(b), 0o644); err != nil {
 		return 0, 0, err
 	}
-	cmd := gitCommand(r.Dir, "diff", "--numstat", "--no-index", "--", ap, bp)
+	cmd := gitCommand(r.Dir, nil, "diff", "--numstat", "--no-index", "--", ap, bp)
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
 	_ = cmd.Run()
