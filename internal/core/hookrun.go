@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -11,6 +12,24 @@ import (
 	"github.com/shivamshivanshu/kira/internal/storage"
 	"github.com/shivamshivanshu/kira/internal/workon"
 )
+
+var ticketRefRe = regexp.MustCompile(`(?i)\b[a-z][a-z0-9]{1,9}-\d+\b`)
+
+func (s *Store) PrepareCommitMsgHook(msgFile string) error {
+	branch, ok := s.repo().HeadBranchFast()
+	if !ok {
+		return nil
+	}
+	ptr, active := s.readActive()
+	if (!active || ptr.Branch != branch) && !ticketRefRe.MatchString(branch) {
+		return nil
+	}
+	cfg, err := s.Config()
+	if err != nil {
+		return err
+	}
+	return s.PrepareCommitMsg(cfg, msgFile)
+}
 
 func (s *Store) PrepareCommitMsg(cfg *datamodel.Config, msgFile string) error {
 	if err := s.requireRepo(); err != nil {

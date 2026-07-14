@@ -1,3 +1,4 @@
 #!/bin/sh
 # kira post-merge hook — delegates to the kira binary
-exec kira hooks post-merge "$@"
+command -v kira >/dev/null 2>&1 || exit 0
+exec kira hooks run post-merge "$@"

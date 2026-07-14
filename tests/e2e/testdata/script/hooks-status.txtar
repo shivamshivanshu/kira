@@ -1,0 +1,115 @@
+# kira hooks status: installed / missing / drifted / foreign classification,
+# legacy-shim refresh on reinstall, hooks run dispatch, and core.hooksPath.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# nothing installed yet.
+exec kira hooks status
+stdout 'hook post-merge: missing'
+stdout 'hook prepare-commit-msg: missing'
+stdout 'merge driver: not registered'
+
+exec kira hooks install
+exec kira hooks status
+stdout 'hook post-merge: installed'
+stdout 'hook prepare-commit-msg: installed'
+stdout 'hook pre-commit: missing'
+stdout 'merge driver: registered'
+
+# a shim from an older kira reports drifted; reinstall refreshes it in place.
+cp legacy-shim .git/hooks/post-merge
+exec kira hooks status
+stdout 'hook post-merge: drifted'
+exec kira hooks install
+exec kira hooks status
+stdout 'hook post-merge: installed'
+
+# any mangled but purely-delegating shim is repaired the same way.
+cp mangled-shim .git/hooks/post-merge
+exec kira hooks status
+stdout 'hook post-merge: drifted'
+exec kira hooks install
+exec kira hooks status
+stdout 'hook post-merge: installed'
+
+# a hook that never came from kira reports foreign.
+cp foreign-hook .git/hooks/pre-commit
+exec kira hooks status
+stdout 'hook pre-commit: foreign'
+
+# hooks run executes the same entry the shims call; unknown hooks are refused.
+exec kira hooks run post-merge
+! exec kira hooks run bogus
+stderr 'unknown hook "bogus"'
+
+# core.hooksPath inside the work tree: install refuses without the opt-in flag.
+mkdir $WORK/husky
+cd $WORK/husky
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec git config core.hooksPath .husky
+! exec kira hooks install
+stderr 'core.hooksPath'
+exec kira hooks install --into-hooks-path
+stdout 'hook post-merge: installed'
+exists .husky/post-merge
+exec kira hooks status
+stdout 'hook post-merge: installed'
+stdout 'core.hooksPath: .husky'
+
+# a hooksPath outside the work tree (shared hooks dir) also needs the opt-in flag.
+mkdir $WORK/sharedhooks
+mkdir $WORK/ghrepo
+cd $WORK/ghrepo
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec git config core.hooksPath $WORK/sharedhooks
+! exec kira hooks install
+stderr 'core.hooksPath'
+exec kira hooks install --into-hooks-path
+stdout 'hook post-merge: installed'
+exists $WORK/sharedhooks/post-merge
+
+# a hand-rolled hook running other commands plus kira is refused, never clobbered.
+mkdir $WORK/handrepo
+cd $WORK/handrepo
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp $WORK/handrolled-hook .git/hooks/post-merge
+exec kira hooks install
+stdout 'hook post-merge: refused'
+stdout 'already runs kira alongside other commands'
+grep 'my-linter --staged' .git/hooks/post-merge
+exec kira hooks status
+stdout 'hook post-merge: drifted'
+exec kira hooks uninstall
+stdout 'hook post-merge: left'
+stderr 'still delegates to kira'
+grep 'my-linter --staged' .git/hooks/post-merge
+
+-- handrolled-hook --
+#!/bin/sh
+my-linter --staged
+exec kira hooks run post-merge "$@"
+-- legacy-shim --
+#!/bin/sh
+# kira post-merge hook — delegates to the kira binary
+exec kira hooks post-merge "$@"
+-- mangled-shim --
+#!/bin/sh
+# hand-refreshed shim missing the guard line
+exec kira hooks run post-merge "$@"
+-- foreign-hook --
+#!/bin/sh
+echo user-hook-ran

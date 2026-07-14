@@ -5,6 +5,7 @@ package hooks
 import (
 	"embed"
 	"path"
+	"regexp"
 	"strings"
 )
 
@@ -19,6 +20,10 @@ const (
 var Default = []string{"post-merge", "prepare-commit-msg"}
 
 const PreCommit = "pre-commit"
+
+func Known() []string {
+	return append(append([]string(nil), Default...), PreCommit)
+}
 
 func Script(name string) (string, bool) {
 	data, err := scriptFS.ReadFile("scripts/" + name)
@@ -36,7 +41,36 @@ func hasMarker(content string) bool {
 // single source of truth for the invocation the embedded scripts use, so
 // re-install idempotency stays coupled to the script text (pinned by a test).
 func Invokes(content, name string) bool {
-	return strings.Contains(content, "kira hooks "+name)
+	return strings.Contains(content, "kira hooks run "+name) ||
+		strings.Contains(content, "kira hooks "+name)
+}
+
+func IsPureShim(content, name string) bool {
+	if hasMarker(content) {
+		return false
+	}
+	delegates := false
+	for line := range strings.Lines(content) {
+		trimmed := strings.TrimSpace(line)
+		switch {
+		case trimmed == "" || strings.HasPrefix(trimmed, "#"):
+		case guardLineRe.MatchString(trimmed):
+		case delegationLineRe(name).MatchString(trimmed):
+			delegates = true
+		default:
+			return false
+		}
+	}
+	return delegates
+}
+
+var guardLineRe = regexp.MustCompile(`^command\s+-v\s+kira\s+>/dev/null\s+2>&1\s+\|\|\s+exit\s+0$`)
+
+const shimArgs = `[\s"'$@*]*$`
+
+func delegationLineRe(name string) *regexp.Regexp {
+	q := regexp.QuoteMeta(name)
+	return regexp.MustCompile(`^(exec\s+)?(kira\s+hooks\s+(run\s+)?|\.kira/hooks/)` + q + shimArgs)
 }
 
 func Classify(content, name string) (installed, chained bool) {
@@ -70,7 +104,54 @@ func Chain(content, name string) string {
 		return content
 	}
 	if content != "" && !strings.HasSuffix(content, "\n") {
-		content += "\n"
+		return content + "\n" + chainBlockAddedNewline(name)
 	}
-	return content + marker + "\n.kira/hooks/" + name + " \"$@\"\n" + markerEnd + "\n"
+	return content + chainBlock(name)
+}
+
+func chainBlock(name string) string {
+	return marker + "\n" + chainTail(name)
+}
+
+func chainBlockAddedNewline(name string) string {
+	return marker + " nonl\n" + chainTail(name)
+}
+
+func chainTail(name string) string {
+	return ".kira/hooks/" + name + " \"$@\"\n" + markerEnd + "\n"
+}
+
+func Unchain(content, name string) (string, bool) {
+	if stripped := strings.Replace(content, chainBlockAddedNewline(name), "", 1); stripped != content {
+		return strings.TrimSuffix(stripped, "\n"), true
+	}
+	stripped := strings.Replace(content, chainBlock(name), "", 1)
+	return stripped, stripped != content
+}
+
+type State string
+
+const (
+	StateInstalled State = "installed"
+	StateChained   State = "chained"
+	StateMissing   State = "missing"
+	StateDrifted   State = "drifted"
+	StateForeign   State = "foreign"
+)
+
+func StateOf(content, name string) State {
+	script, ok := Script(name)
+	if ok && content == script {
+		return StateInstalled
+	}
+	if hasMarker(content) {
+		if strings.Contains(content, chainBlock(name)) || strings.Contains(content, chainBlockAddedNewline(name)) {
+			return StateChained
+		}
+		return StateDrifted
+	}
+	if Invokes(content, name) {
+		return StateDrifted
+	}
+	return StateForeign
 }

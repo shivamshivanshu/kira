@@ -1,0 +1,30 @@
+# The installed prepare-commit-msg shim fires through a REAL git commit:
+# ticket branches gain the trailer, other branches stay untouched.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira hooks install
+exec kira create ticket --title 'Fix the bug' --no-edit
+
+# on a ticket branch, a plain git commit gains the trailer via the shim.
+exec git checkout -b KIRA-1-fix-the-bug
+cp change.txt work.txt
+exec git add work.txt
+exec git commit -m 'fix: the bug'
+exec git log -1 --format=%B
+stdout 'Kira-Ticket: KIRA-1'
+
+# on main, a plain git commit stays untouched.
+exec git checkout main
+cp change.txt other.txt
+exec git add other.txt
+exec git commit -m 'chore: unrelated'
+exec git log -1 --format=%B
+! stdout 'Kira-Ticket'
+
+-- change.txt --
+content

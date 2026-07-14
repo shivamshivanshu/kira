@@ -15,3 +15,11 @@ func (r Repo) InfoAttributeHasLine(line string) bool {
 	}
 	return containsLine(string(content), line)
 }
+
+func (r Repo) RemoveInfoAttribute(line string) error {
+	path, err := r.GitPath(infoAttributesPath)
+	if err != nil {
+		return err
+	}
+	return RemoveLineIfPresent(path, line)
+}

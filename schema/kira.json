@@ -360,6 +360,35 @@
       ],
       "type": "object"
     },
+    "CommitResult": {
+      "additionalProperties": false,
+      "properties": {
+        "committed": {
+          "type": "boolean"
+        },
+        "files": {
+          "type": "integer"
+        },
+        "items": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sha": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "committed",
+        "files",
+        "items"
+      ],
+      "type": "object"
+    },
     "Completion": {
       "additionalProperties": false,
       "properties": {
@@ -682,6 +711,70 @@
       "required": [
         "ts",
         "field"
+      ],
+      "type": "object"
+    },
+    "HookState": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "state"
+      ],
+      "type": "object"
+    },
+    "HooksStatusResult": {
+      "additionalProperties": false,
+      "properties": {
+        "hooks": {
+          "items": {
+            "$ref": "#/$defs/HookState"
+          },
+          "type": "array"
+        },
+        "hooks_path": {
+          "type": "string"
+        },
+        "merge_driver": {
+          "type": "boolean"
+        },
+        "ok": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "hooks",
+        "merge_driver",
+        "ok"
+      ],
+      "type": "object"
+    },
+    "HooksUninstallResult": {
+      "additionalProperties": false,
+      "properties": {
+        "hooks": {
+          "items": {
+            "$ref": "#/$defs/HookState"
+          },
+          "type": "array"
+        },
+        "merge_driver": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "hooks",
+        "merge_driver"
       ],
       "type": "object"
     },

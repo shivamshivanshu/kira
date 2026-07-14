@@ -479,6 +479,25 @@ type HookStatus struct {
 	Name      string `json:"name"`
 	Installed bool   `json:"installed"`
 	Chained   bool   `json:"chained"`
+	Note      string `json:"note,omitempty"`
+}
+
+type HookState struct {
+	Name  string `json:"name"`
+	State string `json:"state"`
+	Note  string `json:"note,omitempty"`
+}
+
+type HooksStatusResult struct {
+	Hooks       []HookState `json:"hooks"`
+	MergeDriver bool        `json:"merge_driver"`
+	HooksPath   string      `json:"hooks_path,omitempty"`
+	OK          bool        `json:"ok"`
+}
+
+type HooksUninstallResult struct {
+	Hooks       []HookState `json:"hooks"`
+	MergeDriver bool        `json:"merge_driver"`
 }
 
 type HooksInstallResult struct {

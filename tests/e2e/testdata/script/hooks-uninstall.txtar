@@ -1,0 +1,74 @@
+# kira hooks uninstall: removes exactly kira's shims, restores chained hooks
+# byte-identically, and unregisters the merge driver.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira hooks install
+exists .git/hooks/post-merge
+
+exec kira hooks uninstall
+stdout 'hook post-merge: removed'
+stdout 'hook prepare-commit-msg: removed'
+stdout 'hook pre-commit: absent'
+stdout 'merge driver: unregistered'
+! exists .git/hooks/post-merge
+! exists .git/hooks/prepare-commit-msg
+! exec git config --get merge.kira.driver
+exec kira hooks status
+stdout 'hook post-merge: missing'
+stdout 'merge driver: not registered'
+
+# chained install: uninstall strips only kira's block and restores the original.
+mkdir $WORK/repo2
+cd $WORK/repo2
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp $WORK/userhook .git/hooks/post-merge
+exec kira hooks install
+stdout 'chained onto existing hook'
+exec kira hooks uninstall
+stdout 'hook post-merge: unchained'
+cmp .git/hooks/post-merge $WORK/userhook
+
+# a foreign hook is left untouched, silently, and no merge driver is reported
+# unregistered when none was installed.
+mkdir $WORK/repo3
+cd $WORK/repo3
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp $WORK/userhook .git/hooks/post-merge
+exec kira hooks uninstall
+stdout 'hook post-merge: left'
+! stdout 'merge driver: unregistered'
+! stderr 'warning'
+cmp .git/hooks/post-merge $WORK/userhook
+
+# an edited chain block that still routes to kira is left with a loud warning.
+mkdir $WORK/repo4
+cd $WORK/repo4
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp $WORK/mangled-chain .git/hooks/post-merge
+exec kira hooks uninstall
+stdout 'hook post-merge: left'
+stderr 'still delegates to kira'
+
+-- userhook --
+#!/bin/sh
+echo user-hook-ran
+-- mangled-chain --
+#!/bin/sh
+echo user-hook-ran
+# kira:chain v1
+edited-line "$@"
+# /kira:chain
