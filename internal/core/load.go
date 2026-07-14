@@ -74,17 +74,20 @@ func (s *Store) readRaw(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
 }
 
 func (s *Store) resolveAtRef(at string) (string, error) {
-	repo := s.repo()
-	if datamodel.ValidDate(at) {
-		sha, err := repo.ResolveAtDate(gitx.Date(at), gitx.Ref("HEAD"))
+	return resolveDateOrTreeish(s.repo(), at, "--at")
+}
+
+func resolveDateOrTreeish(repo gitx.Repo, val, flag string) (string, error) {
+	if datamodel.ValidDate(val) {
+		sha, err := repo.ResolveAtDate(gitx.Date(val+"T00:00:00"), gitx.Ref("HEAD"))
 		if err != nil {
-			return "", errx.User("resolving --at %s: %v", at, err)
+			return "", errx.User("resolving %s %s: %v", flag, val, err)
 		}
 		return sha, nil
 	}
-	sha, err := repo.ResolveTreeish(at)
+	sha, err := repo.ResolveTreeish(val)
 	if err != nil {
-		return "", errx.User("resolving --at %s: %v", at, err)
+		return "", errx.User("resolving %s %s: %v", flag, val, err)
 	}
 	return sha, nil
 }

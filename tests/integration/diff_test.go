@@ -49,7 +49,7 @@ func TestDiffDeletedAndBody(t *testing.T) {
 		t.Fatalf("checkout back: %v", err)
 	}
 
-	res, err := s.Diff("later", true)
+	res, err := s.Diff("later", "", true)
 	if err != nil {
 		t.Fatalf("Diff: %v", err)
 	}
@@ -98,7 +98,7 @@ func TestDiffNonAliasNumberChangeVisible(t *testing.T) {
 	repo.Output("commit", "-m", "hand-edited number, no alias")
 	repo.Output("checkout", mainBranch)
 
-	res, err := s.Diff("later", true)
+	res, err := s.Diff("later", "", true)
 	if err != nil {
 		t.Fatalf("Diff: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestDiffDefaultIsMyChangesVsIncoming(t *testing.T) {
 	repo.Output("add", "-A")
 	repo.Output("commit", "-m", "edit body on later")
 
-	mine, err := s.Diff(mainBranch, false)
+	mine, err := s.Diff(mainBranch, "", false)
 	if err != nil {
 		t.Fatalf("Diff default: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestDiffDefaultIsMyChangesVsIncoming(t *testing.T) {
 		t.Fatalf("default changes = %+v, want one body change", c)
 	}
 
-	incoming, err := s.Diff(mainBranch, true)
+	incoming, err := s.Diff(mainBranch, "", true)
 	if err != nil {
 		t.Fatalf("Diff incoming: %v", err)
 	}

@@ -7,20 +7,36 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 func newDiffCmd(g *globalFlags) *cobra.Command {
 	var incoming bool
+	var since string
 	cmd := &cobra.Command{
-		Use:   "diff <ref>",
+		Use:   "diff [ref]",
 		Short: "Show your changes vs the merge-base with <ref>",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ref := ""
+			if len(args) == 1 {
+				ref = args[0]
+			}
+			if since != "" {
+				if ref != "" {
+					return errx.User("provide a ref positionally or --since, not both")
+				}
+				if incoming {
+					return errx.User("--since cannot be combined with --incoming")
+				}
+			} else if ref == "" {
+				return errx.User("diff requires a <ref> argument or --since")
+			}
 			s, _, err := openStore(g)
 			if err != nil {
 				return err
 			}
-			res, err := s.Diff(args[0], incoming)
+			res, err := s.Diff(ref, since, incoming)
 			if err != nil {
 				return err
 			}
@@ -32,6 +48,7 @@ func newDiffCmd(g *globalFlags) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&incoming, "incoming", false, "show incoming changes on <ref> relative to the merge-base")
+	cmd.Flags().StringVar(&since, "since", "", "show changes since a git ref or date (YYYY-MM-DD), relative to HEAD")
 	return cmd
 }
 

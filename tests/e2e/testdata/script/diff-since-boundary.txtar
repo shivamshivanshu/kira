@@ -1,0 +1,24 @@
+# diff --since anchors a bare date to local 00:00:00, so a commit made ON the
+# since-date deterministically lands in the diff regardless of the wall-clock
+# time the command runs (git approxidate would otherwise fill the current time
+# of day, making the boundary flaky).
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+
+env GIT_AUTHOR_DATE=2026-05-01T12:00:00Z
+env GIT_COMMITTER_DATE=2026-05-01T12:00:00Z
+exec kira init --key KIRA
+exec kira create ticket --title Before --no-edit
+
+env GIT_AUTHOR_DATE=2026-05-10T20:00:00Z
+env GIT_COMMITTER_DATE=2026-05-10T20:00:00Z
+exec kira create ticket --title OnDate --no-edit
+
+# base resolves to the state at 2026-05-10T00:00:00, so the evening commit on
+# that day appears as a creation.
+exec kira diff --since 2026-05-10
+stdout 'created KIRA-2'

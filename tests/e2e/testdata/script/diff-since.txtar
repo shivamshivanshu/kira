@@ -1,0 +1,58 @@
+# diff --since resolves its left endpoint via a git ref or a date, right
+# endpoint is always HEAD; mutually exclusive with the positional ref and
+# with --incoming.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+
+# early batch, dated early
+env GIT_AUTHOR_DATE=2026-01-01T00:00:00Z
+env GIT_COMMITTER_DATE=2026-01-01T00:00:00Z
+exec kira init --key KIRA
+exec kira create ticket --title First --no-edit
+exec kira create ticket --title Second --no-edit
+exec git tag base
+
+# later batch, dated later
+env GIT_AUTHOR_DATE=2026-06-01T00:00:00Z
+env GIT_COMMITTER_DATE=2026-06-01T00:00:00Z
+exec kira move KIRA-1 IN_PROGRESS
+exec kira create ticket --title Third --no-edit
+
+# ref form: base predates the move and KIRA-3
+exec kira diff --since base
+stdout 'KIRA-1'
+stdout 'state: TODO -> IN_PROGRESS'
+stdout 'created KIRA-3  Third'
+
+# date form: a date between the two batches sees the same left endpoint
+exec kira diff --since 2026-03-01
+stdout 'KIRA-1'
+stdout 'state: TODO -> IN_PROGRESS'
+stdout 'created KIRA-3  Third'
+
+# --json rides the existing DiffResult shape unchanged
+exec kira diff --since base --json
+stdout '"field": "state"'
+stdout '"to": "IN_PROGRESS"'
+stdout '"status": "created"'
+stdout '"number": "KIRA-3"'
+
+# --since cannot be combined with a positional ref
+! exec kira diff base --since base
+stderr 'not both'
+
+# --since cannot be combined with --incoming
+! exec kira diff --since base --incoming
+stderr '--since cannot be combined with --incoming'
+
+# a date before any commit is an error
+! exec kira diff --since 2000-01-01
+stderr 'resolving --since 2000-01-01'
+
+# bare diff still requires a ref or --since
+! exec kira diff
+stderr 'diff requires a <ref> argument or --since'
