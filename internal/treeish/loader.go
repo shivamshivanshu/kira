@@ -68,6 +68,7 @@ func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parsing %s at %s: %w", p, treeish, err)
 		}
+		it.Activity = it.Updated
 		items = append(items, it)
 	}
 

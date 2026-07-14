@@ -1,0 +1,35 @@
+# activity is max(updated, latest linked-commit ts), materialized in the index:
+# a commit that lands long after a ticket's updated bumps that ticket's activity,
+# while a ticket with no linked commit keeps activity == updated.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create ticket --title alpha --no-edit
+exec kira create ticket --title beta --no-edit
+
+# a commit linked to KIRA-1 (subject marker) dated far after both tickets' updated
+env GIT_COMMITTER_DATE=2030-01-01T00:00:00Z
+env GIT_AUTHOR_DATE=2030-01-01T00:00:00Z
+exec git commit --allow-empty -m '[[KIRA-1]] land the feature'
+
+exec kira index
+
+# KIRA-1's activity is bumped by the 2030 commit; KIRA-2 (no linked commit) is not
+exec kira list --query 'activity>2029-01-01' --json
+stdout '"count": 1'
+stdout '"number": "KIRA-1"'
+! stdout '"number": "KIRA-2"'
+
+# KIRA-2 keeps activity == updated, well before 2030
+exec kira list --query 'activity<2029-01-01' --json
+stdout '"count": 1'
+stdout '"number": "KIRA-2"'
+
+# ORDER BY activity ranks the recently-committed KIRA-1 ahead of KIRA-2
+exec kira list --query 'type=ticket ORDER BY activity desc' --json
+stdout '(?s)KIRA-1.*KIRA-2'

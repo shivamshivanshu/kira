@@ -6,7 +6,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -140,6 +142,7 @@ func TestLoadReconstructsLosslessly(t *testing.T) {
 
 func normalize(it *datamodel.Item) datamodel.Item {
 	c := *it
+	c.Activity = ""
 	if len(c.Aliases) == 0 {
 		c.Aliases = nil
 	}
@@ -701,4 +704,75 @@ func titleOf(items []*datamodel.Item, ulid string) string {
 		}
 	}
 	return ""
+}
+
+func (f repoFixture) commitTrailerAt(t *testing.T, date, subject, trailer string) {
+	t.Helper()
+	run(t, f.root, "git", "add", "-A")
+	cmd := exec.Command("git", "commit", "-q", "--allow-empty", "-m", subject, "-m", trailer)
+	cmd.Dir = f.root
+	cmd.Env = append(os.Environ(),
+		"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null",
+		"GIT_COMMITTER_DATE="+date, "GIT_AUTHOR_DATE="+date)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %v: %s", err, out)
+	}
+}
+
+func (f repoFixture) commitTs(t *testing.T, rev string) string {
+	t.Helper()
+	cmd := exec.Command("git", "show", "-s", "--format=%cI", rev)
+	cmd.Dir = f.root
+	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("git show: %v", err)
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func TestActivityIsMaxOfUpdatedAndCommitTs(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.writeTicket(t, b, ticket(b, "KIRA-2", "second"))
+	f.commit(t, "seed tickets")
+	f.commitTrailerAt(t, "2030-01-01T00:00:00Z", "land it", "Kira-Ticket: KIRA-1")
+
+	items, _, err := index.Load(f.store, f.repo, trailerOpts())
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	byID := map[string]*datamodel.Item{}
+	for _, it := range items {
+		byID[it.ID] = it
+	}
+
+	linked := byID[a]
+	if want := f.commitTs(t, "HEAD"); linked.Activity != want {
+		t.Fatalf("KIRA-1 activity = %q, want the 2030 commit ts %q", linked.Activity, want)
+	}
+	if !after(t, linked.Activity, linked.Updated) {
+		t.Fatalf("KIRA-1 activity %q should exceed updated %q", linked.Activity, linked.Updated)
+	}
+
+	unlinked := byID[b]
+	if unlinked.Activity != unlinked.Updated {
+		t.Fatalf("KIRA-2 has no commit link: activity %q should equal updated %q", unlinked.Activity, unlinked.Updated)
+	}
+}
+
+func after(t *testing.T, a, b string) bool {
+	t.Helper()
+	ta, err := time.Parse(time.RFC3339, a)
+	if err != nil {
+		t.Fatalf("parsing %q: %v", a, err)
+	}
+	tb, err := time.Parse(time.RFC3339, b)
+	if err != nil {
+		t.Fatalf("parsing %q: %v", b, err)
+	}
+	return ta.After(tb)
 }

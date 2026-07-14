@@ -12,6 +12,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/storage"
+	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
 func (i *Index) full(store *storage.FS) ([]string, error) {
@@ -72,12 +73,12 @@ func (i *Index) refresh(absPaths []string) ([]string, error) {
 func insertItem(tx *sql.Tx, it *datamodel.Item) error {
 	if _, err := tx.Exec(`INSERT INTO items
 		(id, number, type, subtype, title, state, resolution, priority, rank,
-		 owner, reporter, epic, sprint, due, estimate, created, updated)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		 owner, reporter, epic, sprint, due, estimate, created, updated, activity)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		it.ID, it.Number, it.Type, nullable(it.Subtype), it.Title, it.State,
 		nullable(it.Resolution), nullable(it.Priority), nullable(it.Rank), nullable(it.Owner),
 		nullable(it.Reporter), nullable(it.Epic), nullable(it.Sprint), nullable(it.Due),
-		nullable(it.Estimate), it.Created, it.Updated); err != nil {
+		nullable(it.Estimate), it.Created, it.Updated, it.Updated); err != nil {
 		return errx.User("inserting index item %s: %v", it.ID, err)
 	}
 	for ord, alias := range it.Aliases {
@@ -148,4 +149,72 @@ func nullable[T any](p *T) any {
 		return nil
 	}
 	return *p
+}
+
+func (i *Index) fillActivity() error {
+	latest, err := i.latestCommitTs()
+	if err != nil {
+		return err
+	}
+	rows, err := i.db.Query("SELECT id, updated FROM items")
+	if err != nil {
+		return errx.User("querying item activity: %v", err)
+	}
+	activity := map[string]string{}
+	if err := eachPair(rows, func(r *sql.Rows) error {
+		var id, updated string
+		if err := r.Scan(&id, &updated); err != nil {
+			return errx.User("scanning item activity: %v", err)
+		}
+		activity[id] = updated
+		if ts, ok := latest[id]; ok && laterRFC3339(ts, updated) {
+			activity[id] = ts
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	tx, err := i.db.Begin()
+	if err != nil {
+		return errx.User("beginning activity tx: %v", err)
+	}
+	defer tx.Rollback()
+	stmt, err := tx.Prepare("UPDATE items SET activity = ? WHERE id = ?")
+	if err != nil {
+		return errx.User("preparing activity update: %v", err)
+	}
+	defer stmt.Close()
+	for id, ts := range activity {
+		if _, err := stmt.Exec(ts, id); err != nil {
+			return errx.User("updating item activity: %v", err)
+		}
+	}
+	return commit(tx)
+}
+
+func (i *Index) latestCommitTs() (map[string]string, error) {
+	rows, err := i.db.Query("SELECT item_id, ts FROM commit_links")
+	if err != nil {
+		return nil, errx.User("querying commit-link timestamps: %v", err)
+	}
+	latest := map[string]string{}
+	if err := eachPair(rows, func(r *sql.Rows) error {
+		var id, ts string
+		if err := r.Scan(&id, &ts); err != nil {
+			return errx.User("scanning commit-link timestamp: %v", err)
+		}
+		if cur, ok := latest[id]; !ok || laterRFC3339(ts, cur) {
+			latest[id] = ts
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return latest, nil
+}
+
+func laterRFC3339(a, b string) bool {
+	cmp, aOK, bOK := timex.CompareRFC3339(a, b)
+	return aOK && bOK && cmp > 0
 }

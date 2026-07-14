@@ -32,6 +32,7 @@ type Item struct {
 
 	Body string
 
+	Activity         string   `json:"-"`
 	UnknownKeys      []string `json:"-"`
 	UnknownLinkTypes []string `json:"-"`
 	CRLF             bool     `json:"-"`

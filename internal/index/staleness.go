@@ -61,6 +61,12 @@ func (i *Index) reindex(store *storage.FS, repo gitx.Repo, opts Options, force b
 		}
 	}
 
+	if p.decision.name != actionFresh || configChanged {
+		if err := i.fillActivity(); err != nil {
+			return Result{}, err
+		}
+	}
+
 	count, err := i.count()
 	if err != nil {
 		return Result{}, err
