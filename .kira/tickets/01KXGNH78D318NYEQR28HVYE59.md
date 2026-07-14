@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: feature
 title: "kira diff --since <date|ref>: recap endpoint on the existing diff engine"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P2
 labels: [core]
 epic: null
