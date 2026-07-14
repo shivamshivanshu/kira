@@ -31,6 +31,7 @@ type Skew struct {
 type CreateResult struct {
 	ID         string   `json:"id"`
 	Number     string   `json:"number"`
+	Board      string   `json:"board"`
 	Type       string   `json:"type"`
 	Title      string   `json:"title"`
 	State      string   `json:"state"`
@@ -47,6 +48,7 @@ type CreateResult struct {
 type ListItem struct {
 	ID         string   `json:"id"`
 	Number     string   `json:"number"`
+	Board      string   `json:"board"`
 	Title      string   `json:"title"`
 	Type       string   `json:"type"`
 	State      string   `json:"state"`
@@ -113,6 +115,7 @@ type HistoryEvent struct {
 type ShowResult struct {
 	ID            string              `json:"id"`
 	Number        string              `json:"number"`
+	Board         string              `json:"board"`
 	Aliases       []string            `json:"aliases"`
 	Type          string              `json:"type"`
 	Subtype       *string             `json:"subtype"`
@@ -326,6 +329,34 @@ type SprintCloseResult struct {
 	WasActive  bool     `json:"was_active"`
 	Unfinished []string `json:"unfinished"`
 	MovedTo    string   `json:"moved_to,omitempty"`
+}
+
+type BoardView struct {
+	Key         string `json:"key"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Default     bool   `json:"default,omitempty"`
+	Archived    bool   `json:"archived,omitempty"`
+}
+
+type BoardCreateResult struct {
+	Created bool      `json:"created"`
+	Board   BoardView `json:"board"`
+}
+
+type BoardListResult struct {
+	Boards []BoardView `json:"boards"`
+}
+
+type BoardUpdateResult struct {
+	Board BoardView `json:"board"`
+}
+
+type BoardMoveResult struct {
+	ID    string `json:"id"`
+	From  string `json:"from"`
+	To    string `json:"to"`
+	Board string `json:"board"`
 }
 
 type Event struct {

@@ -4,7 +4,7 @@ import "github.com/shivamshivanshu/kira/internal/datamodel"
 
 func Default() *datamodel.Config {
 	return &datamodel.Config{
-		Version: datamodel.SchemaVersion,
+		Version: datamodel.InitialSchemaVersion,
 		Project: datamodel.Project{Key: "KIRA", Name: "kira"},
 		ID:      datamodel.Identity{Style: datamodel.IDStyleSequential},
 		Workflows: map[string]datamodel.Workflow{

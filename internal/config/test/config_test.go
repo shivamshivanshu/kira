@@ -125,8 +125,33 @@ func TestValidationRejections(t *testing.T) {
 	}{
 		{
 			name:    "unsupported version",
-			yaml:    "version: 2\n",
+			yaml:    "version: 99\n",
 			wantKey: "version",
+		},
+		{
+			name:    "board key bad charset",
+			yaml:    "version: 2\nboards:\n  - {key: ab-c, name: Alpha}\n",
+			wantKey: "boards[0].key",
+		},
+		{
+			name:    "board key with dash",
+			yaml:    "version: 2\nboards:\n  - {key: ABC-1, name: Alpha}\n",
+			wantKey: "boards[0].key",
+		},
+		{
+			name:    "duplicate board key",
+			yaml:    "version: 2\nboards:\n  - {key: ABC, name: Alpha}\n  - {key: ABC, name: Beta}\n",
+			wantKey: "boards: duplicate key",
+		},
+		{
+			name:    "two default boards",
+			yaml:    "version: 2\nboards:\n  - {key: ABC, name: Alpha, default: true}\n  - {key: XYZ, name: Beta, default: true}\n",
+			wantKey: "boards: at most one",
+		},
+		{
+			name:    "board without name",
+			yaml:    "version: 2\nboards:\n  - {key: ABC, name: \"\"}\n",
+			wantKey: "boards[0].name",
 		},
 		{
 			name:    "invalid id.style",

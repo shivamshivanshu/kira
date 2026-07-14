@@ -4,6 +4,7 @@ package reconcile
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/id"
 )
@@ -28,14 +29,26 @@ func Plan(snap id.Snapshot) []Renumber {
 	}
 	slices.Sort(collided)
 
-	next := id.Allocate(snap).N
+	next := map[string]int{}
+	nextFor := func(key string) int {
+		norm := strings.ToUpper(key)
+		n, ok := next[norm]
+		if !ok {
+			n = id.HighestN(snap, key) + 1
+		}
+		next[norm] = n + 1
+		return n
+	}
 	var plan []Renumber
 	for _, number := range collided {
 		holders := append([]string(nil), liveHolders[number]...)
 		slices.Sort(holders)
+		key := snap.Key
+		if num, err := id.ParseNumber(number); err == nil {
+			key = num.Key
+		}
 		for _, ulid := range holders[1:] {
-			to := id.Number{Key: snap.Key, N: next}.String()
-			next++
+			to := id.Number{Key: key, N: nextFor(key)}.String()
 			plan = append(plan, Renumber{ULID: ulid, From: number, To: to})
 		}
 	}

@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"maps"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -10,9 +11,17 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
+const BoardKeyPattern = `^[A-Z][A-Z0-9]{1,9}$`
+
+var boardKeyRe = regexp.MustCompile(BoardKeyPattern)
+
+func ValidBoardKey(key string) bool {
+	return boardKeyRe.MatchString(key)
+}
+
 func Validate(c *datamodel.Config) error {
-	if c.Version != datamodel.SchemaVersion {
-		return fmt.Errorf("config: version: unsupported version %d (only %d is known)", c.Version, datamodel.SchemaVersion)
+	if c.Version < 1 || c.Version > datamodel.SchemaVersion {
+		return fmt.Errorf("config: version: unsupported version %d (this kira understands 1..%d)", c.Version, datamodel.SchemaVersion)
 	}
 	if err := validateEnum("id.style", c.ID.Style, datamodel.IDStyles...); err != nil {
 		return err
@@ -87,10 +96,42 @@ func Validate(c *datamodel.Config) error {
 	if err := validateFilters(c); err != nil {
 		return err
 	}
+	if err := validateBoards(c); err != nil {
+		return err
+	}
 	if err := validateAutomation(c); err != nil {
 		return err
 	}
 	return validateSprints(c)
+}
+
+func validateBoards(c *datamodel.Config) error {
+	if c.Boards != nil && c.Version < datamodel.BoardsSchemaVersion {
+		return fmt.Errorf("config: boards require version %d, found %d; bump version to %d or remove the boards list", datamodel.BoardsSchemaVersion, c.Version, datamodel.BoardsSchemaVersion)
+	}
+	seen := make(map[string]bool, len(c.Boards))
+	defaults := 0
+	for i, b := range c.Boards {
+		where := fmt.Sprintf("boards[%d]", i)
+		if !ValidBoardKey(b.Key) {
+			return fmt.Errorf("config: %s.key: %q must match %s", where, b.Key, BoardKeyPattern)
+		}
+		up := strings.ToUpper(b.Key)
+		if seen[up] {
+			return fmt.Errorf("config: boards: duplicate key %q", b.Key)
+		}
+		seen[up] = true
+		if strings.TrimSpace(b.Name) == "" {
+			return fmt.Errorf("config: %s.name: required", where)
+		}
+		if b.Default {
+			defaults++
+		}
+	}
+	if defaults > 1 {
+		return fmt.Errorf("config: boards: at most one board may be default, found %d", defaults)
+	}
+	return nil
 }
 
 func validateUISection(ui datamodel.UI) error {

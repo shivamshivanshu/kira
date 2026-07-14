@@ -34,10 +34,11 @@ func Run(root string, cfg *datamodel.Config, opts Opts) (Summary, error) {
 	if err != nil {
 		return Summary{}, err
 	}
-	baseN := id.Allocate(storage.Snapshot(cfg.Project.Key, existing)).N
+	boardKey := seedBoardKey(cfg)
+	baseN := id.Allocate(storage.Snapshot(boardKey, existing)).N
 
 	specs := Recipe(opts.Size, opts.Seed)
-	sum, err := walk(specs, rawSink(store, cfg, baseN))
+	sum, err := walk(specs, rawSink(store, cfg, boardKey, baseN))
 	if err != nil {
 		return sum, err
 	}
@@ -72,11 +73,21 @@ func walk(specs []Spec, m materializer) (Summary, error) {
 	return sum, nil
 }
 
-func rawSink(st *storage.FS, cfg *datamodel.Config, baseN int) materializer {
+func seedBoardKey(cfg *datamodel.Config) string {
+	if b, ok := cfg.DefaultBoard(); ok {
+		return b.Key
+	}
+	if boards := cfg.ActiveBoards(); len(boards) > 0 {
+		return boards[0].Key
+	}
+	return cfg.Project.Key
+}
+
+func rawSink(st *storage.FS, cfg *datamodel.Config, boardKey string, baseN int) materializer {
 	hashStyle := cfg.ID.Style == datamodel.IDStyleHash
 	return func(i int, sp Spec, parent string) (string, Summary, error) {
 		u := id.Mint()
-		number := id.AllocFor(hashStyle, cfg.Project.Key, baseN+i, u)
+		number := id.AllocFor(hashStyle, boardKey, baseN+i, u)
 		ts := seedEpoch.Add(time.Duration(i) * time.Hour)
 		it := buildItem(cfg, sp, u.String(), number, ts)
 		if parent != "" {

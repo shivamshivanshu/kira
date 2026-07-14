@@ -1,5 +1,7 @@
 package datamodel
 
+import "strings"
+
 type Config struct {
 	Version     int                 `yaml:"version"`
 	Project     Project             `yaml:"project"`
@@ -14,6 +16,7 @@ type Config struct {
 	ResolutionsDropped []string `yaml:"resolutions_dropped"`
 
 	Filters    map[string]string `yaml:"filters"`
+	Boards     []Board           `yaml:"boards,omitempty"`
 	Sprints    []Sprint          `yaml:"sprints"`
 	Commit     Commit            `yaml:"commit"`
 	Merge      Merge             `yaml:"merge"`
@@ -31,6 +34,14 @@ type Config struct {
 type Project struct {
 	Key  string `yaml:"key"`
 	Name string `yaml:"name"`
+}
+
+type Board struct {
+	Key         string `yaml:"key"`
+	Name        string `yaml:"name"`
+	Description string `yaml:"description,omitempty"`
+	Default     bool   `yaml:"default,omitempty"`
+	Archived    bool   `yaml:"archived,omitempty"`
 }
 
 type Identity struct {
@@ -95,7 +106,63 @@ type Estimate struct {
 	Unit EstimateUnit `yaml:"unit"`
 }
 
-const SchemaVersion = 1
+const (
+	InitialSchemaVersion = 1
+	BoardsSchemaVersion  = 2
+	SchemaVersion        = BoardsSchemaVersion
+)
+
+func (c *Config) EffectiveBoards() []Board {
+	if c.Boards != nil {
+		return c.Boards
+	}
+	if c.Project.Key == "" {
+		return nil
+	}
+	name := c.Project.Name
+	if name == "" {
+		name = c.Project.Key
+	}
+	return []Board{{Key: c.Project.Key, Name: name, Default: true}}
+}
+
+func (c *Config) DefaultBoard() (Board, bool) {
+	for _, b := range c.EffectiveBoards() {
+		if b.Default && !b.Archived {
+			return b, true
+		}
+	}
+	return Board{}, false
+}
+
+func (c *Config) BoardByKey(key string) (Board, bool) {
+	for _, b := range c.EffectiveBoards() {
+		if strings.EqualFold(b.Key, key) {
+			return b, true
+		}
+	}
+	return Board{}, false
+}
+
+func (c *Config) ActiveBoards() []Board {
+	all := c.EffectiveBoards()
+	out := make([]Board, 0, len(all))
+	for _, b := range all {
+		if !b.Archived {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+func (c *Config) BoardKeys() []string {
+	all := c.EffectiveBoards()
+	keys := make([]string, len(all))
+	for i, b := range all {
+		keys[i] = b.Key
+	}
+	return keys
+}
 
 func (c *Config) VocabFor(field string) ([]string, bool) {
 	switch field {

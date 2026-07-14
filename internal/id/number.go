@@ -13,6 +13,13 @@ type Number struct {
 
 func (n Number) String() string { return fmt.Sprintf("%s-%d", n.Key, n.N) }
 
+func KeyOf(number string) string {
+	if i := strings.LastIndex(number, "-"); i > 0 {
+		return number[:i]
+	}
+	return ""
+}
+
 func ParseNumber(s string) (Number, error) {
 	i := strings.LastIndex(s, "-")
 	if i <= 0 || i == len(s)-1 {
@@ -25,10 +32,10 @@ func ParseNumber(s string) (Number, error) {
 	return Number{Key: s[:i], N: n}, nil
 }
 
-func Allocate(snap Snapshot) Number {
+func HighestN(snap Snapshot, key string) int {
 	highest := 0
 	bump := func(raw string) {
-		if num, err := ParseNumber(raw); err == nil && strings.EqualFold(num.Key, snap.Key) && num.N > highest {
+		if num, err := ParseNumber(raw); err == nil && strings.EqualFold(num.Key, key) && num.N > highest {
 			highest = num.N
 		}
 	}
@@ -38,7 +45,11 @@ func Allocate(snap Snapshot) Number {
 			bump(a)
 		}
 	}
-	return Number{Key: snap.Key, N: highest + 1}
+	return highest
+}
+
+func Allocate(snap Snapshot) Number {
+	return Number{Key: snap.Key, N: HighestN(snap, snap.Key) + 1}
 }
 
 func HashNumber(key string, u ULID) string {
