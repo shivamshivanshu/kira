@@ -32,29 +32,29 @@ func sampleDetail() *datamodel.ShowResult {
 }
 
 func TestDetailPanelFull(t *testing.T) {
-	got := newDetailPanel().render(asciiTheme(), sampleDetail(), 100, 40)
+	got := newDetailPanel().render(asciiTheme(), iconSet{mode: datamodel.IconText}, sampleDetail(), 100, 40)
 	golden.RequireEqual(t, []byte(got))
 }
 
 func TestDetailPanelNarrowGuard(t *testing.T) {
-	got := newDetailPanel().render(asciiTheme(), sampleDetail(), 20, 40)
+	got := newDetailPanel().render(asciiTheme(), iconSet{mode: datamodel.IconText}, sampleDetail(), 20, 40)
 	golden.RequireEqual(t, []byte(got))
 }
 
 func TestDetailPanelRendersSubtypeWhenSet(t *testing.T) {
 	res := sampleDetail()
 	res.Subtype = strptr("bug")
-	got := newDetailPanel().render(asciiTheme(), res, 100, 40)
+	got := newDetailPanel().render(asciiTheme(), iconSet{mode: datamodel.IconText}, res, 100, 40)
 	if !strings.Contains(got, "subtype bug") {
 		t.Fatalf("detail should render the subtype:\n%s", got)
 	}
-	if strings.Contains(newDetailPanel().render(asciiTheme(), sampleDetail(), 100, 40), "subtype") {
+	if strings.Contains(newDetailPanel().render(asciiTheme(), iconSet{mode: datamodel.IconText}, sampleDetail(), 100, 40), "subtype") {
 		t.Fatal("detail should omit subtype when unset")
 	}
 }
 
 func TestDetailPanelNil(t *testing.T) {
-	if got := newDetailPanel().render(asciiTheme(), nil, 100, 40); got == "" {
+	if got := newDetailPanel().render(asciiTheme(), iconSet{mode: datamodel.IconText}, nil, 100, 40); got == "" {
 		t.Fatal("nil result should render a placeholder")
 	}
 }
@@ -103,17 +103,17 @@ func TestTreeDetailPanelShowsLinkedData(t *testing.T) {
 func TestDetailCacheKeyedByResultPointer(t *testing.T) {
 	res := sampleDetail()
 	d := newDetailPanel()
-	first := strings.Join(d.contentLines(asciiTheme(), res, 100), "\n")
+	first := strings.Join(d.contentLines(asciiTheme(), iconSet{mode: datamodel.IconText}, res, 100), "\n")
 
 	res.Title = "mutated after first render"
-	again := strings.Join(d.contentLines(asciiTheme(), res, 100), "\n")
+	again := strings.Join(d.contentLines(asciiTheme(), iconSet{mode: datamodel.IconText}, res, 100), "\n")
 	if again != first {
 		t.Fatal("same (res,width) key must serve the cached lines, ignoring an in-place mutation of the same result")
 	}
 
 	other := sampleDetail()
 	other.Title = "a distinctly different ticket"
-	fresh := strings.Join(d.contentLines(asciiTheme(), other, 100), "\n")
+	fresh := strings.Join(d.contentLines(asciiTheme(), iconSet{mode: datamodel.IconText}, other, 100), "\n")
 	if fresh == first {
 		t.Fatal("a fresh result pointer must invalidate the cache and rebuild, not reuse the first render")
 	}
@@ -127,8 +127,8 @@ func TestDetailPanelScrollClamp(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		d.update(nil, sampleDetail(), "j")
 	}
-	d.render(asciiTheme(), sampleDetail(), 100, 8)
-	lines := d.contentLines(asciiTheme(), sampleDetail(), 100)
+	d.render(asciiTheme(), iconSet{mode: datamodel.IconText}, sampleDetail(), 100, 8)
+	lines := d.contentLines(asciiTheme(), iconSet{mode: datamodel.IconText}, sampleDetail(), 100)
 	if d.scroll > max(0, len(lines)-8) {
 		t.Fatalf("scroll %d exceeds max %d", d.scroll, max(0, len(lines)-8))
 	}

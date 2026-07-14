@@ -67,18 +67,18 @@ func selectedCommit(res *datamodel.ShowResult, sel int) string {
 	return res.LinkedCommits[sel].SHA
 }
 
-func (d *detailPanel) render(t theme.Theme, res *datamodel.ShowResult, width, height int) string {
+func (d *detailPanel) render(t theme.Theme, ic iconSet, res *datamodel.ShowResult, width, height int) string {
 	if res == nil {
 		return frameOf(t, width, height).Render(t.Dim.Render("Select an item to preview."))
 	}
 	if width < detailMinWidth {
 		return frameOf(t, width, height).Render(t.Dim.Render("▸ widen"))
 	}
-	lines := d.contentLines(t, res, width)
+	lines := d.contentLines(t, ic, res, width)
 	return renderScrollable(t, lines, &d.scroll, width, height)
 }
 
-func (d *detailPanel) contentLines(t theme.Theme, res *datamodel.ShowResult, width int) []string {
+func (d *detailPanel) contentLines(t theme.Theme, ic iconSet, res *datamodel.ShowResult, width int) []string {
 	if d.cache.res != res || d.cache.width != width {
 		d.cache.res, d.cache.width = res, width
 		d.cache.body = renderMarkdown(codec.Description(res.Body), width)
@@ -86,12 +86,12 @@ func (d *detailPanel) contentLines(t theme.Theme, res *datamodel.ShowResult, wid
 	}
 	if d.cache.sel != d.commitSel || d.cache.lines == nil {
 		d.cache.sel = d.commitSel
-		d.cache.lines = detailLines(t, res, width, d.cache.body, d.commitSel)
+		d.cache.lines = detailLines(t, ic, res, width, d.cache.body, d.commitSel)
 	}
 	return d.cache.lines
 }
 
-func detailLines(t theme.Theme, res *datamodel.ShowResult, width int, body string, sel int) []string {
+func detailLines(t theme.Theme, ic iconSet, res *datamodel.ShowResult, width int, body string, sel int) []string {
 	var lines []string
 	add := func(ss ...string) {
 		for _, s := range ss {
@@ -99,7 +99,7 @@ func detailLines(t theme.Theme, res *datamodel.ShowResult, width int, body strin
 		}
 	}
 	add(t.Accent.Render(fitWidth(res.Number+"  "+res.Title, width)))
-	add(fitWidth(detailMeta(t, res), width))
+	add(fitWidth(detailMeta(t, ic, res), width))
 	add("", body)
 	if len(res.Comments) > 0 {
 		add("", t.Dim.Render("Comments"))
@@ -122,7 +122,7 @@ func detailLines(t theme.Theme, res *datamodel.ShowResult, width int, body strin
 	return lines
 }
 
-func detailMeta(t theme.Theme, res *datamodel.ShowResult) string {
+func detailMeta(t theme.Theme, ic iconSet, res *datamodel.ShowResult) string {
 	parts := []string{t.CategoryStyle(datamodel.Category(res.Category)).Render("[" + res.State + "]")}
 	if res.Subtype != nil && *res.Subtype != "" {
 		parts = append(parts, t.Dim.Render("subtype ")+*res.Subtype)
@@ -131,7 +131,14 @@ func detailMeta(t theme.Theme, res *datamodel.ShowResult) string {
 		parts = append(parts, t.Dim.Render("owner ")+*res.Owner)
 	}
 	if res.Priority != nil {
-		parts = append(parts, t.PriorityStyle(*res.Priority).Render(*res.Priority))
+		parts = append(parts, priorityHue(t, ic.priorityTier(*res.Priority)).Render(*res.Priority))
+	}
+	if res.Due != nil && *res.Due != "" {
+		if overdue(res.Due, res.Category) {
+			parts = append(parts, t.Dim.Render("due ")+t.Heat.Hot.Render(*res.Due+" overdue"))
+		} else {
+			parts = append(parts, t.Dim.Render("due ")+*res.Due)
+		}
 	}
 	if len(res.Labels) > 0 {
 		parts = append(parts, t.Dim.Render(strings.Join(res.Labels, " ")))

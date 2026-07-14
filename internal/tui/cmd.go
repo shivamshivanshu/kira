@@ -72,3 +72,21 @@ func loadDetail(store *core.Store, cfg *datamodel.Config, id string) (*datamodel
 	}
 	return store.Show(cfg, id, "")
 }
+
+type boardMovedMsg struct {
+	res    *datamodel.MoveResult
+	board  *datamodel.BoardResult
+	err    error
+	cardID string
+}
+
+func boardMoveCmd(store *core.Store, cfg *datamodel.Config, cardID, to string) tea.Cmd {
+	return safeCmd(func() tea.Msg {
+		res, err := store.Move(cfg, cardID, to, core.MoveOpts{})
+		if err != nil {
+			return boardMovedMsg{err: err, cardID: cardID}
+		}
+		board, err := store.Board(cfg, core.BoardOpts{})
+		return boardMovedMsg{res: res, board: board, err: err, cardID: cardID}
+	})
+}

@@ -87,7 +87,7 @@ func (m *model) barSubmit() tea.Cmd {
 	value := strings.TrimSpace(m.bar.input.Value())
 	switch m.bar.mode {
 	case barCommand:
-		return m.runCommand(value)
+		return m.request(m.runCommand(value))
 	case barFilter:
 		return m.applyFilter(value)
 	}
@@ -125,7 +125,7 @@ func (m *model) applyFilter(expr string) tea.Cmd {
 		return nil
 	}
 	m.bar.filter = expr
-	return refreshCmd(m.store, m.cfg, expr)
+	return m.request(refreshCmd(m.store, m.cfg, expr))
 }
 
 func (m *model) substituteFocused(argv []string) []string {
@@ -158,6 +158,8 @@ func (m *model) focusedNumber() string {
 func (m model) footer() string {
 	style := m.theme.Renderer().NewStyle().MaxWidth(m.width)
 	switch {
+	case m.quitting:
+		return m.theme.Heat.Warm.Render(style.Render("finishing in-flight change… (ctrl+c to force quit)"))
 	case m.bar.mode != barClosed:
 		return style.Render(m.bar.input.View())
 	case m.bar.msg != "":

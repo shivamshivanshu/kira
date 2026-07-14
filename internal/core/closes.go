@@ -61,7 +61,7 @@ func reopenedSince(committerTs, updated string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("parsing updated timestamp %q: %w", updated, err)
 	}
-	return !ct.After(ut), nil
+	return ut.After(ct), nil
 }
 
 func (s *Store) landedRef(cfg *datamodel.Config) string {

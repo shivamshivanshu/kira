@@ -1,0 +1,33 @@
+# The post-merge hook fires the Kira-Closes scan: a ticket closed by a commit
+# merged into the landed ref transitions to done when the hook runs, without any
+# other trigger (design 07 §7).
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git symbolic-ref HEAD refs/heads/main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira hooks install
+
+exec kira create ticket --title closeme --no-edit
+exec kira show KIRA-1 --json
+stdout '"state": "TODO"'
+
+# a feature branch carries a commit that closes the ticket; it is not on the
+# landed ref yet, so nothing has fired.
+exec git checkout -b feature
+exec git commit --allow-empty -m 'ship the feature' -m 'Kira-Closes: KIRA-1'
+exec git checkout main
+
+# merging the branch lands the closing commit on main; git runs the installed
+# post-merge hook, whose closes scan transitions the ticket with no other trigger.
+exec git merge --no-ff -m 'merge feature' feature
+stderr 'closed KIRA-1'
+exec kira show KIRA-1 --json
+stdout '"category": "done"'
+
+# re-running the hook is idempotent: the watermark advanced and the item is done.
+exec kira hooks post-merge
+! stderr 'closed KIRA-1'

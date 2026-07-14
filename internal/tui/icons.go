@@ -3,12 +3,14 @@ package tui
 import (
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/termx"
+	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
 type glyph struct {
@@ -36,10 +38,12 @@ var (
 	glyphDone     = glyph{"", "✅", "[x]"}
 	glyphDropped  = glyph{"", "🚫", "[-]"}
 	glyphPriority = glyph{"", "❗", "!"}
+	glyphOverdue  = glyph{"", "⚠", "!"}
 )
 
 type iconSet struct {
-	mode datamodel.IconMode
+	mode       datamodel.IconMode
+	priorities []string
 }
 
 func (ic iconSet) rich() bool { return ic.mode != datamodel.IconText }
@@ -49,8 +53,8 @@ func writerIsTTY(w io.Writer) bool {
 	return ok && termx.IsTerminal(f)
 }
 
-func detectIcons(mode datamodel.IconMode, env func(string) string, isTTY bool) iconSet {
-	return iconSet{mode: resolveIconMode(mode, env, isTTY)}
+func detectIcons(mode datamodel.IconMode, priorities []string, env func(string) string, isTTY bool) iconSet {
+	return iconSet{mode: resolveIconMode(mode, env, isTTY), priorities: priorities}
 }
 
 func resolveIconMode(mode datamodel.IconMode, env func(string) string, isTTY bool) datamodel.IconMode {
@@ -126,15 +130,45 @@ func (ic iconSet) categoryGlyph(cat datamodel.Category, resolution *string) stri
 	}
 }
 
-func (ic iconSet) priorityGlyph(priority string) string {
-	if priority == "P0" || priority == "P1" {
-		return glyphPriority.pick(ic.mode)
+func (ic iconSet) overdueGlyph() string { return glyphOverdue.pick(ic.mode) }
+
+func (ic iconSet) priorityTier(value string) int {
+	if value == "" {
+		return -1
 	}
-	return ""
+	return slices.Index(ic.priorities, value)
 }
 
-func (ic iconSet) priorityCell(priority string) string {
-	marker := ic.priorityGlyph(priority)
-	gutter := lipgloss.Width(glyphPriority.pick(ic.mode))
-	return marker + strings.Repeat(" ", gutter-lipgloss.Width(marker))
+func priorityMarks(tier int) int {
+	switch {
+	case tier < 0:
+		return 0
+	case tier == 0:
+		return 3
+	case tier == 1:
+		return 2
+	default:
+		return 1
+	}
+}
+
+func (ic iconSet) priorityCell(value string) string {
+	unit := glyphPriority.pick(ic.mode)
+	gutter := lipgloss.Width(unit)
+	if len(ic.priorities) > 0 {
+		gutter *= 3
+	}
+	cell := strings.Repeat(unit, priorityMarks(ic.priorityTier(value)))
+	return cell + strings.Repeat(" ", gutter-lipgloss.Width(cell))
+}
+
+func priorityHue(t theme.Theme, tier int) lipgloss.Style {
+	switch tier {
+	case 0:
+		return t.Heat.Hot
+	case 1:
+		return t.Heat.Warm
+	default:
+		return t.Dim
+	}
 }

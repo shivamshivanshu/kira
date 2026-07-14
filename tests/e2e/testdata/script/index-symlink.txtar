@@ -1,0 +1,28 @@
+# A checkout reached through a symlink keeps its index cache warm: the root kira
+# resolves must match git's rev-parse --show-toplevel, or the derived pathspec
+# points outside the repo and every staleness check misses.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+mkdir real
+cd real
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title A --no-edit
+exec kira create ticket --title B --no-edit
+
+# build the index in the canonical checkout, then confirm it reads back fresh.
+exec kira index
+exec kira index --json
+stdout '"action": "fresh"'
+stdout '"reason": "up-to-date"'
+
+# reach the same repo through a symlinked path; the warm cache must still be seen
+# as fresh, not rebuilt or missed.
+cd $WORK
+symlink link -> real
+exec kira -C $WORK/link index --json
+stdout '"action": "fresh"'
+stdout '"reason": "up-to-date"'

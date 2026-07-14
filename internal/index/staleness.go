@@ -120,7 +120,7 @@ func decide(root gitx.Repo, toplevel, pathspec string, force, hasMeta bool, head
 	case head != prev.LastIndexedHeadSHA:
 		anc := head != "" && prev.LastIndexedHeadSHA != ""
 		if anc {
-			ok, err := root.IsAncestor(prev.LastIndexedHeadSHA, head)
+			ok, err := root.IsAncestor(gitx.Ancestor(prev.LastIndexedHeadSHA), gitx.Descendant(head))
 			if err != nil {
 				return decision{}, err
 			}
@@ -129,7 +129,7 @@ func decide(root gitx.Repo, toplevel, pathspec string, force, hasMeta bool, head
 		if !anc {
 			return decision{name: actionFull, reason: "history-rewritten", full: true}, nil
 		}
-		committed, err := root.DiffNameStatus(prev.LastIndexedHeadSHA, head, pathspec)
+		committed, err := root.DiffNameStatus(gitx.DiffFrom(prev.LastIndexedHeadSHA), gitx.DiffTo(head), pathspec)
 		if err != nil {
 			return decision{}, err
 		}

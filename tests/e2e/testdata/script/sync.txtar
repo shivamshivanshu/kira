@@ -47,7 +47,6 @@ stdout 'A second'
 
 # A lands a Kira-Closes commit on the shared branch and publishes it.
 cd $WORK/a
-exec sleep 1
 exec git commit --allow-empty -m 'ship KIRA-1' -m 'Kira-Closes: KIRA-1'
 exec git push
 

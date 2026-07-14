@@ -14,8 +14,12 @@ func (r Repo) ResolveTreeish(ref string) (string, error) {
 	return r.Output("rev-parse", "--verify", "--quiet", ref+"^{commit}")
 }
 
-func (r Repo) ResolveAtDate(date, anchor string) (string, error) {
-	sha, err := r.Output("rev-list", "-1", "--before="+date, anchor)
+type Date string
+
+type Ref string
+
+func (r Repo) ResolveAtDate(date Date, anchor Ref) (string, error) {
+	sha, err := r.Output("rev-list", "-1", "--before="+string(date), string(anchor))
 	if err != nil {
 		return "", err
 	}

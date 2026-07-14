@@ -108,6 +108,14 @@ func validateAssembled(cfg *datamodel.Config, it *datamodel.Item, resolver *id.R
 	return append(hard, v...), w
 }
 
+func validateMutation(cfg *datamodel.Config, it *datamodel.Item, resolver *id.Resolver, items []*datamodel.Item, force bool) (hard, warns []error) {
+	hard, warns = validateAssembled(cfg, it, resolver, force)
+	if len(hard) == 0 {
+		hard = validateGraph(it, items)
+	}
+	return hard, warns
+}
+
 func validateBuffer(cfg *datamodel.Config, resolver *id.Resolver, force bool, build func(string) (*datamodel.Item, []error)) func(string) []error {
 	return func(c string) []error {
 		it, errs := build(c)

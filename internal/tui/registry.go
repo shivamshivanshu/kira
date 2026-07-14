@@ -8,6 +8,7 @@ type screen interface {
 	view(m *model, width, height int) string
 	back(m *model) bool
 	focusItem(m *model, id string)
+	settle(m *model)
 }
 
 var screenFactories = map[view]func() screen{}

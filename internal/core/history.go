@@ -62,7 +62,6 @@ type metricItem struct {
 	doneAt   time.Time
 	hasDoing bool
 	hasDone  bool
-	doneDay  string
 	degraded bool
 	dropped  bool
 	category datamodel.Category
@@ -104,7 +103,6 @@ func metricsFrom(cfg *datamodel.Config, it *datamodel.Item, evs []stateTransitio
 			if !mi.hasDone {
 				mi.hasDone = true
 				mi.doneAt = ev.ts
-				mi.doneDay = ev.ts.Local().Format(time.DateOnly)
 			}
 		}
 		if ev.from != "" && hasWorkflow && wf.EnforceTransitions && !transitionAllowed(wf, ev.from, ev.to) {
@@ -116,12 +114,10 @@ func metricsFrom(cfg *datamodel.Config, it *datamodel.Item, evs []stateTransitio
 		case committed && !mi.created.IsZero():
 			mi.hasDone = true
 			mi.doneAt = mi.created
-			mi.doneDay = mi.created.Local().Format(time.DateOnly)
 		default:
 			if updated, uerr := it.UpdatedTime(); uerr == nil {
 				mi.hasDone = true
 				mi.doneAt = updated
-				mi.doneDay = updated.Local().Format(time.DateOnly)
 				mi.degraded = true
 			}
 		}

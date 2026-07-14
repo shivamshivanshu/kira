@@ -66,7 +66,7 @@ func newHooksInstallCmd(g *globalFlags) *cobra.Command {
 func newHooksPostMergeCmd(g *globalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:    "post-merge",
-		Short:  "post-merge hook entry point: reconcile ID collisions",
+		Short:  "post-merge hook entry point: reconcile ID collisions and fire landed closes",
 		Hidden: true,
 		Args:   cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -80,6 +80,14 @@ func newHooksPostMergeCmd(g *globalFlags) *cobra.Command {
 			}
 			for _, r := range res.Renumbered {
 				fmt.Fprintf(cmd.ErrOrStderr(), "%s renumbered %s -> %s\n", msgPrefix, r.From, r.To)
+			}
+			idx, err := s.Index(cfg, false, true)
+			if err != nil {
+				return err
+			}
+			emitStderrNotes(cmd.ErrOrStderr(), idx.StderrNotes)
+			for _, num := range idx.Closed {
+				fmt.Fprintf(cmd.ErrOrStderr(), "%s closed %s\n", msgPrefix, num)
 			}
 			return nil
 		},

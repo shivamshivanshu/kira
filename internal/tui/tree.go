@@ -167,9 +167,12 @@ func (tm *treeModel) renderRow(t theme.Theme, ic iconSet, ti treeItem, width int
 		{ic.typeGlyph(ti.node.Type), t.Dim}, {" ", t.Text}, {ti.node.Number, t.Dim}, {"  ", t.Text},
 	}
 	right := []rowSegment{
-		{" ", t.Text}, {ic.priorityCell(priority), t.PriorityStyle(priority)},
+		{" ", t.Text}, {ic.priorityCell(priority), priorityHue(t, ic.priorityTier(priority))},
 		{" ", t.Text}, {ic.categoryGlyph(cat, ti.fields.Resolution), t.CategoryStyle(cat)},
 		{" ", t.Text}, {"[" + ti.fields.State + "]", t.CategoryStyle(cat)},
+	}
+	if overdue(ti.fields.Due, ti.fields.Category) {
+		right = append(right, rowSegment{" ", t.Text}, rowSegment{ic.overdueGlyph(), t.Heat.Hot})
 	}
 	if showProgress && ti.isEpic() {
 		if bar, label := progressParts(ic.rich(), tm.progress[ti.node.ID]); bar != "" {

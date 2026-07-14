@@ -113,17 +113,30 @@ func renderColumn(t theme.Theme, ic iconSet, col datamodel.BoardColumn, w, heigh
 
 func renderCard(t theme.Theme, ic iconSet, cat datamodel.Category, it datamodel.ListItem, w int, selected bool) string {
 	priority := deref(it.Priority)
+	tier := ic.priorityTier(priority)
 	glyph := ic.categoryGlyph(cat, it.Resolution)
 	prio := ic.priorityCell(priority)
-	prefix := prio + " " + glyph + " " + it.Number + "  "
+	over := ""
+	if overdue(it.Due, it.Category) {
+		over = ic.overdueGlyph()
+	}
+	prefix := prio + " " + glyph + " "
+	if over != "" {
+		prefix += over + " "
+	}
+	prefix += it.Number + "  "
 	title := fitWidth(it.Title, w-2-lipgloss.Width(prefix))
 	lead := " "
 	if selected {
 		lead = t.Accent.Render("▌")
 	}
-	return lead +
-		styleText(t.PriorityStyle(priority), prio, selected) + " " +
-		styleText(t.CategoryStyle(cat), glyph, selected) + " " +
+	line := lead +
+		styleText(priorityHue(t, tier), prio, selected) + " " +
+		styleText(t.CategoryStyle(cat), glyph, selected) + " "
+	if over != "" {
+		line += styleText(t.Heat.Hot, over, selected) + " "
+	}
+	return line +
 		styleText(t.Dim, it.Number, selected) + "  " +
 		styleText(t.Text, title, selected)
 }
@@ -220,7 +233,7 @@ func splitWidth(total, n int) []int {
 
 func RenderBoardPlain(w io.Writer, cfg *datamodel.Config, res *datamodel.BoardResult, width int, noColor bool) error {
 	th := theme.For(w, cfg.UI, noColor)
-	out := renderBoard(th, detectIcons(cfg.UI.Icons, osEnv, writerIsTTY(w)), res, width, plainHeight(res), -1, -1)
+	out := renderBoard(th, detectIcons(cfg.UI.Icons, cfg.Priorities, osEnv, writerIsTTY(w)), res, width, plainHeight(res), -1, -1)
 	_, err := io.WriteString(w, out+"\n")
 	return err
 }

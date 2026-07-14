@@ -145,7 +145,7 @@ func trailerRange(root gitx.Repo, watermark, head string) (rangeExpr string, rew
 	if watermark == "" {
 		return head, true, nil
 	}
-	ancestor, err := root.IsAncestor(watermark, head)
+	ancestor, err := root.IsAncestor(gitx.Ancestor(watermark), gitx.Descendant(head))
 	if err != nil {
 		return "", false, err
 	}

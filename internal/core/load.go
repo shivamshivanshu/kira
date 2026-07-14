@@ -6,6 +6,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/index"
 	"github.com/shivamshivanshu/kira/internal/treeish"
@@ -75,7 +76,7 @@ func (s *Store) readRaw(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
 func (s *Store) resolveAtRef(at string) (string, error) {
 	repo := s.repo()
 	if datamodel.ValidDate(at) {
-		sha, err := repo.ResolveAtDate(at, "HEAD")
+		sha, err := repo.ResolveAtDate(gitx.Date(at), gitx.Ref("HEAD"))
 		if err != nil {
 			return "", errx.User("resolving --at %s: %v", at, err)
 		}

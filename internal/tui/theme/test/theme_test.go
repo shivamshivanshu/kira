@@ -39,10 +39,3 @@ func TestAdaptiveColorFollowsBackground(t *testing.T) {
 		}
 	}
 }
-
-func TestPriorityFallsBackToText(t *testing.T) {
-	th := theme.New(pinnedRenderer(true))
-	if got := th.PriorityStyle("P9").Render("x"); got != th.Text.Render("x") {
-		t.Errorf("unknown priority = %q, want Text style %q", got, th.Text.Render("x"))
-	}
-}

@@ -52,6 +52,7 @@ type ListItem struct {
 	EpicNumber *string  `json:"epic_number"`
 	Priority   *string  `json:"priority"`
 	Resolution *string  `json:"resolution"`
+	Due        *string  `json:"due"`
 }
 
 type ListResult struct {

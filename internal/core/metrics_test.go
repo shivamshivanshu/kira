@@ -26,7 +26,6 @@ func done(t *testing.T, num, created, doing, doneAt string, degraded bool, reope
 		doneAt:   at(t, doneAt+"T10:00:00Z"),
 		hasDoing: true,
 		hasDone:  true,
-		doneDay:  doneAt,
 		degraded: degraded,
 		category: datamodel.CategoryDone,
 		reopens:  reopens,
@@ -42,11 +41,11 @@ func statsFixture(t *testing.T) []metricItem {
 		{
 			number: "KIRA-5", category: datamodel.CategoryDone, dropped: true,
 			hasDoing: true, hasDone: true,
-			doingAt: at(t, "2026-01-01T10:00:00Z"), doneAt: at(t, "2026-01-04T10:00:00Z"), doneDay: "2026-01-04",
+			doingAt: at(t, "2026-01-01T10:00:00Z"), doneAt: at(t, "2026-01-04T10:00:00Z"),
 		},
 		{
 			number: "KIRA-6", category: datamodel.CategoryDone, hasDone: true,
-			created: at(t, "2026-01-02T10:00:00Z"), doneAt: at(t, "2026-01-02T10:00:00Z"), doneDay: "2026-01-02",
+			created: at(t, "2026-01-02T10:00:00Z"), doneAt: at(t, "2026-01-02T10:00:00Z"),
 		},
 		{number: "KIRA-7", category: datamodel.CategoryTodo},
 		{number: "KIRA-8", category: datamodel.CategoryDoing, hasDoing: true, doingAt: at(t, "2026-01-10T10:00:00Z")},

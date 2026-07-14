@@ -15,7 +15,8 @@
       "epic": "<ULID-2>",
       "epic_number": "KIRA-1",
       "priority": "P1",
-      "resolution": null
+      "resolution": null,
+      "due": "2026-07-20"
     },
     {
       "id": "<ULID-3>",
@@ -29,7 +30,8 @@
       "epic": null,
       "epic_number": null,
       "priority": null,
-      "resolution": null
+      "resolution": null,
+      "due": null
     }
   ],
   "count": 2

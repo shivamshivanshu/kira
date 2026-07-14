@@ -25,8 +25,12 @@ func (r Repo) ToplevelHead() (toplevel, head string, err error) {
 	return lines[1], "", nil
 }
 
-func (r Repo) IsAncestor(ancestor, descendant string) (bool, error) {
-	cmd := exec.Command("git", "merge-base", "--is-ancestor", ancestor, descendant)
+type Ancestor string
+
+type Descendant string
+
+func (r Repo) IsAncestor(ancestor Ancestor, descendant Descendant) (bool, error) {
+	cmd := exec.Command("git", "merge-base", "--is-ancestor", string(ancestor), string(descendant))
 	cmd.Dir = r.Dir
 	err := cmd.Run()
 	if err == nil {
@@ -62,8 +66,12 @@ func parsePorcelainPaths(out string) []string {
 	return paths
 }
 
-func (r Repo) DiffNameStatus(from, to, pathspec string) ([]string, error) {
-	out, err := r.Output("diff", "--name-status", from, to, "--", pathspec)
+type DiffFrom string
+
+type DiffTo string
+
+func (r Repo) DiffNameStatus(from DiffFrom, to DiffTo, pathspec string) ([]string, error) {
+	out, err := r.Output("diff", "--name-status", string(from), string(to), "--", pathspec)
 	if err != nil {
 		return nil, err
 	}

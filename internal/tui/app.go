@@ -56,6 +56,10 @@ type model struct {
 
 	crash       *crashInfo
 	injectPanic bool
+
+	busy     bool
+	quitting bool
+	pending  []tea.Cmd
 }
 
 func newModel(store *core.Store, cfg *datamodel.Config, th theme.Theme, ic iconSet, injectPanic bool) model {
@@ -78,25 +82,35 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 		return m, nil
 	case treeLoadedMsg:
+		cmd := m.drain()
 		if msg.err != nil {
 			m.loadErr = msg.err
-			return m, nil
+			return m, m.afterDrain(cmd)
 		}
 		m.loadErr = nil
 		if ts, ok := m.screens[viewTree].(*treeScreen); ok {
 			ts.setData(&m, msg.data)
 		}
+		if bs, ok := m.screens[viewBoard].(*boardScreen); ok {
+			bs.invalidate()
+		}
 		if ss, ok := m.screens[viewStats].(*statsScreen); ok {
 			ss.invalidate()
 		}
-		return m, nil
+		return m, m.afterDrain(cmd)
 	case commandResultMsg:
 		m.bar.msg = msg.text
 		m.bar.msgErr = msg.isError
 		if msg.refresh {
-			return m, refreshCmd(m.store, m.cfg, m.bar.filter)
+			m.pending = append(m.pending, refreshCmd(m.store, m.cfg, m.bar.filter))
 		}
-		return m, nil
+		return m, m.afterDrain(m.drain())
+	case boardMovedMsg:
+		cmd := m.drain()
+		if bs, ok := m.screens[viewBoard].(*boardScreen); ok {
+			bs.applyMove(&m, msg)
+		}
+		return m, m.afterDrain(cmd)
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	}
@@ -106,7 +120,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 	if key == "ctrl+c" {
-		return m, tea.Quit
+		return m, m.requestQuit(true)
 	}
 	if cmd, done := m.barRoute(msg); done {
 		return m, cmd
@@ -130,7 +144,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if s := m.current(); s != nil && s.back(&m) {
 			return m, nil
 		}
-		return m, tea.Quit
+		return m, m.requestQuit(false)
 	case "?":
 		m.help = !m.help
 		return m, nil
@@ -144,7 +158,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.switchView(viewStats)
 		return m, nil
 	case "r":
-		return m, refreshCmd(m.store, m.cfg, m.bar.filter)
+		return m, m.request(refreshCmd(m.store, m.cfg, m.bar.filter))
 	case "ctrl+o":
 		m.jumpTo(m.jumps.back())
 		return m, nil
@@ -159,6 +173,52 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		cmd := s.update(&m, key)
 		return m, cmd
 	}
+}
+
+func (m *model) request(cmd tea.Cmd) tea.Cmd {
+	if cmd == nil {
+		return nil
+	}
+	m.pending = append(m.pending, cmd)
+	if m.busy {
+		return nil
+	}
+	return m.drain()
+}
+
+func (m *model) afterDrain(next tea.Cmd) tea.Cmd {
+	if next != nil {
+		return next
+	}
+	if m.quitting {
+		return tea.Quit
+	}
+	if s := m.current(); s != nil {
+		s.settle(m)
+	}
+	return nil
+}
+
+func (m *model) requestQuit(force bool) tea.Cmd {
+	if !m.busy {
+		return tea.Quit
+	}
+	if m.quitting && force {
+		return tea.Quit
+	}
+	m.quitting = true
+	return nil
+}
+
+func (m *model) drain() tea.Cmd {
+	if len(m.pending) == 0 {
+		m.busy = false
+		return nil
+	}
+	next := m.pending[0]
+	m.pending = m.pending[1:]
+	m.busy = true
+	return next
 }
 
 func (m *model) current() screen { return m.screens[m.view] }

@@ -108,13 +108,13 @@ func (s *treeScreen) focusItem(m *model, id string) {
 func (s *treeScreen) view(m *model, width, height int) string {
 	if !splitDetail(width) {
 		if s.focus == paneDetail {
-			return s.host.render(m.theme, width, height)
+			return s.host.render(m.theme, m.icons, width, height)
 		}
 		return s.tree.render(m.theme, m.icons, width, height, true, false)
 	}
 	return splitPane(m.theme, width, height,
 		func(w int) string { return s.tree.render(m.theme, m.icons, w, height, s.focus == paneTree, true) },
-		func(w int) string { return s.host.render(m.theme, w, height) })
+		func(w int) string { return s.host.render(m.theme, m.icons, w, height) })
 }
 
 func (s *treeScreen) toggleFocus() {
@@ -133,3 +133,5 @@ func (s *treeScreen) syncDetail(m *model) {
 	s.host.panel.reset()
 	s.host.sync(m, s.tree.selectedID())
 }
+
+func (s *treeScreen) settle(m *model) { s.host.settle(m) }

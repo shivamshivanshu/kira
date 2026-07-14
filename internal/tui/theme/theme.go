@@ -19,8 +19,6 @@ var (
 	categoryDoing = lipgloss.AdaptiveColor{Light: "#b58900", Dark: "#e0af68"}
 	categoryDone  = lipgloss.AdaptiveColor{Light: "#28a745", Dark: "#9ece6a"}
 	priorityP0    = lipgloss.AdaptiveColor{Light: "#d70000", Dark: "#f7768e"}
-	priorityP1    = lipgloss.AdaptiveColor{Light: "#d75f00", Dark: "#ff9e64"}
-	priorityP2    = lipgloss.AdaptiveColor{Light: "#268bd2", Dark: "#7aa2f7"}
 	heatWarm      = categoryDoing
 	heatHot       = priorityP0
 )
@@ -40,7 +38,6 @@ type Theme struct {
 	Heat   Heat
 
 	category map[datamodel.Category]lipgloss.Style
-	priority map[string]lipgloss.Style
 }
 
 func New(r *lipgloss.Renderer) Theme {
@@ -56,25 +53,12 @@ func New(r *lipgloss.Renderer) Theme {
 			datamodel.CategoryDoing: fg(categoryDoing),
 			datamodel.CategoryDone:  fg(categoryDone),
 		},
-		priority: map[string]lipgloss.Style{
-			"P0": fg(priorityP0),
-			"P1": fg(priorityP1),
-			"P2": fg(priorityP2),
-			"P3": fg(dim),
-		},
 		Heat: Heat{Warm: fg(heatWarm), Hot: fg(heatHot)},
 	}
 }
 
 func (t Theme) CategoryStyle(c datamodel.Category) lipgloss.Style {
 	if s, ok := t.category[c]; ok {
-		return s
-	}
-	return t.Text
-}
-
-func (t Theme) PriorityStyle(p string) lipgloss.Style {
-	if s, ok := t.priority[p]; ok {
 		return s
 	}
 	return t.Text

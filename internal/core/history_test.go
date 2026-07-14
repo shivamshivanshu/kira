@@ -62,8 +62,8 @@ func TestItemMetricsCleanHistory(t *testing.T) {
 	if di.degraded {
 		t.Error("on-graph history flagged degraded")
 	}
-	if want := time.Date(2026, 1, 8, 10, 0, 0, 0, time.UTC).Local().Format(time.DateOnly); di.doneDay != want {
-		t.Errorf("doneDay = %q, want %q", di.doneDay, want)
+	if want := time.Date(2026, 1, 8, 10, 0, 0, 0, time.UTC); !di.doneAt.Equal(want) {
+		t.Errorf("doneAt = %v, want %v", di.doneAt, want)
 	}
 }
 
@@ -81,8 +81,8 @@ func TestItemMetricsSquashedHistoryDegrades(t *testing.T) {
 	if !di.degraded {
 		t.Error("off-graph jump not flagged degraded")
 	}
-	if di.doneDay == "" {
-		t.Error("doneDay empty, want the squash commit's day")
+	if !di.hasDone {
+		t.Error("hasDone false, want done recorded from the squash commit")
 	}
 }
 
@@ -99,8 +99,8 @@ func TestItemMetricsCreatedAlreadyDone(t *testing.T) {
 	if di.degraded {
 		t.Error("created-done item flagged degraded")
 	}
-	if want := time.Date(2026, 1, 5, 10, 0, 0, 0, time.UTC).Local().Format(time.DateOnly); di.doneDay != want {
-		t.Errorf("doneDay = %q, want %q", di.doneDay, want)
+	if want := time.Date(2026, 1, 5, 10, 0, 0, 0, time.UTC); !di.doneAt.Equal(want) {
+		t.Errorf("doneAt = %v, want %v", di.doneAt, want)
 	}
 }
 
@@ -118,12 +118,12 @@ func TestItemMetricsUncommittedFallsBackToUpdated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !di.degraded || di.doneDay == "" {
-		t.Errorf("doneInfo = %+v, want degraded fallback to updated day", di)
+	if !di.degraded || !di.hasDone {
+		t.Errorf("doneInfo = %+v, want degraded fallback to updated", di)
 	}
 	upd, _ := time.Parse(time.RFC3339, it.Updated)
-	if want := upd.Local().Format(time.DateOnly); di.doneDay != want {
-		t.Errorf("doneDay = %q, want %q", di.doneDay, want)
+	if !di.doneAt.Equal(upd) {
+		t.Errorf("doneAt = %v, want %v", di.doneAt, upd)
 	}
 }
 

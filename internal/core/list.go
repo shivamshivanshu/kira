@@ -260,6 +260,7 @@ func listItemOf(cfg *datamodel.Config, it *datamodel.Item, epicNumbers map[strin
 		Epic:       it.Epic,
 		Priority:   it.Priority,
 		Resolution: it.Resolution,
+		Due:        it.Due,
 	}
 	if it.Epic != nil {
 		if num, ok := epicNumbers[*it.Epic]; ok {

@@ -17,7 +17,6 @@ exec kira show KIRA-1 --json
 stdout '"state": "TODO"'
 
 # a landed commit declares the ticket done (dated after the ticket's creation)
-exec sleep 1
 exec git commit --allow-empty -m 'ship the feature' -m 'Kira-Closes: KIRA-1'
 
 # a plain index links the commit but must not transition the ticket
@@ -42,7 +41,6 @@ exec kira create ticket --title reopenme --no-edit
 exec kira show KIRA-2 --json
 stdout '"state": "TODO"'
 
-exec sleep 1
 exec git commit --allow-empty -m 'ship again' -m 'Kira-Closes: KIRA-2'
 exec kira index --closes --json
 stdout 'KIRA-2'

@@ -1,0 +1,47 @@
+# edit routes graph-affecting changes through the same validation link/move use:
+# a non-epic parent and a blocked_by cycle are refused, and --force never bypasses
+# a graph refusal (matching link's hard-error semantics).
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create epic --title Epic --no-edit
+exec kira create ticket --title A --no-edit
+exec kira create ticket --title B --no-edit
+
+# --field epic pointed at a ticket (not an epic) is refused, as link would.
+! exec kira edit KIRA-2 --field epic=KIRA-3
+stderr 'not an epic'
+# --force does not bypass the graph refusal.
+! exec kira edit KIRA-2 --field epic=KIRA-3 --force
+stderr 'not an epic'
+# a valid epic parent is accepted.
+exec kira edit KIRA-2 --field epic=KIRA-1
+exec kira show KIRA-2 --json
+stdout '"epic": "[0-9A-Z]{26}"'
+
+# --from-file introducing a blocked_by cycle is refused.
+exec kira link KIRA-2 --blocked-by KIRA-3
+! exec kira edit KIRA-3 --from-file cycle.md
+stderr 'cycle'
+! exec kira edit KIRA-3 --from-file cycle.md --force
+stderr 'cycle'
+
+-- cycle.md --
+---
+id: 01HBBBBBBBBBBBBBBBBBBBBBBB
+number: KIRA-3
+aliases: []
+type: ticket
+title: B
+state: TODO
+labels: []
+epic: null
+blocked_by: [KIRA-2]
+created: 2026-07-10T09:14:00+05:30
+updated: 2026-07-10T09:14:00+05:30
+---
+## Description

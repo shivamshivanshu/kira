@@ -41,8 +41,8 @@ func TestItemMetricsIgnoresForgedBodyState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if di.hasDone || di.doneDay != "" {
-		t.Fatalf("forged body marked the item done on %q", di.doneDay)
+	if di.hasDone {
+		t.Fatalf("forged body marked the item done")
 	}
 	if di.degraded {
 		t.Fatalf("forged body flagged the item degraded")

@@ -49,8 +49,10 @@ func (s *boardScreen) keys() []KeyBinding {
 	}
 }
 
+func (s *boardScreen) invalidate() { s.loaded = false }
+
 func (s *boardScreen) ensureLoaded(m *model) {
-	if s.loaded || m.store == nil {
+	if s.loaded || m.store == nil || m.busy {
 		return
 	}
 	s.reload(m)
@@ -86,9 +88,9 @@ func (s *boardScreen) update(m *model, key string) tea.Cmd {
 		s.board.moveCol(-1)
 		s.syncPeek(m)
 	case "H":
-		s.moveCard(m, -1)
+		return s.moveCard(m, -1)
 	case "L":
-		s.moveCard(m, 1)
+		return s.moveCard(m, 1)
 	case "tab", "shift+tab":
 		if s.peek == peekDocked {
 			s.peek = peekOverlay
@@ -116,39 +118,49 @@ func (s *boardScreen) syncPeek(m *model) {
 	}
 }
 
-func (s *boardScreen) moveCard(m *model, dir int) {
+func (s *boardScreen) moveCard(m *model, dir int) tea.Cmd {
 	s.notice = ""
 	card, ok := s.board.selected()
 	if !ok {
-		return
+		return nil
 	}
 	cols := s.board.columns()
 	target := s.board.col + dir
 	if target < 0 || target >= len(cols) {
-		return
+		return nil
 	}
 	to := cols[target].State
 	if m.cfg == nil || !core.AdjacentAllowed(m.cfg, s.board.result.Type, card.State, to) {
 		s.notice = card.Number + ": " + card.State + " -> " + to + " is not an allowed transition"
-		return
+		return nil
 	}
 	if m.store == nil {
+		return nil
+	}
+	return m.request(boardMoveCmd(m.store, m.cfg, card.ID, to))
+}
+
+func (s *boardScreen) applyMove(m *model, msg boardMovedMsg) {
+	if msg.res == nil {
+		s.notice = msg.err.Error()
 		return
 	}
-	res, err := m.store.Move(m.cfg, card.ID, to, core.MoveOpts{})
-	if err != nil {
-		s.notice = err.Error()
-		return
-	}
-	if len(res.Warnings) > 0 {
-		s.notice = strings.Join(res.Warnings, "; ")
+	if len(msg.res.Warnings) > 0 {
+		s.notice = strings.Join(msg.res.Warnings, "; ")
 	} else {
-		s.notice = "Moved " + res.Number + ": " + res.From + " -> " + res.To
+		s.notice = "Moved " + msg.res.Number + ": " + msg.res.From + " -> " + msg.res.To
 	}
-	s.reload(m)
-	s.board.focusByID(card.ID)
+	if msg.err != nil || msg.board == nil {
+		s.loaded = false
+		return
+	}
+	s.board.load(msg.board)
+	s.host.resetCache()
+	s.board.focusByID(msg.cardID)
 	s.syncPeek(m)
 }
+
+func (s *boardScreen) settle(m *model) { s.host.settle(m) }
 
 func (s *boardScreen) syncDetail(m *model) {
 	card, _ := s.board.selected()
@@ -183,15 +195,18 @@ func (s *boardScreen) view(m *model, width, height int) string {
 }
 
 func (s *boardScreen) renderMain(m *model, width, height int) string {
+	if s.board.result == nil && m.busy {
+		return centered(m.theme, width, height, m.theme.Dim.Render("loading…"))
+	}
 	if s.peek == peekOverlay || (s.peek == peekDocked && !splitDetail(width)) {
-		return s.host.render(m.theme, width, height)
+		return s.host.render(m.theme, m.icons, width, height)
 	}
 	if s.peek == peekDocked {
 		return splitPane(m.theme, width, height,
 			func(w int) string {
 				return renderBoard(m.theme, m.icons, s.board.result, w, height, s.board.col, s.board.row)
 			},
-			func(w int) string { return s.host.render(m.theme, w, height) })
+			func(w int) string { return s.host.render(m.theme, m.icons, w, height) })
 	}
 	return renderBoard(m.theme, m.icons, s.board.result, width, height, s.board.col, s.board.row)
 }

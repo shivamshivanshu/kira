@@ -25,23 +25,33 @@ type EditOpts struct {
 
 func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamodel.MutationResult, error) {
 	var edited *datamodel.Item
+	var snapshot string
 	if len(opts.Fields) == 0 && opts.FromFile == "" {
-		content, err := s.editorContent(cfg, ref, opts)
+		content, updatedAt, err := s.editorContent(cfg, ref, opts)
 		if err != nil {
 			return nil, err
 		}
-		edited, _ = parseFullItem(content)
+		var errs []error
+		edited, errs = parseFullItem(content)
+		if len(errs) > 0 {
+			return nil, errx.Invalid(errs)
+		}
+		snapshot = updatedAt
 	}
 
-	release, orig, _, resolver, err := s.lockAndResolve(cfg, ref)
+	release, orig, items, resolver, err := s.lockAndResolve(cfg, ref)
 	if err != nil {
 		return nil, err
 	}
 	defer release()
 
+	if edited != nil && orig.Updated != snapshot {
+		return nil, errx.Conflict("%s changed on disk during edit", orig.Number).WithHint("re-run the edit to start from the current version")
+	}
+
 	assemble := func(it *datamodel.Item) (*datamodel.Item, []error, []error) {
 		restoreImmutable(it, orig)
-		hard, warns := validateAssembled(cfg, it, resolver, opts.Force)
+		hard, warns := validateMutation(cfg, it, resolver, items, opts.Force)
 		return it, hard, warns
 	}
 
@@ -103,15 +113,15 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 	return &datamodel.MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed}, nil
 }
 
-func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) (string, error) {
+func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) (string, string, error) {
 	orig, _, resolver, err := s.resolveRef(cfg, ref)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if err := guardWritable(orig); err != nil {
-		return "", err
+		return "", "", err
 	}
-	return runEditor(codec.Serialize(orig), validateBuffer(cfg, resolver, opts.Force, func(c string) (*datamodel.Item, []error) {
+	content, err := runEditor(codec.Serialize(orig), validateBuffer(cfg, resolver, opts.Force, func(c string) (*datamodel.Item, []error) {
 		it, errs := parseFullItem(c)
 		if len(errs) > 0 {
 			return nil, errs
@@ -119,6 +129,7 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 		restoreImmutable(it, orig)
 		return it, nil
 	}))
+	return content, orig.Updated, err
 }
 
 func parseFullItem(content string) (*datamodel.Item, []error) {

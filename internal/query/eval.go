@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/id"
@@ -150,9 +151,9 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 	case fieldEstimate:
 		return estimatePred(n.op.kind, n.num), nil
 	case fieldCreated:
-		return datePred(n, func(it *datamodel.Item) string { return it.Created }), nil
+		return datePred(n, localDay(func(it *datamodel.Item) string { return it.Created })), nil
 	case fieldUpdated:
-		return datePred(n, func(it *datamodel.Item) string { return it.Updated }), nil
+		return datePred(n, localDay(func(it *datamodel.Item) string { return it.Updated })), nil
 	case fieldDue:
 		return datePred(n, func(it *datamodel.Item) string { return ptr.Deref(it.Due) }), nil
 	}
@@ -350,12 +351,22 @@ func estimatePred(op tokKind, want float64) Predicate {
 
 func datePred(n *predExpr, get func(*datamodel.Item) string) Predicate {
 	op := n.op.kind
-	want := n.date
+	want := n.date.Format(time.DateOnly)
 	return func(it *datamodel.Item, _ *datamodel.Config) bool {
-		t, err := parseDate(get(it))
-		if err != nil {
+		day := get(it)
+		if day == "" {
 			return false
 		}
-		return applyCmp(op, t.Compare(want), 0)
+		return applyCmp(op, day, want)
+	}
+}
+
+func localDay(get func(*datamodel.Item) string) func(*datamodel.Item) string {
+	return func(it *datamodel.Item) string {
+		t, err := time.Parse(time.RFC3339, get(it))
+		if err != nil {
+			return ""
+		}
+		return t.Local().Format(time.DateOnly)
 	}
 }

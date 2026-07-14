@@ -42,7 +42,11 @@ func Discover(startDir string) (*FS, error) {
 	}
 	for {
 		if fi, err := os.Stat(filepath.Join(abs, DirName)); err == nil && fi.IsDir() {
-			return &FS{root: abs}, nil
+			root, err := filepath.EvalSymlinks(abs)
+			if err != nil {
+				return nil, errx.Env("resolving %q: %v", abs, err)
+			}
+			return &FS{root: root}, nil
 		}
 		parent := filepath.Dir(abs)
 		if parent == abs {

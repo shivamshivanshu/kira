@@ -45,6 +45,8 @@ func (s *statsScreen) back(m *model) bool { return false }
 
 func (s *statsScreen) focusItem(m *model, id string) {}
 
+func (s *statsScreen) settle(m *model) {}
+
 func (s *statsScreen) setResult(res *datamodel.StatsResult) {
 	s.res = res
 	s.loaded = true
@@ -53,7 +55,7 @@ func (s *statsScreen) setResult(res *datamodel.StatsResult) {
 func (s *statsScreen) invalidate() { s.loaded = false }
 
 func (s *statsScreen) ensure(m *model) {
-	if s.loaded || m.store == nil {
+	if s.loaded || m.store == nil || m.busy {
 		return
 	}
 	s.res, s.err = loadStats(m.store, m.cfg)

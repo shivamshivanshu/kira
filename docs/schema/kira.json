@@ -672,6 +672,12 @@
         "category": {
           "type": "string"
         },
+        "due": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "epic": {
           "type": [
             "string",

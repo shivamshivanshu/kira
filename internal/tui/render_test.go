@@ -109,27 +109,6 @@ func TestTreeEmojiIconsSnapshot(t *testing.T) {
 	golden.RequireEqual(t, []byte(tm.render(asciiTheme(), iconSet{mode: datamodel.IconEmoji}, 100, 6, true, true)))
 }
 
-func TestPriorityGlyph(t *testing.T) {
-	want := map[datamodel.IconMode]string{
-		datamodel.IconNerd:  glyphPriority.nerd,
-		datamodel.IconEmoji: glyphPriority.emoji,
-		datamodel.IconText:  "!",
-	}
-	for mode, marker := range want {
-		ic := iconSet{mode: mode}
-		for _, p := range []string{"P0", "P1"} {
-			if got := ic.priorityGlyph(p); got != marker {
-				t.Errorf("%s priority glyph for %s = %q, want %q", mode, p, got, marker)
-			}
-		}
-		for _, p := range []string{"P2", "P3", ""} {
-			if got := ic.priorityGlyph(p); got != "" {
-				t.Errorf("%s priority %q must have no marker, got %q", mode, p, got)
-			}
-		}
-	}
-}
-
 func TestIconWidthsUniformPerMode(t *testing.T) {
 	groups := map[string][]glyph{
 		"type":     {glyphEpic, glyphTicket},
@@ -150,24 +129,6 @@ func TestIconWidthsUniformPerMode(t *testing.T) {
 			if exp, ok := cellWidth[mode]; ok && want != exp {
 				t.Errorf("%s %s glyphs must be %d-cell, got width %d", name, mode, exp, want)
 			}
-		}
-	}
-}
-
-func TestPriorityCellFixedGutter(t *testing.T) {
-	for _, mode := range []datamodel.IconMode{datamodel.IconNerd, datamodel.IconEmoji, datamodel.IconText} {
-		ic := iconSet{mode: mode}
-		gutter := lipgloss.Width(glyphPriority.pick(mode))
-		for _, p := range []string{"P0", "P1", "P2", "P3", ""} {
-			if got := lipgloss.Width(ic.priorityCell(p)); got != gutter {
-				t.Errorf("%s priorityCell(%q) width = %d, want fixed gutter %d", mode, p, got, gutter)
-			}
-		}
-		if got := ic.priorityCell("P2"); got != strings.Repeat(" ", gutter) {
-			t.Errorf("%s low-priority cell must be a blank gutter, got %q", mode, got)
-		}
-		if got := ic.priorityCell("P0"); got != glyphPriority.pick(mode) {
-			t.Errorf("%s P0 cell must be the marker, got %q", mode, got)
 		}
 	}
 }
@@ -198,7 +159,7 @@ func TestTreeRowPlumbsPriorityAndResolution(t *testing.T) {
 	}
 	tm := newTreeModel()
 	(&tm).load(nodes, fields, map[string]datamodel.EpicProgress{})
-	out := tm.render(asciiTheme(), iconSet{mode: datamodel.IconText}, 100, 3, true, false)
+	out := tm.render(asciiTheme(), iconSet{mode: datamodel.IconText, priorities: []string{"P0", "P1", "P2", "P3"}}, 100, 3, true, false)
 	if !strings.Contains(out, "!") {
 		t.Errorf("P0 priority marker missing from row:\n%s", out)
 	}

@@ -144,8 +144,14 @@ func TestBoardMoveHitsCoreMovePath(t *testing.T) {
 	bs.ensureLoaded(&m)
 	bs.board.focusByID(cr.ID)
 
-	if _, _ = m.Update(key("L")); bs.notice == "" {
-		t.Fatal("L on a TODO card produced no notice")
+	u, cmd := m.Update(key("L"))
+	m = u.(model)
+	if cmd == nil {
+		t.Fatal("L on a TODO card must dispatch a move command")
+	}
+	m.Update(cmd())
+	if bs.notice == "" {
+		t.Fatal("board move produced no notice")
 	}
 	if state := stateOnDisk(t, s, cfg, cr.ID); state != "IN_PROGRESS" {
 		t.Fatalf("board move did not reach core.Move: on-disk state = %s", state)
@@ -228,7 +234,7 @@ func TestBoardCardPlumbsPriorityAndResolution(t *testing.T) {
 			{ID: "d1", Number: "KIRA-9", Title: "Dropped work", Type: datamodel.TypeTicket, State: "WONT_DO", Category: "done", Priority: &p0, Resolution: &dropped},
 		}},
 	}}
-	out := renderBoard(asciiTheme(), iconSet{mode: datamodel.IconText}, res, 40, 4, -1, -1)
+	out := renderBoard(asciiTheme(), iconSet{mode: datamodel.IconText, priorities: []string{"P0", "P1", "P2", "P3"}}, res, 40, 4, -1, -1)
 	if !strings.Contains(out, "!") {
 		t.Errorf("P0 priority marker missing from card:\n%s", out)
 	}

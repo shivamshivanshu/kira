@@ -41,10 +41,7 @@ func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply appl
 	if len(hard) > 0 {
 		return nil, nil, errx.Invalid(hard)
 	}
-	vhard, vwarns := validateAssembled(cfg, updated, resolver, force)
-	if len(vhard) == 0 {
-		vhard = validateGraph(updated, items)
-	}
+	vhard, vwarns := validateMutation(cfg, updated, resolver, items, force)
 	if len(vhard) > 0 {
 		return nil, nil, errx.Invalid(vhard)
 	}
