@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: bug
 title: "StatusPorcelain misses untracked ticket files — index never sees new tickets in manual-commit mode"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
