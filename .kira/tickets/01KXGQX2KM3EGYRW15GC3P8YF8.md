@@ -5,12 +5,12 @@ aliases: []
 type: ticket
 subtype: task
 title: "Categorise tickets into boards (CORE, TUI, ...)"
-state: TODO
+state: IN_PROGRESS
 labels: [core]
 epic: null
 blocked_by: []
 created: 2026-07-14T22:08:30+05:30
-updated: 2026-07-14T22:08:30+05:30
+updated: 2026-07-14T23:30:56+05:30
 ---
 
 ## Description
