@@ -95,6 +95,13 @@ const (
 
 var Casings = []Casing{CasingKebab, CasingSnake}
 
+func (c Casing) Separator() string {
+	if c == CasingSnake {
+		return "_"
+	}
+	return "-"
+}
+
 type SyncDirty string
 
 const (

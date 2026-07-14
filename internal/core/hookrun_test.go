@@ -63,47 +63,73 @@ func TestValidateStagedRejectsInvalidItem(t *testing.T) {
 }
 
 func TestPrepareCommitMsgHookNoTicketBranchLeavesMsgUntouched(t *testing.T) {
-	s, _, repo := stagedFixture(t)
-	if err := repo.CheckoutNew("plain-branch"); err != nil {
-		t.Fatalf("checkout: %v", err)
+	for _, branch := range []string{"plain-branch", "kira-142abc"} {
+		t.Run(branch, func(t *testing.T) {
+			s, _, repo := stagedFixture(t)
+			if err := repo.CheckoutNew(branch); err != nil {
+				t.Fatalf("checkout: %v", err)
+			}
+			msg := filepath.Join(t.TempDir(), "COMMIT_MSG")
+			if err := os.WriteFile(msg, []byte("wip: something\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.PrepareCommitMsgHook(msg); err != nil {
+				t.Fatalf("PrepareCommitMsgHook: %v", err)
+			}
+			got, err := os.ReadFile(msg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != "wip: something\n" {
+				t.Errorf("message rewritten on non-ticket branch %q: %q", branch, got)
+			}
+		})
 	}
-	msg := filepath.Join(t.TempDir(), "COMMIT_MSG")
-	if err := os.WriteFile(msg, []byte("wip: something\n"), 0o644); err != nil {
-		t.Fatal(err)
+}
+
+func TestResolveRefDuplicateLiveNumberRendersAmbiguity(t *testing.T) {
+	s, cfg, repo := stagedFixture(t)
+	first := eventTicket()
+	second := eventTicket()
+	second.ID = "01HZZ0TEST0000000000000001"
+	stageItem(t, s, repo, first)
+	stageItem(t, s, repo, second)
+
+	_, _, _, err := s.resolveRef(cfg, "KIRA-1")
+	if err == nil {
+		t.Fatal("duplicate live number must not resolve")
 	}
-	if err := s.PrepareCommitMsgHook(msg); err != nil {
-		t.Fatalf("PrepareCommitMsgHook: %v", err)
-	}
-	got, err := os.ReadFile(msg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(got) != "wip: something\n" {
-		t.Errorf("message rewritten on a non-ticket branch: %q", got)
+	want := `"KIRA-1" is ambiguous between ` + first.ID + ", " + second.ID
+	if !strings.Contains(err.Error(), want) {
+		t.Fatalf("error = %q, want it to contain %q", err, want)
 	}
 }
 
 func TestPrepareCommitMsgHookTicketBranchAddsTrailer(t *testing.T) {
-	s, cfg, repo := stagedFixture(t)
-	stageItem(t, s, repo, eventTicket())
-	if _, err := s.CommitKira(cfg); err != nil {
-		t.Fatalf("commit fixture: %v", err)
-	}
-	if err := repo.CheckoutNew("kira/kira-1-t"); err != nil {
-		t.Fatalf("checkout: %v", err)
-	}
-	msg := filepath.Join(t.TempDir(), "COMMIT_MSG")
-	if err := os.WriteFile(msg, []byte("fix: the bug\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.PrepareCommitMsgHook(msg); err != nil {
-		t.Fatalf("PrepareCommitMsgHook: %v", err)
-	}
-	got, err := os.ReadFile(msg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(got), "Kira-Ticket: KIRA-1") {
-		t.Errorf("trailer missing on ticket branch: %q", got)
+	for _, branch := range []string{"kira/kira-1-t", "kira/kira_1-fix_it", "KIRA-1"} {
+		t.Run(branch, func(t *testing.T) {
+			s, cfg, repo := stagedFixture(t)
+			stageItem(t, s, repo, eventTicket())
+			if _, err := s.CommitKira(cfg); err != nil {
+				t.Fatalf("commit fixture: %v", err)
+			}
+			if err := repo.CheckoutNew(branch); err != nil {
+				t.Fatalf("checkout: %v", err)
+			}
+			msg := filepath.Join(t.TempDir(), "COMMIT_MSG")
+			if err := os.WriteFile(msg, []byte("fix: the bug\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.PrepareCommitMsgHook(msg); err != nil {
+				t.Fatalf("PrepareCommitMsgHook: %v", err)
+			}
+			got, err := os.ReadFile(msg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(got), "Kira-Ticket: KIRA-1") {
+				t.Errorf("trailer missing on ticket branch %q: %q", branch, got)
+			}
+		})
 	}
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/workon"
 )
 
-var ticketRefRe = regexp.MustCompile(`(?i)\b[a-z][a-z0-9]{1,9}-\d+\b`)
+var ticketRefRe = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])[a-z][a-z0-9]{1,9}[-_]\d+(?:[^a-z0-9]|$)`)
 
 func (s *Store) PrepareCommitMsgHook(msgFile string) error {
 	branch, ok := s.repo().HeadBranchFast()

@@ -281,6 +281,11 @@ func TestValidationRejections(t *testing.T) {
 			wantKey: "workon.branch_pattern",
 		},
 		{
+			name:    "branch_pattern with only key and slug",
+			yaml:    "version: 1\nworkon:\n  branch_pattern: \"{key}/{slug}\"\n",
+			wantKey: "workon.branch_pattern",
+		},
+		{
 			name:    "automation invalid event",
 			yaml:    "version: 1\nautomation:\n  - {on: bogus.event, run: \"true\"}\n",
 			wantKey: "automation[0].on",

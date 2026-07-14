@@ -7,19 +7,20 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-
-	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
-func separator(c datamodel.Casing) string {
-	if c == datamodel.CasingSnake {
-		return "_"
-	}
-	return "-"
-}
+const (
+	sepChars = "-_"
+	sepClass = `[-_]`
+	boundary = `[^a-z0-9]`
+)
 
-func normalize(s string, c datamodel.Casing) string {
-	sep := separator(c)
+var (
+	placeholderRe = regexp.MustCompile(`\{(key|number|slug)\}`)
+	bareTokenRe   = regexp.MustCompile(`^[0-9A-Za-z]+$`)
+)
+
+func normalize(s, sep string) string {
 	var b strings.Builder
 	prevSep := true
 	for _, r := range strings.ToLower(s) {
@@ -36,13 +37,13 @@ func normalize(s string, c datamodel.Casing) string {
 	return strings.TrimRight(b.String(), sep)
 }
 
-func Slug(title string, c datamodel.Casing) string { return normalize(title, c) }
+func Slug(title, sep string) string { return normalize(title, sep) }
 
-func RenderBranch(pattern, key, number, title string, c datamodel.Casing) string {
+func RenderBranch(pattern, key, number, title, sep string) string {
 	return strings.NewReplacer(
-		"{key}", normalize(key, c),
-		"{number}", normalize(number, c),
-		"{slug}", Slug(title, c),
+		"{key}", normalize(key, sep),
+		"{number}", normalize(number, sep),
+		"{slug}", Slug(title, sep),
 	).Replace(pattern)
 }
 
@@ -55,22 +56,52 @@ func RenderWorktreeDir(pattern, repo, branch, key, number string) string {
 	).Replace(pattern)
 }
 
-func branchPrefix(pattern, key, number string, c datamodel.Casing) string {
-	p := pattern
-	if i := strings.Index(p, "{slug}"); i >= 0 {
-		p = p[:i]
+func quoteSeparatorInsensitive(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if strings.ContainsRune(sepChars, r) {
+			b.WriteString(sepClass)
+		} else {
+			b.WriteString(regexp.QuoteMeta(string(r)))
+		}
 	}
-	return strings.NewReplacer(
-		"{key}", normalize(key, c),
-		"{number}", normalize(number, c),
-	).Replace(p)
+	return b.String()
 }
 
-func MatchBranch(branches []string, pattern, key, number string, c datamodel.Casing) (string, bool) {
-	prefix := branchPrefix(pattern, key, number, c)
-	bare := strings.TrimRight(prefix, "-_/")
+func branchRegexp(pattern, key, number, sep string) *regexp.Regexp {
+	var b strings.Builder
+	b.WriteString(`^`)
+	rest := pattern
+	for rest != "" {
+		loc := placeholderRe.FindStringIndex(rest)
+		if loc == nil {
+			b.WriteString(regexp.QuoteMeta(rest))
+			break
+		}
+		lit, ph := rest[:loc[0]], rest[loc[0]:loc[1]]
+		rest = rest[loc[1]:]
+		if ph == "{slug}" && rest == "" && lit != "" && strings.Trim(lit, sepChars+"/") == "" {
+			b.WriteString(`(?:[` + sepChars + `/].*)?`)
+			continue
+		}
+		b.WriteString(regexp.QuoteMeta(lit))
+		switch ph {
+		case "{key}":
+			b.WriteString(quoteSeparatorInsensitive(normalize(key, sep)))
+		case "{number}":
+			b.WriteString(quoteSeparatorInsensitive(normalize(number, sep)))
+		case "{slug}":
+			b.WriteString(`.*`)
+		}
+	}
+	b.WriteString(`$`)
+	return regexp.MustCompile(b.String())
+}
+
+func MatchBranch(branches []string, pattern, key, number, sep string) (string, bool) {
+	re := branchRegexp(pattern, key, number, sep)
 	for _, b := range branches {
-		if b == bare || strings.HasPrefix(b, prefix) {
+		if re.MatchString(b) {
 			return b, true
 		}
 	}
@@ -89,7 +120,7 @@ func InferNumber(branch string, keys []string) (string, bool) {
 		if key == "" {
 			continue
 		}
-		re := regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(key) + `-(\d+)\b`)
+		re := regexp.MustCompile(`(?i)(?:^|` + boundary + `)` + regexp.QuoteMeta(key) + sepClass + `(\d+)(?:` + boundary + `|$)`)
 		if m := re.FindStringSubmatch(branch); m != nil {
 			return key + "-" + m[1], true
 		}
@@ -113,9 +144,11 @@ func ParseActive(data []byte) (ActivePointer, bool) {
 		return ActivePointer{}, false
 	}
 	var p ActivePointer
-	if err := json.Unmarshal([]byte(trimmed), &p); err == nil && p.Ticket != "" {
-		return p, true
+	if err := json.Unmarshal([]byte(trimmed), &p); err == nil {
+		return p, p.Ticket != ""
 	}
-	// Legacy pre-WP-3.1.5 pointer: a bare ULID line, no recorded branch.
-	return ActivePointer{Ticket: trimmed}, true
+	if bareTokenRe.MatchString(trimmed) {
+		return ActivePointer{Ticket: trimmed}, true
+	}
+	return ActivePointer{}, false
 }

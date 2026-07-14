@@ -30,9 +30,10 @@ func (s *Store) Workon(cfg *datamodel.Config, ref string, opts WorkonOpts) (*dat
 	}
 
 	boardKey := boardKeyOf(it.Number)
-	branch, found := workon.MatchBranch(branches, cfg.Workon.BranchPattern, boardKey, it.Number, cfg.Workon.Casing)
+	sep := cfg.Workon.Casing.Separator()
+	branch, found := workon.MatchBranch(branches, cfg.Workon.BranchPattern, boardKey, it.Number, sep)
 	if !found {
-		branch = workon.RenderBranch(cfg.Workon.BranchPattern, boardKey, it.Number, it.Title, cfg.Workon.Casing)
+		branch = workon.RenderBranch(cfg.Workon.BranchPattern, boardKey, it.Number, it.Title, sep)
 	}
 	result := &datamodel.WorkonResult{ID: it.ID, Number: it.Number, Branch: branch}
 
