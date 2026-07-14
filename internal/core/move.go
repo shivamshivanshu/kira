@@ -22,56 +22,17 @@ type MoveOpts struct {
 func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*datamodel.MoveResult, error) {
 	var from string
 	var wipWarnings []string
-	apply := func(it *datamodel.Item, _ *id.Resolver, items []*datamodel.Item) (hard, warns []error) {
-		wf, ok := cfg.Workflows[it.Type]
-		if !ok {
-			return []error{fmt.Errorf("no workflow configured for type %q", it.Type)}, nil
-		}
-		target, ok := stateIn(wf, state)
-		if !ok {
-			return []error{errx.User("%q is not a state in the %s workflow", state, it.Type).WithHint("%s", stateHint(wf, state))}, nil
-		}
+	apply := func(it *datamodel.Item, _ *id.Resolver, items []*datamodel.Item) ([]error, []error) {
 		from = it.State
 		it.State = state
-		tr := matchedTransition(wf, from, state)
-		if wf.EnforceTransitions && from != state && tr == nil {
-			if !opts.Force {
-				return []error{errx.User("%s -> %s is not an allowed transition", from, state).WithHint("%s", transitionHint(wf, from))}, nil
-			}
-			warns = append(warns, fmt.Errorf("forced off-graph transition %s -> %s", from, state))
+		hard, warns, wipWarns := applyStateChange(cfg, it, from, opts, nil, items)
+		if len(hard) > 0 {
+			return hard, nil
 		}
-		if opts.Resolution != "" {
-			if target.Category != datamodel.CategoryDone {
-				return []error{fmt.Errorf("--resolution: %s is not a done-category state", state)}, nil
-			}
-			it.Resolution = &opts.Resolution
-		}
-		if tr != nil {
-			h, w := applyTransitionEffects(cfg, it, tr, from, state, opts, items)
-			if len(h) > 0 {
-				return h, nil
-			}
-			warns = append(warns, w...)
-		}
-
-		if target.Category == datamodel.CategoryDone {
-			explicit := opts.Resolution != "" || (tr != nil && tr.Set["resolution"] != "")
-			if !explicit && target.Resolution != "" {
-				it.Resolution = &target.Resolution
-			}
-		} else {
-			it.Resolution = nil
-		}
-
-		h, w := wipGuard(wf, it, items, from, state, target.Wip, opts.Force)
-		if len(h) > 0 {
-			return h, nil
-		}
-		for _, e := range w {
+		for _, e := range wipWarns {
 			wipWarnings = append(wipWarnings, e.Error())
 		}
-		warns = append(warns, w...)
-		return nil, warns
+		return nil, append(warns, wipWarns...)
 	}
 	subjectOf := func(orig *datamodel.Item) string {
 		return fmt.Sprintf(cfg.Commit.SubjectPrefix+"%s state %s -> %s", orig.Number, orig.State, state)
@@ -100,7 +61,54 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 	}, nil
 }
 
-func applyTransitionEffects(cfg *datamodel.Config, it *datamodel.Item, tr *datamodel.Transition, from, state string, opts MoveOpts, items []*datamodel.Item) (hard, warns []error) {
+func applyStateChange(cfg *datamodel.Config, it *datamodel.Item, from string, opts MoveOpts, edited map[string]bool, items []*datamodel.Item) (hard, warns, wipWarns []error) {
+	state := it.State
+	wf, ok := cfg.Workflows[it.Type]
+	if !ok {
+		return []error{fmt.Errorf("no workflow configured for type %q", it.Type)}, nil, nil
+	}
+	target, ok := stateIn(wf, state)
+	if !ok {
+		return []error{errx.User("%q is not a state in the %s workflow", state, it.Type).WithHint("%s", stateHint(wf, state))}, nil, nil
+	}
+	tr := matchedTransition(wf, from, state)
+	if wf.EnforceTransitions && from != state && tr == nil {
+		if !opts.Force {
+			return []error{errx.User("%s -> %s is not an allowed transition", from, state).WithHint("%s", transitionHint(wf, from))}, nil, nil
+		}
+		warns = append(warns, fmt.Errorf("forced off-graph transition %s -> %s", from, state))
+	}
+	if opts.Resolution != "" {
+		if target.Category != datamodel.CategoryDone {
+			return []error{fmt.Errorf("field %q: cannot be set because %s is not a done-category state", datamodel.KeyResolution, state)}, nil, nil
+		}
+		it.Resolution = &opts.Resolution
+	}
+	if tr != nil {
+		h, w := applyTransitionEffects(cfg, it, tr, from, state, opts, edited, items)
+		if len(h) > 0 {
+			return h, nil, nil
+		}
+		warns = append(warns, w...)
+	}
+
+	if target.Category == datamodel.CategoryDone {
+		explicit := opts.Resolution != "" || edited[datamodel.KeyResolution] || (tr != nil && tr.Set[datamodel.KeyResolution] != "")
+		if !explicit && target.Resolution != "" {
+			it.Resolution = &target.Resolution
+		}
+	} else {
+		it.Resolution = nil
+	}
+
+	h, w := wipGuard(wf, it, items, from, state, target.Wip, opts.Force)
+	if len(h) > 0 {
+		return h, nil, nil
+	}
+	return nil, warns, w
+}
+
+func applyTransitionEffects(cfg *datamodel.Config, it *datamodel.Item, tr *datamodel.Transition, from, state string, opts MoveOpts, edited map[string]bool, items []*datamodel.Item) (hard, warns []error) {
 	var missing []string
 	for _, f := range tr.Require {
 		if f == datamodel.RequireBlockersClosed {
@@ -125,7 +133,7 @@ func applyTransitionEffects(cfg *datamodel.Config, it *datamodel.Item, tr *datam
 		warns = append(warns, w...)
 	}
 	for _, f := range slices.Sorted(maps.Keys(tr.Set)) {
-		if f == "resolution" && opts.Resolution != "" {
+		if edited[f] || (f == datamodel.KeyResolution && opts.Resolution != "") {
 			continue
 		}
 		if err := applyFieldEdit(it, f, tr.Set[f]); err != nil {

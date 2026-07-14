@@ -54,3 +54,11 @@ stderr 'from-file cannot be combined with multiple ids'
 # bulk edit refuses editor mode (needs field flags)
 ! exec kira edit KIRA-1 KIRA-2
 stderr 'editor mode is single-id only'
+
+# a state edit routes through move guards: off-graph is rejected, --force warns
+! exec kira edit KIRA-1 --field state=DONE
+stderr 'not an allowed transition'
+exec kira edit KIRA-1 --field state=DONE --force
+stderr 'forced off-graph transition IN_PROGRESS -> DONE'
+exec kira show KIRA-1 --json
+stdout '"state": "DONE"'

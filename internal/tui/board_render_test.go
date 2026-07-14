@@ -248,7 +248,7 @@ func TestBoardMoveGreyedTargetDoesNotMutate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Edit(cfg, cr.ID, core.EditOpts{Fields: []core.FieldEdit{{Key: "state", Value: "DONE"}}}); err != nil {
+	if _, err := s.Move(cfg, cr.ID, "DONE", core.MoveOpts{Force: true}); err != nil {
 		t.Fatal(err)
 	}
 	m := newModel(s, cfg, asciiTheme(), iconSet{mode: datamodel.IconText}, false)

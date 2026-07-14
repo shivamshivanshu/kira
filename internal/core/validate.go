@@ -89,12 +89,26 @@ func validateAssembled(cfg *datamodel.Config, it *datamodel.Item, resolver *id.R
 	return append(hard, v...), w
 }
 
-func validateMutation(cfg *datamodel.Config, it *datamodel.Item, resolver *id.Resolver, items []*datamodel.Item, force bool) (hard, warns []error) {
+func validateMutation(cfg *datamodel.Config, orig, it *datamodel.Item, resolver *id.Resolver, items []*datamodel.Item, force bool) (hard, warns []error) {
 	hard, warns = validateAssembled(cfg, it, resolver, force)
+	hard = append(hard, validateResolutionState(cfg, orig, it)...)
 	if len(hard) == 0 {
 		hard = validateGraph(it, items)
 	}
 	return hard, warns
+}
+
+func validateResolutionState(cfg *datamodel.Config, orig, it *datamodel.Item) []error {
+	if it.Resolution == nil {
+		return nil
+	}
+	if orig != nil && it.State == orig.State && datamodel.EqualPtr(it.Resolution, orig.Resolution) {
+		return nil
+	}
+	if cat, known := categoryOf(cfg, it.Type, it.State); known && cat != datamodel.CategoryDone {
+		return []error{errx.User("field %q: only allowed on done-category states; %s is %s", datamodel.KeyResolution, it.State, cat).WithHint("clear it with `kira edit --field resolution=`")}
+	}
+	return nil
 }
 
 func validateBuffer(cfg *datamodel.Config, resolver *id.Resolver, force bool, build func(string) (*datamodel.Item, []error)) func(string) []error {

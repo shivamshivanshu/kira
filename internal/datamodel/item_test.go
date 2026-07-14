@@ -16,13 +16,3 @@ func TestFrontmatterKeysOrder(t *testing.T) {
 		t.Fatalf("FrontmatterKeys = %v, want %v", FrontmatterKeys, want)
 	}
 }
-
-func TestMutableFieldsOrder(t *testing.T) {
-	want := []string{
-		KeySubtype, KeyTitle, KeyResolution, KeyPriority, KeyRank, KeyOwner,
-		KeyReporter, KeyLabels, KeyEpic, KeySprint, KeyDue, KeyEstimate,
-	}
-	if !slices.Equal(MutableFields, want) {
-		t.Fatalf("MutableFields = %v, want %v", MutableFields, want)
-	}
-}

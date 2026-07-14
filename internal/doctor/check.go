@@ -13,6 +13,7 @@ import (
 func Check(cfg *datamodel.Config, resolver *id.Resolver, it *datamodel.Item) []Finding {
 	var out []Finding
 	out = append(out, stateFindings(cfg, it)...)
+	out = append(out, resolutionFindings(cfg, it)...)
 	out = append(out, vocabFindings(cfg, it)...)
 	out = append(out, scalarFindings(cfg, it)...)
 	out = append(out, boardFindings(cfg, it)...)
@@ -50,6 +51,27 @@ func stateFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 	}
 	return []Finding{{Class: ClassState, Severity: SeverityError, Field: datamodel.KeyState,
 		Message: fmt.Sprintf("%q is not a state in the %s workflow", it.State, it.Type)}}
+}
+
+func resolutionFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
+	if it.Resolution == nil {
+		return nil
+	}
+	wf, ok := cfg.Workflows[it.Type]
+	if !ok {
+		return nil
+	}
+	for _, st := range wf.States {
+		if st.Key != it.State {
+			continue
+		}
+		if st.Category == datamodel.CategoryDone {
+			return nil
+		}
+		return []Finding{{Class: ClassState, Severity: SeverityWarning, Field: datamodel.KeyResolution,
+			Message: fmt.Sprintf("resolution %q on non-done state %s; clear it with `kira edit --field resolution=`", *it.Resolution, it.State)}}
+	}
+	return nil
 }
 
 func vocabFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {

@@ -9,6 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/editorx"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/id"
 )
 
 type FieldEdit struct {
@@ -53,11 +54,15 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 	var warns []error
 	finish := func(it *datamodel.Item) error {
 		restoreImmutable(it, orig)
-		errs, w := validateMutation(cfg, it, resolver, items, opts.Force)
+		guardErrs, guardWarns := applyEditGuards(cfg, orig, it, opts.Force, resolver, items)
+		if len(guardErrs) > 0 {
+			return errx.Invalid(guardErrs)
+		}
+		errs, w := validateMutation(cfg, orig, it, resolver, items, opts.Force)
 		if len(errs) > 0 {
 			return errx.Invalid(errs)
 		}
-		updated, warns = it, w
+		updated, warns = it, append(guardWarns, w...)
 		return nil
 	}
 
@@ -109,22 +114,48 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 }
 
 func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) (string, string, error) {
-	orig, _, resolver, err := s.resolveRef(cfg, ref)
+	orig, items, resolver, err := s.resolveRef(cfg, ref)
 	if err != nil {
 		return "", "", err
 	}
 	if err := guardWritable(orig); err != nil {
 		return "", "", err
 	}
-	content, err := runEditor(cfg.UI.Editor, opts.Stdio, codec.Serialize(orig), validateBuffer(cfg, resolver, opts.Force, func(c string) (*datamodel.Item, []error) {
+	content, err := runEditor(cfg.UI.Editor, opts.Stdio, codec.Serialize(orig), func(c string) []error {
 		it, errs := parseFullItem(c)
 		if len(errs) > 0 {
-			return nil, errs
+			return errs
 		}
 		restoreImmutable(it, orig)
-		return it, nil
-	}))
+		if hard, _ := applyEditGuards(cfg, orig, it, opts.Force, resolver, items); len(hard) > 0 {
+			return hard
+		}
+		hard, _ := validateMutation(cfg, orig, it, resolver, items, opts.Force)
+		return hard
+	})
 	return content, orig.Updated, err
+}
+
+func applyEditGuards(cfg *datamodel.Config, orig, it *datamodel.Item, force bool, resolver *id.Resolver, items []*datamodel.Item) (hard, warns []error) {
+	if hard := normalizeAndCheckRefs(it, resolver); len(hard) > 0 {
+		return hard, nil
+	}
+	if it.State == orig.State {
+		return nil, nil
+	}
+	edited := make(map[string]bool)
+	for _, f := range datamodel.ChangedFields(orig, it) {
+		edited[f] = true
+	}
+	mo := MoveOpts{Force: force}
+	if edited[datamodel.KeyResolution] && it.Resolution != nil {
+		mo.Resolution = *it.Resolution
+	}
+	h, w, wipWarns := applyStateChange(cfg, it, orig.State, mo, edited, items)
+	if len(h) > 0 {
+		return h, nil
+	}
+	return nil, append(w, wipWarns...)
 }
 
 func parseFullItem(content string) (*datamodel.Item, []error) {
@@ -170,11 +201,6 @@ func cloneItem(src *datamodel.Item) *datamodel.Item {
 	dst.Aliases = slices.Clone(src.Aliases)
 	dst.Labels = slices.Clone(src.Labels)
 	dst.BlockedBy = slices.Clone(src.BlockedBy)
-	if src.Links != nil {
-		dst.Links = make(map[string][]string, len(src.Links))
-		for typ, targets := range src.Links {
-			dst.Links[typ] = slices.Clone(targets)
-		}
-	}
+	dst.Links = datamodel.CloneLinks(src.Links)
 	return &dst
 }

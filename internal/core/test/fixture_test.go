@@ -57,7 +57,7 @@ func stateOf(t *testing.T, s *core.Store, cfg *datamodel.Config, ref string) str
 
 func positionTo(t *testing.T, s *core.Store, cfg *datamodel.Config, ref, state string) {
 	t.Helper()
-	if _, err := s.Edit(cfg, ref, core.EditOpts{Fields: []core.FieldEdit{{Key: "state", Value: state}}}); err != nil {
+	if _, err := s.Move(cfg, ref, state, core.MoveOpts{Force: true}); err != nil {
 		t.Fatalf("position %s to %s: %v", ref, state, err)
 	}
 }

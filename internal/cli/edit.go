@@ -82,7 +82,7 @@ func newEditCmd(g *globalFlags) *cobra.Command {
 		f.StringVar(tf.value, tf.name, "", tf.usage)
 	}
 	f.StringVar(&fromFile, "from-file", "", "round-trip an edited item file (or - for stdin)")
-	f.BoolVar(&force, "force", false, "accept field values outside the configured vocabulary")
+	f.BoolVar(&force, "force", false, "accept field values outside the configured vocabulary and bypass workflow guards on state changes")
 	return cmd
 }
 

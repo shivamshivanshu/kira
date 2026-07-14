@@ -1,6 +1,7 @@
 package core_test
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -611,5 +612,212 @@ func TestMoveBlockersClosedGuard(t *testing.T) {
 	}
 	if got := stateOf(t, s, cfg, a.Number); got != "IN_PROGRESS" {
 		t.Fatalf("state after unblocked move = %q, want IN_PROGRESS", got)
+	}
+}
+
+func editState(s *core.Store, cfg *datamodel.Config, ref, state string, force bool) error {
+	_, err := s.Edit(cfg, ref, core.EditOpts{Fields: []core.FieldEdit{{Key: "state", Value: state}}, Force: force})
+	return err
+}
+
+func TestEditStateRoutesThroughMoveGuards(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "guarded edit")
+
+	err := editState(s, cfg, res.Number, "DONE", false)
+	if err == nil || !strings.Contains(err.Error(), "not an allowed transition") {
+		t.Fatalf("edit --field state off-graph: err = %v, want transition rejection", err)
+	}
+	if got := stateOf(t, s, cfg, res.Number); got != "TODO" {
+		t.Fatalf("state after rejected edit = %s, want TODO", got)
+	}
+
+	if err := editState(s, cfg, res.Number, "WONT_DO", false); err != nil {
+		t.Fatalf("edit along legal TODO -> WONT_DO: %v", err)
+	}
+	show, _ := s.Show(cfg, res.Number, "")
+	if show.Resolution == nil || *show.Resolution != "dropped" {
+		t.Fatalf("resolution = %v, want dropped (target default applies via edit)", show.Resolution)
+	}
+
+	if err := editState(s, cfg, res.Number, "TODO", false); err == nil {
+		t.Fatal("edit WONT_DO -> TODO without force: expected rejection")
+	}
+	if err := editState(s, cfg, res.Number, "TODO", true); err != nil {
+		t.Fatalf("forced edit WONT_DO -> TODO: %v", err)
+	}
+	show, _ = s.Show(cfg, res.Number, "")
+	if show.Resolution != nil {
+		t.Fatalf("resolution = %q, want cleared on leaving done via edit", *show.Resolution)
+	}
+}
+
+func TestEditStateRequireGuardAndExplicitResolution(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "edit require")
+	positionTo(t, s, cfg, res.Number, "REVIEW")
+
+	err := editState(s, cfg, res.Number, "DONE", false)
+	if err == nil || !strings.Contains(err.Error(), "requires resolution") {
+		t.Fatalf("edit REVIEW -> DONE without resolution: err = %v, want require rejection", err)
+	}
+
+	_, err = s.Edit(cfg, res.Number, core.EditOpts{Fields: []core.FieldEdit{
+		{Key: "state", Value: "DONE"}, {Key: "resolution", Value: "duplicate"},
+	}})
+	if err != nil {
+		t.Fatalf("edit state+resolution together: %v", err)
+	}
+	show, _ := s.Show(cfg, res.Number, "")
+	if show.Resolution == nil || *show.Resolution != "duplicate" {
+		t.Fatalf("resolution = %v, want duplicate (explicit edit outranks set:)", show.Resolution)
+	}
+}
+
+func TestEditResolutionOnlyOnDoneStates(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "resolution invariant")
+
+	_, err := s.Edit(cfg, res.Number, core.EditOpts{Fields: []core.FieldEdit{{Key: "resolution", Value: "done"}}})
+	if err == nil || !strings.Contains(err.Error(), "done-category") {
+		t.Fatalf("resolution on TODO: err = %v, want done-category rejection", err)
+	}
+
+	if _, err := s.Move(cfg, res.Number, "WONT_DO", core.MoveOpts{}); err != nil {
+		t.Fatalf("move to WONT_DO: %v", err)
+	}
+	if _, err := s.Edit(cfg, res.Number, core.EditOpts{Fields: []core.FieldEdit{{Key: "resolution", Value: "duplicate"}}}); err != nil {
+		t.Fatalf("out-of-band resolution correction on a done item: %v", err)
+	}
+}
+
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	old := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stderr = w
+	defer func() { os.Stderr = old }()
+	fn()
+	w.Close()
+	data, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
+}
+
+func TestEditStateSetEffectSkipsExplicitEdits(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	withTicketTransitions(cfg, "TODO", []datamodel.Transition{
+		{To: "IN_PROGRESS", Set: map[string]string{"owner": "auto"}},
+	})
+
+	plain := mustCreate(t, s, cfg, "set applies")
+	if err := editState(s, cfg, plain.Number, "IN_PROGRESS", false); err != nil {
+		t.Fatalf("edit without owner: %v", err)
+	}
+	show, _ := s.Show(cfg, plain.Number, "")
+	if show.Owner == nil || *show.Owner != "auto" {
+		t.Fatalf("owner = %v, want auto (set: applies when not edited)", show.Owner)
+	}
+
+	explicit := mustCreate(t, s, cfg, "edit wins")
+	_, err := s.Edit(cfg, explicit.Number, core.EditOpts{Fields: []core.FieldEdit{
+		{Key: "state", Value: "IN_PROGRESS"}, {Key: "owner", Value: "bob"},
+	}})
+	if err != nil {
+		t.Fatalf("edit state+owner: %v", err)
+	}
+	show, _ = s.Show(cfg, explicit.Number, "")
+	if show.Owner == nil || *show.Owner != "bob" {
+		t.Fatalf("owner = %v, want bob (explicit edit outranks set:)", show.Owner)
+	}
+}
+
+func TestEditFromFileNormalizesBlockersBeforeGuard(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	blocker := mustCreate(t, s, cfg, "open blocker")
+	res := mustCreate(t, s, cfg, "guarded")
+	withTicketTransitions(cfg, "TODO", []datamodel.Transition{
+		{To: "DONE", Require: []string{datamodel.RequireBlockersClosed}},
+	})
+
+	content := mustReadItem(t, s, res.ID)
+	content = strings.Replace(content, "state: TODO", "state: DONE", 1)
+	content = strings.Replace(content, "blocked_by: []", "blocked_by: ["+blocker.Number+"]", 1)
+
+	_, err := s.Edit(cfg, res.Number, core.EditOpts{FromFile: writeTempItem(t, content)})
+	if err == nil || !strings.Contains(err.Error(), "blocked by open items") || !strings.Contains(err.Error(), blocker.Number) {
+		t.Fatalf("from-file blocker by number must hit the guard, err = %v", err)
+	}
+	if got := stateOf(t, s, cfg, res.Number); got != "TODO" {
+		t.Fatalf("state after rejected from-file edit = %s, want TODO", got)
+	}
+}
+
+func TestEditStateWipGuard(t *testing.T) {
+	s, cfg := newStore(t)
+	var nums []string
+	for _, title := range []string{"w1", "w2", "w3", "w4"} {
+		nums = append(nums, mustCreate(t, s, cfg, title).Number)
+	}
+	for _, num := range nums[:3] {
+		if err := editState(s, cfg, num, "IN_PROGRESS", false); err != nil {
+			t.Fatalf("edit %s: %v", num, err)
+		}
+	}
+
+	out := captureStderr(t, func() {
+		if err := editState(s, cfg, nums[3], "IN_PROGRESS", false); err != nil {
+			t.Fatalf("edit over limit under warn policy must not block: %v", err)
+		}
+	})
+	if !strings.Contains(out, "WIP limit") || !strings.Contains(out, "4 > 3") {
+		t.Fatalf("stderr = %q, want an over-WIP-limit warning at 4 > 3", out)
+	}
+
+	wf := cfg.Workflows[datamodel.TypeTicket]
+	wf.WipPolicy = datamodel.WipBlock
+	cfg.Workflows[datamodel.TypeTicket] = wf
+	positionTo(t, s, cfg, nums[3], "TODO")
+	if err := editState(s, cfg, nums[3], "IN_PROGRESS", false); err == nil || !strings.Contains(err.Error(), "WIP limit") {
+		t.Fatalf("edit into a WIP-blocked target: err = %v, want rejection", err)
+	}
+	if got := stateOf(t, s, cfg, nums[3]); got != "TODO" {
+		t.Fatalf("state after blocked edit = %s, want TODO", got)
+	}
+}
+
+func TestEditGrandfathersStaleResolution(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "stale")
+	if _, err := s.Move(cfg, res.Number, "WONT_DO", core.MoveOpts{}); err != nil {
+		t.Fatalf("move to WONT_DO: %v", err)
+	}
+	content := mustReadItem(t, s, res.ID)
+	overwriteItem(t, s, res.ID, strings.Replace(content, "state: WONT_DO", "state: TODO", 1))
+
+	if _, err := s.Edit(cfg, res.Number, core.EditOpts{Fields: []core.FieldEdit{{Key: "title", Value: "renamed"}}}); err != nil {
+		t.Fatalf("title edit on a grandfathered stale item: %v", err)
+	}
+	_, err := s.Edit(cfg, res.Number, core.EditOpts{Fields: []core.FieldEdit{{Key: "resolution", Value: "duplicate"}}})
+	if err == nil || !strings.Contains(err.Error(), "done-category") {
+		t.Fatalf("re-writing stale resolution: err = %v, want done-category rejection", err)
+	}
+	if _, err := s.Edit(cfg, res.Number, core.EditOpts{Fields: []core.FieldEdit{{Key: "resolution", Value: ""}}}); err != nil {
+		t.Fatalf("clearing stale resolution (the hinted repair): %v", err)
+	}
+	show, _ := s.Show(cfg, res.Number, "")
+	if show.Resolution != nil {
+		t.Fatalf("resolution = %q, want cleared", *show.Resolution)
 	}
 }

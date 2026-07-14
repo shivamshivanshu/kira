@@ -1,9 +1,20 @@
 package datamodel
 
 import (
+	"maps"
 	"slices"
 	"testing"
 )
+
+func TestMutableFieldsOrder(t *testing.T) {
+	want := []string{
+		KeySubtype, KeyTitle, KeyResolution, KeyPriority, KeyRank, KeyOwner,
+		KeyReporter, KeyLabels, KeyEpic, KeySprint, KeyDue, KeyEstimate,
+	}
+	if !slices.Equal(MutableFields, want) {
+		t.Fatalf("MutableFields = %v, want %v", MutableFields, want)
+	}
+}
 
 func fieldsBaseItem() *Item {
 	sub := "bug"
@@ -78,6 +89,7 @@ func TestFieldDescriptorGet(t *testing.T) {
 		{KeyTitle, "hello"},
 		{KeyPriority, "-"},
 		{KeyLabels, "[]"},
+		{KeyLinks, ""},
 		{KeyEstimate, "2.5"},
 		{KeyBody, "(body)"},
 	}
@@ -94,6 +106,14 @@ func TestFieldDescriptorGet(t *testing.T) {
 	if got, _ := Field(KeyLabels); got.Get(it) != "[a, b]" {
 		t.Errorf("labels Get = %q, want [a, b]", got.Get(it))
 	}
+	it.Links = map[string][]string{
+		string(LinkRelates):     {"01B", "01C"},
+		string(LinkDuplicateOf): {"01X"},
+	}
+	want := "duplicate_of:[01X] relates:[01B, 01C]"
+	if got, _ := Field(KeyLinks); got.Get(it) != want {
+		t.Errorf("links Get = %q, want %q", got.Get(it), want)
+	}
 }
 
 func TestFieldDescriptorCopyClonesList(t *testing.T) {
@@ -104,6 +124,19 @@ func TestFieldDescriptorCopyClonesList(t *testing.T) {
 	src.Labels[0] = "mutated"
 	if !slices.Equal(dst.Labels, []string{"a"}) {
 		t.Fatalf("Copy did not clone: dst.Labels = %v", dst.Labels)
+	}
+}
+
+func TestFieldDescriptorCopyClonesLinks(t *testing.T) {
+	d, _ := Field(KeyLinks)
+	src := &Item{Links: map[string][]string{string(LinkRelates): {"01B"}}}
+	dst := &Item{}
+	d.Copy(dst, src)
+	src.Links[string(LinkRelates)][0] = "mutated"
+	src.Links[string(LinkDuplicateOf)] = []string{"01X"}
+	want := map[string][]string{string(LinkRelates): {"01B"}}
+	if !maps.EqualFunc(dst.Links, want, slices.Equal[[]string]) {
+		t.Fatalf("Copy did not deep-clone: dst.Links = %v", dst.Links)
 	}
 }
 

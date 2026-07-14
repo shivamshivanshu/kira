@@ -135,10 +135,7 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 
 	sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, wf.Initial)
 	finalItem := itemFromDraft(d, sys)
-	hard, warns := validateAssembled(cfg, finalItem, ld.resolver, opts.Force)
-	if len(hard) == 0 {
-		hard = validateGraph(finalItem, ld.items)
-	}
+	hard, warns := validateMutation(cfg, nil, finalItem, ld.resolver, ld.items, opts.Force)
 	if len(hard) > 0 {
 		return nil, errx.Invalid(hard)
 	}

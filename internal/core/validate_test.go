@@ -1,11 +1,13 @@
 package core
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 func TestValidateGraph(t *testing.T) {
@@ -153,5 +155,36 @@ func TestFieldPresentCoversMutableFields(t *testing.T) {
 		if fieldPresent(empty, f) {
 			t.Errorf("fieldPresent(zero, %q) = true", f)
 		}
+	}
+}
+
+func TestValidateResolutionState(t *testing.T) {
+	cfg := config.Default()
+	stale := &datamodel.Item{Type: datamodel.TypeTicket, State: "TODO", Resolution: strPtr("done")}
+	done := &datamodel.Item{Type: datamodel.TypeTicket, State: "WONT_DO", Resolution: strPtr("dropped")}
+
+	if errs := validateResolutionState(cfg, stale, stale); len(errs) != 0 {
+		t.Errorf("untouched stale item must be grandfathered, got %v", errs)
+	}
+	titleEdit := *stale
+	titleEdit.Title = "renamed"
+	if errs := validateResolutionState(cfg, stale, &titleEdit); len(errs) != 0 {
+		t.Errorf("edit not touching state/resolution must be grandfathered, got %v", errs)
+	}
+	if errs := validateResolutionState(cfg, nil, stale); len(errs) != 1 {
+		t.Errorf("newly created bad shape must be rejected, got %v", errs)
+	}
+	reEdit := *stale
+	reEdit.Resolution = strPtr("duplicate")
+	errs := validateResolutionState(cfg, stale, &reEdit)
+	if len(errs) != 1 || !strings.Contains(errs[0].Error(), "done-category") {
+		t.Fatalf("re-writing resolution on a non-done state must be rejected, got %v", errs)
+	}
+	var e *errx.Error
+	if !errors.As(errs[0], &e) || !strings.Contains(e.Hint, "resolution=") {
+		t.Fatalf("rejection must hint the repair, got %v", errs[0])
+	}
+	if errs := validateResolutionState(cfg, stale, done); len(errs) != 0 {
+		t.Errorf("resolution on a done state is valid, got %v", errs)
 	}
 }

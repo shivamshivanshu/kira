@@ -17,6 +17,7 @@ func EqualPtr[T comparable](a, b *T) bool {
 
 type FieldDescriptor struct {
 	Key     string
+	Guarded bool
 	Changed func(a, b *Item) bool
 	Get     func(*Item) string
 	Copy    func(dst, src *Item)
@@ -29,6 +30,11 @@ func (d FieldDescriptor) withoutSet() FieldDescriptor {
 	return d
 }
 
+func (d FieldDescriptor) guarded() FieldDescriptor {
+	d.Guarded = true
+	return d
+}
+
 func (d FieldDescriptor) withoutPresent() FieldDescriptor {
 	d.Present = nil
 	return d
@@ -37,7 +43,7 @@ func (d FieldDescriptor) withoutPresent() FieldDescriptor {
 var Fields = []FieldDescriptor{
 	ptrField(KeySubtype, func(it *Item) **string { return &it.Subtype }),
 	strField(KeyTitle, func(it *Item) *string { return &it.Title }),
-	strField(KeyState, func(it *Item) *string { return &it.State }).withoutPresent(),
+	strField(KeyState, func(it *Item) *string { return &it.State }).withoutPresent().guarded(),
 	ptrField(KeyResolution, func(it *Item) **string { return &it.Resolution }),
 	ptrField(KeyPriority, func(it *Item) **string { return &it.Priority }),
 	ptrField(KeyRank, func(it *Item) **string { return &it.Rank }),
@@ -61,6 +67,16 @@ var EditableFields = func() []string {
 		}
 	}
 	slices.Sort(out)
+	return out
+}()
+
+var MutableFields = func() []string {
+	var out []string
+	for _, d := range Fields {
+		if d.Set != nil && !d.Guarded {
+			out = append(out, d.Key)
+		}
+	}
 	return out
 }()
 
@@ -124,8 +140,14 @@ func linksField() FieldDescriptor {
 	return FieldDescriptor{
 		Key:     KeyLinks,
 		Changed: func(a, b *Item) bool { return !maps.EqualFunc(a.Links, b.Links, slices.Equal[[]string]) },
-		Get:     func(it *Item) string { return strings.Join(slices.Sorted(maps.Keys(it.Links)), ",") },
-		Copy:    func(dst, src *Item) { dst.Links = src.Links },
+		Get: func(it *Item) string {
+			parts := make([]string, 0, len(it.Links))
+			for _, typ := range slices.Sorted(maps.Keys(it.Links)) {
+				parts = append(parts, typ+":"+listString(it.Links[typ]))
+			}
+			return strings.Join(parts, " ")
+		},
+		Copy: func(dst, src *Item) { dst.Links = CloneLinks(src.Links) },
 	}
 }
 
