@@ -19,3 +19,7 @@ updated: 2026-07-14T20:48:27+05:30
 ## Acceptance criteria
 
 ## Comments
+
+<!-- kira:comment id=01KXGMQ57J7WZ620HHDKDDM8A7 author=Shivam-Shivanshu ts=2026-07-14T21:12:51+05:30 -->
+WONT_DO (founder): a tracker repo outside the code repo sits off the remote sync path - staleness and invisible divergence when working with remotes, the same failure mode that killed git-notes (and the design doc's own strongest-against argument). Colocated stays the model. Survivors: KIRA-82 (kira commit, colocated) and KIRA-83 (reshaped to colocated hooks).
+<!-- /kira:comment -->
