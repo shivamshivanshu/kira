@@ -1,0 +1,41 @@
+# KIRA-79 boards: `board move` renumbers Jira-style onto the target board,
+# preserving the old number as a permanent alias so both numbers resolve to the
+# same item; bare numbers resolve only when unique across boards.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira board create XYZ --name Beta
+
+# one ticket per board, then move the KIRA item onto XYZ
+exec kira create ticket --title from-kira --no-edit --board KIRA
+stdout 'KIRA-1'
+exec kira create ticket --title native-xyz --no-edit --board XYZ
+stdout 'XYZ-1'
+
+# bare number 1 is ambiguous while KIRA-1 and XYZ-1 coexist
+! exec kira show 1
+stderr 'ambiguous'
+stderr 'KIRA-1'
+stderr 'XYZ-1'
+
+# move renumbers onto XYZ's namespace and records the move commit subject
+exec kira board move KIRA-1 XYZ
+stdout 'KIRA-1 -> XYZ-2'
+exec git log --oneline
+stdout 'kira: board KIRA-1 -> XYZ-2'
+
+# both the new number and the old (alias) resolve to the same item
+exec kira show XYZ-2 --json
+stdout '"number": "XYZ-2"'
+stdout '"board": "XYZ"'
+stdout '"KIRA-1"'
+exec kira show KIRA-1 --json
+stdout '"number": "XYZ-2"'
+
+# a bare number that is now unique across boards resolves
+exec kira show 2
+stdout 'XYZ-2'

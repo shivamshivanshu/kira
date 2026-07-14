@@ -1,0 +1,37 @@
+# KIRA-79 boards: an archived board's tickets still resolve and still appear in
+# `kira list`, but the board is excluded from --board; rename changes only the
+# display name.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira board create XYZ --name Beta
+exec kira create ticket --title kira-item --no-edit --board KIRA
+exec kira create ticket --title xyz-item --no-edit --board XYZ
+
+exec kira board archive XYZ
+stdout 'Archived board XYZ'
+
+# archived board's tickets keep resolving
+exec kira show XYZ-1
+stdout 'XYZ-1'
+
+# and still appear in the default list
+exec kira list
+stdout 'XYZ-1'
+stdout 'KIRA-1'
+
+# but the archived board is no longer a valid --board target
+! exec kira create ticket --title nope --no-edit --board XYZ
+stderr 'no such board "XYZ"'
+
+# rename changes only the name, not the key or archived state
+exec kira board rename XYZ 'Renamed Board'
+stdout 'Renamed board XYZ'
+exec kira board list --json
+stdout '"key": "XYZ"'
+stdout '"name": "Renamed Board"'
+stdout '"archived": true'

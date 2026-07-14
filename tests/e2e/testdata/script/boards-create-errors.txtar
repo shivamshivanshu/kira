@@ -1,0 +1,43 @@
+# KIRA-79 boards: non-TTY create-flow guidance. With multiple boards and no
+# default, and with zero boards configured, create fails loudly with the exact
+# hint text from the create-flow UX spec.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# N boards, no default: non-TTY create refuses and names the boards + escape hatch
+cp multi.yaml .kira/config.yaml
+exec git add -A
+exec git commit -m 'multi-board config'
+! exec kira create ticket --title t --no-edit
+stderr 'multiple boards configured; pass --board'
+stderr 'hint: boards: ABC, XYZ'
+stderr 'mark one default'
+
+# 0 boards (explicit empty list): non-TTY create refuses with the bootstrap hint
+cp empty.yaml .kira/config.yaml
+exec git add -A
+exec git commit -m 'zero-board config'
+! exec kira create ticket --title t --no-edit
+stderr 'no boards configured'
+stderr 'hint: create one first: kira board create ABC --name'
+
+-- multi.yaml --
+version: 2
+project:
+  key: KIRA
+  name: multi
+boards:
+  - { key: ABC, name: Alpha }
+  - { key: XYZ, name: Beta }
+
+-- empty.yaml --
+version: 2
+project:
+  key: KIRA
+  name: multi
+boards: []

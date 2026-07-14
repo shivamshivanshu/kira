@@ -1,0 +1,41 @@
+# hash id.style: board key must derive from the number prefix (not ParseNumber),
+# so board field, board= query and workon branch all work on hash repos.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+env COLUMNS=100
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+cp hash.yaml .kira/config.yaml
+
+# hash numbers on the default (implicit) board
+exec kira create ticket --title 'on default' --no-edit
+stdout 'Created KIRA-'
+
+# materialize + a second board, then a hash ticket on it
+exec kira board create XYZ --name Beta
+exec kira create ticket --title 'on beta' --no-edit --board XYZ
+stdout 'Created XYZ-'
+
+# board field is populated for hash numbers on both boards
+exec kira list --json
+stdout '"board": "KIRA"'
+stdout '"board": "XYZ"'
+
+# board= query filters hash-numbered items by their prefix
+exec kira list --query 'board=XYZ'
+stdout 'XYZ-'
+! stdout 'KIRA-'
+
+-- hash.yaml --
+version: 1
+
+project:
+  key: KIRA
+  name: kira
+
+id:
+  style: hash

@@ -1,0 +1,63 @@
+# KIRA-79 boards: commit-message linking spans board keys. A plain commit body
+# that references another board's number is lenient-linked, and the prefix set
+# includes numbers observed in the index even when that prefix is no longer a
+# configured board.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira board create XYZ --name Beta
+exec kira create ticket --title kira-work --no-edit --board KIRA
+exec kira create ticket --title xyz-work --no-edit --board XYZ
+
+# a plain (trailer-less) code commit that names both boards' numbers in its body
+cp code.txt work.txt
+exec git add work.txt
+exec git commit -F msg-both.txt
+
+# the same commit links to items on both boards
+exec kira log KIRA-1
+stdout 'cross-board fix'
+exec kira log XYZ-1
+stdout 'cross-board fix'
+
+# drop XYZ from the configured boards, leaving XYZ-1 present only in the index
+cp kira-only.yaml .kira/config.yaml
+exec git add -A
+exec git commit -m 'drop XYZ board from config'
+
+# XYZ-1 still resolves and lists (membership is derived from the number prefix)
+exec kira show XYZ-1
+stdout 'XYZ-1'
+
+# a commit referencing the now-unconfigured XYZ prefix still links, because the
+# prefix is observed in the index's numbers
+cp code.txt again.txt
+exec git add again.txt
+exec git commit -F msg-unconfigured.txt
+exec kira log XYZ-1
+stdout 'followup'
+
+-- code.txt --
+placeholder change
+
+-- msg-both.txt --
+cross-board fix
+
+touches XYZ-1 and KIRA-1
+
+-- msg-unconfigured.txt --
+followup
+
+still references XYZ-1 after config drop
+
+-- kira-only.yaml --
+version: 2
+project:
+  key: KIRA
+  name: crosskey
+boards:
+  - { key: KIRA, name: crosskey, default: true }

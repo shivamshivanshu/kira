@@ -49,11 +49,12 @@ type model struct {
 	jumps   jumplist
 	loadErr error
 
-	view    view
-	screens map[view]screen
-	bar     bar
-	clip    clipx.Clipboard
-	yank    *yankPicker
+	view      view
+	screens   map[view]screen
+	bar       bar
+	clip      clipx.Clipboard
+	yank      *yankPicker
+	boardPick *boardPicker
 
 	crash       *crashInfo
 	injectPanic bool
@@ -146,6 +147,10 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	if m.yank != nil {
 		m.updateYank(key)
+		return m, nil
+	}
+	if m.boardPick != nil {
+		m.updateBoardScope(key)
 		return m, nil
 	}
 	switch key {
@@ -270,6 +275,8 @@ func (m model) View() string {
 	switch {
 	case m.yank != nil:
 		main = m.renderYankPicker(h)
+	case m.boardPick != nil:
+		main = m.renderBoardScope(h)
 	case m.help:
 		main = m.renderHelp(h)
 	case m.current() != nil:

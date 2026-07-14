@@ -102,6 +102,80 @@ func TestBoardTeatestSnapshot(t *testing.T) {
 	golden.RequireEqual(t, []byte(tm.FinalModel(t).(model).View()))
 }
 
+func buildMixedBoardResult() *datamodel.BoardResult {
+	card := func(id, num, board string) datamodel.ListItem {
+		it := bItem(id, num, num, "TODO", "todo")
+		it.Board = board
+		return it
+	}
+	return &datamodel.BoardResult{Type: datamodel.TypeTicket, Columns: []datamodel.BoardColumn{
+		{State: "TODO", Category: "todo", Count: 3, Items: []datamodel.ListItem{
+			card("a", "KIRA-1", "KIRA"),
+			card("b", "XYZ-1", "XYZ"),
+			card("c", "KIRA-2", "KIRA"),
+		}},
+	}}
+}
+
+func TestBoardScopeKeepsGlobalCount(t *testing.T) {
+	scoped := scopedBoard(buildMixedBoardResult(), "xyz")
+	items := scoped.Columns[0].Items
+	if len(items) != 1 || items[0].Number != "XYZ-1" {
+		t.Fatalf("scope xyz should keep only XYZ-1, got %+v", items)
+	}
+	if scoped.Columns[0].Count != 3 {
+		t.Fatalf("scoped column Count should stay global (3), got %d", scoped.Columns[0].Count)
+	}
+}
+
+func TestBoardScopeHeaderHidesOtherBoards(t *testing.T) {
+	m, bs := newBoardTestModel(100, 12, config.Default(), buildMixedBoardResult())
+	bs.raw = buildMixedBoardResult()
+	bs.scope = "XYZ"
+	bs.applyScope()
+	view := m.View()
+	if !strings.Contains(view, "board: XYZ") {
+		t.Fatalf("scoped board view must show the scope header:\n%s", view)
+	}
+	if !strings.Contains(view, "XYZ-1") {
+		t.Fatalf("scoped view should show the in-scope card:\n%s", view)
+	}
+	if strings.Contains(view, "KIRA-1") || strings.Contains(view, "KIRA-2") {
+		t.Fatalf("scoped view must hide other boards' cards:\n%s", view)
+	}
+}
+
+func TestBoardScopePickerSelectsBoard(t *testing.T) {
+	cfg := config.Default()
+	cfg.Boards = []datamodel.Board{
+		{Key: "KIRA", Name: "Kira", Default: true},
+		{Key: "XYZ", Name: "Exchange"},
+	}
+	m, bs := newBoardTestModel(100, 12, cfg, buildMixedBoardResult())
+	bs.raw = buildMixedBoardResult()
+
+	up, _ := m.Update(key("b"))
+	m = up.(model)
+	if m.boardPick == nil || len(m.boardPick.entries) != 3 {
+		t.Fatalf("b should open a picker with All + 2 boards, got %+v", m.boardPick)
+	}
+	up, _ = m.Update(key("j"))
+	m = up.(model)
+	up, _ = m.Update(key("j"))
+	m = up.(model)
+	up, _ = m.Update(key("enter"))
+	m = up.(model)
+	if m.boardPick != nil {
+		t.Fatal("enter should close the picker")
+	}
+	if bs.scope != "XYZ" {
+		t.Fatalf("selecting the XYZ entry should set scope=XYZ, got %q", bs.scope)
+	}
+	if _, ok := bs.board.selected(); !ok {
+		t.Fatal("scoped board should still have the XYZ card selectable")
+	}
+}
+
 func TestColumnHeaderTintReflectsWipPressure(t *testing.T) {
 	t.Parallel()
 	th := colorTheme()

@@ -1,0 +1,26 @@
+# KIRA-79 boards: `board list` prints each board's key and name with (default)
+# and (archived) markers; --json emits the frozen {"boards":[...]} shape.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira board create XYZ --name Beta
+exec kira board create ARC --name Gamma
+exec kira board archive ARC
+
+# plain listing: key + name, default marker on the implicit board, archived marker
+exec kira board list
+stdout 'KIRA .* \(default\)'
+stdout 'XYZ .*Beta'
+stdout 'ARC .*Gamma \(archived\)'
+
+# json shape: boards array carries key/name and the default/archived flags
+exec kira board list --json
+stdout '"boards":'
+stdout '"key": "KIRA"'
+stdout '"default": true'
+stdout '"key": "ARC"'
+stdout '"archived": true'

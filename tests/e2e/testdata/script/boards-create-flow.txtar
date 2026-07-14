@@ -1,0 +1,46 @@
+# KIRA-79 boards: init yields one implicit default board (version 1, no boards
+# line); the first `board create` materializes the implicit board and bumps the
+# config to version 2; create honors --board and the default; old numbers keep
+# resolving across materialization.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# a fresh repo is version 1 with no boards list, yet has one implicit board
+grep '^version: 1$' .kira/config.yaml
+! grep '^boards:' .kira/config.yaml
+
+# 1 board (implicit): create is silent and mints in the project key space
+exec kira create ticket --title early --no-edit
+stdout 'KIRA-1'
+
+# board create materializes the implicit board into an explicit list and bumps
+# the config to version 2, committing a structured subject
+exec kira board create XYZ --name Beta
+stdout 'Created board XYZ'
+grep '^version: 2$' .kira/config.yaml
+grep 'key: KIRA' .kira/config.yaml
+grep 'default: true' .kira/config.yaml
+grep 'key: XYZ' .kira/config.yaml
+exec git log --oneline
+stdout 'kira: board create XYZ'
+
+# the pre-materialization number still resolves afterward
+exec kira show KIRA-1
+stdout 'KIRA-1'
+
+# --board mints in the named board's own numbering namespace
+exec kira create ticket --title on-xyz --no-edit --board XYZ
+stdout 'XYZ-1'
+
+# with N boards and a default present, a bare create uses the default (KIRA)
+exec kira create ticket --title on-default --no-edit
+stdout 'KIRA-2'
+
+# per-board numbering is independent: XYZ keeps its own sequence
+exec kira create ticket --title on-xyz-2 --no-edit --board XYZ
+stdout 'XYZ-2'

@@ -1,0 +1,35 @@
+# KIRA-79 boards: the config version gate. A version this binary does not
+# understand is hard-rejected (proving an old binary would refuse a v2 config),
+# while a genuine version-2 config carrying a boards list loads fine here.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# a future version is rejected loudly rather than silently downgraded
+cp future.yaml .kira/config.yaml
+! exec kira list
+stderr 'version'
+
+# a version-2 config with a boards list loads on this binary
+cp v2.yaml .kira/config.yaml
+exec kira list
+exec kira board list
+stdout 'KIRA .* \(default\)'
+
+-- future.yaml --
+version: 99
+project:
+  key: KIRA
+  name: versiontest
+
+-- v2.yaml --
+version: 2
+project:
+  key: KIRA
+  name: versiontest
+boards:
+  - { key: KIRA, name: versiontest, default: true }

@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
 type peekMode int
@@ -20,6 +21,7 @@ var boardKeys = []KeyBinding{
 	{"h/l", "column"},
 	{"j/k", "card"},
 	{"H/L", "move"},
+	{"b", "board"},
 	{"enter", "detail"},
 	{"p", "peek"},
 }
@@ -29,6 +31,8 @@ func init() { registerScreen(viewBoard, func() screen { return newBoardScreen() 
 type boardScreen struct {
 	board  boardModel
 	host   detailHost
+	raw    *datamodel.BoardResult
+	scope  string
 	notice string
 	loaded bool
 	peek   peekMode
@@ -65,7 +69,12 @@ func (s *boardScreen) reload(m *model) {
 		s.notice = err.Error()
 		return
 	}
-	s.board.load(res)
+	s.raw = res
+	s.applyScope()
+}
+
+func (s *boardScreen) applyScope() {
+	s.board.load(scopedBoard(s.raw, s.scope))
 	s.host.resetCache()
 }
 
@@ -91,6 +100,8 @@ func (s *boardScreen) update(m *model, key string) tea.Cmd {
 		return s.moveCard(m, -1)
 	case "L":
 		return s.moveCard(m, 1)
+	case "b":
+		m.openBoardScope(s.scope)
 	case "tab", "shift+tab":
 		if s.peek == peekDocked {
 			s.peek = peekOverlay
@@ -183,15 +194,31 @@ func (s *boardScreen) focusItem(m *model, id string) {
 
 func (s *boardScreen) view(m *model, width, height int) string {
 	s.ensureLoaded(m)
+	header := s.scopeHeader(m, width)
 	body := height
+	if header != "" {
+		body--
+	}
 	if s.notice != "" {
-		body = height - 1
+		body--
 	}
 	main := s.renderMain(m, width, body)
-	if s.notice != "" {
-		return main + "\n" + m.theme.Dim.Render(m.theme.Renderer().NewStyle().MaxWidth(width).Render(s.notice))
+	lines := make([]string, 0, 3)
+	if header != "" {
+		lines = append(lines, header)
 	}
-	return main
+	lines = append(lines, main)
+	if s.notice != "" {
+		lines = append(lines, m.theme.Dim.Render(m.theme.Renderer().NewStyle().MaxWidth(width).Render(s.notice)))
+	}
+	return strings.Join(lines, "\n")
+}
+
+func (s *boardScreen) scopeHeader(m *model, width int) string {
+	if s.scope == "" {
+		return ""
+	}
+	return m.theme.Dim.Render(m.theme.Renderer().NewStyle().MaxWidth(width).Render("board: " + s.scope))
 }
 
 func (s *boardScreen) renderMain(m *model, width, height int) string {
