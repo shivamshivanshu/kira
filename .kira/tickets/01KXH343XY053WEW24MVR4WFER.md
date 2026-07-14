@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: bug
 title: "links field Get renders only keys — invisible link-target changes in diff/automation/merge prompts"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
