@@ -15,7 +15,7 @@ exec git commit -m 'custom prefix'
 # a kira-authored commit now uses the configured prefix, not "kira: "
 exec kira create ticket --title A --no-edit
 exec git log -1 --format=%s
-stdout '^tix/ create KIRA-1'
+stdout '^tix/ KIRA-1 create'
 ! stdout '^kira: '
 
 -- prefix.yaml --

@@ -146,7 +146,7 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 	if err != nil {
 		return nil, err
 	}
-	subject := cfg.Commit.SubjectPrefix + "create " + finalItem.Number + " " + quoteTitle(finalItem.Title)
+	subject := cfg.Commit.SubjectPrefix + finalItem.Number + " create " + quoteTitle(finalItem.Title)
 	cs := &datamodel.ChangeSet{
 		Kind:    datamodel.ChangeCreated,
 		After:   finalItem,
