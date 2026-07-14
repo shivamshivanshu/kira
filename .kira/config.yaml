@@ -1,4 +1,4 @@
-version: 1
+version: 2
 
 project:
   key: KIRA
@@ -67,3 +67,6 @@ estimate:
   unit: points                # points | hours
 sprints:
   - { key: 2026-S14, name: Parity + restructure, start: "2026-07-13", end: "2026-07-20" }
+boards:
+  - { key: KIRA, name: kira, default: true }
+  - { key: CORE, name: Core store and domain }
