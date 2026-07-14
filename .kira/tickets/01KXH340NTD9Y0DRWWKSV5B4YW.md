@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: bug
 title: "Index self-healing: dead-SHA recovery, deleted-DB detection, dup-ID skip, WAL-safe reads"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
