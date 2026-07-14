@@ -1,4 +1,4 @@
-// Package query implements the kira list-query expression grammar (docs/design/04-cli.md §4).
+// Package query implements the kira list-query expression grammar.
 package query
 
 import (

@@ -9,7 +9,7 @@ import (
 
 var update = flag.Bool("update", false, "rewrite the committed schema artifact")
 
-const artifactPath = "../../docs/schema/kira.json"
+const artifactPath = "../../schema/kira.json"
 
 func TestArtifactFresh(t *testing.T) {
 	got, err := Generate()

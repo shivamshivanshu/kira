@@ -1,4 +1,4 @@
-# Stream discipline for --json (docs/design/04-cli.md §7): all JSON on stdout,
+# Stream discipline for --json: all JSON on stdout,
 # all diagnostics/warnings/errors on stderr, and stdout stays empty on failure.
 # Exact exit codes per failure class are asserted in internal/contract.
 env GIT_CONFIG_GLOBAL=/dev/null

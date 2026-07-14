@@ -26,7 +26,7 @@ workon:
 estimate:
   unit: points                # points | hours
 
-# git: relate items to commits. docs: docs/design/07-git-integration.md
+# git: relate items to commits.
 #git: {}
 `
 

@@ -81,13 +81,13 @@ estimate:
 
 # --- optional blocks: uncomment and edit to enable (defaults shown are inert) ---
 
-# filters: named saved queries, run via kira list --filter <name>. docs: docs/design/02-data-model.md
+# filters: named saved queries, run via kira list --filter <name>.
 #filters: {}
 
-# sprints: sprint entities, created by kira sprint create; items key into this list. docs: docs/design/02-data-model.md
+# sprints: sprint entities, created by kira sprint create; items key into this list.
 #sprints:
 
-# git: relate kira items to the commits and branches that touch them. docs: docs/design/07-git-integration.md
+# git: relate kira items to the commits and branches that touch them.
 #   landed_ref — ref (e.g. origin/main) whose history marks work as merged/landed
 #   scan_since — limit commit scanning to history after this ref or date
 #git: {}

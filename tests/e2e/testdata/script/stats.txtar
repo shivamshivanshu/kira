@@ -1,5 +1,5 @@
 # stats: completion, cycle/lead time and throughput derived from the
-# git-derived transition events (docs/design/08-telemetry.md §2). Commit dates
+# git-derived transition events. Commit dates
 # are pinned via GIT_COMMITTER_DATE so the event stream — and therefore the
 # metrics — are fully deterministic; TZ is pinned because done-days are
 # local-time day boundaries.
@@ -61,7 +61,7 @@ stdout '"pct": 0.4'
 ! exec kira stats --velocity
 stderr 'unknown flag: --velocity'
 
-# bare stats: project-wide general metrics (docs/design/08-telemetry.md §2).
+# bare stats: project-wide general metrics.
 # done = KIRA-1,2,6 (done-category, not dropped); KIRA-5 dropped; total 6.
 # cycle time is derived from commit dates (KIRA-1 1d, KIRA-2 2d, KIRA-6 1d).
 exec kira stats --json

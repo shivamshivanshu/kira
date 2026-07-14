@@ -1,5 +1,5 @@
 # M1.5 JIRA-parity fields: create/edit flags, typed links, move --resolution,
-# and the sprint/vocab validation paths (docs/design/02-data-model.md §1, §10).
+# and the sprint/vocab validation paths.
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true

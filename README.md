@@ -16,7 +16,6 @@ kira                                   # launch the interactive TUI (default wit
 
 ## Documentation
 
-- [DESIGN.md](DESIGN.md) — architecture overview and the canonical entry point.
-- [docs/design/](docs/design/) — detailed specs: data model, storage/git, CLI, TUI, telemetry, testing.
-- [docs/ROADMAP.md](docs/ROADMAP.md) — milestone execution plan.
-- [docs/STRETCH_GOALS.md](docs/STRETCH_GOALS.md) — proposed and deferred ideas.
+- `kira --help` and `kira <command> --help` — the command surface.
+- [schema/kira.json](schema/kira.json) — published JSON schema for every `--json` output.
+- `.kira/config.yaml` — the annotated project configuration; `kira config init` scaffolds personal preferences.

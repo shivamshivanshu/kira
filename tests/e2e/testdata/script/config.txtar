@@ -1,6 +1,6 @@
 # kira config set edits one scalar in .kira/config.yaml, preserving comments,
 # validates through the normal config loader, and commits like any mutation
-# (docs/design/04-cli.md `kira config`).
+#.
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
