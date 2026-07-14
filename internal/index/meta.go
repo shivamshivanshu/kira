@@ -7,13 +7,19 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
+type skipEntry struct {
+	Note       string `json:"note"`
+	ConflictID string `json:"conflict_id,omitempty"`
+}
+
 type meta struct {
-	SchemaVersion      int               `json:"schema_version"`
-	ScanConfigHash     string            `json:"scan_config_hash,omitempty"`
-	LastIndexedHeadSHA string            `json:"last_indexed_head_sha"`
-	DirtyHash          string            `json:"dirty_hash"`
-	DirtyPaths         []string          `json:"dirty_paths"`
-	TrailerWatermarks  map[string]string `json:"trailer_watermarks,omitempty"`
+	SchemaVersion      int                  `json:"schema_version"`
+	ScanConfigHash     string               `json:"scan_config_hash,omitempty"`
+	LastIndexedHeadSHA string               `json:"last_indexed_head_sha"`
+	DirtyHash          string               `json:"dirty_hash"`
+	DirtyPaths         []string             `json:"dirty_paths"`
+	TrailerWatermarks  map[string]string    `json:"trailer_watermarks,omitempty"`
+	Skipped            map[string]skipEntry `json:"skipped,omitempty"`
 }
 
 func (i *Index) loadMeta() (meta, bool) { return loadMetaAt(i.cacheDir) }

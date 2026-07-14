@@ -2,6 +2,7 @@ package index_test
 
 import (
 	"database/sql"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -950,4 +951,416 @@ func after(t *testing.T, a, b string) bool {
 		t.Fatalf("parsing %q: %v", b, err)
 	}
 	return ta.After(tb)
+}
+
+func TestUntrackedTicketsIndexed(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	if err := os.WriteFile(filepath.Join(f.root, "README.md"), []byte("seed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	f.commit(t, "init")
+	if _, _, err := index.Load(f.store, f.repo, index.Options{}); err != nil {
+		t.Fatalf("initial Load: %v", err)
+	}
+
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	items, res, err := index.Load(f.store, f.repo, index.Options{})
+	if err != nil {
+		t.Fatalf("Load with untracked ticket: %v", err)
+	}
+	if res.Action == "fresh" || len(items) != 1 {
+		t.Fatalf("untracked ticket invisible: action=%q items=%d want reindex/1", res.Action, len(items))
+	}
+
+	f.writeTicket(t, b, ticket(b, "KIRA-2", "second"))
+	items, res, err = index.Load(f.store, f.repo, index.Options{})
+	if err != nil || res.Action != "incremental" || len(items) != 2 {
+		t.Fatalf("second untracked ticket missed: action=%q items=%d err=%v want incremental/2", res.Action, len(items), err)
+	}
+
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "edited"))
+	if items, _, err = index.Load(f.store, f.repo, index.Options{}); err != nil || titleOf(items, a) != "edited" {
+		t.Fatalf("edit to untracked ticket missed: title=%q err=%v", titleOf(items, a), err)
+	}
+}
+
+const deadSHA = "0123456789abcdef0123456789abcdef01234567"
+
+func poisonMetaSHAs(t *testing.T, f repoFixture, sha string) {
+	t.Helper()
+	path := filepath.Join(f.store.CacheDir(), "meta.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		t.Fatal(err)
+	}
+	m["last_indexed_head_sha"] = sha
+	if wm, ok := m["trailer_watermarks"].(map[string]any); ok {
+		for k := range wm {
+			wm[k] = sha
+		}
+	}
+	out, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, out, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDeadSHAInMetaTriggersRebuild(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.commit(t, "seed")
+	f.commitTrailer(t, "commit one", "Kira-Ticket: KIRA-1")
+	if _, _, err := index.Load(f.store, f.repo, trailerOpts()); err != nil {
+		t.Fatalf("initial Load: %v", err)
+	}
+
+	poisonMetaSHAs(t, f, deadSHA)
+	items, res, err := index.Load(f.store, f.repo, trailerOpts())
+	if err != nil {
+		t.Fatalf("dead SHA must trigger a rebuild, not a permanent fallback: %v", err)
+	}
+	if res.Action != "full" || res.Reason != "history-rewritten" || len(items) != 1 {
+		t.Fatalf("dead SHA recovery: action=%q reason=%q items=%d want full/history-rewritten/1", res.Action, res.Reason, len(items))
+	}
+
+	idx := open(t, f)
+	links := mustCommitLinks(t, idx, a)
+	if len(links) != 1 {
+		t.Fatalf("commit links after dead-watermark rebuild: %+v", links)
+	}
+}
+
+func TestDeletedDBRebuilds(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.commit(t, "seed")
+	if _, _, err := index.Load(f.store, f.repo, index.Options{}); err != nil {
+		t.Fatalf("initial Load: %v", err)
+	}
+
+	if err := os.Remove(filepath.Join(f.store.CacheDir(), "index.db")); err != nil {
+		t.Fatal(err)
+	}
+	items, res, err := index.Load(f.store, f.repo, index.Options{})
+	if err != nil {
+		t.Fatalf("Load after rm index.db: %v", err)
+	}
+	if res.Action != "full" || len(items) != 1 {
+		t.Fatalf("deleted DB served stale meta: action=%q items=%d want full/1", res.Action, len(items))
+	}
+}
+
+func TestDuplicateIDSkippedWithWarning(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.writeTicket(t, b, ticket(a, "KIRA-2", "dup"))
+	f.commit(t, "seed")
+
+	items, res, err := index.Load(f.store, f.repo, index.Options{})
+	if err != nil {
+		t.Fatalf("Load over duplicate ids must not fail: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("duplicate id: items=%d want 1", len(items))
+	}
+	if len(res.Warnings) != 1 || !strings.Contains(res.Warnings[0], b+".md") ||
+		!strings.Contains(res.Warnings[0], a+".md") || !strings.Contains(res.Warnings[0], "duplicate id") {
+		t.Fatalf("duplicate warning must name both files: %v", res.Warnings)
+	}
+
+	_, res, err = index.Load(f.store, f.repo, index.Options{})
+	if err != nil || res.Action != "fresh" {
+		t.Fatalf("fresh run: action=%q err=%v", res.Action, err)
+	}
+	if len(res.Warnings) != 1 || !strings.Contains(res.Warnings[0], "duplicate id") {
+		t.Fatalf("duplicate warning must replay on fresh runs: %v", res.Warnings)
+	}
+}
+
+func TestDuplicateIDSkippedOnRefresh(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.commit(t, "seed")
+	if _, _, err := index.Load(f.store, f.repo, index.Options{}); err != nil {
+		t.Fatalf("initial Load: %v", err)
+	}
+
+	f.writeTicket(t, b, ticket(a, "KIRA-2", "dup"))
+	items, res, err := index.Load(f.store, f.repo, index.Options{})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(items) != 1 || titleOf(items, a) != "first" {
+		t.Fatalf("refresh over duplicate id: items=%d title=%q", len(items), titleOf(items, a))
+	}
+	if len(res.Warnings) != 1 || !strings.Contains(res.Warnings[0], "duplicate id") {
+		t.Fatalf("refresh duplicate warning missing: %v", res.Warnings)
+	}
+}
+
+func TestSkipWarningReplaysUntilFixed(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.writeTicket(t, b, "not a ticket\n")
+	f.commit(t, "seed")
+
+	items, res, err := index.Load(f.store, f.repo, index.Options{})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(items) != 1 || len(res.Warnings) != 1 || !strings.Contains(res.Warnings[0], b+".md") {
+		t.Fatalf("malformed ticket: items=%d warnings=%v", len(items), res.Warnings)
+	}
+
+	_, res, err = index.Load(f.store, f.repo, index.Options{})
+	if err != nil || len(res.Warnings) != 1 {
+		t.Fatalf("warning must replay while the file stays broken: warnings=%v err=%v", res.Warnings, err)
+	}
+
+	f.writeTicket(t, b, ticket(b, "KIRA-2", "fixed"))
+	items, res, err = index.Load(f.store, f.repo, index.Options{})
+	if err != nil {
+		t.Fatalf("Load after fix: %v", err)
+	}
+	if len(items) != 2 || len(res.Warnings) != 0 {
+		t.Fatalf("fixed file must clear the warning: items=%d warnings=%v", len(items), res.Warnings)
+	}
+}
+
+func TestCommitLinkMarkerNonDefaultBoard(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.writeTicket(t, b, ticket(b, "CORE-1", "other board"))
+	f.commit(t, "seed")
+	f.commitTrailer(t, "[[CORE-1]] cross-board fix", "unrelated: x")
+
+	opts := trailerOpts()
+	opts.BoardKeys = []string{"KIRA", "CORE"}
+
+	idx := open(t, f)
+	if _, err := idx.EnsureFresh(f.store, f.repo, opts); err != nil {
+		t.Fatalf("EnsureFresh: %v", err)
+	}
+	links := mustCommitLinks(t, idx, b)
+	if len(links) != 1 || links[0].Kind != index.LinkLinked {
+		t.Fatalf("explicit [[CORE-1]] marker on a non-default board must link: %+v", links)
+	}
+}
+
+func TestCommitLinkMarkerRetroactiveReclassify(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.writeTicket(t, b, ticket(b, "CORE-1", "other board"))
+	f.commit(t, "seed")
+	f.commitTrailer(t, "[[CORE-1]] explicit marker", "unrelated: x")
+
+	off := trailerOpts()
+	off.BoardKeys = []string{"KIRA", "CORE"}
+	off.LinkMarkers = []datamodel.LinkMarker{datamodel.LinkMarkerTrailer}
+
+	idx := open(t, f)
+	if _, err := idx.EnsureFresh(f.store, f.repo, off); err != nil {
+		t.Fatalf("EnsureFresh markers-off: %v", err)
+	}
+	if links := mustCommitLinks(t, idx, b); len(links) != 1 || links[0].Kind != index.LinkReferenced {
+		t.Fatalf("subject markers off must demote to referenced: %+v", links)
+	}
+
+	on := trailerOpts()
+	on.BoardKeys = []string{"KIRA", "CORE"}
+	if _, err := idx.EnsureFresh(f.store, f.repo, on); err != nil {
+		t.Fatalf("EnsureFresh markers-on: %v", err)
+	}
+	links := mustCommitLinks(t, idx, b)
+	if len(links) != 1 || links[0].Kind != index.LinkLinked {
+		t.Fatalf("config change must retroactively reclassify the marker: %+v", links)
+	}
+}
+
+func TestCrashedRebuildLeavesEmptyDBRecovers(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.commit(t, "seed")
+	if _, _, err := index.Load(f.store, f.repo, index.Options{}); err != nil {
+		t.Fatalf("initial Load: %v", err)
+	}
+
+	db, err := sql.Open("sqlite", filepath.Join(f.store.CacheDir(), "index.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("DELETE FROM items"); err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+
+	items, res, err := index.Load(f.store, f.repo, index.Options{})
+	if err != nil {
+		t.Fatalf("Load over schema-only empty db: %v", err)
+	}
+	if res.Action != "full" || len(items) != 1 {
+		t.Fatalf("empty db with fresh meta must full-rebuild: action=%q items=%d want full/1", res.Action, len(items))
+	}
+}
+
+func TestMismatchedIDNotShadowedByOwnRow(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	f.writeTicket(t, b, ticket(a, "KIRA-1", "v1"))
+	f.commit(t, "seed")
+	items, _, err := index.Load(f.store, f.repo, index.Options{})
+	if err != nil || len(items) != 1 || titleOf(items, a) != "v1" {
+		t.Fatalf("initial Load: items=%d title=%q err=%v", len(items), titleOf(items, a), err)
+	}
+
+	f.writeTicket(t, b, ticket(a, "KIRA-1", "v2"))
+	items, res, err := index.Load(f.store, f.repo, index.Options{})
+	if err != nil {
+		t.Fatalf("Load after edit: %v", err)
+	}
+	if titleOf(items, a) != "v2" || len(res.Warnings) != 0 {
+		t.Fatalf("file shadowed by its own previous row: title=%q warnings=%v", titleOf(items, a), res.Warnings)
+	}
+}
+
+func TestRenameWithEditRefreshes(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "before"))
+	f.commit(t, "seed")
+	if _, _, err := index.Load(f.store, f.repo, index.Options{}); err != nil {
+		t.Fatalf("initial Load: %v", err)
+	}
+
+	run(t, f.root, "git", "mv", ".kira/tickets/"+a+".md", ".kira/tickets/"+b+".md")
+	f.writeTicket(t, b, ticket(a, "KIRA-1", "after"))
+	f.commit(t, "rename and edit")
+
+	items, res, err := index.Load(f.store, f.repo, index.Options{})
+	if err != nil {
+		t.Fatalf("Load after rename+edit: %v", err)
+	}
+	if len(items) != 1 || titleOf(items, a) != "after" || len(res.Warnings) != 0 {
+		t.Fatalf("rename+edit served stale row: items=%d title=%q warnings=%v", len(items), titleOf(items, a), res.Warnings)
+	}
+}
+
+func TestRefreshOrderIndependence(t *testing.T) {
+	t.Parallel()
+	const lo = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const hi = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	for _, tc := range []struct {
+		name, canonical, claimer string
+	}{
+		{"deleted-sorts-first", lo, hi},
+		{"claimer-sorts-first", hi, lo},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			f := newRepo(t)
+			f.writeTicket(t, tc.canonical, ticket(tc.canonical, "KIRA-1", "before"))
+			f.commit(t, "seed")
+			if _, _, err := index.Load(f.store, f.repo, index.Options{}); err != nil {
+				t.Fatalf("initial Load: %v", err)
+			}
+
+			f.removeTicket(t, tc.canonical)
+			f.writeTicket(t, tc.claimer, ticket(tc.canonical, "KIRA-1", "after"))
+			f.commit(t, "swap holder")
+
+			items, res, err := index.Load(f.store, f.repo, index.Options{})
+			if err != nil {
+				t.Fatalf("Load after swap: %v", err)
+			}
+			if len(items) != 1 || items[0].ID != tc.canonical || items[0].Title != "after" || len(res.Warnings) != 0 {
+				t.Fatalf("delete+claim not order independent: items=%d id=%q title=%q warnings=%v",
+					len(items), items[0].ID, items[0].Title, res.Warnings)
+			}
+		})
+	}
+}
+
+func TestFullPrefersCanonicalFile(t *testing.T) {
+	t.Parallel()
+	const impostor = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const canonical = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	f.writeTicket(t, impostor, ticket(canonical, "KIRA-9", "impostor"))
+	f.writeTicket(t, canonical, ticket(canonical, "KIRA-1", "canonical"))
+	f.commit(t, "seed")
+
+	items, res, err := index.Load(f.store, f.repo, index.Options{})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(items) != 1 || titleOf(items, canonical) != "canonical" {
+		t.Fatalf("full() must index the canonical file even when the impostor sorts first: items=%d title=%q",
+			len(items), titleOf(items, canonical))
+	}
+	if len(res.Warnings) != 1 || !strings.Contains(res.Warnings[0], impostor+".md") ||
+		!strings.Contains(res.Warnings[0], canonical+".md") {
+		t.Fatalf("skip note must land on the impostor and name both files: %v", res.Warnings)
+	}
+}
+
+func TestSkippedDuplicateReindexedWhenWinnerDeleted(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "winner"))
+	f.writeTicket(t, b, ticket(a, "KIRA-2", "loser"))
+	f.commit(t, "seed")
+	items, res, err := index.Load(f.store, f.repo, index.Options{})
+	if err != nil || len(items) != 1 || len(res.Warnings) != 1 {
+		t.Fatalf("seed Load: items=%d warnings=%v err=%v", len(items), res.Warnings, err)
+	}
+
+	f.removeTicket(t, a)
+	f.commit(t, "drop winner")
+	items, res, err = index.Load(f.store, f.repo, index.Options{})
+	if err != nil {
+		t.Fatalf("Load after winner deleted: %v", err)
+	}
+	if len(items) != 1 || items[0].ID != a || items[0].Title != "loser" {
+		t.Fatalf("loser must be indexed in the same run: items=%+v", items)
+	}
+	if len(res.Warnings) != 0 {
+		t.Fatalf("stale duplicate warning must clear: %v", res.Warnings)
+	}
 }

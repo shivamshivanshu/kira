@@ -63,8 +63,10 @@ func (s *FS) ItemsDir() string    { return filepath.Join(s.KiraDir(), itemsDirNa
 func (s *FS) TemplateDir() string { return filepath.Join(s.KiraDir(), "templates") }
 func (s *FS) CacheDir() string    { return filepath.Join(s.KiraDir(), ".cache") }
 
+func ItemFilename(ulid string) string { return ulid + itemExt }
+
 func (s *FS) ItemPath(ulid string) string {
-	return filepath.Join(s.ItemsDir(), ulid+itemExt)
+	return filepath.Join(s.ItemsDir(), ItemFilename(ulid))
 }
 
 func (s *FS) RelToRoot(abs string) string {

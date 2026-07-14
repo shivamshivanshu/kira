@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -15,8 +16,13 @@ import (
 	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
-func (i *Index) full(store *storage.FS) ([]string, error) {
-	items, warnings, err := store.LoadAll()
+type parsedFile struct {
+	name string
+	it   *datamodel.Item
+}
+
+func (i *Index) full(store *storage.FS) (map[string]skipEntry, error) {
+	names, err := store.ItemFilenames()
 	if err != nil {
 		return nil, err
 	}
@@ -30,44 +36,143 @@ func (i *Index) full(store *storage.FS) ([]string, error) {
 			return nil, errx.User("clearing index %s: %v", table, err)
 		}
 	}
-	for _, it := range items {
-		if err := insertItem(tx, it); err != nil {
-			return nil, err
-		}
-	}
-	return warnings, commit(tx)
-}
-
-func (i *Index) refresh(absPaths []string) ([]string, error) {
-	tx, err := i.db.Begin()
-	if err != nil {
-		return nil, errx.User("beginning index tx: %v", err)
-	}
-	defer tx.Rollback()
-	var warnings []string
-	for _, abs := range absPaths {
-		ulid := storage.ULIDFromPath(abs)
-		if ulid == "" {
-			continue
-		}
-		if _, err := tx.Exec("DELETE FROM items WHERE id = ?", ulid); err != nil {
-			return nil, errx.User("deleting index item: %v", err)
-		}
-		it, warning, err := readItem(abs)
-		if err != nil {
-			return nil, err
-		}
+	skipped := map[string]skipEntry{}
+	var files []parsedFile
+	for _, name := range names {
+		it, warning := readItem(filepath.Join(store.ItemsDir(), name))
 		if warning != "" {
-			warnings = append(warnings, warning)
+			skipped[name] = skipEntry{Note: warning}
+			continue
 		}
 		if it == nil {
 			continue
 		}
-		if err := insertItem(tx, it); err != nil {
+		files = append(files, parsedFile{name: name, it: it})
+	}
+	winners := map[string]parsedFile{}
+	for _, f := range files {
+		cur, contested := winners[f.it.ID]
+		switch {
+		case !contested:
+			winners[f.it.ID] = f
+		case f.name == storage.ItemFilename(f.it.ID):
+			skipped[cur.name] = duplicateSkip(cur.name, f.it.ID, f.name)
+			winners[f.it.ID] = f
+		default:
+			skipped[f.name] = duplicateSkip(f.name, f.it.ID, cur.name)
+		}
+	}
+	for _, f := range files {
+		if winners[f.it.ID].name != f.name {
+			continue
+		}
+		if err := insertItem(tx, f.it); err != nil {
 			return nil, err
 		}
 	}
-	return warnings, commit(tx)
+	return skipped, commit(tx)
+}
+
+func (i *Index) refresh(store *storage.FS, absPaths []string, prevSkips map[string]skipEntry) (map[string]skipEntry, []string, error) {
+	tx, err := i.db.Begin()
+	if err != nil {
+		return nil, nil, errx.User("beginning index tx: %v", err)
+	}
+	defer tx.Rollback()
+
+	deleteByID := func(id string) error {
+		if _, err := tx.Exec("DELETE FROM items WHERE id = ?", id); err != nil {
+			return errx.User("deleting index item: %v", err)
+		}
+		return nil
+	}
+
+	conflicts := map[string][]string{}
+	for name, entry := range prevSkips {
+		if entry.ConflictID != "" {
+			conflicts[entry.ConflictID] = append(conflicts[entry.ConflictID], name)
+		}
+	}
+	for _, names := range conflicts {
+		slices.Sort(names)
+	}
+
+	var queue []string
+	queued := map[string]bool{}
+	for _, abs := range slices.Sorted(slices.Values(absPaths)) {
+		if ulid := storage.ULIDFromPath(abs); ulid == "" || queued[filepath.Base(abs)] {
+			continue
+		}
+		queued[filepath.Base(abs)] = true
+		queue = append(queue, abs)
+	}
+	for _, abs := range queue {
+		if err := deleteByID(storage.ULIDFromPath(abs)); err != nil {
+			return nil, nil, err
+		}
+	}
+	enqueuePartners := func(id string) {
+		for _, name := range conflicts[id] {
+			if queued[name] {
+				continue
+			}
+			queued[name] = true
+			queue = append(queue, filepath.Join(store.ItemsDir(), name))
+		}
+	}
+
+	skipped := map[string]skipEntry{}
+	claimed := map[string]string{}
+	for qi := 0; qi < len(queue); qi++ {
+		abs := queue[qi]
+		ulid := storage.ULIDFromPath(abs)
+		name := filepath.Base(abs)
+		enqueuePartners(ulid)
+		it, warning := readItem(abs)
+		if warning != "" {
+			skipped[name] = skipEntry{Note: warning}
+			continue
+		}
+		if it == nil {
+			continue
+		}
+		enqueuePartners(it.ID)
+		if it.ID != ulid {
+			canonical := storage.ItemFilename(it.ID)
+			if fileExists(filepath.Join(store.ItemsDir(), canonical)) {
+				skipped[name] = duplicateSkip(name, it.ID, canonical)
+				continue
+			}
+			if first, contested := claimed[it.ID]; contested {
+				skipped[name] = duplicateSkip(name, it.ID, first)
+				continue
+			}
+			if err := deleteByID(it.ID); err != nil {
+				return nil, nil, err
+			}
+		}
+		claimed[it.ID] = name
+		if err := insertItem(tx, it); err != nil {
+			return nil, nil, err
+		}
+	}
+	processed := make([]string, 0, len(queue))
+	for _, abs := range queue {
+		processed = append(processed, filepath.Base(abs))
+	}
+	return skipped, processed, commit(tx)
+}
+
+func duplicateSkip(name, ulid, other string) skipEntry {
+	return skipEntry{
+		Note:       storage.SkipNote(name, fmt.Errorf("duplicate id %s also in %s", ulid, other)),
+		ConflictID: ulid,
+	}
+}
+
+func fileExists(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && !fi.IsDir()
 }
 
 func insertItem(tx *sql.Tx, it *datamodel.Item) error {
@@ -111,15 +216,15 @@ func insertItem(tx *sql.Tx, it *datamodel.Item) error {
 	return nil
 }
 
-func readItem(abs string) (*datamodel.Item, string, error) {
+func readItem(abs string) (*datamodel.Item, string) {
 	it, err := storage.ReadItem(abs)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, "", nil
+			return nil, ""
 		}
-		return nil, storage.SkipNote(filepath.Base(abs), err), nil
+		return nil, storage.SkipNote(filepath.Base(abs), err)
 	}
-	return it, "", nil
+	return it, ""
 }
 
 func dirtyState(absPaths []string) (string, []string) {

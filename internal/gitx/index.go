@@ -1,6 +1,7 @@
 package gitx
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -30,25 +31,30 @@ type Ancestor string
 type Descendant string
 
 func (r Repo) IsAncestor(ancestor Ancestor, descendant Descendant) (bool, error) {
-	cmd := exec.Command("git", "merge-base", "--is-ancestor", string(ancestor), string(descendant))
-	cmd.Dir = r.Dir
+	cmd := gitCommand(r.Dir, "merge-base", "--is-ancestor", string(ancestor), string(descendant))
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err == nil {
 		return true, nil
 	}
 	var exit *exec.ExitError
-	if errors.As(err, &exit) && exit.ExitCode() == 1 {
-		return false, nil
+	if errors.As(err, &exit) {
+		if exit.ExitCode() == 1 {
+			return false, nil
+		}
+		if isUnknownRevision(stderr.String()) {
+			return false, nil
+		}
 	}
 	return false, &CmdError{msg: fmt.Sprintf("git merge-base --is-ancestor %s %s: %v", ancestor, descendant, err)}
 }
 
-func (r Repo) StatusPorcelain(pathspec string) ([]string, error) {
-	out, err := r.OutputRaw("status", "--porcelain", "--", pathspec)
-	if err != nil {
-		return nil, err
-	}
-	return parsePorcelainPaths(out), nil
+func isUnknownRevision(stderr string) bool {
+	s := strings.ToLower(stderr)
+	return strings.Contains(s, "not a valid object name") ||
+		strings.Contains(s, "not a valid commit name") ||
+		strings.Contains(s, "bad revision")
 }
 
 func parsePorcelainPaths(out string) []string {

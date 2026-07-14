@@ -3,6 +3,7 @@ package index
 import (
 	"maps"
 	"path/filepath"
+	"slices"
 
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
@@ -31,14 +32,18 @@ func (i *Index) EnsureFresh(store *storage.FS, repo gitx.Repo, opts Options) (Re
 
 func (i *Index) reindex(store *storage.FS, repo gitx.Repo, opts Options, force bool) (Result, error) {
 	prev, hasMeta := i.loadMeta()
+	if hasMeta && i.emptyDespiteTickets(store, prev) {
+		prev, hasMeta = meta{}, false
+	}
 	p, err := plan(store, repo, force, hasMeta, prev)
 	if err != nil {
 		return Result{}, err
 	}
-	warnings, err := i.dispatch(store, p.decision)
+	newSkips, processed, err := i.dispatch(store, p.decision, prev.Skipped)
 	if err != nil {
 		return Result{}, err
 	}
+	skipped := mergeSkips(prev.Skipped, p.decision, newSkips, processed)
 
 	numbers, err := i.numberToULID()
 	if err != nil {
@@ -78,11 +83,57 @@ func (i *Index) reindex(store *storage.FS, repo gitx.Repo, opts Options, force b
 			DirtyHash:          p.dirtyHash,
 			DirtyPaths:         p.dirtyPaths,
 			TrailerWatermarks:  watermarks,
+			Skipped:            skipped,
 		}); err != nil {
 			return Result{}, err
 		}
 	}
-	return Result{Action: string(p.decision.name), Reason: p.decision.reason, Items: count, Closes: closes, Warnings: warnings}, nil
+	return Result{Action: string(p.decision.name), Reason: p.decision.reason, Items: count, Closes: closes, Warnings: skipNotes(skipped)}, nil
+}
+
+func (i *Index) emptyDespiteTickets(store *storage.FS, prev meta) bool {
+	n, err := i.count()
+	if err != nil || n > 0 {
+		return false
+	}
+	names, err := store.ItemFilenames()
+	if err != nil {
+		return false
+	}
+	for _, name := range names {
+		if _, skipped := prev.Skipped[name]; !skipped {
+			return true
+		}
+	}
+	return false
+}
+
+func mergeSkips(prev map[string]skipEntry, d decision, latest map[string]skipEntry, processed []string) map[string]skipEntry {
+	switch d.name {
+	case actionFull:
+		return latest
+	case actionIncremental:
+		out := maps.Clone(prev)
+		if out == nil {
+			out = map[string]skipEntry{}
+		}
+		for _, name := range processed {
+			delete(out, name)
+		}
+		maps.Copy(out, latest)
+		return out
+	default:
+		return prev
+	}
+}
+
+func skipNotes(skipped map[string]skipEntry) []string {
+	var notes []string
+	for _, e := range skipped {
+		notes = append(notes, e.Note)
+	}
+	slices.Sort(notes)
+	return notes
 }
 
 type planResult struct {
@@ -103,7 +154,7 @@ func plan(store *storage.FS, repo gitx.Repo, force, hasMeta bool, prev meta) (pl
 	if err != nil {
 		return planResult{}, errx.User("locating tickets under repo: %v", err)
 	}
-	statusPaths, err := root.StatusPorcelain(pathspec)
+	statusPaths, err := root.DirtyPaths(pathspec)
 	if err != nil {
 		return planResult{}, err
 	}
@@ -152,14 +203,15 @@ func decide(root gitx.Repo, toplevel, pathspec string, force, hasMeta bool, head
 	}
 }
 
-func (i *Index) dispatch(store *storage.FS, d decision) ([]string, error) {
+func (i *Index) dispatch(store *storage.FS, d decision, prevSkips map[string]skipEntry) (map[string]skipEntry, []string, error) {
 	switch {
 	case d.name == actionFull:
-		return i.full(store)
+		skips, err := i.full(store)
+		return skips, nil, err
 	case d.name == actionIncremental:
-		return i.refresh(d.refresh)
+		return i.refresh(store, d.refresh, prevSkips)
 	default:
-		return nil, nil
+		return nil, nil, nil
 	}
 }
 

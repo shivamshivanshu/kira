@@ -12,7 +12,7 @@ func ReadCached(cacheDir string) ([]*datamodel.Item, error) {
 	if _, err := os.Stat(dbPath(cacheDir)); err != nil {
 		return nil, nil
 	}
-	db, err := sql.Open("sqlite", "file:"+dbPath(cacheDir)+"?mode=ro&immutable=1")
+	db, err := sql.Open("sqlite", "file:"+dbPath(cacheDir)+"?mode=ro&_pragma=busy_timeout(2000)")
 	if err != nil {
 		return nil, errx.User("opening index read-only: %v", err)
 	}

@@ -34,13 +34,13 @@ func ULIDFromPath(p string) string {
 	return ulid
 }
 
-func (s *FS) LoadAll() ([]*datamodel.Item, []string, error) {
+func (s *FS) ItemFilenames() ([]string, error) {
 	entries, err := os.ReadDir(s.ItemsDir())
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil, nil
+			return nil, nil
 		}
-		return nil, nil, errx.User("reading tickets: %v", err)
+		return nil, errx.User("reading tickets: %v", err)
 	}
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
@@ -52,7 +52,14 @@ func (s *FS) LoadAll() ([]*datamodel.Item, []string, error) {
 		}
 	}
 	slices.Sort(names)
+	return names, nil
+}
 
+func (s *FS) LoadAll() ([]*datamodel.Item, []string, error) {
+	names, err := s.ItemFilenames()
+	if err != nil {
+		return nil, nil, err
+	}
 	items := make([]*datamodel.Item, 0, len(names))
 	var warnings []string
 	for _, name := range names {
