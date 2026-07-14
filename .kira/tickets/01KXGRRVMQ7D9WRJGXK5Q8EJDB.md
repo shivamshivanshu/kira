@@ -5,7 +5,8 @@ aliases: [KIRA-100]
 type: ticket
 subtype: feature
 title: "Link policy: subject-leading bare KIRA-n counts as linked (config knob, retroactive reindex)"
-state: REVIEW
+state: DONE
+resolution: done
 labels: [data]
 epic: null
 blocked_by: []
