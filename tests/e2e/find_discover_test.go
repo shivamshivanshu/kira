@@ -21,7 +21,7 @@ func setupCleanBin(env *testscript.Env) error {
 	if err := os.MkdirAll(bin, 0o777); err != nil {
 		return err
 	}
-	for _, tool := range []string{"git", "true"} {
+	for _, tool := range []string{"git", "sh", "true"} {
 		path, err := exec.LookPath(tool)
 		if err != nil {
 			return err

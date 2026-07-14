@@ -27,7 +27,7 @@ func TestViewProcessOpensReadonlyTempCopy(t *testing.T) {
 	if tmpPath == srcPath {
 		t.Fatal("viewer must open a temp copy, not the live store file")
 	}
-	if want := []string{"vi", "-R", tmpPath}; !slices.Equal(cmd.Args, want) {
+	if want := []string{"sh", "-c", `vi "$@"`, "vi", "-R", tmpPath}; !slices.Equal(cmd.Args, want) {
 		t.Errorf("viewer args = %v, want %v", cmd.Args, want)
 	}
 	fi, err := os.Stat(tmpPath)

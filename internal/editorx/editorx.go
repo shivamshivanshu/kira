@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 )
 
@@ -30,13 +29,21 @@ func (s Stdio) withDefaults() Stdio {
 	return s
 }
 
-func Command(configured string) ([]string, error) {
+func Command(configured string) (string, error) {
 	for _, candidate := range []string{configured, os.Getenv("EDITOR"), os.Getenv("VISUAL")} {
 		if ed := strings.TrimSpace(candidate); ed != "" {
-			return strings.Fields(ed), nil
+			return ed, nil
 		}
 	}
-	return nil, errors.New("no editor configured: set ui.editor or $EDITOR")
+	return "", errors.New("no editor configured: set ui.editor or $EDITOR")
+}
+
+func shellCommand(editor string, args ...string) *exec.Cmd {
+	return exec.Command("sh", append([]string{"-c", editor + ` "$@"`, editor}, args...)...)
+}
+
+func editorName(editor string) string {
+	return filepath.Base(strings.Fields(editor)[0])
 }
 
 func Edit(configured, path string, stdio Stdio) error {
@@ -45,13 +52,12 @@ func Edit(configured, path string, stdio Stdio) error {
 		return err
 	}
 	stdio = stdio.withDefaults()
-	args := append(slices.Clone(editor[1:]), path)
-	cmd := exec.Command(editor[0], args...)
+	cmd := shellCommand(editor, path)
 	cmd.Stdin = stdio.In
 	cmd.Stdout = stdio.Out
 	cmd.Stderr = stdio.Err
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("editor %s: %v", filepath.Base(editor[0]), err)
+		return fmt.Errorf("editor %s: %v", editorName(editor), err)
 	}
 	return nil
 }
@@ -63,9 +69,9 @@ func View(configured, path string) (*exec.Cmd, error) {
 	if err != nil {
 		return nil, err
 	}
-	args := slices.Clone(editor[1:])
-	if vimFamily[filepath.Base(editor[0])] {
-		args = append(args, "-R")
+	args := []string{path}
+	if vimFamily[editorName(editor)] {
+		args = []string{"-R", path}
 	}
-	return exec.Command(editor[0], append(args, path)...), nil
+	return shellCommand(editor, args...), nil
 }

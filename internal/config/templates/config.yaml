@@ -6,7 +6,7 @@
 #   icons: auto                                    # glyph set: auto | nerd | emoji | text
 #   background: auto                               # palette the TUI and board assume: auto | dark | light
 #   color: auto                                    # ANSI color: auto | always | never
-#   editor: ""                                     # editor command for drafts, split on whitespace (no shell quoting); empty falls back to $EDITOR then $VISUAL
+#   editor: ""                                     # editor command for drafts, run via sh -c so shell quoting works; empty falls back to $EDITOR then $VISUAL
 #   auto_tui: true                                 # launch the TUI when kira is run bare in a terminal
 #   list:
 #     columns: [number, state, type, priority, title]   # columns shown by `kira list`

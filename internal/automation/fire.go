@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -78,18 +79,21 @@ func envMirror(ev Event, root string) []string {
 
 func runHook(w io.Writer, root string, h datamodel.AutomationHook, stdin []byte, env []string) {
 	name := hookName(h)
-	argv := strings.Fields(h.Run)
-	if len(argv) == 0 {
+	run := strings.TrimSpace(h.Run)
+	if run == "" {
 		return
 	}
 	timeout, _ := h.TimeoutDuration()
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
+	cmd := exec.CommandContext(ctx, "sh", "-c", run)
 	cmd.Dir = root
 	cmd.Env = env
 	cmd.Stdin = bytes.NewReader(stdin)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
+	cmd.WaitDelay = time.Second
 	var out bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &out
 	err := cmd.Run()
