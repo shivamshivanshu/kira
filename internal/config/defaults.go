@@ -57,7 +57,7 @@ func Default() *datamodel.Config {
 			Trailer:          "Kira-Ticket",
 			CloseTrailer:     "Kira-Closes",
 			SubjectPrefix:    "kira: ",
-			LinkMarkers:      []datamodel.LinkMarker{datamodel.LinkMarkerTrailer, datamodel.LinkMarkerSubject},
+			LinkMarkers:      []datamodel.LinkMarker{datamodel.LinkMarkerTrailer, datamodel.LinkMarkerSubject, datamodel.LinkMarkerLeadingNumber},
 			ReferenceMarkers: []datamodel.ReferenceMarker{datamodel.ReferenceMarkerBare},
 		},
 		Merge:  datamodel.Merge{Policy: datamodel.MergeAuto},

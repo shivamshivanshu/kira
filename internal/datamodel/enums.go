@@ -22,11 +22,12 @@ var CommitModes = []CommitMode{CommitAuto, CommitManual, CommitPrompt}
 type LinkMarker string
 
 const (
-	LinkMarkerTrailer LinkMarker = "trailer"
-	LinkMarkerSubject LinkMarker = "subject"
+	LinkMarkerTrailer       LinkMarker = "trailer"
+	LinkMarkerSubject       LinkMarker = "subject"
+	LinkMarkerLeadingNumber LinkMarker = "leading_number"
 )
 
-var LinkMarkers = []LinkMarker{LinkMarkerTrailer, LinkMarkerSubject}
+var LinkMarkers = []LinkMarker{LinkMarkerTrailer, LinkMarkerSubject, LinkMarkerLeadingNumber}
 
 type ReferenceMarker string
 

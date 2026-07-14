@@ -412,6 +412,181 @@ func TestCommitLinkKinds(t *testing.T) {
 	}
 }
 
+func TestCommitLinkLeadingNumberUnresolvedTrailerBlocks(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.commit(t, "seed")
+	f.commitTrailer(t, "KIRA-1 fix flaky path", "Kira-Ticket: KIRA-15")
+
+	idx := open(t, f)
+	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+		t.Fatalf("EnsureFresh: %v", err)
+	}
+	links := mustCommitLinks(t, idx, a)
+	if len(links) != 1 || links[0].Kind != index.LinkReferenced {
+		t.Fatalf("an unresolved trailer must still outrank the leading number: %+v", links)
+	}
+}
+
+func TestCommitLinkLeadingNumberYieldsToMarker(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.writeTicket(t, b, ticket(b, "KIRA-2", "second"))
+	f.commit(t, "seed")
+	f.commitTrailer(t, "KIRA-1 fix [[KIRA-2]] widget", "unrelated: x")
+
+	idx := open(t, f)
+	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+		t.Fatalf("EnsureFresh: %v", err)
+	}
+	linksB := mustCommitLinks(t, idx, b)
+	if len(linksB) != 1 || linksB[0].Kind != index.LinkLinked {
+		t.Fatalf("the subject marker outranks the leading number: %+v", linksB)
+	}
+	linksA := mustCommitLinks(t, idx, a)
+	if len(linksA) != 1 || linksA[0].Kind != index.LinkReferenced {
+		t.Fatalf("the leading number losing to the marker should demote to referenced: %+v", linksA)
+	}
+}
+
+func TestCommitLinkLeadingNumber(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticketWithAlias(a, "KIRA-1", "KIRA-9", "first"))
+	f.writeTicket(t, b, ticket(b, "KIRA-2", "second"))
+	f.commit(t, "seed tickets")
+	f.commitTrailer(t, "KIRA-1 implement directly", "unrelated: x")
+	f.commitTrailer(t, "fix KIRA-1 mid subject", "unrelated: y")
+	f.commitTrailer(t, "plain subject", "KIRA-1 in the body only")
+	f.commitTrailer(t, "KIRA-2 claimed but trailer wins", "Kira-Ticket: KIRA-1")
+	f.commitTrailer(t, "KIRA-9 via alias", "unrelated: z")
+
+	idx := open(t, f)
+	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+		t.Fatalf("EnsureFresh: %v", err)
+	}
+
+	linksA, err := idx.CommitLinks(a)
+	if err != nil {
+		t.Fatalf("CommitLinks(a): %v", err)
+	}
+	kindsA := kindsOf(linksA)
+	want := map[string]index.LinkKind{
+		"KIRA-1 implement directly":       index.LinkLinked,
+		"fix KIRA-1 mid subject":          index.LinkReferenced,
+		"plain subject":                   index.LinkReferenced,
+		"KIRA-2 claimed but trailer wins": index.LinkLinked,
+		"KIRA-9 via alias":                index.LinkLinked,
+	}
+	for subj, kind := range want {
+		if kindsA[subj] != kind {
+			t.Fatalf("KIRA-1 commit %q kind=%q want %q; links=%+v", subj, kindsA[subj], kind, linksA)
+		}
+	}
+	if len(linksA) != len(want) {
+		t.Fatalf("KIRA-1 want %d commits, got %d: %+v", len(want), len(linksA), linksA)
+	}
+
+	linksB, err := idx.CommitLinks(b)
+	if err != nil {
+		t.Fatalf("CommitLinks(b): %v", err)
+	}
+	if len(linksB) != 1 || linksB[0].Kind != index.LinkReferenced {
+		t.Fatalf("KIRA-2 leading number losing to the trailer should demote to referenced: %+v", linksB)
+	}
+}
+
+func TestCommitLinkLeadingNumberSubjectPrefix(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.commit(t, "seed")
+	f.commitTrailer(t, "kira: KIRA-1 state TODO -> DOING", "unrelated: x")
+	f.commitTrailer(t, "notes on kira: KIRA-1 later", "unrelated: y")
+
+	opts := trailerOpts()
+	opts.SubjectPrefix = "kira: "
+
+	idx := open(t, f)
+	if _, err := idx.EnsureFresh(f.store, f.repo, opts); err != nil {
+		t.Fatalf("EnsureFresh: %v", err)
+	}
+	kinds := kindsOf(mustCommitLinks(t, idx, a))
+	if kinds["kira: KIRA-1 state TODO -> DOING"] != index.LinkLinked {
+		t.Fatalf("prefixed leading number should link: %+v", kinds)
+	}
+	if kinds["notes on kira: KIRA-1 later"] != index.LinkReferenced {
+		t.Fatalf("mid-subject prefix mention should stay referenced: %+v", kinds)
+	}
+}
+
+func TestCommitLinkLeadingNumberDisabled(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.commit(t, "seed")
+	f.commitTrailer(t, "KIRA-1 old behavior", "unrelated: x")
+
+	opts := trailerOpts()
+	opts.LinkMarkers = []datamodel.LinkMarker{datamodel.LinkMarkerTrailer, datamodel.LinkMarkerSubject}
+
+	idx := open(t, f)
+	if _, err := idx.EnsureFresh(f.store, f.repo, opts); err != nil {
+		t.Fatalf("EnsureFresh: %v", err)
+	}
+	links := mustCommitLinks(t, idx, a)
+	if len(links) != 1 || links[0].Kind != index.LinkReferenced {
+		t.Fatalf("with leading_number off a bare leading token must stay referenced: %+v", links)
+	}
+}
+
+func TestCommitLinkLeadingNumberRetroactiveReclassify(t *testing.T) {
+	t.Parallel()
+	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	f := newRepo(t)
+	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+	f.commit(t, "seed")
+	f.commitTrailer(t, "KIRA-1 claim by convention", "unrelated: x")
+
+	off := trailerOpts()
+	off.LinkMarkers = []datamodel.LinkMarker{datamodel.LinkMarkerTrailer, datamodel.LinkMarkerSubject}
+
+	idx := open(t, f)
+	if _, err := idx.EnsureFresh(f.store, f.repo, off); err != nil {
+		t.Fatalf("EnsureFresh knob-off: %v", err)
+	}
+	links := mustCommitLinks(t, idx, a)
+	if len(links) != 1 || links[0].Kind != index.LinkReferenced {
+		t.Fatalf("knob-off scan should classify as referenced: %+v", links)
+	}
+
+	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+		t.Fatalf("EnsureFresh knob-on: %v", err)
+	}
+	links = mustCommitLinks(t, idx, a)
+	if len(links) != 1 || links[0].Kind != index.LinkLinked {
+		t.Fatalf("flipping the knob must reclassify without a history change: %+v", links)
+	}
+}
+
+func mustCommitLinks(t *testing.T, idx *index.Index, ulid string) []index.CommitLink {
+	t.Helper()
+	links, err := idx.CommitLinks(ulid)
+	if err != nil {
+		t.Fatalf("CommitLinks: %v", err)
+	}
+	return links
+}
+
 func TestCommitLinkMarkersDisable(t *testing.T) {
 	t.Parallel()
 	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"

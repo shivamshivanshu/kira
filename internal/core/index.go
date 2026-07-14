@@ -18,6 +18,7 @@ func indexOptions(cfg *datamodel.Config) index.Options {
 		BoardKeys:        cfg.BoardKeys(),
 		TrailerKey:       cfg.Commit.Trailer,
 		CloseTrailer:     cfg.Commit.CloseTrailer,
+		SubjectPrefix:    cfg.Commit.SubjectPrefix,
 		LandedRef:        cfg.Git.LandedRef,
 		LinkMarkers:      cfg.Commit.LinkMarkers,
 		ReferenceMarkers: cfg.Commit.ReferenceMarkers,

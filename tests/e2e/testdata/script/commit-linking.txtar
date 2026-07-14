@@ -1,7 +1,8 @@
-# Two-tier commit linking: a trailer or a promoted [[KIRA-n]] subject marker is
-# LINKED; every other ref (bare tokens, plus non-primary or demoted markers with
-# their brackets stripped) is REFERENCED. Markers are configurable per repo, and a
-# marker-config change auto-reclassifies existing commits (no manual reindex).
+# Two-tier commit linking: a trailer, a promoted [[KIRA-n]] subject marker, or a
+# bare KIRA-n leading the subject is LINKED; every other ref (bare tokens, plus
+# non-primary or demoted markers with their brackets stripped) is REFERENCED.
+# Markers are configurable per repo, and a marker-config change auto-reclassifies
+# existing commits (no manual reindex).
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
@@ -36,6 +37,18 @@ exec kira show KIRA-2 --json
 stdout 'conflicting subject'
 ! stdout '"referenced_by": \[\]'
 
+# a bare KIRA-n leading the subject claims the commit: LINKED, not just referenced
+exec git commit --allow-empty -m 'KIRA-1 direct subject convention'
+exec kira show KIRA-1 --json
+stdout '(?s)direct subject convention.*"referenced_by"'
+stdout '"referenced_by": \[\]'
+
+# a mid-subject bare token still only references
+exec git commit --allow-empty -m 'touch up KIRA-1 rendering'
+exec kira show KIRA-1 --json
+stdout '(?s)"referenced_by".*touch up'
+! stdout '(?s)touch up.*"referenced_by"'
+
 # reference_markers: [] silences the referenced tier (bare refs AND demoted markers);
 # the config change alone re-scans existing commits, no kira index --full needed
 cp no-bare.yaml .kira/config.yaml
@@ -45,14 +58,23 @@ exec kira show KIRA-2 --json
 ! stdout 'unrelated subject'
 ! stdout 'conflicting subject'
 
-# link_markers without subject: [[KIRA-1]] is ignored as a link but, with bare on,
-# demotes to referenced (brackets stripped) rather than vanishing
+# link_markers without subject or leading_number: [[KIRA-1]] and the leading bare
+# number are ignored as links but, with bare on, demote to referenced
 cp no-subject.yaml .kira/config.yaml
 exec git add .kira/config.yaml
 exec git commit -m 'trailer-only linking'
 exec kira show KIRA-1 --json
 stdout 'implement via marker'
 ! stdout '"referenced_by": \[\]'
+! stdout '(?s)direct subject convention.*"referenced_by"'
+stdout '(?s)"referenced_by".*direct subject convention'
+
+# restoring leading_number relinks the old commit retroactively
+cp with-leading.yaml .kira/config.yaml
+exec git add .kira/config.yaml
+exec git commit -m 'restore leading_number'
+exec kira show KIRA-1 --json
+stdout '(?s)direct subject convention.*"referenced_by"'
 
 -- no-bare.yaml --
 project:
@@ -65,3 +87,9 @@ project:
   key: KIRA
 commit:
   link_markers: [trailer]
+
+-- with-leading.yaml --
+project:
+  key: KIRA
+commit:
+  link_markers: [trailer, subject, leading_number]

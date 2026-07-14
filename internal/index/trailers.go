@@ -21,6 +21,7 @@ type Options struct {
 	BoardKeys        []string
 	TrailerKey       string
 	CloseTrailer     string
+	SubjectPrefix    string
 	LandedRef        string
 	Closes           bool
 	LinkMarkers      []datamodel.LinkMarker
@@ -169,11 +170,13 @@ func trailerRange(root gitx.Repo, watermark, head string) (rangeExpr string, rew
 }
 
 type linkPolicy struct {
-	trailer bool
-	subject bool
-	bare    bool
-	marker  *regexp.Regexp
-	bareRef *regexp.Regexp
+	trailer       bool
+	subject       bool
+	leadingNumber bool
+	bare          bool
+	subjectPrefix string
+	marker        *regexp.Regexp
+	bareRef       *regexp.Regexp
 }
 
 func scanConfigHash(opts Options) string {
@@ -198,17 +201,21 @@ func scanConfigHash(opts Options) string {
 		b.WriteString(string(m))
 		b.WriteByte(0x1f)
 	}
+	b.WriteByte(0)
+	b.WriteString(opts.SubjectPrefix)
 	sum := sha256.Sum256([]byte(b.String()))
 	return hex.EncodeToString(sum[:])
 }
 
 func newLinkPolicy(opts Options, numbers map[string]string) linkPolicy {
 	return linkPolicy{
-		trailer: slices.Contains(opts.LinkMarkers, datamodel.LinkMarkerTrailer),
-		subject: slices.Contains(opts.LinkMarkers, datamodel.LinkMarkerSubject),
-		bare:    slices.Contains(opts.ReferenceMarkers, datamodel.ReferenceMarkerBare),
-		marker:  subjectMarkerPattern(opts.ProjectKey),
-		bareRef: lenientPattern(opts.BoardKeys, numbers),
+		trailer:       slices.Contains(opts.LinkMarkers, datamodel.LinkMarkerTrailer),
+		subject:       slices.Contains(opts.LinkMarkers, datamodel.LinkMarkerSubject),
+		leadingNumber: slices.Contains(opts.LinkMarkers, datamodel.LinkMarkerLeadingNumber),
+		bare:          slices.Contains(opts.ReferenceMarkers, datamodel.ReferenceMarkerBare),
+		subjectPrefix: opts.SubjectPrefix,
+		marker:        subjectMarkerPattern(opts.ProjectKey),
+		bareRef:       lenientPattern(opts.BoardKeys, numbers),
 	}
 }
 
@@ -269,6 +276,12 @@ func resolveItemRefs(c gitx.Commit, numbers map[string]string, pol linkPolicy) (
 	if pol.subject && pol.marker != nil && len(linked) == 0 {
 		if m := pol.marker.FindString(c.Subject); m != "" {
 			addLinked(strings.Trim(m, "[]"))
+		}
+	}
+	if pol.leadingNumber && pol.bareRef != nil && len(linked) == 0 && (!pol.trailer || len(c.Tickets) == 0) {
+		s := strings.TrimLeft(strings.TrimPrefix(c.Subject, pol.subjectPrefix), " \t")
+		if loc := pol.bareRef.FindStringIndex(s); loc != nil && loc[0] == 0 {
+			addLinked(s[:loc[1]])
 		}
 	}
 
