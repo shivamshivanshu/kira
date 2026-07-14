@@ -62,9 +62,23 @@ func (r Repo) Stage(paths ...string) error {
 }
 
 func (r Repo) Commit(subject, trailerKey, trailerVal string) error {
-	args := []string{"commit", "-m", subject}
-	if trailerVal != "" {
-		args = append(args, "-m", trailerKey+": "+trailerVal)
+	if trailerVal == "" {
+		return r.CommitParts(subject)
+	}
+	return r.CommitParts(subject, trailerKey+": "+trailerVal)
+}
+
+func (r Repo) CommitParts(parts ...string) error {
+	return r.CommitScoped(nil, parts...)
+}
+
+func (r Repo) CommitScoped(pathspecs []string, parts ...string) error {
+	args := []string{"commit"}
+	for _, p := range parts {
+		args = append(args, "-m", p)
+	}
+	if len(pathspecs) > 0 {
+		args = append(append(args, "--"), pathspecs...)
 	}
 	_, err := r.Output(args...)
 	return err
@@ -178,6 +192,27 @@ func AppendLineIfMissing(path, line string) error {
 	return os.WriteFile(path, []byte(body+line+"\n"), 0o644)
 }
 
+func RemoveLineIfPresent(path, line string) error {
+	existing, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("reading %s: %w", path, err)
+	}
+	if !containsLine(string(existing), line) {
+		return nil
+	}
+	kept := make([]string, 0)
+	for l := range strings.Lines(string(existing)) {
+		if strings.TrimSpace(l) == line {
+			continue
+		}
+		kept = append(kept, l)
+	}
+	return os.WriteFile(path, []byte(strings.Join(kept, "")), 0o644)
+}
+
 func (r Repo) RebaseInProgress() bool {
 	for _, rel := range []string{"rebase-merge", "rebase-apply"} {
 		p, err := r.GitPath(rel)
@@ -197,6 +232,22 @@ func (r Repo) UnmergedPaths() ([]string, error) {
 
 func (r Repo) SetConfig(key, val string) error {
 	_, err := r.Output("config", key, val)
+	return err
+}
+
+func (r Repo) ConfigValue(key string) string {
+	v, err := r.Output("config", "--get", key)
+	if err != nil {
+		return ""
+	}
+	return v
+}
+
+func (r Repo) UnsetConfig(key string) error {
+	if r.ConfigValue(key) == "" {
+		return nil
+	}
+	_, err := r.Output("config", "--unset", key)
 	return err
 }
 

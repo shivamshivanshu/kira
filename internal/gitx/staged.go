@@ -9,7 +9,7 @@ func (r Repo) ShowStaged(path string) (string, error) {
 }
 
 func (r Repo) DirtyPaths(pathspecs ...string) ([]string, error) {
-	out, err := r.OutputRaw(append([]string{"status", "--porcelain", "--"}, pathspecs...)...)
+	out, err := r.OutputRaw(append([]string{"status", "--porcelain", "--untracked-files=all", "--"}, pathspecs...)...)
 	if err != nil {
 		return nil, err
 	}

@@ -539,3 +539,11 @@ type Renumbering struct {
 type ReconcileResult struct {
 	Renumbered []Renumbering `json:"renumbered"`
 }
+
+type CommitResult struct {
+	Committed bool     `json:"committed"`
+	SHA       string   `json:"sha,omitempty"`
+	Subject   string   `json:"subject,omitempty"`
+	Files     int      `json:"files"`
+	Items     []string `json:"items"`
+}

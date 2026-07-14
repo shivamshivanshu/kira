@@ -235,3 +235,46 @@ func TestInvalidUserHooksIgnored(t *testing.T) {
 		t.Fatalf("invalid user hook must be dropped: %+v", cfg.UserAutomation)
 	}
 }
+
+func TestUserCommitSubjectApplies(t *testing.T) {
+	t.Parallel()
+	dir, env := userTierEnv(t)
+	writeUserFile(t, dir, "config.yaml", "commit:\n  subject: 'tickets: {numbers}'\n")
+
+	cfg, warnings := loadWith(t, minimalRepo, env)
+	if cfg.UserCommitSubject != "tickets: {numbers}" {
+		t.Errorf("UserCommitSubject = %q", cfg.UserCommitSubject)
+	}
+	if strings.Contains(warnings, "commit") {
+		t.Errorf("commit key must be accepted in the user tier, got warning: %q", warnings)
+	}
+}
+
+func TestUserCommitSubjectRepoCannotOverride(t *testing.T) {
+	t.Parallel()
+	dir, env := userTierEnv(t)
+	writeUserFile(t, dir, "config.yaml", "commit:\n  subject: 'mine {count}'\n")
+
+	repo := minimalRepo + "commit:\n  subject_prefix: 'repo: '\n"
+	cfg, _ := loadWith(t, repo, env)
+	if cfg.UserCommitSubject != "mine {count}" {
+		t.Errorf("repo tier clobbered user commit subject: %q", cfg.UserCommitSubject)
+	}
+	if cfg.Commit.SubjectPrefix != "repo: " {
+		t.Errorf("repo subject_prefix lost: %q", cfg.Commit.SubjectPrefix)
+	}
+}
+
+func TestUserCommitSubjectMultilineIgnored(t *testing.T) {
+	t.Parallel()
+	dir, env := userTierEnv(t)
+	writeUserFile(t, dir, "config.yaml", "commit:\n  subject: \"a\\nb\"\n")
+
+	cfg, warnings := loadWith(t, minimalRepo, env)
+	if cfg.UserCommitSubject != "" {
+		t.Errorf("multi-line subject must be ignored, got %q", cfg.UserCommitSubject)
+	}
+	if !strings.Contains(warnings, "single line") {
+		t.Errorf("expected single-line warning, got %q", warnings)
+	}
+}

@@ -1,0 +1,133 @@
+# kira commit: package all pending kira changes into one commit, with
+# per-ticket trailers, under commit.mode: manual.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init --initial-branch=main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp manual-config.yaml .kira/config.yaml
+exec git add .kira/config.yaml
+exec git commit -m 'switch to manual mode'
+
+# a clean tree refuses with a hint.
+! exec kira commit
+stderr 'no kira changes to commit'
+
+# mutations accumulate without commits.
+exec kira create ticket --title First --no-edit
+exec kira create ticket --title Second --no-edit
+exec git rev-list --count HEAD
+stdout '^2$'
+
+# one kira commit packages both, subject heading + body + one trailer per ticket.
+exec kira commit
+stdout 'update 2 items'
+exec git rev-list --count HEAD
+stdout '^3$'
+exec git log -1 --format=%B
+stdout 'kira: update 2 items'
+stdout 'KIRA-1 First'
+stdout 'KIRA-2 Second'
+stdout 'Kira-Ticket: KIRA-1'
+stdout 'Kira-Ticket: KIRA-2'
+
+# the kira tree is clean afterwards and a second kira commit refuses.
+exec git status --porcelain -- .kira
+! stdout .
+! exec kira commit
+stderr 'no kira changes to commit'
+
+# the subject heading template is a user-tier preference.
+env XDG_CONFIG_HOME=$WORK/xdg
+mkdir $WORK/xdg/kira
+cp user-config.yaml $WORK/xdg/kira/config.yaml
+exec kira create ticket --title Third --no-edit
+exec kira commit --json
+stdout '"committed": true'
+stdout '"subject": "tickets: KIRA-3"'
+
+# a change with no item files commits with an empty items list, not null.
+env XDG_CONFIG_HOME=
+cp new-ignore .kira/.gitignore
+exec kira commit --json
+stdout '"items": \[\]'
+stdout '"subject": "kira: update 1 files"'
+
+# a pre-staged foreign file is neither committed nor unstaged by kira commit.
+cp user-config.yaml foreign.txt
+exec git add foreign.txt
+exec kira create ticket --title Fourth --no-edit
+exec kira commit
+exec git show --name-only --format= HEAD
+! stdout 'foreign.txt'
+exec git diff --cached --name-only
+stdout 'foreign.txt'
+
+-- user-config.yaml --
+commit:
+  subject: 'tickets: {numbers}'
+-- new-ignore --
+.cache/
+scratch/
+-- manual-config.yaml --
+version: 1
+
+project:
+  key: KIRA
+  name: kira
+
+id:
+  style: sequential
+
+workflows:
+  ticket:
+    states:
+      - { key: TODO,        category: todo }
+      - { key: IN_PROGRESS, category: doing }
+      - { key: REVIEW,      category: doing }
+      - { key: DONE,        category: done }
+      - { key: WONT_DO,     category: done, resolution: dropped }
+    initial: TODO
+    transitions:
+      TODO:        [IN_PROGRESS, WONT_DO]
+      IN_PROGRESS: [REVIEW, TODO, WONT_DO]
+      REVIEW:      [DONE, IN_PROGRESS]
+      DONE:        []
+      WONT_DO:     []
+    enforce_transitions: true
+  epic:
+    states:
+      - { key: PLANNED, category: todo }
+      - { key: ACTIVE,  category: doing }
+      - { key: DONE,    category: done }
+    initial: PLANNED
+    transitions:
+      PLANNED: [ACTIVE]
+      ACTIVE:  [DONE]
+      DONE:    []
+
+labels:
+  known: []
+  strict: false
+
+people:
+  known: []
+  strict: false
+
+commit:
+  mode: manual
+  trailer: Kira-Ticket
+
+merge:
+  policy: auto
+
+sync:
+  push: false
+
+ui:
+  icons: auto
+
+estimate:
+  unit: points

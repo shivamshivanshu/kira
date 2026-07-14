@@ -49,6 +49,7 @@ func topLevelTypes() []reflect.Type {
 		reflect.TypeFor[datamodel.BoardResult](),
 		reflect.TypeFor[datamodel.VersionResult](),
 		reflect.TypeFor[datamodel.NowResult](),
+		reflect.TypeFor[datamodel.CommitResult](),
 	}
 }
 

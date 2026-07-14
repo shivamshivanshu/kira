@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -18,6 +19,7 @@ const (
 
 	userKeyUI         = "ui"
 	userKeyWorkon     = "workon"
+	userKeyCommit     = "commit"
 	userKeyAutomation = "automation"
 )
 
@@ -34,7 +36,12 @@ func UserConfigDir(env func(string) string) (string, bool) {
 type userTier struct {
 	ui     *datamodel.UI
 	workon *datamodel.Workon
+	commit *userCommit
 	hooks  []datamodel.AutomationHook
+}
+
+type userCommit struct {
+	Subject string `yaml:"subject"`
 }
 
 type ignoreFunc func(format string, args ...any)
@@ -50,27 +57,26 @@ func readUserTier(env func(string) string, warn io.Writer) userTier {
 	if !ok {
 		return userTier{}
 	}
-	ui, workon := readUserPrefs(filepath.Join(dir, userConfigFileName), warn)
-	return userTier{
-		ui:     ui,
-		workon: workon,
-		hooks:  readUserHooks(dir, warn),
-	}
+	tier := readUserPrefs(filepath.Join(dir, userConfigFileName), warn)
+	tier.hooks = readUserHooks(dir, warn)
+	return tier
 }
 
-func readUserPrefs(path string, warn io.Writer) (*datamodel.UI, *datamodel.Workon) {
+func readUserPrefs(path string, warn io.Writer) userTier {
 	ignore := ignorer(warn, path)
 	root, ok := readMapping(path, ignore)
 	if !ok {
-		return nil, nil
+		return userTier{}
 	}
-	var uiNode, workonNode *yaml.Node
+	var uiNode, workonNode, commitNode *yaml.Node
 	for i := 0; i+1 < len(root.Content); i += 2 {
 		switch key := root.Content[i].Value; key {
 		case userKeyUI:
 			uiNode = root.Content[i+1]
 		case userKeyWorkon:
 			workonNode = root.Content[i+1]
+		case userKeyCommit:
+			commitNode = root.Content[i+1]
 		case userKeyAutomation:
 			ignore("automation: personal hooks belong in %s", userHooksYAMLName)
 		default:
@@ -78,8 +84,18 @@ func readUserPrefs(path string, warn io.Writer) (*datamodel.UI, *datamodel.Worko
 		}
 	}
 	def := Default()
-	return decodeUserSection(uiNode, def.UI, userKeyUI, validateUISection, ignore),
-		decodeUserSection(workonNode, def.Workon, userKeyWorkon, validateWorkonSection, ignore)
+	return userTier{
+		ui:     decodeUserSection(uiNode, def.UI, userKeyUI, validateUISection, ignore),
+		workon: decodeUserSection(workonNode, def.Workon, userKeyWorkon, validateWorkonSection, ignore),
+		commit: decodeUserSection(commitNode, userCommit{}, userKeyCommit, validateUserCommit, ignore),
+	}
+}
+
+func validateUserCommit(c userCommit) error {
+	if strings.ContainsAny(c.Subject, "\n\r") {
+		return fmt.Errorf("commit.subject: must be a single line")
+	}
+	return nil
 }
 
 func decodeUserSection[T any](node *yaml.Node, def T, label string, validate func(T) error, ignore ignoreFunc) *T {
