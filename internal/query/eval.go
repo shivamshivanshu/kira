@@ -142,9 +142,7 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 		}
 		return scalarPred(eq, want, accessors[fieldSprint]), nil
 	case fieldBoard:
-		return scalarPred(eq, strings.ToUpper(want), func(it *datamodel.Item, _ *datamodel.Config) string {
-			return strings.ToUpper(id.KeyOf(it.Number))
-		}), nil
+		return scalarPred(eq, strings.ToUpper(want), accessors[fieldBoard]), nil
 	case fieldLabel:
 		return func(it *datamodel.Item, _ *datamodel.Config) bool {
 			return slices.Contains(it.Labels, want) == eq
@@ -278,6 +276,7 @@ var accessors = map[string]func(*datamodel.Item, *datamodel.Config) string{
 	fieldCreated:    func(it *datamodel.Item, _ *datamodel.Config) string { return it.Created },
 	fieldUpdated:    func(it *datamodel.Item, _ *datamodel.Config) string { return it.Updated },
 	fieldActivity:   func(it *datamodel.Item, _ *datamodel.Config) string { return it.Activity },
+	fieldBoard:      func(it *datamodel.Item, _ *datamodel.Config) string { return strings.ToUpper(id.KeyOf(it.Number)) },
 }
 
 func scalarGet(field string) func(*datamodel.Item, *datamodel.Config) string {

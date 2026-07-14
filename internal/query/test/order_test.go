@@ -104,6 +104,29 @@ func TestOrderBy(t *testing.T) {
 	}
 }
 
+func TestOrderByBoard(t *testing.T) {
+	t.Parallel()
+	items, cfg := fixture()
+	other := &datamodel.Item{
+		ID: id.Mint().String(), Number: "AAA-1", Type: datamodel.TypeTicket, Title: "Other board",
+		State: "TODO", Created: "2026-07-01T00:00:00Z", Updated: "2026-07-01T00:00:00Z",
+	}
+	items = append(items, other)
+	tests := []struct {
+		expr string
+		want string
+	}{
+		{"x ORDER BY board", "AAA-1,KIRA-100,KIRA-1,KIRA-2,KIRA-3"},
+		{"x ORDER BY board desc", "KIRA-100,KIRA-1,KIRA-2,KIRA-3,AAA-1"},
+	}
+	for _, tc := range tests {
+		got := orderNums(t, tc.expr, items, cfg)
+		if s := strings.Join(got, ","); s != tc.want {
+			t.Errorf("%q ordered %s, want %s", tc.expr, s, tc.want)
+		}
+	}
+}
+
 func TestOrderLessEqualStringKeys(t *testing.T) {
 	t.Parallel()
 	items, cfg := fixture()

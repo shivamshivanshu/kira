@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -90,12 +91,12 @@ func pickFzf(cands []core.Candidate) (string, error) {
 	if exe, err := os.Executable(); err == nil {
 		opts.PreviewCmd = exe + " show {1}"
 	}
-	selection, aborted, err := fzfx.Pick(rows, opts)
-	if err != nil {
-		return "", errx.Env("%v", err)
-	}
-	if aborted {
+	selection, err := fzfx.Pick(rows, opts)
+	switch {
+	case errors.Is(err, fzfx.ErrCancelled):
 		return "", nil
+	case err != nil:
+		return "", errx.Env("%v", err)
 	}
 	return refFromLine(selection), nil
 }

@@ -95,6 +95,9 @@ func TestEval(t *testing.T) {
 		{"resolution=done", []string{"KIRA-3"}},
 		{"priority=P1", []string{"KIRA-1"}},
 		{"rank=aam", []string{"KIRA-1"}},
+		{"board=KIRA", []string{"KIRA-1", "KIRA-100", "KIRA-2", "KIRA-3"}},
+		{"board=kira", []string{"KIRA-1", "KIRA-100", "KIRA-2", "KIRA-3"}},
+		{"board!=KIRA", nil},
 		{"sprint=2026-S14", []string{"KIRA-1"}},
 		{"epic=KIRA-100", []string{"KIRA-1"}},
 		{"NOT epic=KIRA-100", []string{"KIRA-100", "KIRA-2", "KIRA-3"}},
@@ -147,6 +150,25 @@ func TestEval(t *testing.T) {
 		got := matchNums(t, tc.expr, items, opts, cfg)
 		if strings.Join(got, ",") != strings.Join(tc.want, ",") {
 			t.Errorf("%q matched %v, want %v", tc.expr, got, tc.want)
+		}
+	}
+}
+
+func TestEvalMe(t *testing.T) {
+	items, opts, cfg := fixture()
+	opts.Me = "shivam"
+	tests := []struct {
+		expr string
+		want string
+	}{
+		{"owner=@me", "KIRA-1,KIRA-3"},
+		{"owner!=@me", "KIRA-100,KIRA-2"},
+		{"reporter=@me", "KIRA-2"},
+		{"owner IN (@me)", "KIRA-1,KIRA-3"},
+	}
+	for _, tc := range tests {
+		if got := matchNums(t, tc.expr, items, opts, cfg); strings.Join(got, ",") != tc.want {
+			t.Errorf("%q matched %v, want %s", tc.expr, got, tc.want)
 		}
 	}
 }
@@ -220,6 +242,8 @@ func TestCompileErrors(t *testing.T) {
 		{"ranked compare needs priorities", "priority<=P1", noPrio, 8},
 		{"unknown priority literal", "priority<=P9", opts, 10},
 		{"order by priority needs priorities", "a ORDER BY priority", noPrio, 11},
+		{"owner @me without identity", "owner=@me", opts, 6},
+		{"reporter @me without identity", "reporter=@me", opts, 9},
 	}
 	for _, tc := range tests {
 		_, err := Compile(tc.expr, tc.opts)
