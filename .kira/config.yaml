@@ -54,7 +54,7 @@ sync:
   push: false
 
 ui:
-  icons: auto                 # auto | always | never
+  icons: auto                 # auto | nerd | emoji | text — if glyphs render as boxes, set emoji or text (nerd font not installed)
 
 estimate:
   unit: points                # points | hours
