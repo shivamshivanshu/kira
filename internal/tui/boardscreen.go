@@ -24,18 +24,20 @@ var boardKeys = []KeyBinding{
 	{"b", "board"},
 	{"enter", "detail"},
 	{"p", "peek"},
+	{"gg/G", "top/bottom"},
 }
 
 func init() { registerScreen(viewBoard, func() screen { return newBoardScreen() }) }
 
 type boardScreen struct {
-	board  boardModel
-	host   detailHost
-	raw    *datamodel.BoardResult
-	scope  string
-	notice string
-	loaded bool
-	peek   peekMode
+	board    boardModel
+	host     detailHost
+	raw      *datamodel.BoardResult
+	scope    string
+	notice   string
+	loaded   bool
+	peek     peekMode
+	pendingG bool
 }
 
 func newBoardScreen() *boardScreen {
@@ -83,6 +85,14 @@ func (s *boardScreen) update(m *model, key string) tea.Cmd {
 	if s.peek == peekOverlay {
 		return s.host.update(m, key)
 	}
+	if s.pendingG {
+		s.pendingG = false
+		if key == "g" {
+			s.board.toTop()
+			s.syncPeek(m)
+		}
+		return nil
+	}
 	switch key {
 	case "j", "down":
 		s.board.moveRow(1)
@@ -102,6 +112,11 @@ func (s *boardScreen) update(m *model, key string) tea.Cmd {
 		return s.moveCard(m, 1)
 	case "b":
 		m.openBoardScope(s.scope)
+	case "g":
+		s.pendingG = true
+	case "G":
+		s.board.toBottom()
+		s.syncPeek(m)
 	case "tab", "shift+tab":
 		if s.peek == peekDocked {
 			s.peek = peekOverlay

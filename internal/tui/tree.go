@@ -72,6 +72,16 @@ func (tm *treeModel) move(delta, visible int) {
 	tm.scrollInto(visible)
 }
 
+func (tm *treeModel) toTop(visible int) {
+	tm.cursor = 0
+	tm.scrollInto(visible)
+}
+
+func (tm *treeModel) toBottom(visible int) {
+	tm.cursor = max(0, len(tm.rows)-1)
+	tm.scrollInto(visible)
+}
+
 func (tm *treeModel) scrollInto(visible int) {
 	if visible <= 0 {
 		return
@@ -108,13 +118,48 @@ func (tm *treeModel) isCollapsedEpic() bool {
 	return cur != nil && cur.isEpic() && tm.collapsed[cur.node.ID]
 }
 
-func (tm *treeModel) jumpToParent() {
-	cur := tm.current()
-	if cur == nil || cur.fields.Epic == nil {
-		return
+func (tm *treeModel) collapseAll() {
+	target := tm.rootAncestor(tm.selectedID())
+	var walk func(nodes []datamodel.TreeNode)
+	walk = func(nodes []datamodel.TreeNode) {
+		for _, n := range nodes {
+			if len(n.Children) > 0 {
+				tm.collapsed[n.ID] = true
+				walk(n.Children)
+			}
+		}
 	}
+	walk(tm.nodes)
+	tm.flatten()
+	tm.focusID(target)
+}
+
+func (tm *treeModel) expandAll() {
+	target := tm.selectedID()
+	tm.collapsed = map[string]bool{}
+	tm.flatten()
+	tm.focusID(target)
+}
+
+func (tm *treeModel) rootAncestor(id string) string {
+	for {
+		f, ok := tm.fields[id]
+		if !ok || f.Epic == nil || *f.Epic == "" {
+			return id
+		}
+		id = *f.Epic
+	}
+}
+
+func (tm *treeModel) jumpToParent() {
+	if cur := tm.current(); cur != nil && cur.fields.Epic != nil {
+		tm.focusID(*cur.fields.Epic)
+	}
+}
+
+func (tm *treeModel) focusID(id string) {
 	for i, r := range tm.rows {
-		if r.node.ID == *cur.fields.Epic {
+		if r.node.ID == id {
 			tm.cursor = i
 			return
 		}

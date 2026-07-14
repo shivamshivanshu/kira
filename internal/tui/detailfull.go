@@ -17,11 +17,14 @@ var detailKeys = []KeyBinding{
 	{"j/k", "scroll"},
 	{"[/]", "commit"},
 	{"enter", "git show"},
+	{"gg/G", "top/bottom"},
+	{"^d/^u", "half-page"},
 }
 
 type detailPanel struct {
 	scroll    int
 	commitSel int
+	pendingG  bool
 	cache     detailContent
 }
 
@@ -41,11 +44,26 @@ func (d *detailPanel) reset() {
 }
 
 func (d *detailPanel) update(m *model, res *datamodel.ShowResult, key string) tea.Cmd {
+	if d.pendingG {
+		d.pendingG = false
+		if key == "g" {
+			d.scroll = 0
+		}
+		return nil
+	}
 	switch key {
 	case "j", "down":
 		d.scroll++
 	case "k", "up":
 		d.scroll--
+	case "ctrl+d":
+		d.scroll += m.mainHeight() / 2
+	case "ctrl+u":
+		d.scroll -= m.mainHeight() / 2
+	case "g":
+		d.pendingG = true
+	case "G":
+		d.scroll = 1 << 30
 	case "[":
 		d.commitSel = max(0, d.commitSel-1)
 	case "]":

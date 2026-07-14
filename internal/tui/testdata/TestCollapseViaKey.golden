@@ -9,4 +9,4 @@ kira  1:tree  2:board  3:stats
                                                   │                                                 
                                                   │                                                 
                                                   │                                                 
-j/k move  l/enter drill  h collapse  gp parent  tab pane  1/2/3 view  ^o/^] jump  : command  / filte
+j/k move  l/enter drill  h collapse  gp parent  tab pane  gg/G top/bottom  ^d/^u half-page  zM/zR co

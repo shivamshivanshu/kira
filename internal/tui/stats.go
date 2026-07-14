@@ -14,7 +14,11 @@ import (
 
 const statsEmptyMessage = "No metrics yet — create and move some tickets to see completion, cycle time, and throughput."
 
-var statsKeys = []KeyBinding{{"j/k", "scroll"}}
+var statsKeys = []KeyBinding{
+	{"j/k", "scroll"},
+	{"gg/G", "top/bottom"},
+	{"^d/^u", "half-page"},
+}
 
 func init() { registerScreen(viewStats, func() screen { return newStatsScreen() }) }
 
@@ -23,6 +27,7 @@ type statsScreen struct {
 	res        *datamodel.StatsResult
 	err        error
 	scroll     int
+	pendingG   bool
 	cacheRes   *datamodel.StatsResult
 	cacheLines []string
 }
@@ -32,11 +37,26 @@ func newStatsScreen() *statsScreen { return &statsScreen{} }
 func (s *statsScreen) keys() []KeyBinding { return statsKeys }
 
 func (s *statsScreen) update(m *model, key string) tea.Cmd {
+	if s.pendingG {
+		s.pendingG = false
+		if key == "g" {
+			s.scroll = 0
+		}
+		return nil
+	}
 	switch key {
 	case "j", "down":
 		s.scroll++
 	case "k", "up":
 		s.scroll--
+	case "ctrl+d":
+		s.scroll += m.mainHeight() / 2
+	case "ctrl+u":
+		s.scroll -= m.mainHeight() / 2
+	case "g":
+		s.pendingG = true
+	case "G":
+		s.scroll = 1 << 30
 	}
 	return nil
 }

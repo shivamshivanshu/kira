@@ -49,6 +49,10 @@ func (bm *boardModel) moveCol(d int) {
 
 func (bm *boardModel) moveRow(d int) { bm.row = clamp(bm.row+d, 0, bm.colLen()-1) }
 
+func (bm *boardModel) toTop() { bm.row = 0 }
+
+func (bm *boardModel) toBottom() { bm.row = max(0, bm.colLen()-1) }
+
 func (bm *boardModel) selected() (datamodel.ListItem, bool) {
 	if bm.colLen() == 0 {
 		return datamodel.ListItem{}, false
