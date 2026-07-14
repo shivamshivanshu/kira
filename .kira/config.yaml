@@ -74,3 +74,4 @@ boards:
   - { key: CLI, name: Command surface }
   - { key: DATA, name: Index query and schema }
   - { key: INFRA, name: CI CD and build }
+  - { key: DX, name: Tooling and hygiene }
