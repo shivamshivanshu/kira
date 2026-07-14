@@ -42,7 +42,7 @@ priorities: [P0, P1, P2, P3]
 subtypes: [bug, task, feature, support]
 resolutions: [done, dropped, duplicate, cannot-reproduce]
 labels:
-  known: [core, tui, cli, data, infra, dx]                   # add project labels; strict rejects unknown ones (--force overrides)
+  known: [captured]                                          # area labels retired in favor of boards; strict rejects unknown ones (--force overrides)
   strict: false
 
 people:
