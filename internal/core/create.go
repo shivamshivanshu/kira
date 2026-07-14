@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 )
+
+const capturedLabel = "captured"
 
 var subtypePattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
@@ -33,6 +36,8 @@ type CreateOpts struct {
 	FromFile string
 	Force    bool
 	Board    string
+	Here     bool
+	Blocking bool
 }
 
 func (s *Store) ResolveTemplate(opts CreateOpts) (string, error) {
@@ -44,6 +49,54 @@ func (s *Store) ResolveTemplate(opts CreateOpts) (string, error) {
 }
 
 func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.CreateResult, error) {
+	var hereActive string
+	if opts.Here {
+		active, err := s.resolveHere(cfg, &opts)
+		if err != nil {
+			return nil, err
+		}
+		hereActive = active
+	}
+	res, err := s.createLocked(cfg, opts)
+	if err != nil {
+		return nil, err
+	}
+	if opts.Blocking {
+		if _, err := s.Link(cfg, hereActive, LinkOpts{Target: LinkBlockedBy, Ref: res.Number, Force: opts.Force}); err != nil {
+			return res, errx.User("created %s, but marking it as a blocker of the active ticket failed: %v", res.Number, err).
+				WithHint("the ticket exists; link it manually with `kira link <active-ticket> --blocked-by %s`", res.Number)
+		}
+	}
+	return res, nil
+}
+
+func (s *Store) resolveHere(cfg *datamodel.Config, opts *CreateOpts) (string, error) {
+	ap, ok := s.readActive()
+	if !ok {
+		return "", errx.User("no active ticket").WithHint("start one with kira workon <id>")
+	}
+	items, _, err := s.LoadAll()
+	if err != nil {
+		return "", err
+	}
+	active, ok := byULID(items)[ap.Ticket]
+	if !ok {
+		return "", errx.User("active ticket %s resolves to no item", ap.Ticket).WithHint("start one with kira workon <id>")
+	}
+	if opts.Parent == "" {
+		if active.Type == datamodel.TypeEpic {
+			opts.Parent = active.ID
+		} else if active.Epic != nil {
+			opts.Parent = *active.Epic
+		}
+	}
+	if opts.Sprint == "" {
+		opts.Sprint = ptr.Deref(active.Sprint)
+	}
+	return active.ID, nil
+}
+
+func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel.CreateResult, error) {
 	wf, ok := cfg.Workflows[opts.Type]
 	if !ok {
 		return nil, errx.User("no workflow configured for type %q", opts.Type)
@@ -59,6 +112,9 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 		return nil, err
 	}
 	base = applyFlags(base, opts)
+	if opts.Here && !slices.Contains(base.Labels, capturedLabel) {
+		base.Labels = append(base.Labels, capturedLabel)
+	}
 
 	d, err := s.draftForCreate(cfg, opts, boardKey, wf.Initial, base)
 	if err != nil {

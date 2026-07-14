@@ -18,6 +18,8 @@ func (w *vocabWarning) Error() string {
 	return fmt.Sprintf("field %q: %q is not in the known %s vocabulary", w.field, w.value, w.field)
 }
 
+func isSystemLabel(l string) bool { return l == capturedLabel }
+
 func fieldPresent(it *datamodel.Item, field string) bool {
 	d, ok := datamodel.Field(field)
 	if !ok || d.Present == nil {
@@ -54,6 +56,9 @@ func validateItem(cfg *datamodel.Config, it *datamodel.Item, force bool) (errs, 
 		vocabCheck(datamodel.KeyReporter, *it.Reporter, cfg.People.Vocab())
 	}
 	for _, l := range it.Labels {
+		if isSystemLabel(l) {
+			continue
+		}
 		vocabCheck(datamodel.KeyLabels, l, cfg.Labels)
 	}
 

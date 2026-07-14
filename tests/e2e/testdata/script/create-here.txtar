@@ -1,0 +1,35 @@
+# create --here captures a new item under the active ticket's epic and sprint,
+# stamping a `captured` label; --blocking also marks it as blocking the active
+# ticket. It requires --no-edit and --title, and an active workon pointer.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+# with no active ticket, --here refuses with a hint.
+! exec kira create ticket --here --no-edit --title Nope
+stderr 'no active ticket'
+stderr 'kira workon'
+
+exec kira create epic --title 'Big epic' --no-edit
+exec kira create ticket --title 'Parent ticket' --no-edit --parent KIRA-1
+exec kira workon KIRA-2
+
+# --here without --no-edit and --title is rejected.
+! exec kira create ticket --here
+stderr 'requires --no-edit and --title'
+
+# capture inherits the active ticket's epic (KIRA-1) and stamps captured.
+exec kira create ticket --here --no-edit --title 'Captured idea' --json
+stdout '"number": "KIRA-3"'
+stdout '"epic_number": "KIRA-1"'
+stdout '"captured"'
+
+# --blocking appends the new item to the active ticket's blocked_by.
+exec kira create ticket --here --no-edit --title 'Prereq' --blocking --json
+stdout '"number": "KIRA-4"'
+exec kira list --query blocked
+stdout KIRA-2

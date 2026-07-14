@@ -86,6 +86,12 @@ func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {
 			if cmd.Flags().Changed("estimate") {
 				opts.Estimate = &estimate
 			}
+			if opts.Here && (!opts.NoEdit || opts.Title == "") {
+				return errx.User("--here requires --no-edit and --title")
+			}
+			if opts.Blocking && !opts.Here {
+				return errx.User("--blocking requires --here")
+			}
 			s, cfg, err := openStore(g)
 			if err != nil {
 				return err
@@ -134,6 +140,8 @@ func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {
 	f.BoolVar(&opts.Force, "force", false, "accept field values outside the configured vocabulary")
 	f.StringVar(&opts.Board, "board", "", "board key to create the item under")
 	f.BoolVar(&printTemplate, "print-template", false, "print the resolved template and exit")
+	f.BoolVar(&opts.Here, "here", false, "capture under the active ticket's epic and sprint (requires --no-edit and --title)")
+	f.BoolVar(&opts.Blocking, "blocking", false, "with --here, mark the new item as blocking the active ticket")
 	return cmd
 }
 

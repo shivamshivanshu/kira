@@ -1,0 +1,38 @@
+# create --here stamps `captured` as a system label: it passes strict-label
+# validation without a vocab entry, and it is appended to template-supplied
+# labels rather than replacing them.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp strict.yaml .kira/config.yaml
+cp ticket.md .kira/templates/ticket.md
+
+exec kira create ticket --title Anchor --no-edit
+exec kira workon KIRA-1
+
+# strict labels + a template label: the new item keeps `feature` and gains the
+# system `captured` label, and validation does not reject captured.
+exec kira create ticket --here --no-edit --title Captured --json
+stdout '"feature"'
+stdout '"captured"'
+
+-- strict.yaml --
+version: 1
+project:
+  key: KIRA
+  name: kira
+labels:
+  known: [feature]
+  strict: true
+-- ticket.md --
+---
+title:
+type: ticket
+labels: [feature]
+---
+
+## Body
