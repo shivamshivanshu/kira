@@ -5,7 +5,8 @@ aliases: []
 type: ticket
 subtype: bug
 title: "ORDER BY board silently no-ops — missing board accessor"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
