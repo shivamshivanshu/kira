@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/statsfmt"
 )
 
 func newStatsCmd(g *globalFlags) *cobra.Command {
@@ -64,11 +64,7 @@ func renderStats(out io.Writer, res *datamodel.StatsResult) {
 		fmt.Fprintf(out, "Stats (%s)\n", scope)
 	}
 	if c := res.Completion; c != nil {
-		fmt.Fprintf(out, "  completion: %d/%d done (%.0f%%)", c.Done, c.Total, c.Pct*100)
-		if c.Dropped > 0 {
-			fmt.Fprintf(out, ", %d dropped", c.Dropped)
-		}
-		fmt.Fprintln(out)
+		fmt.Fprintf(out, "  completion: %s\n", statsfmt.CompletionLine(c))
 	}
 	renderPercentiles(out, "cycle time", res.CycleTime)
 	renderPercentiles(out, "lead time", res.LeadTime)
@@ -88,7 +84,7 @@ func renderPercentiles(out io.Writer, label string, p *datamodel.Percentiles) {
 	if p == nil || p.N == 0 {
 		return
 	}
-	fmt.Fprintf(out, "  %s (days): p50 %s  p90 %s  n=%d", label, codec.EmitFloat(p.P50), codec.EmitFloat(p.P90), p.N)
+	fmt.Fprintf(out, "  %s (days): %s", label, statsfmt.PercentileLine(p))
 	if p.DegradedN > 0 {
 		fmt.Fprintf(out, "  (%d best-effort)", p.DegradedN)
 	}

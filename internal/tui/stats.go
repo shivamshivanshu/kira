@@ -7,10 +7,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/showfmt"
+	"github.com/shivamshivanshu/kira/internal/statsfmt"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
@@ -95,11 +95,7 @@ func statsLines(t theme.Theme, rich bool, res *datamodel.StatsResult) []string {
 		lines = append(lines, t.Accent.Render("Sprint")+"  "+s.Sprint)
 	}
 	c := res.Completion
-	head := fmt.Sprintf("%d/%d done (%.0f%%)", c.Done, c.Total, c.Pct*100)
-	if c.Dropped > 0 {
-		head += fmt.Sprintf(", %d dropped", c.Dropped)
-	}
-	lines = append(lines, t.Accent.Render("Completion")+"  "+head)
+	lines = append(lines, t.Accent.Render("Completion")+"  "+statsfmt.CompletionLine(c))
 	lines = append(lines, percentileLine(t, "cycle time", res.CycleTime))
 	lines = append(lines, percentileLine(t, "lead time", res.LeadTime))
 	if len(res.Throughput) > 0 {
@@ -127,8 +123,7 @@ func percentileLine(t theme.Theme, label string, p *datamodel.Percentiles) strin
 	if p == nil || p.N == 0 {
 		return statLabel(t, label) + "no data"
 	}
-	return statLabel(t, label) +
-		fmt.Sprintf("p50 %s  p90 %s  n=%d", codec.EmitFloat(p.P50), codec.EmitFloat(p.P90), p.N)
+	return statLabel(t, label) + statsfmt.PercentileLine(p)
 }
 
 func sparkRow(t theme.Theme, label, spark, suffix string) string {
