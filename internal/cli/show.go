@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/showfmt"
 )
@@ -21,7 +22,7 @@ func newShowCmd(g *globalFlags) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if format != "" && g.json {
-				return fmt.Errorf("--format cannot be combined with --json")
+				return errx.User("--format cannot be combined with --json")
 			}
 			s, cfg, err := openStore(g)
 			if err != nil {

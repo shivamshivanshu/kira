@@ -42,19 +42,24 @@ func Env(format string, args ...any) *Error {
 	return &Error{Code: ExitEnv, Err: fmt.Errorf(format, args...)}
 }
 
-func Invalid(errs []error) *Error {
-	msgs := make([]string, len(errs))
+func Invalid(prefix string, errs []error) *Error {
 	hint := ""
-	for i, e := range errs {
-		msgs[i] = e.Error()
-		if hint == "" {
-			var ce *Error
-			if errors.As(e, &ce) {
-				hint = ce.Hint
-			}
+	for _, e := range errs {
+		var ce *Error
+		if errors.As(e, &ce) && ce.Hint != "" {
+			hint = ce.Hint
+			break
 		}
 	}
-	out := User("invalid item: %s", strings.Join(msgs, "; "))
+	out := User("%s", JoinErrors(prefix, errs))
 	out.Hint = hint
 	return out
+}
+
+func JoinErrors(prefix string, errs []error) string {
+	msgs := make([]string, len(errs))
+	for i, e := range errs {
+		msgs[i] = e.Error()
+	}
+	return fmt.Sprintf("%s: %s", prefix, strings.Join(msgs, "; "))
 }

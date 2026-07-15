@@ -32,7 +32,7 @@ func newDiscoverCmd(g *globalFlags) *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			sel := action(act)
 			if sel != actionShow && sel != actionEdit {
-				return fmt.Errorf("--action: must be %s or %s, got %q", actionShow, actionEdit, act)
+				return errx.User("--action: must be %s or %s, got %q", actionShow, actionEdit, act)
 			}
 			s, cfg, err := openStore(g)
 			if err != nil {

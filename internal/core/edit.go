@@ -35,7 +35,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		var errs []error
 		edited, errs = parseFullItem(content)
 		if len(errs) > 0 {
-			return nil, errx.Invalid(errs)
+			return nil, errx.Invalid(invalidItemPrefix, errs)
 		}
 		snapshot = updatedAt
 	}
@@ -56,11 +56,11 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		restoreImmutable(it, orig)
 		guardErrs, guardWarns := applyEditGuards(cfg, orig, it, opts.Force, resolver, items)
 		if len(guardErrs) > 0 {
-			return errx.Invalid(guardErrs)
+			return errx.Invalid(invalidItemPrefix, guardErrs)
 		}
 		errs, w := validateMutation(cfg, orig, it, resolver, items, opts.Force)
 		if len(errs) > 0 {
-			return errx.Invalid(errs)
+			return errx.Invalid(invalidItemPrefix, errs)
 		}
 		updated, warns = it, append(guardWarns, w...)
 		return nil
@@ -82,7 +82,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 			}
 		}
 		if len(errs) > 0 {
-			return nil, errx.Invalid(errs)
+			return nil, errx.Invalid(invalidItemPrefix, errs)
 		}
 		if err := finish(it); err != nil {
 			return nil, err
@@ -94,7 +94,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		}
 		it, errs := parseFullItem(stripErrorBanner(content))
 		if len(errs) > 0 {
-			return nil, errx.Invalid(errs)
+			return nil, errx.Invalid(invalidItemPrefix, errs)
 		}
 		if err := finish(it); err != nil {
 			return nil, err

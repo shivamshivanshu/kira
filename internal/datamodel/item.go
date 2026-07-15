@@ -1,10 +1,10 @@
 package datamodel
 
 import (
-	"fmt"
 	"slices"
-	"strings"
 	"time"
+
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 type Item struct {
@@ -127,11 +127,7 @@ type ParseError struct {
 }
 
 func (e *ParseError) Error() string {
-	msgs := make([]string, len(e.Errs))
-	for i, err := range e.Errs {
-		msgs[i] = err.Error()
-	}
-	return fmt.Sprintf("invalid item: %s", strings.Join(msgs, "; "))
+	return errx.JoinErrors("invalid item", e.Errs)
 }
 
 func (e *ParseError) Unwrap() []error { return e.Errs }

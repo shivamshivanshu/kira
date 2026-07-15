@@ -270,7 +270,7 @@ func Probe(store *storage.FS, repo gitx.Repo) (FreshnessReport, error) {
 func (i *Index) count() (int, error) {
 	var n int
 	if err := i.db.QueryRow("SELECT COUNT(*) FROM items").Scan(&n); err != nil {
-		return 0, errx.User("counting index items: %v", err)
+		return 0, errx.Env("counting index items: %v", err)
 	}
 	return n, nil
 }

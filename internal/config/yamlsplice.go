@@ -1,10 +1,11 @@
 package config
 
 import (
-	"fmt"
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 // appendToTopLevelList splices entry onto data's top-level key list in place
@@ -13,7 +14,7 @@ import (
 func appendToTopLevelList(data []byte, key, entry string) ([]byte, error) {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil, fmt.Errorf("config: %w", err)
+		return nil, errx.User("config: %w", err)
 	}
 	lines := strings.Split(string(data), "\n")
 	keyNode, val := findTopLevel(&doc, key)
@@ -32,7 +33,7 @@ func appendToTopLevelList(data []byte, key, entry string) ([]byte, error) {
 	case val.Kind == yaml.SequenceNode:
 		out = appendToBlockList(lines, val, entry)
 	default:
-		return nil, fmt.Errorf("config: %s: expected a list, found %s", key, val.Tag)
+		return nil, errx.User("config: %s: expected a list, found %s", key, val.Tag)
 	}
 	return []byte(strings.Join(out, "\n")), nil
 }
@@ -72,7 +73,7 @@ func appendToFlowList(lines []string, subsystem string, val *yaml.Node, entry st
 		closing = flowCloseIndex(lines[i], open)
 	}
 	if closing < 0 {
-		return nil, fmt.Errorf("config: %s: cannot append to a multi-line flow list; reformat it as a block list", subsystem)
+		return nil, errx.User("config: %s: cannot append to a multi-line flow list; reformat it as a block list", subsystem)
 	}
 	sep := ", "
 	if strings.TrimSpace(lines[i][open+1:closing]) == "" {
@@ -117,7 +118,7 @@ func flowCloseIndex(line string, open int) int {
 
 func oneLine(subsystem, v string) error {
 	if strings.ContainsAny(v, "\n\r") {
-		return fmt.Errorf("config: %s: value %q does not fit on one line", subsystem, v)
+		return errx.User("config: %s: value %q does not fit on one line", subsystem, v)
 	}
 	return nil
 }
@@ -131,7 +132,7 @@ func flowScalar(field, v string) (string, error) {
 	}
 	b, err := yaml.Marshal(v)
 	if err != nil {
-		return "", fmt.Errorf("config: %s: %w", field, err)
+		return "", errx.User("config: %s: %w", field, err)
 	}
 	return strings.TrimSpace(string(b)), nil
 }
@@ -142,7 +143,7 @@ func singleLineScalar(subsystem, v string) (string, error) {
 	}
 	b, err := yaml.Marshal(v)
 	if err != nil {
-		return "", fmt.Errorf("config: %s: %w", subsystem, err)
+		return "", errx.User("config: %s: %w", subsystem, err)
 	}
 	s := strings.TrimSpace(string(b))
 	if err := oneLine(subsystem, s); err != nil {
@@ -154,13 +155,13 @@ func singleLineScalar(subsystem, v string) (string, error) {
 func replaceScalarLine(lines []string, leaf *yaml.Node, token string) ([]string, error) {
 	i := leaf.Line - 1
 	if i < 0 || i >= len(lines) {
-		return nil, fmt.Errorf("config: value node points outside the file")
+		return nil, errx.User("config: value node points outside the file")
 	}
 	line := lines[i]
 	col := leaf.Column - 1
 	old := marshalScalar(leaf)
 	if col < 0 || col+len(old) > len(line) || line[col:col+len(old)] != old {
-		return nil, fmt.Errorf("config: cannot locate value on line %d", leaf.Line)
+		return nil, errx.User("config: cannot locate value on line %d", leaf.Line)
 	}
 	return replaceLine(lines, i, line[:col]+token+line[col+len(old):]), nil
 }

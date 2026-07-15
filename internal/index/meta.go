@@ -52,11 +52,11 @@ func saveMetaAt(cacheDir string, m meta) error {
 	}
 	tmp := metaPath(cacheDir) + ".tmp"
 	if err := os.WriteFile(tmp, data, 0o644); err != nil {
-		return errx.User("writing index meta: %v", err)
+		return errx.Env("writing index meta: %v", err)
 	}
 	if err := os.Rename(tmp, metaPath(cacheDir)); err != nil {
 		os.Remove(tmp)
-		return errx.User("renaming index meta: %v", err)
+		return errx.Env("renaming index meta: %v", err)
 	}
 	return nil
 }

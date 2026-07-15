@@ -28,12 +28,12 @@ func (i *Index) full(store *storage.FS) (map[string]skipEntry, error) {
 	}
 	tx, err := i.db.Begin()
 	if err != nil {
-		return nil, errx.User("beginning index tx: %v", err)
+		return nil, errx.Env("beginning index tx: %v", err)
 	}
 	defer tx.Rollback()
 	for _, table := range []string{"aliases", "labels", "links", "items"} {
 		if _, err := tx.Exec("DELETE FROM " + table); err != nil {
-			return nil, errx.User("clearing index %s: %v", table, err)
+			return nil, errx.Env("clearing index %s: %v", table, err)
 		}
 	}
 	skipped := map[string]skipEntry{}
@@ -76,13 +76,13 @@ func (i *Index) full(store *storage.FS) (map[string]skipEntry, error) {
 func (i *Index) refresh(store *storage.FS, absPaths []string, prevSkips map[string]skipEntry) (map[string]skipEntry, []string, error) {
 	tx, err := i.db.Begin()
 	if err != nil {
-		return nil, nil, errx.User("beginning index tx: %v", err)
+		return nil, nil, errx.Env("beginning index tx: %v", err)
 	}
 	defer tx.Rollback()
 
 	deleteByID := func(id string) error {
 		if _, err := tx.Exec("DELETE FROM items WHERE id = ?", id); err != nil {
-			return errx.User("deleting index item: %v", err)
+			return errx.Env("deleting index item: %v", err)
 		}
 		return nil
 	}
@@ -184,23 +184,23 @@ func insertItem(tx *sql.Tx, it *datamodel.Item) error {
 		nullable(it.Resolution), nullable(it.Priority), nullable(it.Rank), nullable(it.Owner),
 		nullable(it.Reporter), nullable(it.Epic), nullable(it.Sprint), nullable(it.Due),
 		nullable(it.Estimate), it.Created, it.Updated, it.Updated); err != nil {
-		return errx.User("inserting index item %s: %v", it.ID, err)
+		return errx.Env("inserting index item %s: %v", it.ID, err)
 	}
 	for ord, alias := range it.Aliases {
 		if _, err := tx.Exec("INSERT INTO aliases (item_id, ord, number) VALUES (?,?,?)", it.ID, ord, alias); err != nil {
-			return errx.User("inserting index alias: %v", err)
+			return errx.Env("inserting index alias: %v", err)
 		}
 	}
 	for ord, label := range it.Labels {
 		if _, err := tx.Exec("INSERT INTO labels (item_id, ord, label) VALUES (?,?,?)", it.ID, ord, label); err != nil {
-			return errx.User("inserting index label: %v", err)
+			return errx.Env("inserting index label: %v", err)
 		}
 	}
 	ord := 0
 	for _, target := range it.BlockedBy {
 		if _, err := tx.Exec("INSERT INTO links (item_id, ord, kind, target_id) VALUES (?,?,?,?)",
 			it.ID, ord, datamodel.KeyBlockedBy, target); err != nil {
-			return errx.User("inserting index link: %v", err)
+			return errx.Env("inserting index link: %v", err)
 		}
 		ord++
 	}
@@ -208,7 +208,7 @@ func insertItem(tx *sql.Tx, it *datamodel.Item) error {
 		for _, target := range it.Links[string(kind)] {
 			if _, err := tx.Exec("INSERT INTO links (item_id, ord, kind, target_id) VALUES (?,?,?,?)",
 				it.ID, ord, string(kind), target); err != nil {
-				return errx.User("inserting index link: %v", err)
+				return errx.Env("inserting index link: %v", err)
 			}
 			ord++
 		}
@@ -244,7 +244,7 @@ func dirtyState(absPaths []string) (string, []string) {
 
 func commit(tx *sql.Tx) error {
 	if err := tx.Commit(); err != nil {
-		return errx.User("committing index tx: %v", err)
+		return errx.Env("committing index tx: %v", err)
 	}
 	return nil
 }
@@ -263,13 +263,13 @@ func (i *Index) fillActivity() error {
 	}
 	rows, err := i.db.Query("SELECT id, updated FROM items")
 	if err != nil {
-		return errx.User("querying item activity: %v", err)
+		return errx.Env("querying item activity: %v", err)
 	}
 	activity := map[string]string{}
 	if err := eachPair(rows, func(r *sql.Rows) error {
 		var id, updated string
 		if err := r.Scan(&id, &updated); err != nil {
-			return errx.User("scanning item activity: %v", err)
+			return errx.Env("scanning item activity: %v", err)
 		}
 		activity[id] = updated
 		if ts, ok := latest[id]; ok && laterRFC3339(ts, updated) {
@@ -282,17 +282,17 @@ func (i *Index) fillActivity() error {
 
 	tx, err := i.db.Begin()
 	if err != nil {
-		return errx.User("beginning activity tx: %v", err)
+		return errx.Env("beginning activity tx: %v", err)
 	}
 	defer tx.Rollback()
 	stmt, err := tx.Prepare("UPDATE items SET activity = ? WHERE id = ?")
 	if err != nil {
-		return errx.User("preparing activity update: %v", err)
+		return errx.Env("preparing activity update: %v", err)
 	}
 	defer stmt.Close()
 	for id, ts := range activity {
 		if _, err := stmt.Exec(ts, id); err != nil {
-			return errx.User("updating item activity: %v", err)
+			return errx.Env("updating item activity: %v", err)
 		}
 	}
 	return commit(tx)
@@ -301,13 +301,13 @@ func (i *Index) fillActivity() error {
 func (i *Index) latestCommitTs() (map[string]string, error) {
 	rows, err := i.db.Query("SELECT item_id, ts FROM commit_links")
 	if err != nil {
-		return nil, errx.User("querying commit-link timestamps: %v", err)
+		return nil, errx.Env("querying commit-link timestamps: %v", err)
 	}
 	latest := map[string]string{}
 	if err := eachPair(rows, func(r *sql.Rows) error {
 		var id, ts string
 		if err := r.Scan(&id, &ts); err != nil {
-			return errx.User("scanning commit-link timestamp: %v", err)
+			return errx.Env("scanning commit-link timestamp: %v", err)
 		}
 		if cur, ok := latest[id]; !ok || laterRFC3339(ts, cur) {
 			latest[id] = ts

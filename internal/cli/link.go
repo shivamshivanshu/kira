@@ -8,6 +8,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 func newLinkCmd(g *globalFlags) *cobra.Command {
@@ -49,7 +50,7 @@ func newLinkCmd(g *globalFlags) *cobra.Command {
 				}
 			}
 			if given != 1 {
-				return fmt.Errorf("give exactly one of %s", strings.Join(flagNames, ", "))
+				return errx.User("give exactly one of %s", strings.Join(flagNames, ", "))
 			}
 			s, cfg, err := openStore(g)
 			if err != nil {

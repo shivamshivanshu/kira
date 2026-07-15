@@ -26,7 +26,7 @@ func InitUser(env func(string) string) (*datamodel.ConfigInitResult, error) {
 		return nil, errx.Env("cannot resolve user config directory: set HOME or XDG_CONFIG_HOME")
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, errx.User("creating %s: %v", dir, err)
+		return nil, errx.Env("creating %s: %v", dir, err)
 	}
 	if present := PresentUserFiles(dir); len(present) > 0 {
 		return &datamodel.ConfigInitResult{Path: dir, Created: false, Files: present}, nil
@@ -34,7 +34,7 @@ func InitUser(env func(string) string) (*datamodel.ConfigInitResult, error) {
 	written := make([]string, 0, 2)
 	for _, name := range []string{userConfigFileName, userHooksYAMLName} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(mustTemplate(name)), 0o644); err != nil {
-			return nil, errx.User("writing %s: %v", filepath.Join(dir, name), err)
+			return nil, errx.Env("writing %s: %v", filepath.Join(dir, name), err)
 		}
 		written = append(written, name)
 	}

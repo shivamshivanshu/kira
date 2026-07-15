@@ -137,7 +137,7 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 	finalItem := itemFromDraft(d, sys)
 	hard, warns := validateMutation(cfg, nil, finalItem, ld.resolver, ld.items, opts.Force)
 	if len(hard) > 0 {
-		return nil, errx.Invalid(hard)
+		return nil, errx.Invalid(invalidItemPrefix, hard)
 	}
 
 	path, err := s.fs().WriteItem(finalItem)

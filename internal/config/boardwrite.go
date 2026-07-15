@@ -8,6 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 func AddBoard(data []byte, b datamodel.Board, materializeImplicit *datamodel.Board) ([]byte, error) {
@@ -38,7 +39,7 @@ func AddBoard(data []byte, b datamodel.Board, materializeImplicit *datamodel.Boa
 		return nil, err
 	}
 	if !slices.Equal(cfg.Boards, expected) {
-		return nil, fmt.Errorf("config: boards: entry did not round-trip cleanly (a value may need reformatting)")
+		return nil, errx.User("config: boards: entry did not round-trip cleanly (a value may need reformatting)")
 	}
 	return out, nil
 }
@@ -84,7 +85,7 @@ func UpdateBoard(data []byte, key string, mutate func(datamodel.Board) datamodel
 	}
 	current, ok := cfg.BoardByKey(key)
 	if !ok {
-		return nil, fmt.Errorf("config: boards: no board with key %q", key)
+		return nil, errx.User("config: boards: no board with key %q", key)
 	}
 	updated := mutate(current)
 	entry, err := inlineBoardEntry(updated)
@@ -101,11 +102,11 @@ func UpdateBoard(data []byte, key string, mutate func(datamodel.Board) datamodel
 	}
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil, fmt.Errorf("config: %w", err)
+		return nil, errx.User("config: %w", err)
 	}
 	_, val := findTopLevel(&doc, "boards")
 	if val == nil || val.Kind != yaml.SequenceNode {
-		return nil, fmt.Errorf("config: boards: expected a list")
+		return nil, errx.User("config: boards: expected a list")
 	}
 	lines := strings.Split(string(data), "\n")
 	for _, node := range val.Content {
@@ -114,7 +115,7 @@ func UpdateBoard(data []byte, key string, mutate func(datamodel.Board) datamodel
 			continue
 		}
 		if maxLine(node) != node.Line {
-			return nil, fmt.Errorf("config: boards: cannot rewrite a multi-line entry for %q; reformat it inline", key)
+			return nil, errx.User("config: boards: cannot rewrite a multi-line entry for %q; reformat it inline", key)
 		}
 		i := node.Line - 1
 		open := node.Column - 1
@@ -123,7 +124,7 @@ func UpdateBoard(data []byte, key string, mutate func(datamodel.Board) datamodel
 			closing = flowCloseIndex(lines[i], open)
 		}
 		if closing < 0 {
-			return nil, fmt.Errorf("config: boards: malformed entry for %q", key)
+			return nil, errx.User("config: boards: malformed entry for %q", key)
 		}
 		out := replaceLine(lines, i, lines[i][:open]+entry+lines[i][closing+1:])
 		res := []byte(strings.Join(out, "\n"))
@@ -132,17 +133,17 @@ func UpdateBoard(data []byte, key string, mutate func(datamodel.Board) datamodel
 			return nil, err
 		}
 		if !slices.Equal(reread.Boards, expected) {
-			return nil, fmt.Errorf("config: boards: update did not round-trip cleanly for %q", key)
+			return nil, errx.User("config: boards: update did not round-trip cleanly for %q", key)
 		}
 		return res, nil
 	}
-	return nil, fmt.Errorf("config: boards: no board with key %q", key)
+	return nil, errx.User("config: boards: no board with key %q", key)
 }
 
 func bumpVersionToBoards(data []byte) ([]byte, error) {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil, fmt.Errorf("config: %w", err)
+		return nil, errx.User("config: %w", err)
 	}
 	_, val := findTopLevel(&doc, "version")
 	lines := strings.Split(string(data), "\n")

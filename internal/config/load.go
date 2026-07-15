@@ -2,7 +2,6 @@
 package config
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,6 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
@@ -52,7 +52,7 @@ func readRepoConfig(root string) ([]byte, error) {
 	path := filepath.Join(root, storage.ConfigRelPath)
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("config: reading %s: %w", path, err)
+		return nil, errx.User("config: reading %s: %w", path, err)
 	}
 	return data, nil
 }
@@ -68,7 +68,7 @@ func Parse(data []byte) (*datamodel.Config, error) {
 func parseInto(cfg *datamodel.Config, data []byte) error {
 	userEditor := cfg.UI.Editor
 	if err := yaml.Unmarshal(data, cfg); err != nil {
-		return fmt.Errorf("config: %w", err)
+		return errx.User("config: %w", err)
 	}
 	cfg.UI.Editor = userEditor
 	return Validate(cfg)

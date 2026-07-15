@@ -99,7 +99,7 @@ func runEditor(editor string, stdio editorx.Stdio, initial string, validate func
 	}
 	tmp, err := os.CreateTemp("", "kira-*.md")
 	if err != nil {
-		return "", errx.User("creating editor buffer: %v", err)
+		return "", errx.Env("creating editor buffer: %v", err)
 	}
 	path := tmp.Name()
 	tmp.Close()
@@ -109,7 +109,7 @@ func runEditor(editor string, stdio editorx.Stdio, initial string, validate func
 	annotated := false
 	for {
 		if err := os.WriteFile(path, []byte(buffer), 0o600); err != nil {
-			return "", errx.User("writing editor buffer: %v", err)
+			return "", errx.Env("writing editor buffer: %v", err)
 		}
 		if err := editorx.Edit(editor, path, stdio); err != nil {
 			return "", errx.User("%v", err)

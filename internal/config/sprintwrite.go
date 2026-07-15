@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 func AppendSprint(data []byte, sp datamodel.Sprint) ([]byte, error) {
@@ -20,7 +21,7 @@ func AppendSprint(data []byte, sp datamodel.Sprint) ([]byte, error) {
 		return nil, err
 	}
 	if n := len(cfg.Sprints); n == 0 || cfg.Sprints[n-1] != sp {
-		return nil, fmt.Errorf("config: sprints: appended entry did not round-trip")
+		return nil, errx.User("config: sprints: appended entry did not round-trip")
 	}
 	return out, nil
 }

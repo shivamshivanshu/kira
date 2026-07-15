@@ -22,7 +22,7 @@ func metaPath(cacheDir string) string { return filepath.Join(cacheDir, "meta.jso
 
 func Open(cacheDir string) (*Index, error) {
 	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
-		return nil, errx.User("creating cache dir: %v", err)
+		return nil, errx.Env("creating cache dir: %v", err)
 	}
 	idx, err := open(cacheDir)
 	if err == nil {
@@ -36,7 +36,7 @@ func open(cacheDir string) (*Index, error) {
 	dsn := "file:" + dbPath(cacheDir) + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(2000)&_pragma=foreign_keys(1)"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
-		return nil, errx.User("opening index: %v", err)
+		return nil, errx.Env("opening index: %v", err)
 	}
 	idx := &Index{db: db, cacheDir: cacheDir}
 	if err := idx.ensureSchema(); err != nil {

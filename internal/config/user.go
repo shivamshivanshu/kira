@@ -10,6 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 const (
@@ -93,7 +94,7 @@ func readUserPrefs(path string, warn io.Writer) userTier {
 
 func validateUserCommit(c userCommit) error {
 	if strings.ContainsAny(c.Subject, "\n\r") {
-		return fmt.Errorf("commit.subject: must be a single line")
+		return errx.User("commit.subject: must be a single line")
 	}
 	return nil
 }

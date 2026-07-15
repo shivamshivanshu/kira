@@ -226,24 +226,24 @@ func newLinkPolicy(opts Options, numbers map[string]string) linkPolicy {
 func (i *Index) upsertCommitLinks(commits []gitx.Commit, numbers map[string]string, opts Options, rewrite bool) error {
 	tx, err := i.db.Begin()
 	if err != nil {
-		return errx.User("beginning commit-link tx: %v", err)
+		return errx.Env("beginning commit-link tx: %v", err)
 	}
 	defer tx.Rollback()
 	if rewrite {
 		if _, err := tx.Exec("DELETE FROM commit_links"); err != nil {
-			return errx.User("clearing commit links: %v", err)
+			return errx.Env("clearing commit links: %v", err)
 		}
 	}
 	insLinked, err := tx.Prepare(`INSERT OR REPLACE INTO commit_links
 		(item_id, sha, subject, author, ts, kind) VALUES (?,?,?,?,?,?)`)
 	if err != nil {
-		return errx.User("preparing commit-link insert: %v", err)
+		return errx.Env("preparing commit-link insert: %v", err)
 	}
 	defer insLinked.Close()
 	insReferenced, err := tx.Prepare(`INSERT OR IGNORE INTO commit_links
 		(item_id, sha, subject, author, ts, kind) VALUES (?,?,?,?,?,?)`)
 	if err != nil {
-		return errx.User("preparing commit-link insert: %v", err)
+		return errx.Env("preparing commit-link insert: %v", err)
 	}
 	defer insReferenced.Close()
 
@@ -252,12 +252,12 @@ func (i *Index) upsertCommitLinks(commits []gitx.Commit, numbers map[string]stri
 		linked, referenced := resolveItemRefs(c, numbers, pol)
 		for _, ulid := range linked {
 			if _, err := insLinked.Exec(ulid, c.SHA, c.Subject, c.Author, c.Timestamp, LinkLinked); err != nil {
-				return errx.User("inserting commit link: %v", err)
+				return errx.Env("inserting commit link: %v", err)
 			}
 		}
 		for _, ulid := range referenced {
 			if _, err := insReferenced.Exec(ulid, c.SHA, c.Subject, c.Author, c.Timestamp, LinkReferenced); err != nil {
-				return errx.User("inserting commit link: %v", err)
+				return errx.Env("inserting commit link: %v", err)
 			}
 		}
 	}
@@ -375,12 +375,12 @@ func (i *Index) numberToULID() (map[string]string, error) {
 	for _, q := range []string{"SELECT number, id FROM items", "SELECT number, item_id FROM aliases"} {
 		rows, err := i.db.Query(q)
 		if err != nil {
-			return nil, errx.User("querying numbers: %v", err)
+			return nil, errx.Env("querying numbers: %v", err)
 		}
 		if err := eachPair(rows, func(r *sql.Rows) error {
 			var number, ulid string
 			if err := r.Scan(&number, &ulid); err != nil {
-				return errx.User("scanning number: %v", err)
+				return errx.Env("scanning number: %v", err)
 			}
 			numbers[strings.ToUpper(number)] = ulid
 			return nil
@@ -395,14 +395,14 @@ func (i *Index) CommitLinks(itemID string) ([]CommitLink, error) {
 	rows, err := i.db.Query(`SELECT sha, subject, author, ts, kind FROM commit_links
 		WHERE item_id = ? ORDER BY kind = ? DESC, ts DESC, rowid`, itemID, LinkLinked)
 	if err != nil {
-		return nil, errx.User("querying commit links: %v", err)
+		return nil, errx.Env("querying commit links: %v", err)
 	}
 	defer rows.Close()
 	var links []CommitLink
 	for rows.Next() {
 		var l CommitLink
 		if err := rows.Scan(&l.SHA, &l.Subject, &l.Author, &l.Ts, &l.Kind); err != nil {
-			return nil, errx.User("scanning commit link: %v", err)
+			return nil, errx.Env("scanning commit link: %v", err)
 		}
 		links = append(links, l)
 	}

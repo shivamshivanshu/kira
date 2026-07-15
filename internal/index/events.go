@@ -52,22 +52,22 @@ func (i *Index) eventHead(itemID string) string {
 func (i *Index) replaceEvents(itemID, head string, events []datamodel.Event) error {
 	tx, err := i.db.Begin()
 	if err != nil {
-		return errx.User("beginning events tx: %v", err)
+		return errx.Env("beginning events tx: %v", err)
 	}
 	defer tx.Rollback()
 	if _, err := tx.Exec("DELETE FROM events WHERE item_id = ?", itemID); err != nil {
-		return errx.User("clearing events: %v", err)
+		return errx.Env("clearing events: %v", err)
 	}
 	for seq, e := range events {
 		if _, err := tx.Exec(`INSERT INTO events
 			(item_id, seq, ts, field, old_value, new_value, commit_sha) VALUES (?,?,?,?,?,?,?)`,
 			itemID, seq, e.Ts, e.Field, e.Old, e.New, e.CommitSHA); err != nil {
-			return errx.User("inserting event: %v", err)
+			return errx.Env("inserting event: %v", err)
 		}
 	}
 	if _, err := tx.Exec(`INSERT INTO event_heads (item_id, head_sha) VALUES (?,?)
 		ON CONFLICT(item_id) DO UPDATE SET head_sha = excluded.head_sha`, itemID, head); err != nil {
-		return errx.User("updating event head: %v", err)
+		return errx.Env("updating event head: %v", err)
 	}
 	return commit(tx)
 }
@@ -76,14 +76,14 @@ func (i *Index) events(itemID string) ([]datamodel.Event, error) {
 	rows, err := i.db.Query(`SELECT ts, field, old_value, new_value, commit_sha
 		FROM events WHERE item_id = ? ORDER BY seq`, itemID)
 	if err != nil {
-		return nil, errx.User("querying events: %v", err)
+		return nil, errx.Env("querying events: %v", err)
 	}
 	defer rows.Close()
 	var out []datamodel.Event
 	for rows.Next() {
 		var e datamodel.Event
 		if err := rows.Scan(&e.Ts, &e.Field, &e.Old, &e.New, &e.CommitSHA); err != nil {
-			return nil, errx.User("scanning event: %v", err)
+			return nil, errx.Env("scanning event: %v", err)
 		}
 		out = append(out, e)
 	}

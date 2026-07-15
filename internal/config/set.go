@@ -1,12 +1,13 @@
 package config
 
 import (
-	"fmt"
 	"maps"
 	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 type setKind int
@@ -42,7 +43,7 @@ func SetKeys() []string {
 func SetScalar(src []byte, dottedKey, value string) ([]byte, error) {
 	kind, ok := setKeys[dottedKey]
 	if !ok {
-		return nil, fmt.Errorf("config: unknown key %q; valid keys: %s", dottedKey, strings.Join(SetKeys(), ", "))
+		return nil, errx.User("config: unknown key %q; valid keys: %s", dottedKey, strings.Join(SetKeys(), ", "))
 	}
 	token, err := renderToken(kind, dottedKey, value)
 	if err != nil {
@@ -51,7 +52,7 @@ func SetScalar(src []byte, dottedKey, value string) ([]byte, error) {
 
 	var doc yaml.Node
 	if err := yaml.Unmarshal(src, &doc); err != nil {
-		return nil, fmt.Errorf("config: %w", err)
+		return nil, errx.User("config: %w", err)
 	}
 	lines := strings.Split(string(src), "\n")
 	segs := strings.Split(dottedKey, ".")
@@ -63,7 +64,7 @@ func SetScalar(src []byte, dottedKey, value string) ([]byte, error) {
 	switch {
 	case matched == len(segs):
 		if node.Kind != yaml.ScalarNode {
-			return nil, fmt.Errorf("config: %s: not a scalar value", dottedKey)
+			return nil, errx.User("config: %s: not a scalar value", dottedKey)
 		}
 		lines, err = replaceScalarLine(lines, node, token)
 		if err != nil {
@@ -86,22 +87,22 @@ func SetScalar(src []byte, dottedKey, value string) ([]byte, error) {
 func verifySet(res []byte, segs []string, dottedKey, want string) error {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(res, &doc); err != nil {
-		return fmt.Errorf("config: %w", err)
+		return errx.User("config: %w", err)
 	}
 	leaf, matched, err := descend(&doc, segs)
 	if err != nil || matched != len(segs) || leaf.Kind != yaml.ScalarNode || leaf.Value != want {
-		return fmt.Errorf("config: %s: edit did not round-trip cleanly (a value may need reformatting)", dottedKey)
+		return errx.User("config: %s: edit did not round-trip cleanly (a value may need reformatting)", dottedKey)
 	}
 	return nil
 }
 
 func descend(doc *yaml.Node, segs []string) (node *yaml.Node, matched int, err error) {
 	if len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
-		return nil, 0, fmt.Errorf("config: top level must be a mapping")
+		return nil, 0, errx.User("config: top level must be a mapping")
 	}
 	m := doc.Content[0]
 	if m.Style&yaml.FlowStyle != 0 {
-		return nil, 0, fmt.Errorf("config: top level must be a block mapping")
+		return nil, 0, errx.User("config: top level must be a block mapping")
 	}
 	for i, seg := range segs {
 		val := childValue(m, seg)
@@ -112,7 +113,7 @@ func descend(doc *yaml.Node, segs []string) (node *yaml.Node, matched int, err e
 			return val, len(segs), nil
 		}
 		if val.Kind != yaml.MappingNode || val.Style&yaml.FlowStyle != 0 {
-			return nil, 0, fmt.Errorf("config: %s: not a block mapping; rewrite it as `%s:` with its keys indented on the lines below", strings.Join(segs[:i+1], "."), seg)
+			return nil, 0, errx.User("config: %s: not a block mapping; rewrite it as `%s:` with its keys indented on the lines below", strings.Join(segs[:i+1], "."), seg)
 		}
 		m = val
 	}
@@ -148,7 +149,7 @@ func renderToken(kind setKind, dottedKey, value string) (string, error) {
 		return "", err
 	}
 	if strings.ContainsRune(value, '#') {
-		return "", fmt.Errorf("config: %s: value %q must not contain '#'", dottedKey, value)
+		return "", errx.User("config: %s: value %q must not contain '#'", dottedKey, value)
 	}
 	return value, nil
 }

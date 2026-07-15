@@ -14,7 +14,7 @@ func ReadCached(cacheDir string) ([]*datamodel.Item, error) {
 	}
 	db, err := sql.Open("sqlite", "file:"+dbPath(cacheDir)+"?mode=ro&_pragma=busy_timeout(2000)")
 	if err != nil {
-		return nil, errx.User("opening index read-only: %v", err)
+		return nil, errx.Env("opening index read-only: %v", err)
 	}
 	defer db.Close()
 	return (&Index{db: db, cacheDir: cacheDir}).Items()
@@ -42,7 +42,7 @@ func (i *Index) scanItems() ([]*datamodel.Item, map[string]*datamodel.Item, erro
 		priority, rank, owner, reporter, epic, sprint, due, estimate, created, updated, activity
 		FROM items ORDER BY id`)
 	if err != nil {
-		return nil, nil, errx.User("querying index items: %v", err)
+		return nil, nil, errx.Env("querying index items: %v", err)
 	}
 	defer rows.Close()
 
@@ -55,7 +55,7 @@ func (i *Index) scanItems() ([]*datamodel.Item, map[string]*datamodel.Item, erro
 		if err := rows.Scan(&it.ID, &it.Number, &it.Type, &subtype, &it.Title, &it.State,
 			&resolution, &priority, &rank, &owner, &reporter, &epic, &sprint, &due,
 			&estimate, &it.Created, &it.Updated, &it.Activity); err != nil {
-			return nil, nil, errx.User("scanning index item: %v", err)
+			return nil, nil, errx.Env("scanning index item: %v", err)
 		}
 		it.Subtype = strPtr(subtype)
 		it.Resolution = strPtr(resolution)
@@ -88,13 +88,13 @@ func (i *Index) attachLabels(byID map[string]*datamodel.Item) error {
 func (i *Index) attachLinks(byID map[string]*datamodel.Item) error {
 	rows, err := i.db.Query("SELECT item_id, kind, target_id FROM links ORDER BY item_id, ord")
 	if err != nil {
-		return errx.User("querying index links: %v", err)
+		return errx.Env("querying index links: %v", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var itemID, kind, target string
 		if err := rows.Scan(&itemID, &kind, &target); err != nil {
-			return errx.User("scanning index link: %v", err)
+			return errx.Env("scanning index link: %v", err)
 		}
 		it := byID[itemID]
 		if it == nil {
@@ -115,12 +115,12 @@ func (i *Index) attachLinks(byID map[string]*datamodel.Item) error {
 func (i *Index) eachChild(q string, byID map[string]*datamodel.Item, add func(*datamodel.Item, string)) error {
 	rows, err := i.db.Query(q)
 	if err != nil {
-		return errx.User("querying index children: %v", err)
+		return errx.Env("querying index children: %v", err)
 	}
 	return eachPair(rows, func(r *sql.Rows) error {
 		var itemID, v string
 		if err := r.Scan(&itemID, &v); err != nil {
-			return errx.User("scanning index child: %v", err)
+			return errx.Env("scanning index child: %v", err)
 		}
 		if it := byID[itemID]; it != nil {
 			add(it, v)

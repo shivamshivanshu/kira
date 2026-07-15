@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 // The global `-C <path>` chdir is deliberately absent: inside `find`, `-C`
@@ -25,7 +26,7 @@ func newFindCmd(g *globalFlags) *cobra.Command {
 			}
 			fa := core.ParseFindArgs(args, knownGlobalFlags)
 			if fa.Pattern == "" {
-				return fmt.Errorf("find: a search pattern is required")
+				return errx.User("find: a search pattern is required").WithHint("example: kira find \"race condition\"")
 			}
 			s, cfg, err := openStore(g)
 			if err != nil {

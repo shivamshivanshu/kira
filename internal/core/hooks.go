@@ -69,14 +69,14 @@ func (s *Store) InstallHooks(cfg *datamodel.Config, opts HooksInstallOpts) (*dat
 func (s *Store) materializeTrackedHook(name, script string) (string, error) {
 	dir := filepath.Join(s.fs().KiraDir(), "hooks")
 	if err := os.MkdirAll(dir, dirPerm); err != nil {
-		return "", errx.User("creating %s: %v", s.fs().RelToRoot(dir), err)
+		return "", errx.Env("creating %s: %v", s.fs().RelToRoot(dir), err)
 	}
 	path := filepath.Join(dir, name)
 	if existing, err := os.ReadFile(path); err == nil && string(existing) == script {
 		return path, nil
 	}
 	if err := os.WriteFile(path, []byte(script), execPerm); err != nil {
-		return "", errx.User("writing %s: %v", s.fs().RelToRoot(path), err)
+		return "", errx.Env("writing %s: %v", s.fs().RelToRoot(path), err)
 	}
 	return path, nil
 }
@@ -88,7 +88,7 @@ func (s *Store) installGitHook(repo gitx.Repo, name, script string) (datamodel.H
 		return status, err
 	}
 	if err := os.MkdirAll(filepath.Dir(dst), dirPerm); err != nil {
-		return status, errx.User("creating %s: %v", filepath.Dir(dst), err)
+		return status, errx.Env("creating %s: %v", filepath.Dir(dst), err)
 	}
 
 	existing, err := os.ReadFile(dst)
@@ -100,7 +100,7 @@ func (s *Store) installGitHook(repo gitx.Repo, name, script string) (datamodel.H
 		return status, nil
 	}
 	if err != nil {
-		return status, errx.User("reading %s: %v", dst, err)
+		return status, errx.Env("reading %s: %v", dst, err)
 	}
 
 	content := string(existing)
@@ -143,7 +143,7 @@ func (s *Store) gitHookPath(repo gitx.Repo, name string) (string, error) {
 
 func writeExecutable(path, content string) error {
 	if err := os.WriteFile(path, []byte(content), execPerm); err != nil {
-		return errx.User("writing %s: %v", path, err)
+		return errx.Env("writing %s: %v", path, err)
 	}
 	return os.Chmod(path, execPerm)
 }
@@ -289,13 +289,13 @@ func (s *Store) uninstallGitHook(repo gitx.Repo, name string) (datamodel.HookSta
 		return hs, nil
 	}
 	if err != nil {
-		return hs, errx.User("reading %s: %v", dst, err)
+		return hs, errx.Env("reading %s: %v", dst, err)
 	}
 	content := string(existing)
 	state := hooks.StateOf(content, name)
 	if state == hooks.StateInstalled || (state == hooks.StateDrifted && hooks.IsPureShim(content, name)) {
 		if err := os.Remove(dst); err != nil {
-			return hs, errx.User("removing %s: %v", dst, err)
+			return hs, errx.Env("removing %s: %v", dst, err)
 		}
 		hs.State = "removed"
 		return hs, nil

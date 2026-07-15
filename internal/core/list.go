@@ -33,7 +33,7 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 
 	pred, order, notes, err := opts.compile(cfg, s.queryOptions(cfg, resolver, items))
 	if err != nil {
-		return nil, errx.User("%v", err)
+		return nil, queryError(err)
 	}
 
 	matched := filterSort(cfg, items, pred, order)
@@ -53,7 +53,7 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 func (s *Store) matchSorted(cfg *datamodel.Config, ld *loaded, opts ListOpts) ([]*datamodel.Item, error) {
 	pred, order, _, err := opts.compile(cfg, s.queryOptions(cfg, ld.resolver, ld.items))
 	if err != nil {
-		return nil, errx.User("%v", err)
+		return nil, queryError(err)
 	}
 	return filterSort(cfg, ld.items, pred, order), nil
 }
@@ -82,7 +82,7 @@ func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel
 	}
 	pred, _, _, err := ListOpts{Query: expr}.compile(cfg, s.queryOptions(cfg, ld.resolver, ld.items))
 	if err != nil {
-		return nil, nil, errx.User("%v", err)
+		return nil, nil, queryError(err)
 	}
 	epicNumbers := epicNumberMap(ld.items)
 	rows := make([]datamodel.ListItem, len(ld.items))

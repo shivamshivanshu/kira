@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/syncx"
 )
 
@@ -19,7 +20,7 @@ func newSyncCmd(g *globalFlags) *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if commit && stash {
-				return fmt.Errorf("--commit and --stash are mutually exclusive")
+				return errx.User("--commit and --stash are mutually exclusive")
 			}
 			switch {
 			case commit:

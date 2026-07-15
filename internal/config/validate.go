@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 const BoardKeyPattern = `^[A-Z][A-Z0-9]{1,9}$`
@@ -21,7 +22,7 @@ func ValidBoardKey(key string) bool {
 
 func Validate(c *datamodel.Config) error {
 	if c.Version < 1 || c.Version > datamodel.SchemaVersion {
-		return fmt.Errorf("config: version: unsupported version %d (this kira understands 1..%d)", c.Version, datamodel.SchemaVersion)
+		return errx.User("config: version: unsupported version %d (this kira understands 1..%d)", c.Version, datamodel.SchemaVersion)
 	}
 	if err := validateEnum("id.style", c.ID.Style, datamodel.IDStyles...); err != nil {
 		return err
@@ -30,10 +31,10 @@ func Validate(c *datamodel.Config) error {
 		return err
 	}
 	if strings.TrimSpace(c.Commit.Trailer) == "" {
-		return fmt.Errorf("config: commit.trailer: required; an empty trailer key disables all commit linking")
+		return errx.User("config: commit.trailer: required; an empty trailer key disables all commit linking")
 	}
 	if strings.ContainsAny(c.Commit.SubjectPrefix, "\n\r") {
-		return fmt.Errorf("config: commit.subject_prefix: must be a single line, got %q", c.Commit.SubjectPrefix)
+		return errx.User("config: commit.subject_prefix: must be a single line, got %q", c.Commit.SubjectPrefix)
 	}
 	for i, m := range c.Commit.LinkMarkers {
 		if err := validateEnum(fmt.Sprintf("commit.link_markers[%d]", i), m, datamodel.LinkMarkers...); err != nil {
@@ -61,7 +62,7 @@ func Validate(c *datamodel.Config) error {
 		return err
 	}
 	if len(c.Workflows) == 0 {
-		return fmt.Errorf("config: workflows: at least one workflow is required")
+		return errx.User("config: workflows: at least one workflow is required")
 	}
 	for name, wf := range c.Workflows {
 		if err := validateWorkflow(name, wf, c); err != nil {
@@ -84,13 +85,13 @@ func Validate(c *datamodel.Config) error {
 	if len(c.Resolutions.Values) > 0 {
 		for _, d := range c.ResolutionsDropped {
 			if !slices.Contains(c.Resolutions.Values, d) {
-				return fmt.Errorf("config: resolutions_dropped: %q is not one of the configured resolutions %v; dropped detection would never match", d, c.Resolutions.Values)
+				return errx.User("config: resolutions_dropped: %q is not one of the configured resolutions %v; dropped detection would never match", d, c.Resolutions.Values)
 			}
 		}
 	}
 	for i, p := range c.People.Known {
 		if p.Name == "" {
-			return fmt.Errorf("config: people.known[%d].name: required", i)
+			return errx.User("config: people.known[%d].name: required", i)
 		}
 	}
 	if err := validateFilters(c); err != nil {
@@ -107,29 +108,30 @@ func Validate(c *datamodel.Config) error {
 
 func validateBoards(c *datamodel.Config) error {
 	if c.Boards != nil && c.Version < datamodel.BoardsSchemaVersion {
-		return fmt.Errorf("config: boards require version %d, found %d; bump version to %d or remove the boards list", datamodel.BoardsSchemaVersion, c.Version, datamodel.BoardsSchemaVersion)
+		return errx.User("config: boards require version %d, found %d", datamodel.BoardsSchemaVersion, c.Version).
+			WithHint("bump version to %d or remove the boards list", datamodel.BoardsSchemaVersion)
 	}
 	seen := make(map[string]bool, len(c.Boards))
 	defaults := 0
 	for i, b := range c.Boards {
 		where := fmt.Sprintf("boards[%d]", i)
 		if !ValidBoardKey(b.Key) {
-			return fmt.Errorf("config: %s.key: %q must match %s", where, b.Key, BoardKeyPattern)
+			return errx.User("config: %s.key: %q must match %s", where, b.Key, BoardKeyPattern)
 		}
 		up := strings.ToUpper(b.Key)
 		if seen[up] {
-			return fmt.Errorf("config: boards: duplicate key %q", b.Key)
+			return errx.User("config: boards: duplicate key %q", b.Key)
 		}
 		seen[up] = true
 		if strings.TrimSpace(b.Name) == "" {
-			return fmt.Errorf("config: %s.name: required", where)
+			return errx.User("config: %s.name: required", where)
 		}
 		if b.Default {
 			defaults++
 		}
 	}
 	if defaults > 1 {
-		return fmt.Errorf("config: boards: at most one board may be default, found %d", defaults)
+		return errx.User("config: boards: at most one board may be default, found %d", defaults)
 	}
 	return nil
 }
@@ -150,10 +152,11 @@ func validateUISection(ui datamodel.UI) error {
 func validateRefresh(s string) error {
 	d, err := time.ParseDuration(s)
 	if err != nil {
-		return fmt.Errorf("config: ui.tui.refresh: invalid duration %q", s)
+		return errx.User("config: ui.tui.refresh: invalid duration %q", s)
 	}
 	if d != 0 && d < datamodel.MinRefreshInterval {
-		return fmt.Errorf("config: ui.tui.refresh: %s is below the %s minimum (use 0 to disable)", d, datamodel.MinRefreshInterval)
+		return errx.User("config: ui.tui.refresh: %s is below the %s minimum", d, datamodel.MinRefreshInterval).
+			WithHint("use 0 to disable")
 	}
 	return nil
 }
@@ -163,10 +166,11 @@ func validateWorkonSection(w datamodel.Workon) error {
 		return err
 	}
 	if !strings.Contains(w.BranchPattern, "{number}") {
-		return fmt.Errorf("config: workon.branch_pattern: must contain {number}, got %q", w.BranchPattern)
+		return errx.User("config: workon.branch_pattern: must contain {number}, got %q", w.BranchPattern)
 	}
 	if strings.HasPrefix(w.WorktreeDir, "~") {
-		return fmt.Errorf("config: workon.worktree_dir: %q begins with ~, which is not expanded; use an absolute or repo-relative path", w.WorktreeDir)
+		return errx.User("config: workon.worktree_dir: %q begins with ~, which is not expanded", w.WorktreeDir).
+			WithHint("use an absolute or repo-relative path")
 	}
 	return nil
 }
@@ -200,13 +204,13 @@ func validateAutomationHooks(where string, hooks []datamodel.AutomationHook) err
 	for i, h := range hooks {
 		at := fmt.Sprintf("%s[%d]", where, i)
 		if !slices.Contains(datamodel.AutomationEvents, h.On) {
-			return fmt.Errorf("config: %s.on: invalid event %q, want one of %v", at, h.On, datamodel.AutomationEvents)
+			return errx.User("config: %s.on: invalid event %q, want one of %v", at, h.On, datamodel.AutomationEvents)
 		}
 		if strings.TrimSpace(h.Run) == "" {
-			return fmt.Errorf("config: %s.run: required", at)
+			return errx.User("config: %s.run: required", at)
 		}
 		if _, err := h.TimeoutDuration(); err != nil {
-			return fmt.Errorf("config: %s.timeout: invalid duration %q", at, h.Timeout)
+			return errx.User("config: %s.timeout: invalid duration %q", at, h.Timeout)
 		}
 	}
 	return nil
@@ -216,10 +220,10 @@ func validateVocabList(key string, list []string) error {
 	seen := make(map[string]bool, len(list))
 	for _, v := range list {
 		if v == "" {
-			return fmt.Errorf("config: %s: empty entry", key)
+			return errx.User("config: %s: empty entry", key)
 		}
 		if seen[v] {
-			return fmt.Errorf("config: %s: duplicate entry %q", key, v)
+			return errx.User("config: %s: duplicate entry %q", key, v)
 		}
 		seen[v] = true
 	}
@@ -229,10 +233,10 @@ func validateVocabList(key string, list []string) error {
 func validateFilters(c *datamodel.Config) error {
 	for name, query := range c.Filters {
 		if name == "" {
-			return fmt.Errorf("config: filters: empty filter name")
+			return errx.User("config: filters: empty filter name")
 		}
 		if strings.TrimSpace(query) == "" {
-			return fmt.Errorf("config: filters.%s: empty query", name)
+			return errx.User("config: filters.%s: empty query", name)
 		}
 	}
 	return nil
@@ -242,23 +246,23 @@ func validateSprints(c *datamodel.Config) error {
 	keys := make(map[string]bool, len(c.Sprints))
 	for _, s := range c.Sprints {
 		if s.Key == "" {
-			return fmt.Errorf("config: sprints: sprint with empty key")
+			return errx.User("config: sprints: sprint with empty key")
 		}
 		if keys[s.Key] {
-			return fmt.Errorf("config: sprints: duplicate key %q", s.Key)
+			return errx.User("config: sprints: duplicate key %q", s.Key)
 		}
 		keys[s.Key] = true
 		if s.Name == "" {
-			return fmt.Errorf("config: sprints[%s]: empty name", s.Key)
+			return errx.User("config: sprints[%s]: empty name", s.Key)
 		}
 		if !datamodel.ValidDate(s.Start) {
-			return fmt.Errorf("config: sprints[%s].start: invalid RFC3339 date %q", s.Key, s.Start)
+			return errx.User("config: sprints[%s].start: invalid RFC3339 date %q", s.Key, s.Start)
 		}
 		if !datamodel.ValidDate(s.End) {
-			return fmt.Errorf("config: sprints[%s].end: invalid RFC3339 date %q", s.Key, s.End)
+			return errx.User("config: sprints[%s].end: invalid RFC3339 date %q", s.Key, s.End)
 		}
 		if s.Start >= s.End {
-			return fmt.Errorf("config: sprints[%s]: start %s is not before end %s", s.Key, s.Start, s.End)
+			return errx.User("config: sprints[%s]: start %s is not before end %s", s.Key, s.Start, s.End)
 		}
 	}
 	return nil
@@ -266,22 +270,22 @@ func validateSprints(c *datamodel.Config) error {
 
 func validateWorkflow(name string, w datamodel.Workflow, c *datamodel.Config) error {
 	if len(w.States) == 0 {
-		return fmt.Errorf("config: workflows.%s.states: workflow has no states", name)
+		return errx.User("config: workflows.%s.states: workflow has no states", name)
 	}
 	defined := make(map[string]bool, len(w.States))
 	for _, s := range w.States {
 		if s.Key == "" {
-			return fmt.Errorf("config: workflows.%s.states: state with empty key", name)
+			return errx.User("config: workflows.%s.states: state with empty key", name)
 		}
 		if defined[s.Key] {
-			return fmt.Errorf("config: workflows.%s.states: duplicate state %q", name, s.Key)
+			return errx.User("config: workflows.%s.states: duplicate state %q", name, s.Key)
 		}
 		defined[s.Key] = true
 		if !slices.Contains(datamodel.Categories, s.Category) {
-			return fmt.Errorf("config: workflows.%s.states[%s].category: invalid value %q, want one of %v", name, s.Key, s.Category, datamodel.Categories)
+			return errx.User("config: workflows.%s.states[%s].category: invalid value %q, want one of %v", name, s.Key, s.Category, datamodel.Categories)
 		}
 		if s.Wip < 0 {
-			return fmt.Errorf("config: workflows.%s.states[%s].wip: must be >= 0, got %d", name, s.Key, s.Wip)
+			return errx.User("config: workflows.%s.states[%s].wip: must be >= 0, got %d", name, s.Key, s.Wip)
 		}
 	}
 	if w.WipPolicy != "" {
@@ -290,21 +294,21 @@ func validateWorkflow(name string, w datamodel.Workflow, c *datamodel.Config) er
 		}
 	}
 	if w.Initial == "" {
-		return fmt.Errorf("config: workflows.%s.initial: required", name)
+		return errx.User("config: workflows.%s.initial: required", name)
 	}
 	if !defined[w.Initial] {
-		return fmt.Errorf("config: workflows.%s.initial: %q is not a defined state", name, w.Initial)
+		return errx.User("config: workflows.%s.initial: %q is not a defined state", name, w.Initial)
 	}
 	for from, targets := range w.Transitions {
 		if !defined[from] {
-			return fmt.Errorf("config: workflows.%s.transitions: unknown state %q", name, from)
+			return errx.User("config: workflows.%s.transitions: unknown state %q", name, from)
 		}
 		for _, t := range targets {
 			if t.To == "" {
-				return fmt.Errorf("config: workflows.%s.transitions.%s: transition without a target state", name, from)
+				return errx.User("config: workflows.%s.transitions.%s: transition without a target state", name, from)
 			}
 			if !defined[t.To] {
-				return fmt.Errorf("config: workflows.%s.transitions.%s: unknown target state %q", name, from, t.To)
+				return errx.User("config: workflows.%s.transitions.%s: unknown target state %q", name, from, t.To)
 			}
 			if err := validateGuards(t, fmt.Sprintf("workflows.%s.transitions.%s", name, from), c); err != nil {
 				return err
@@ -320,15 +324,15 @@ func validateGuards(t datamodel.Transition, where string, c *datamodel.Config) e
 			continue
 		}
 		if !slices.Contains(datamodel.MutableFields, f) {
-			return fmt.Errorf("config: %s: require names unknown field %q", where, f)
+			return errx.User("config: %s: require names unknown field %q", where, f)
 		}
 	}
 	for f, v := range t.Set {
 		if !slices.Contains(datamodel.MutableFields, f) {
-			return fmt.Errorf("config: %s: set names unknown field %q", where, f)
+			return errx.User("config: %s: set names unknown field %q", where, f)
 		}
 		if vocab, ok := c.VocabFor(f); ok && len(vocab) > 0 && !slices.Contains(vocab, v) {
-			return fmt.Errorf("config: %s: set.%s: %q is not in the configured %s vocabulary", where, f, v, f)
+			return errx.User("config: %s: set.%s: %q is not in the configured %s vocabulary", where, f, v, f)
 		}
 	}
 	return nil
@@ -338,5 +342,5 @@ func validateEnum[T ~string](key string, val T, allowed ...T) error {
 	if slices.Contains(allowed, val) {
 		return nil
 	}
-	return fmt.Errorf("config: %s: invalid value %q, want one of %v", key, val, allowed)
+	return errx.User("config: %s: invalid value %q, want one of %v", key, val, allowed)
 }

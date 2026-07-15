@@ -10,6 +10,8 @@ import (
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
+const invalidItemPrefix = "invalid item"
+
 type applyFn func(it *datamodel.Item, resolver *id.Resolver, items []*datamodel.Item) (hard, warns []error)
 
 func (s *Store) lockAndResolve(cfg *datamodel.Config, ref string) (func(), *datamodel.Item, []*datamodel.Item, *id.Resolver, error) {
@@ -39,11 +41,11 @@ func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply appl
 	updated := cloneItem(orig)
 	hard, warns := apply(updated, resolver, items)
 	if len(hard) > 0 {
-		return nil, nil, errx.Invalid(hard)
+		return nil, nil, errx.Invalid(invalidItemPrefix, hard)
 	}
 	vhard, vwarns := validateMutation(cfg, orig, updated, resolver, items, force)
 	if len(vhard) > 0 {
-		return nil, nil, errx.Invalid(vhard)
+		return nil, nil, errx.Invalid(invalidItemPrefix, vhard)
 	}
 	warns = append(warns, vwarns...)
 

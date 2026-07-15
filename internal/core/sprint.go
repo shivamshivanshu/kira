@@ -91,10 +91,10 @@ func (s *Store) SprintActivate(cfg *datamodel.Config, key string) (*datamodel.Sp
 	prev := s.ActiveSprintKey()
 	fs := s.fs()
 	if err := os.MkdirAll(fs.CacheDir(), dirPerm); err != nil {
-		return nil, errx.User("creating cache dir: %v", err)
+		return nil, errx.Env("creating cache dir: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(fs.CacheDir(), activeSprintFile), []byte(key+"\n"), filePerm); err != nil {
-		return nil, errx.User("writing active-sprint pointer: %v", err)
+		return nil, errx.Env("writing active-sprint pointer: %v", err)
 	}
 	return &datamodel.SprintActivateResult{Activated: key, Previous: prev}, nil
 }

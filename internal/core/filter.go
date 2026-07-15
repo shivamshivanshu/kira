@@ -1,12 +1,14 @@
 package core
 
 import (
+	"errors"
 	"maps"
 	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/query"
 )
 
 func filterNames(cfg *datamodel.Config) []string {
@@ -23,4 +25,12 @@ func unknownFilterErr(cfg *datamodel.Config, name string) error {
 		return base.WithHint("did you mean `%s`?", n)
 	}
 	return base
+}
+
+func queryError(err error) error {
+	var qerr *query.Error
+	if !errors.As(err, &qerr) {
+		return err
+	}
+	return errx.User("%w", err).WithHint("check the query expression syntax")
 }

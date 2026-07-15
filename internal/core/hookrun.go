@@ -104,7 +104,7 @@ func (s *Store) ValidateStaged(cfg *datamodel.Config) error {
 		}
 	}
 	if len(problems) > 0 {
-		return errx.Invalid(problems)
+		return errx.Invalid("invalid items", problems)
 	}
 	return nil
 }

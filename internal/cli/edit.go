@@ -40,7 +40,7 @@ func newEditCmd(g *globalFlags) *cobra.Command {
 			for _, f := range fields {
 				k, v, ok := strings.Cut(f, "=")
 				if !ok {
-					return fmt.Errorf("--field %q: expected key=value", f)
+					return errx.User("--field %q: expected key=value", f).WithHint("example: --field priority=P1")
 				}
 				opts.Fields = append(opts.Fields, core.FieldEdit{Key: k, Value: v})
 			}

@@ -57,7 +57,7 @@ func (s *Store) LabelCreate(cfg *datamodel.Config, names []string) (*datamodel.L
 		return nil, errx.User("%v", err)
 	}
 	if err := os.WriteFile(fs.ConfigPath(), out, filePerm); err != nil {
-		return nil, errx.User("writing config: %v", err)
+		return nil, errx.Env("writing config: %v", err)
 	}
 	subject := cfg.Commit.SubjectPrefix + "label create " + strings.Join(toAdd, ",")
 	if _, err := s.finalize(cfg.Commit.Mode, commitSpec{trailerKey: cfg.Commit.Trailer, subject: subject}, fs.RelToRoot(fs.ConfigPath())); err != nil {

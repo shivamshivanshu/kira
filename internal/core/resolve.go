@@ -89,7 +89,7 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 func (s *Store) writeResolvedFile(path string, it *datamodel.Item) error {
 	abs := filepath.Join(s.root, filepath.FromSlash(path))
 	if err := os.WriteFile(abs, []byte(codec.Serialize(it)), itemFileMode); err != nil {
-		return errx.User("writing %s: %v", path, err)
+		return errx.Env("writing %s: %v", path, err)
 	}
 	return nil
 }

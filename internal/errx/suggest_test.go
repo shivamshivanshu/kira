@@ -19,6 +19,9 @@ func TestNearest(t *testing.T) {
 		{"number-typo", "KIRA-1X", []string{"KIRA-1", "KIRA-2"}, "KIRA-1"},
 		{"number-far", "KIRA-999", []string{"KIRA-1", "KIRA-2", "KIRA-3"}, ""},
 		{"closest-of-many", "REVEW", states, "REVIEW"},
+		{"wrong-case", "done", states, "DONE"},
+		{"wrong-case-typo", "don", states, "DONE"},
+		{"threshold-scales-by-runes-not-bytes", "日本語", []string{"日曜日"}, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -42,7 +45,7 @@ func TestEditDistance(t *testing.T) {
 		{"", "abc", 3},
 	}
 	for _, c := range cases {
-		if got := editDistance(c.a, c.b); got != c.want {
+		if got := editDistance([]rune(c.a), []rune(c.b)); got != c.want {
 			t.Errorf("editDistance(%q, %q) = %d, want %d", c.a, c.b, got, c.want)
 		}
 	}

@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS events (
 func (i *Index) ensureSchema() error {
 	var version int
 	if err := i.db.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
-		return errx.User("reading index schema version: %v", err)
+		return errx.Env("reading index schema version: %v", err)
 	}
 	if version == schemaVersion {
 		return nil
@@ -89,10 +89,10 @@ func (i *Index) ensureSchema() error {
 		}
 	}
 	if _, err := i.db.Exec(ddl); err != nil {
-		return errx.User("creating index schema: %v", err)
+		return errx.Env("creating index schema: %v", err)
 	}
 	if _, err := i.db.Exec(fmt.Sprintf("PRAGMA user_version=%d", schemaVersion)); err != nil {
-		return errx.User("setting index schema version: %v", err)
+		return errx.Env("setting index schema version: %v", err)
 	}
 	return nil
 }
@@ -100,24 +100,24 @@ func (i *Index) ensureSchema() error {
 func (i *Index) dropAllTables() error {
 	rows, err := i.db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
 	if err != nil {
-		return errx.User("listing index tables: %v", err)
+		return errx.Env("listing index tables: %v", err)
 	}
 	var names []string
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
 			rows.Close()
-			return errx.User("scanning index tables: %v", err)
+			return errx.Env("scanning index tables: %v", err)
 		}
 		names = append(names, name)
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
-		return errx.User("listing index tables: %v", err)
+		return errx.Env("listing index tables: %v", err)
 	}
 	for _, name := range names {
 		if _, err := i.db.Exec("DROP TABLE IF EXISTS " + name); err != nil {
-			return errx.User("dropping stale index table %s: %v", name, err)
+			return errx.Env("dropping stale index table %s: %v", name, err)
 		}
 	}
 	return nil

@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 func newChangesCmd(g *globalFlags) *cobra.Command {
@@ -17,7 +18,7 @@ func newChangesCmd(g *globalFlags) *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if since == "" {
-				return fmt.Errorf("changes: --since <ref> is required")
+				return errx.User("changes: --since <ref> is required").WithHint("example: kira changes --since HEAD~10")
 			}
 			s, _, err := openStore(g)
 			if err != nil {

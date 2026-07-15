@@ -55,7 +55,7 @@ func Init(startDir, key string, force bool, prompter ...Prompter) (*datamodel.In
 
 	for _, dir := range []string{fs.ItemsDir(), fs.TemplateDir()} {
 		if err := os.MkdirAll(dir, dirPerm); err != nil {
-			return nil, errx.User("creating %s: %v", dir, err)
+			return nil, errx.Env("creating %s: %v", dir, err)
 		}
 	}
 
@@ -67,7 +67,7 @@ func Init(startDir, key string, force bool, prompter ...Prompter) (*datamodel.In
 	}
 	for path, content := range files {
 		if err := os.WriteFile(path, []byte(content), filePerm); err != nil {
-			return nil, errx.User("writing %s: %v", fs.RelToRoot(path), err)
+			return nil, errx.Env("writing %s: %v", fs.RelToRoot(path), err)
 		}
 	}
 
