@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: task
 title: "Extract shared stats line formatter (cli/tui drift, codec import leak)"
-state: TODO
+state: IN_PROGRESS
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:41+05:30
-updated: 2026-07-15T01:24:41+05:30
+updated: 2026-07-15T19:51:00+05:30
 ---
 
 ## Description
