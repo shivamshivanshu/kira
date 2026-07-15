@@ -18,13 +18,6 @@ func clamp(v, lo, hi int) int {
 	return v
 }
 
-func deref(s *string) string {
-	if s != nil {
-		return *s
-	}
-	return ""
-}
-
 func styleText(s lipgloss.Style, text string, bold bool) string {
 	if bold {
 		s = s.Bold(true)

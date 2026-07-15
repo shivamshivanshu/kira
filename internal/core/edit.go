@@ -189,13 +189,6 @@ func applyFieldEdit(it *datamodel.Item, key, value string) error {
 	return d.Set(it, value)
 }
 
-func ptrOrNil(value string) *string {
-	if value == "" {
-		return nil
-	}
-	return &value
-}
-
 func cloneItem(src *datamodel.Item) *datamodel.Item {
 	dst := *src
 	dst.Aliases = slices.Clone(src.Aliases)

@@ -8,6 +8,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
@@ -98,7 +99,7 @@ func rawSink(st *storage.FS, cfg *datamodel.Config, alloc *id.Allocator, mint fu
 		ts := seedEpoch.Add(time.Duration(i) * time.Hour)
 		it := buildItem(cfg, sp, u.String(), number, ts)
 		if parent != "" {
-			it.Epic = ptr(parent)
+			it.Epic = ptr.To(parent)
 		}
 		var counts Summary
 		for j, body := range sp.Comments {
@@ -138,10 +139,10 @@ func buildItem(cfg *datamodel.Config, sp Spec, ulid, number string, ts time.Time
 		Updated:   stamp,
 		Body:      sp.Body,
 	}
-	it.Subtype = ptrIfSet(sp.Subtype)
-	it.Priority = ptrIfSet(sp.Priority)
-	it.Owner = ptrIfSet(sp.Owner)
-	it.Resolution = ptrIfSet(doneResolution(cfg, sp.Type, state))
+	it.Subtype = ptr.NilIfEmpty(sp.Subtype)
+	it.Priority = ptr.NilIfEmpty(sp.Priority)
+	it.Owner = ptr.NilIfEmpty(sp.Owner)
+	it.Resolution = ptr.NilIfEmpty(doneResolution(cfg, sp.Type, state))
 	return it
 }
 
@@ -169,13 +170,4 @@ func doneResolution(cfg *datamodel.Config, typ, state string) string {
 		}
 	}
 	return ""
-}
-
-func ptr[T any](v T) *T { return &v }
-
-func ptrIfSet(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
 }

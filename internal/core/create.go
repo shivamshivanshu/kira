@@ -258,7 +258,7 @@ func itemFromDraft(d draft, sys systemFields) *datamodel.Item {
 }
 
 func normPtr(p *string) *string {
-	return ptrOrNil(ptr.Deref(p))
+	return ptr.NilIfEmpty(ptr.Deref(p))
 }
 
 func (s *Store) templateDraft(typ, subtype string) (draft, error) {

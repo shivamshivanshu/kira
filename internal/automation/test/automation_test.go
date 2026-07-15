@@ -7,9 +7,8 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/automation"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
-
-func ptr[T any](v T) *T { return &v }
 
 func TestMatchesWildcardWhenNoMatchBlock(t *testing.T) {
 	h := datamodel.AutomationHook{On: datamodel.EventItemStateChanged}
@@ -155,7 +154,7 @@ func TestEnabledDefaultsTrue(t *testing.T) {
 	if !(datamodel.AutomationHook{}).IsEnabled() {
 		t.Fatal("hook enabled must default to true")
 	}
-	if (datamodel.AutomationHook{Enabled: ptr(false)}).IsEnabled() {
+	if (datamodel.AutomationHook{Enabled: ptr.To(false)}).IsEnabled() {
 		t.Fatal("explicit enabled:false must disable")
 	}
 }

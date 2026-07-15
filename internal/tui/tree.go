@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
@@ -205,7 +206,7 @@ func (tm *treeModel) renderRow(t theme.Theme, ic iconSet, ti treeItem, width int
 	}
 	cat := datamodel.Category(ti.fields.Category)
 	indent := strings.Repeat("  ", ti.depth)
-	priority := deref(ti.fields.Priority)
+	priority := ptr.Deref(ti.fields.Priority)
 
 	fixed := []rowSegment{
 		{marker, t.Dim}, {" ", t.Text}, {indent, t.Text},

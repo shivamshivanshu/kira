@@ -7,9 +7,8 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/merge"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
-
-func strptr(s string) *string { return &s }
 
 func base(mut func(*datamodel.Item)) *datamodel.Item {
 	it := &datamodel.Item{
@@ -75,8 +74,8 @@ func TestScalarTieBreakGoesToRemote(t *testing.T) {
 func TestPointerScalarNilBaseLWW(t *testing.T) {
 	t.Parallel()
 	b := base(nil)
-	ours := base(func(it *datamodel.Item) { it.Owner = strptr("alice"); it.Updated = "2026-02-02T00:00:00Z" })
-	theirs := base(func(it *datamodel.Item) { it.Owner = strptr("bob"); it.Updated = "2026-02-01T00:00:00Z" })
+	ours := base(func(it *datamodel.Item) { it.Owner = ptr.To("alice"); it.Updated = "2026-02-02T00:00:00Z" })
+	theirs := base(func(it *datamodel.Item) { it.Owner = ptr.To("bob"); it.Updated = "2026-02-01T00:00:00Z" })
 	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
 	if got.Owner == nil || *got.Owner != "alice" {
 		t.Fatalf("owner = %v, want alice", got.Owner)
@@ -261,7 +260,7 @@ func TestDeterministicAcrossRuns(t *testing.T) {
 func TestArbitratedReportsOnlyBothSidesDivergedFromBase(t *testing.T) {
 	t.Parallel()
 	b := base(nil)
-	ours := base(func(it *datamodel.Item) { it.State = "REVIEW"; it.Owner = strptr("alice") })
+	ours := base(func(it *datamodel.Item) { it.State = "REVIEW"; it.Owner = ptr.To("alice") })
 	theirs := base(func(it *datamodel.Item) { it.State = "DONE"; it.Title = "other" })
 	res := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger)
 	if !contains(res.Arbitrated, "state") {

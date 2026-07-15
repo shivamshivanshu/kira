@@ -3,6 +3,7 @@ package core
 import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 type AssignOpts struct {
@@ -24,7 +25,7 @@ func (s *Store) Assign(cfg *datamodel.Config, ref, user string, opts AssignOpts)
 		if opts.Reporter {
 			target = &it.Reporter
 		}
-		*target = ptrOrNil(user)
+		*target = ptr.NilIfEmpty(user)
 		return nil, nil
 	}
 	subjectOf := func(orig *datamodel.Item) string {

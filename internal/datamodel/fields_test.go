@@ -116,6 +116,19 @@ func TestFieldDescriptorGet(t *testing.T) {
 	}
 }
 
+func TestPtrFieldGetDistinguishesNilFromPresentEmpty(t *testing.T) {
+	empty := ""
+	it := &Item{Owner: &empty}
+	d, _ := Field(KeyOwner)
+	if got := d.Get(it); got != "" {
+		t.Errorf("Get on a present-but-empty pointer = %q, want empty string (not the nil placeholder)", got)
+	}
+	it.Owner = nil
+	if got := d.Get(it); got != "-" {
+		t.Errorf("Get on a nil pointer = %q, want \"-\"", got)
+	}
+}
+
 func TestFieldDescriptorCopyClonesList(t *testing.T) {
 	d, _ := Field(KeyLabels)
 	src := &Item{Labels: []string{"a"}}
@@ -137,25 +150,5 @@ func TestFieldDescriptorCopyClonesLinks(t *testing.T) {
 	want := map[string][]string{string(LinkRelates): {"01B"}}
 	if !maps.EqualFunc(dst.Links, want, slices.Equal[[]string]) {
 		t.Fatalf("Copy did not deep-clone: dst.Links = %v", dst.Links)
-	}
-}
-
-func TestEqualPtr(t *testing.T) {
-	x, y := "a", "b"
-	xCopy := "a"
-	tests := []struct {
-		a, b *string
-		want bool
-	}{
-		{nil, nil, true},
-		{&x, nil, false},
-		{nil, &x, false},
-		{&x, &xCopy, true},
-		{&x, &y, false},
-	}
-	for _, tt := range tests {
-		if got := EqualPtr(tt.a, tt.b); got != tt.want {
-			t.Errorf("EqualPtr(%v, %v) = %v, want %v", tt.a, tt.b, got, tt.want)
-		}
 	}
 }

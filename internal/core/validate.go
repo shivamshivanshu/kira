@@ -8,6 +8,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 type vocabWarning struct {
@@ -102,7 +103,7 @@ func validateResolutionState(cfg *datamodel.Config, orig, it *datamodel.Item) []
 	if it.Resolution == nil {
 		return nil
 	}
-	if orig != nil && it.State == orig.State && datamodel.EqualPtr(it.Resolution, orig.Resolution) {
+	if orig != nil && it.State == orig.State && ptr.Equal(it.Resolution, orig.Resolution) {
 		return nil
 	}
 	if cat, known := categoryOf(cfg, it.Type, it.State); known && cat != datamodel.CategoryDone {

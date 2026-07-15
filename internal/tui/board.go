@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/termx"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
@@ -120,7 +121,7 @@ func renderColumn(t theme.Theme, ic iconSet, col datamodel.BoardColumn, w, heigh
 }
 
 func renderCard(t theme.Theme, ic iconSet, cat datamodel.Category, it datamodel.ListItem, w int, selected bool) string {
-	priority := deref(it.Priority)
+	priority := ptr.Deref(it.Priority)
 	glyph := ic.categoryGlyph(cat, it.Resolution)
 	prio := ic.priorityCell(priority)
 	segments := []rowSegment{

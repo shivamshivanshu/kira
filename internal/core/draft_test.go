@@ -9,6 +9,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/editorx"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 func TestDraftRoundTrip(t *testing.T) {
@@ -16,13 +17,13 @@ func TestDraftRoundTrip(t *testing.T) {
 	d := draft{
 		Title:    "Fix race",
 		Type:     "ticket",
-		Subtype:  strPtr("bug"),
-		Priority: strPtr("P1"),
-		Rank:     strPtr("0|m:"),
-		Owner:    strPtr("shivam"),
+		Subtype:  ptr.To("bug"),
+		Priority: ptr.To("P1"),
+		Rank:     ptr.To("0|m:"),
+		Owner:    ptr.To("shivam"),
 		Labels:   []string{"bug", "perf"},
-		Sprint:   strPtr("2026-S14"),
-		Due:      strPtr("2026-07-20"),
+		Sprint:   ptr.To("2026-S14"),
+		Due:      ptr.To("2026-07-20"),
 		Estimate: &est,
 		Body:     "\n## Description\n\nbody text\n",
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 func newListCmd(g *globalFlags) *cobra.Command {
@@ -114,19 +115,12 @@ var listCells = map[string]func(datamodel.ListItem) string{
 	"type":        func(it datamodel.ListItem) string { return it.Type },
 	"state":       func(it datamodel.ListItem) string { return it.State },
 	"category":    func(it datamodel.ListItem) string { return it.Category },
-	"priority":    func(it datamodel.ListItem) string { return derefCell(it.Priority) },
-	"owner":       func(it datamodel.ListItem) string { return derefCell(it.Owner) },
+	"priority":    func(it datamodel.ListItem) string { return ptr.DerefOr(it.Priority, "-") },
+	"owner":       func(it datamodel.ListItem) string { return ptr.DerefOr(it.Owner, "-") },
 	"labels":      func(it datamodel.ListItem) string { return strings.Join(it.Labels, ",") },
-	"epic":        func(it datamodel.ListItem) string { return derefCell(it.Epic) },
-	"epic_number": func(it datamodel.ListItem) string { return derefCell(it.EpicNumber) },
-	"resolution":  func(it datamodel.ListItem) string { return derefCell(it.Resolution) },
-	"due":         func(it datamodel.ListItem) string { return derefCell(it.Due) },
+	"epic":        func(it datamodel.ListItem) string { return ptr.DerefOr(it.Epic, "-") },
+	"epic_number": func(it datamodel.ListItem) string { return ptr.DerefOr(it.EpicNumber, "-") },
+	"resolution":  func(it datamodel.ListItem) string { return ptr.DerefOr(it.Resolution, "-") },
+	"due":         func(it datamodel.ListItem) string { return ptr.DerefOr(it.Due, "-") },
 	"id":          func(it datamodel.ListItem) string { return it.ID },
-}
-
-func derefCell(p *string) string {
-	if p == nil || *p == "" {
-		return "-"
-	}
-	return *p
 }

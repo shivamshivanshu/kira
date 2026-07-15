@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 type scriptedPrompter struct {
@@ -30,12 +31,12 @@ func TestPickFieldsHonoursSideChoices(t *testing.T) {
 	target := eventTicket()
 	ours := eventTicket()
 	ours.Title = "ours-title"
-	ours.Priority = strPtr("P0")
-	ours.Owner = strPtr("ours-owner")
+	ours.Priority = ptr.To("P0")
+	ours.Owner = ptr.To("ours-owner")
 	theirs := eventTicket()
 	theirs.Title = "theirs-title"
-	theirs.Priority = strPtr("P1")
-	theirs.Owner = strPtr("theirs-owner")
+	theirs.Priority = ptr.To("P1")
+	theirs.Owner = ptr.To("theirs-owner")
 
 	s.pickFields(target, ours, theirs, []string{datamodel.KeyTitle, datamodel.KeyPriority, datamodel.KeyOwner})
 

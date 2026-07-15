@@ -6,14 +6,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-)
 
-func EqualPtr[T comparable](a, b *T) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	return *a == *b
-}
+	"github.com/shivamshivanshu/kira/internal/ptr"
+)
 
 type FieldDescriptor struct {
 	Key     string
@@ -117,10 +112,15 @@ func strField(key string, ref func(*Item) *string) FieldDescriptor {
 func ptrField(key string, ref func(*Item) **string) FieldDescriptor {
 	return FieldDescriptor{
 		Key:     key,
-		Changed: func(a, b *Item) bool { return !EqualPtr(*ref(a), *ref(b)) },
-		Get:     func(it *Item) string { return derefOrDash(*ref(it)) },
+		Changed: func(a, b *Item) bool { return !ptr.Equal(*ref(a), *ref(b)) },
+		Get: func(it *Item) string {
+			if p := *ref(it); p != nil {
+				return *p
+			}
+			return "-"
+		},
 		Copy:    func(dst, src *Item) { *ref(dst) = *ref(src) },
-		Set:     func(it *Item, value string) error { *ref(it) = emptyToNil(value); return nil },
+		Set:     func(it *Item, value string) error { *ref(it) = ptr.NilIfEmpty(value); return nil },
 		Present: func(it *Item) bool { p := *ref(it); return p != nil && *p != "" },
 	}
 }
@@ -154,7 +154,7 @@ func linksField() FieldDescriptor {
 func estimateField() FieldDescriptor {
 	return FieldDescriptor{
 		Key:     KeyEstimate,
-		Changed: func(a, b *Item) bool { return !EqualPtr(a.Estimate, b.Estimate) },
+		Changed: func(a, b *Item) bool { return !ptr.Equal(a.Estimate, b.Estimate) },
 		Get: func(it *Item) string {
 			if it.Estimate == nil {
 				return "-"
@@ -185,20 +185,6 @@ func bodyField() FieldDescriptor {
 		Get:     func(*Item) string { return "(" + KeyBody + ")" },
 		Copy:    func(dst, src *Item) { dst.Body = src.Body },
 	}
-}
-
-func derefOrDash(p *string) string {
-	if p == nil {
-		return "-"
-	}
-	return *p
-}
-
-func emptyToNil(value string) *string {
-	if value == "" {
-		return nil
-	}
-	return &value
 }
 
 func splitCSV(value string) []string {

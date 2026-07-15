@@ -1,7 +1,7 @@
 package merge
 
 import (
-	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
@@ -40,11 +40,11 @@ func threeWayScalar(base, ours, theirs string, winner Side) string {
 
 func threeWayPtr[T comparable](base, ours, theirs *T, winner Side) *T {
 	switch {
-	case datamodel.EqualPtr(ours, theirs):
+	case ptr.Equal(ours, theirs):
 		return ours
-	case datamodel.EqualPtr(ours, base):
+	case ptr.Equal(ours, base):
 		return theirs
-	case datamodel.EqualPtr(theirs, base):
+	case ptr.Equal(theirs, base):
 		return ours
 	case winner == Ours:
 		return ours

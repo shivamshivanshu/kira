@@ -8,6 +8,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 func TestValidateGraph(t *testing.T) {
@@ -18,13 +19,13 @@ func TestValidateGraph(t *testing.T) {
 	}
 
 	t.Run("epic parent allowed", func(t *testing.T) {
-		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Epic: strPtr("E")}
+		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Epic: ptr.To("E")}
 		if errs := validateGraph(child, []*datamodel.Item{epic, child}); len(errs) != 0 {
 			t.Fatalf("epic parent must be allowed: %v", errs)
 		}
 	})
 	t.Run("non-epic parent rejected", func(t *testing.T) {
-		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Epic: strPtr("T")}
+		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Epic: ptr.To("T")}
 		errs := validateGraph(child, []*datamodel.Item{ticket, child})
 		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "not an epic") {
 			t.Fatalf("non-epic parent must be rejected, got %v", errs)
@@ -73,10 +74,6 @@ func TestValidateGraph(t *testing.T) {
 	})
 }
 
-func strPtr(s string) *string { return &s }
-
-func boolPtr(b bool) *bool { return &b }
-
 func TestValidateItemVocabAndFields(t *testing.T) {
 	base := datamodel.Item{ID: "X", Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "t", State: "TODO"}
 	cases := []struct {
@@ -89,36 +86,36 @@ func TestValidateItemVocabAndFields(t *testing.T) {
 	}{
 		{"owner-known-strict", func(c *datamodel.Config) {
 			c.People = datamodel.People{Known: []datamodel.Person{{Name: "shivam"}}, Strict: true}
-		}, func(it *datamodel.Item) { it.Owner = strPtr("shivam") }, false, false, false},
-		{"owner-unknown-strict", func(c *datamodel.Config) { c.People.Strict = true }, func(it *datamodel.Item) { it.Owner = strPtr("mallory") }, false, true, false},
-		{"owner-unknown-strict-force", func(c *datamodel.Config) { c.People.Strict = true }, func(it *datamodel.Item) { it.Owner = strPtr("mallory") }, true, false, true},
-		{"owner-unknown-lenient", nil, func(it *datamodel.Item) { it.Owner = strPtr("mallory") }, false, false, true},
+		}, func(it *datamodel.Item) { it.Owner = ptr.To("shivam") }, false, false, false},
+		{"owner-unknown-strict", func(c *datamodel.Config) { c.People.Strict = true }, func(it *datamodel.Item) { it.Owner = ptr.To("mallory") }, false, true, false},
+		{"owner-unknown-strict-force", func(c *datamodel.Config) { c.People.Strict = true }, func(it *datamodel.Item) { it.Owner = ptr.To("mallory") }, true, false, true},
+		{"owner-unknown-lenient", nil, func(it *datamodel.Item) { it.Owner = ptr.To("mallory") }, false, false, true},
 		{"owner-known-lenient", func(c *datamodel.Config) {
 			c.People.Known = []datamodel.Person{{Name: "alice"}}
-		}, func(it *datamodel.Item) { it.Owner = strPtr("alice") }, false, false, false},
-		{"subtype-known", nil, func(it *datamodel.Item) { it.Subtype = strPtr("bug") }, false, false, false},
-		{"subtype-unknown-lenient", nil, func(it *datamodel.Item) { it.Subtype = strPtr("saga") }, false, false, true},
+		}, func(it *datamodel.Item) { it.Owner = ptr.To("alice") }, false, false, false},
+		{"subtype-known", nil, func(it *datamodel.Item) { it.Subtype = ptr.To("bug") }, false, false, false},
+		{"subtype-unknown-lenient", nil, func(it *datamodel.Item) { it.Subtype = ptr.To("saga") }, false, false, true},
 		{"subtype-unknown-strict", func(c *datamodel.Config) { c.Labels.Strict = true },
-			func(it *datamodel.Item) { it.Subtype = strPtr("saga") }, false, true, false},
+			func(it *datamodel.Item) { it.Subtype = ptr.To("saga") }, false, true, false},
 		{"subtype-freeform-when-empty", func(c *datamodel.Config) { c.Subtypes = datamodel.EnumVocab{} },
-			func(it *datamodel.Item) { it.Subtype = strPtr("saga") }, false, false, false},
-		{"priority-unknown-lenient", nil, func(it *datamodel.Item) { it.Priority = strPtr("P9") }, false, false, true},
+			func(it *datamodel.Item) { it.Subtype = ptr.To("saga") }, false, false, false},
+		{"priority-unknown-lenient", nil, func(it *datamodel.Item) { it.Priority = ptr.To("P9") }, false, false, true},
 		{"priority-unknown-strict", func(c *datamodel.Config) { c.Labels.Strict = true },
-			func(it *datamodel.Item) { it.Priority = strPtr("P9") }, false, true, false},
-		{"subtype-per-vocab-strict-without-labels-strict", func(c *datamodel.Config) { c.Subtypes.Strict = boolPtr(true) },
-			func(it *datamodel.Item) { it.Subtype = strPtr("saga") }, false, true, false},
-		{"priority-per-vocab-lenient-overrides-labels-strict", func(c *datamodel.Config) { c.Labels.Strict = true; c.Priorities.Strict = boolPtr(false) },
-			func(it *datamodel.Item) { it.Priority = strPtr("P9") }, false, false, true},
-		{"resolution-known", nil, func(it *datamodel.Item) { it.Resolution = strPtr("dropped") }, false, false, false},
-		{"resolution-unknown-lenient", nil, func(it *datamodel.Item) { it.Resolution = strPtr("meh") }, false, false, true},
-		{"rank-empty", nil, func(it *datamodel.Item) { it.Rank = strPtr("") }, false, true, false},
-		{"rank-freeform", nil, func(it *datamodel.Item) { it.Rank = strPtr("0|zzz:") }, false, false, false},
+			func(it *datamodel.Item) { it.Priority = ptr.To("P9") }, false, true, false},
+		{"subtype-per-vocab-strict-without-labels-strict", func(c *datamodel.Config) { c.Subtypes.Strict = ptr.To(true) },
+			func(it *datamodel.Item) { it.Subtype = ptr.To("saga") }, false, true, false},
+		{"priority-per-vocab-lenient-overrides-labels-strict", func(c *datamodel.Config) { c.Labels.Strict = true; c.Priorities.Strict = ptr.To(false) },
+			func(it *datamodel.Item) { it.Priority = ptr.To("P9") }, false, false, true},
+		{"resolution-known", nil, func(it *datamodel.Item) { it.Resolution = ptr.To("dropped") }, false, false, false},
+		{"resolution-unknown-lenient", nil, func(it *datamodel.Item) { it.Resolution = ptr.To("meh") }, false, false, true},
+		{"rank-empty", nil, func(it *datamodel.Item) { it.Rank = ptr.To("") }, false, true, false},
+		{"rank-freeform", nil, func(it *datamodel.Item) { it.Rank = ptr.To("0|zzz:") }, false, false, false},
 		{"sprint-known", func(c *datamodel.Config) {
 			c.Sprints = []datamodel.Sprint{{Key: "2026-S14", Name: "Sprint 14", Start: "2026-07-13", End: "2026-07-26"}}
-		}, func(it *datamodel.Item) { it.Sprint = strPtr("2026-S14") }, false, false, false},
-		{"sprint-unknown", nil, func(it *datamodel.Item) { it.Sprint = strPtr("2099-S1") }, false, true, false},
-		{"due-valid", nil, func(it *datamodel.Item) { it.Due = strPtr("2026-07-20") }, false, false, false},
-		{"due-invalid", nil, func(it *datamodel.Item) { it.Due = strPtr("someday") }, false, true, false},
+		}, func(it *datamodel.Item) { it.Sprint = ptr.To("2026-S14") }, false, false, false},
+		{"sprint-unknown", nil, func(it *datamodel.Item) { it.Sprint = ptr.To("2099-S1") }, false, true, false},
+		{"due-valid", nil, func(it *datamodel.Item) { it.Due = ptr.To("2026-07-20") }, false, false, false},
+		{"due-invalid", nil, func(it *datamodel.Item) { it.Due = ptr.To("someday") }, false, true, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -142,10 +139,10 @@ func TestValidateItemVocabAndFields(t *testing.T) {
 func TestFieldPresentCoversMutableFields(t *testing.T) {
 	estimate := 1.0
 	full := &datamodel.Item{
-		Title: "t", Subtype: ptrOrNil("bug"), Resolution: ptrOrNil("done"),
-		Priority: ptrOrNil("P1"), Rank: ptrOrNil("0|m:"), Owner: ptrOrNil("shivam"),
-		Reporter: ptrOrNil("alice"), Labels: []string{"x"}, Epic: ptrOrNil("01X"),
-		Sprint: ptrOrNil("2026-S14"), Due: ptrOrNil("2026-07-20"), Estimate: &estimate,
+		Title: "t", Subtype: ptr.NilIfEmpty("bug"), Resolution: ptr.NilIfEmpty("done"),
+		Priority: ptr.NilIfEmpty("P1"), Rank: ptr.NilIfEmpty("0|m:"), Owner: ptr.NilIfEmpty("shivam"),
+		Reporter: ptr.NilIfEmpty("alice"), Labels: []string{"x"}, Epic: ptr.NilIfEmpty("01X"),
+		Sprint: ptr.NilIfEmpty("2026-S14"), Due: ptr.NilIfEmpty("2026-07-20"), Estimate: &estimate,
 	}
 	empty := &datamodel.Item{}
 	for _, f := range datamodel.MutableFields {
@@ -160,8 +157,8 @@ func TestFieldPresentCoversMutableFields(t *testing.T) {
 
 func TestValidateResolutionState(t *testing.T) {
 	cfg := config.Default()
-	stale := &datamodel.Item{Type: datamodel.TypeTicket, State: "TODO", Resolution: strPtr("done")}
-	done := &datamodel.Item{Type: datamodel.TypeTicket, State: "WONT_DO", Resolution: strPtr("dropped")}
+	stale := &datamodel.Item{Type: datamodel.TypeTicket, State: "TODO", Resolution: ptr.To("done")}
+	done := &datamodel.Item{Type: datamodel.TypeTicket, State: "WONT_DO", Resolution: ptr.To("dropped")}
 
 	if errs := validateResolutionState(cfg, stale, stale); len(errs) != 0 {
 		t.Errorf("untouched stale item must be grandfathered, got %v", errs)
@@ -175,7 +172,7 @@ func TestValidateResolutionState(t *testing.T) {
 		t.Errorf("newly created bad shape must be rejected, got %v", errs)
 	}
 	reEdit := *stale
-	reEdit.Resolution = strPtr("duplicate")
+	reEdit.Resolution = ptr.To("duplicate")
 	errs := validateResolutionState(cfg, stale, &reEdit)
 	if len(errs) != 1 || !strings.Contains(errs[0].Error(), "done-category") {
 		t.Fatalf("re-writing resolution on a non-done state must be rejected, got %v", errs)

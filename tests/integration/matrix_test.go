@@ -13,6 +13,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/merge"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 const (
@@ -41,8 +42,6 @@ func matrixItem(ulid, number, title string) *datamodel.Item {
 		Body:      "## Description\n\nbody\n",
 	}
 }
-
-func strPtr(s string) *string { return &s }
 
 func ticketRel(ulid string) string { return ".kira/tickets/" + ulid + ".md" }
 
@@ -116,12 +115,12 @@ func matrixScenarios() []scenario {
 			},
 			ours: func(w *world) {
 				it := matrixItem(ulidX, "KIRA-1", "X")
-				it.Owner, it.Updated = strPtr("alice"), tsLate
+				it.Owner, it.Updated = ptr.To("alice"), tsLate
 				w.write(it)
 			},
 			theirs: func(w *world) {
 				it := matrixItem(ulidY, "KIRA-2", "Y")
-				it.Owner, it.Updated = strPtr("bob"), tsLate
+				it.Owner, it.Updated = ptr.To("bob"), tsLate
 				w.write(it)
 			},
 			assert: func(t *testing.T, w *world) {
@@ -139,12 +138,12 @@ func matrixScenarios() []scenario {
 			seed:      func(w *world) { w.write(matrixItem(ulidX, "KIRA-1", "X")) },
 			ours: func(w *world) {
 				it := matrixItem(ulidX, "KIRA-1", "X")
-				it.Owner, it.Updated = strPtr("alice"), tsLate
+				it.Owner, it.Updated = ptr.To("alice"), tsLate
 				w.write(it)
 			},
 			theirs: func(w *world) {
 				it := matrixItem(ulidX, "KIRA-1", "X")
-				it.Priority, it.Updated = strPtr("P1"), tsEarly
+				it.Priority, it.Updated = ptr.To("P1"), tsEarly
 				w.write(it)
 			},
 			assert: func(t *testing.T, w *world) {

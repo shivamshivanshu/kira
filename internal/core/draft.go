@@ -7,6 +7,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/editorx"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 type draft struct {
@@ -41,15 +42,15 @@ func serializeDraft(d draft) string {
 	b.WriteString(codec.FenceLine)
 	b.WriteString("title: " + draftScalar(d.Title) + "\n")
 	b.WriteString("type: " + draftScalar(d.Type) + "\n")
-	b.WriteString("subtype: " + draftScalarPtr(d.Subtype) + "\n")
-	b.WriteString("priority: " + draftScalarPtr(d.Priority) + "\n")
-	b.WriteString("rank: " + draftScalarPtr(d.Rank) + "\n")
-	b.WriteString("owner: " + draftScalarPtr(d.Owner) + "\n")
-	b.WriteString("reporter: " + draftScalarPtr(d.Reporter) + "\n")
+	b.WriteString("subtype: " + draftScalar(ptr.Deref(d.Subtype)) + "\n")
+	b.WriteString("priority: " + draftScalar(ptr.Deref(d.Priority)) + "\n")
+	b.WriteString("rank: " + draftScalar(ptr.Deref(d.Rank)) + "\n")
+	b.WriteString("owner: " + draftScalar(ptr.Deref(d.Owner)) + "\n")
+	b.WriteString("reporter: " + draftScalar(ptr.Deref(d.Reporter)) + "\n")
 	b.WriteString("labels: " + codec.EmitList(d.Labels) + "\n")
-	b.WriteString("epic: " + draftScalarPtr(d.Epic) + "\n")
-	b.WriteString("sprint: " + draftScalarPtr(d.Sprint) + "\n")
-	b.WriteString("due: " + draftScalarPtr(d.Due) + "\n")
+	b.WriteString("epic: " + draftScalar(ptr.Deref(d.Epic)) + "\n")
+	b.WriteString("sprint: " + draftScalar(ptr.Deref(d.Sprint)) + "\n")
+	b.WriteString("due: " + draftScalar(ptr.Deref(d.Due)) + "\n")
 	estimate := ""
 	if d.Estimate != nil {
 		estimate = codec.EmitFloat(*d.Estimate)
@@ -65,13 +66,6 @@ func draftScalar(s string) string {
 		return ""
 	}
 	return codec.EmitScalar(s)
-}
-
-func draftScalarPtr(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return draftScalar(*p)
 }
 
 const (

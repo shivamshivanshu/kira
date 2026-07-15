@@ -5,6 +5,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/index"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
@@ -62,7 +63,7 @@ func historyTailView(events []datamodel.Event) []datamodel.HistoryEvent {
 	}
 	out := make([]datamodel.HistoryEvent, len(events))
 	for i, e := range events {
-		out[i] = datamodel.HistoryEvent{Ts: e.Ts, Field: e.Field, From: ptrOrNil(e.Old), To: ptrOrNil(e.New)}
+		out[i] = datamodel.HistoryEvent{Ts: e.Ts, Field: e.Field, From: ptr.NilIfEmpty(e.Old), To: ptr.NilIfEmpty(e.New)}
 	}
 	return out
 }

@@ -7,9 +7,8 @@ import (
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
-
-func strptr(s string) *string { return &s }
 
 func mkItem(number, ulid string, rank, priority *string) *datamodel.Item {
 	return &datamodel.Item{ID: ulid, Number: number, Type: datamodel.TypeTicket, Rank: rank, Priority: priority}
@@ -27,11 +26,11 @@ func TestSortByPrecedence(t *testing.T) {
 	cfg := config.Default()
 	items := []*datamodel.Item{
 		mkItem("KIRA-1", "01A", nil, nil),
-		mkItem("KIRA-2", "01B", strptr("mm"), nil),
-		mkItem("KIRA-3", "01C", nil, strptr("P2")),
-		mkItem("KIRA-4", "01D", strptr("aa"), strptr("P3")),
-		mkItem("KIRA-5", "01E", nil, strptr("P0")),
-		mkItem("KIRA-6", "01F", nil, strptr("P2")),
+		mkItem("KIRA-2", "01B", ptr.To("mm"), nil),
+		mkItem("KIRA-3", "01C", nil, ptr.To("P2")),
+		mkItem("KIRA-4", "01D", ptr.To("aa"), ptr.To("P3")),
+		mkItem("KIRA-5", "01E", nil, ptr.To("P0")),
+		mkItem("KIRA-6", "01F", nil, ptr.To("P2")),
 	}
 	sortByPrecedence(cfg, items)
 	want := "KIRA-4,KIRA-2,KIRA-5,KIRA-3,KIRA-6,KIRA-1"
@@ -55,7 +54,7 @@ func TestSortByPrecedenceLegacyDegradation(t *testing.T) {
 	if got, want := numbers(items), numbers(legacy); got != want {
 		t.Errorf("degraded order = %s, want legacy %s", got, want)
 	}
-	items[0].Priority = strptr("high")
+	items[0].Priority = ptr.To("high")
 	sortByPrecedence(cfg, items)
 	if got, want := numbers(items), numbers(legacy); got != want {
 		t.Errorf("free-form priority perturbed order: %s, want %s", got, want)
