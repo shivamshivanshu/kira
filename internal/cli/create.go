@@ -2,14 +2,11 @@ package cli
 
 import (
 	"fmt"
-	"os"
-	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
@@ -17,36 +14,6 @@ import (
 )
 
 func newCreateCmd(g *globalFlags) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create an item of a configured type",
-	}
-	for _, typ := range createTypes(g) {
-		cmd.AddCommand(newCreateSubCmd(g, typ))
-	}
-	return cmd
-}
-
-func createTypes(g *globalFlags) []string {
-	s, err := core.Discover(chdirArg())
-	if err != nil {
-		return []string{datamodel.TypeTicket, datamodel.TypeEpic}
-	}
-	cfg, err := config.Load(s.Root())
-	if err != nil || len(cfg.Workflows) == 0 {
-		return []string{datamodel.TypeTicket, datamodel.TypeEpic}
-	}
-	types := make([]string, 0, len(cfg.Workflows))
-	for typ := range cfg.Workflows {
-		types = append(types, typ)
-	}
-	slices.Sort(types)
-	return types
-}
-
-func chdirArg() string { return chdirArgFrom(os.Args[1:]) }
-
-func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {
 	var (
 		opts          core.CreateOpts
 		estimate      float64
@@ -54,20 +21,20 @@ func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {
 		aliasType     string
 	)
 	cmd := &cobra.Command{
-		Use:   typ + " [<title>]",
-		Short: "Create a " + typ,
-		Args:  cobra.MaximumNArgs(1),
+		Use:   "create <type> [<title>]",
+		Short: "Create an item of a configured type",
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Type = typ
+			opts.Type = args[0]
 			opts.NoEdit = opts.NoEdit || g.nonInteractive
 			if err := g.rejectStdinSource(opts.FromFile); err != nil {
 				return err
 			}
-			if len(args) == 1 {
+			if len(args) == 2 {
 				if cmd.Flags().Changed("title") {
 					return errx.User("provide the title positionally or via --title, not both")
 				}
-				opts.Title = args[0]
+				opts.Title = args[1]
 			}
 			if opts.Subtype == "" {
 				opts.Subtype = aliasType
@@ -84,6 +51,9 @@ func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {
 			s, cfg, err := openStore(g)
 			if err != nil {
 				return err
+			}
+			if _, ok := cfg.Workflows[opts.Type]; !ok {
+				return errx.User("%q is not a configured type", opts.Type).WithHint("configured types: %s", strings.Join(workflowTypes(cfg), ", "))
 			}
 			if printTemplate {
 				tmpl, err := s.ResolveTemplate(opts)

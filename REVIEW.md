@@ -249,7 +249,7 @@ Look hard at: commands stay thin (open store → core call → render/json); one
 - [ ] internal/cli/cli.go — Builds the cobra command tree, global flags, error rendering, store opening.
 - [ ] internal/cli/output.go — Shared JSON encoder and tabwriter output helpers.
 - [ ] internal/cli/init.go — `init` command: initialize a .kira store in the repo.
-- [ ] internal/cli/create.go — `create ticket|epic` command with field flags and template printing.
+- [ ] internal/cli/create.go — `create <type>` command with field flags and template printing.
 - [ ] internal/cli/edit.go — `edit` command: apply field edits or round-trip an item file.
 - [ ] internal/cli/move.go — `move` command: transition an item to a new state.
 - [ ] internal/cli/assign.go — `assign` command: set an item's owner or reporter.

@@ -26,6 +26,9 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 			c.ValidArgsFunction = positional(items)
 		}
 	}
+	if c := subCmd(root, "create"); c != nil {
+		c.ValidArgsFunction = positional(completeVocab(g, workflowTypes))
+	}
 	if c := subCmd(root, "move"); c != nil {
 		c.ValidArgsFunction = positional(items, completeMoveTarget(g))
 	}
@@ -196,6 +199,15 @@ func filterNames(cfg *datamodel.Config) []string {
 	}
 	slices.Sort(out)
 	return out
+}
+
+func workflowTypes(cfg *datamodel.Config) []string {
+	types := make([]string, 0, len(cfg.Workflows))
+	for typ := range cfg.Workflows {
+		types = append(types, typ)
+	}
+	slices.Sort(types)
+	return types
 }
 
 func workflowStates(cfg *datamodel.Config) []string {
