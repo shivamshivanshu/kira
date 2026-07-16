@@ -19,3 +19,9 @@ func Mint() ULID { return mint(time.Now()) }
 func mint(t time.Time) ULID { return ulid.MustNew(ulid.Timestamp(t), entropy) }
 
 func ParseULID(s string) (ULID, error) { return ulid.ParseStrict(s) }
+
+// ParseULIDLoose reports whether s is ULID-shaped (26 chars, no timestamp
+// overflow) without ParseULID's strict base32 charset check — used to
+// classify filenames as item files, where test fixtures commonly use
+// human-readable near-ULID strings that aren't strictly valid encodings.
+func ParseULIDLoose(s string) (ULID, error) { return ulid.Parse(s) }

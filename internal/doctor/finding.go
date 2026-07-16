@@ -27,6 +27,7 @@ const (
 	ClassEnv           Class = "environment"
 	ClassBoard         Class = "board"
 	ClassNumberOutlier Class = "number-outlier"
+	ClassStray         Class = "stray-file"
 )
 
 type CollisionKind string

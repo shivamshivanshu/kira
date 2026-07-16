@@ -35,6 +35,17 @@ func ULIDFromPath(p string) string {
 }
 
 func (s *FS) ItemFilenames() ([]string, error) {
+	return s.itemsDirEntries(isItemFilename)
+}
+
+// StrayFilenames lists tickets-dir entries that are not valid item files —
+// e.g. a stray README.md — so callers like doctor can still surface them
+// even though ItemFilenames/LoadAll now silently skip them.
+func (s *FS) StrayFilenames() ([]string, error) {
+	return s.itemsDirEntries(func(name string) bool { return !isItemFilename(name) })
+}
+
+func (s *FS) itemsDirEntries(keep func(name string) bool) ([]string, error) {
 	entries, err := os.ReadDir(s.ItemsDir())
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -44,10 +55,7 @@ func (s *FS) ItemFilenames() ([]string, error) {
 	}
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		if _, ok := ULIDFromFilename(e.Name()); ok {
+		if !e.IsDir() && keep(e.Name()) {
 			names = append(names, e.Name())
 		}
 	}

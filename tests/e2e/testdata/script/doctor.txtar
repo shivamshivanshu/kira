@@ -15,8 +15,8 @@ stdout 'index is up to date'
 stdout 'ok: 0 error'
 
 # drop in broken items: schema/state/vocab/refs violations + a colliding number
-cp broken.md .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZZA.md
-cp collider.md .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZZB.md
+cp broken.md .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZA.md
+cp collider.md .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZB.md
 
 ! exec kira doctor
 stdout 'error   state'
@@ -35,7 +35,7 @@ stdout '"kind": "live-live"'
 
 -- broken.md --
 ---
-id: 01HZZZZZZZZZZZZZZZZZZZZZZZA
+id: 01HZZZZZZZZZZZZZZZZZZZZZZA
 number: KIRA-50
 aliases: []
 type: ticket
@@ -53,7 +53,7 @@ updated: 2026-07-10T09:14:00+05:30
 ## Description
 -- collider.md --
 ---
-id: 01HZZZZZZZZZZZZZZZZZZZZZZZB
+id: 01HZZZZZZZZZZZZZZZZZZZZZZB
 number: KIRA-1
 aliases: []
 type: ticket

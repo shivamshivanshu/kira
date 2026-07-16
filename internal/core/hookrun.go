@@ -86,6 +86,10 @@ func (s *Store) ValidateStaged(cfg *datamodel.Config) error {
 	}
 	var problems []error
 	for _, p := range paths {
+		if storage.UnderTicketsDir(p) && !storage.IsItemPath(p) {
+			problems = append(problems, fmt.Errorf("%s: %s", p, storage.StrayMessage))
+			continue
+		}
 		if !storage.IsItemPath(p) {
 			continue
 		}

@@ -37,7 +37,7 @@ func scan(files []File) []parsedFile {
 	return out
 }
 
-func Run(cfg *datamodel.Config, files []File, env Env) *Report {
+func Run(cfg *datamodel.Config, files []File, strays []string, env Env) *Report {
 	files = slices.Clone(files)
 	slices.SortFunc(files, func(a, b File) int { return strings.Compare(a.Path, b.Path) })
 	scanned := scan(files)
@@ -61,10 +61,24 @@ func Run(cfg *datamodel.Config, files []File, env Env) *Report {
 	findings = append(findings, stampByID(EpicCycles(items, resolver), pathByID)...)
 	findings = append(findings, stampByID(NonEpicParents(items, resolver), pathByID)...)
 	findings = append(findings, stampByID(RefCycles(items, resolver), pathByID)...)
+	findings = append(findings, strayFindings(strays)...)
 	findings = append(findings, envFindings(env)...)
 
 	orderFindings(findings)
 	return newReport(findings)
+}
+
+func strayFindings(strays []string) []Finding {
+	out := make([]Finding, len(strays))
+	for i, name := range strays {
+		out[i] = Finding{
+			Class:    ClassStray,
+			Severity: SeverityError,
+			Path:     name,
+			Message:  storage.StrayMessage,
+		}
+	}
+	return out
 }
 
 func Validate(cfg *datamodel.Config, storeFiles, targets []File) *Report {

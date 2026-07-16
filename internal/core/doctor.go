@@ -19,7 +19,11 @@ func (s *Store) DoctorReport(cfg *datamodel.Config) (*doctor.Report, error) {
 	if err != nil {
 		return nil, err
 	}
-	return doctor.Run(cfg, files, s.doctorEnv()), nil
+	strays, err := s.fs().StrayFilenames()
+	if err != nil {
+		return nil, err
+	}
+	return doctor.Run(cfg, files, strays, s.doctorEnv()), nil
 }
 
 func (s *Store) ValidateFiles(cfg *datamodel.Config, args []string) (*doctor.Report, error) {

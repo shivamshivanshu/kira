@@ -9,8 +9,8 @@ exec kira init --key KIRA
 exec kira create ticket --title 'anchor' --no-edit
 
 # a well-formed file passes and exits zero
-cp good.md .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZZA.md
-exec kira validate .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZZA.md
+cp good.md .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZA.md
+exec kira validate .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZA.md
 stdout 'ok: 0 error'
 
 # a file with a bad state fails and reports only that file
@@ -41,7 +41,7 @@ stderr 'kira doctor'
 
 -- good.md --
 ---
-id: 01HZZZZZZZZZZZZZZZZZZZZZZZA
+id: 01HZZZZZZZZZZZZZZZZZZZZZZA
 number: KIRA-90
 aliases: []
 type: ticket
@@ -56,7 +56,7 @@ updated: 2026-07-10T09:14:00+05:30
 ## Description
 -- bad.md --
 ---
-id: 01HZZZZZZZZZZZZZZZZZZZZZZZC
+id: 01HZZZZZZZZZZZZZZZZZZZZZZC
 number: KIRA-91
 aliases: []
 type: ticket

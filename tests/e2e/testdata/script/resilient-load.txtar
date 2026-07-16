@@ -10,12 +10,12 @@ exec kira init --key KIRA
 exec kira create ticket --title 'good' --no-edit
 
 # drop in a ticket left with a git conflict marker -> unparseable
-cp conflict.md .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZZC.md
+cp conflict.md .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZC.md
 
 # list still works and warns on stderr
 exec kira list
 stdout 'KIRA-1'
-stderr 'skipped \.kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZZC\.md'
+stderr 'skipped \.kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZC\.md'
 stderr 'run kira doctor'
 
 # show of the healthy ticket still works
@@ -27,13 +27,13 @@ stdout 'good'
 stdout 'error'
 
 # a mutation resolving to the corrupt ticket fails cleanly, no panic
-! exec kira edit 01HZZZZZZZZZZZZZZZZZZZZZZZC --set title=x
+! exec kira edit 01HZZZZZZZZZZZZZZZZZZZZZZC --set title=x
 ! stderr 'panic'
 
 -- conflict.md --
 <<<<<<< HEAD
 ---
-id: 01HZZZZZZZZZZZZZZZZZZZZZZZC
+id: 01HZZZZZZZZZZZZZZZZZZZZZZC
 number: KIRA-2
 type: ticket
 title: conflicted

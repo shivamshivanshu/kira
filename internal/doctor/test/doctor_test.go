@@ -363,7 +363,7 @@ func TestEnvOptionalBinsAndHookFindings(t *testing.T) {
 		TrackedHooks:        []string{"post-merge", "pre-commit"},
 		InstalledHooks:      []string{"post-merge"},
 	}
-	report := doctor.Run(config.Default(), nil, env)
+	report := doctor.Run(config.Default(), nil, nil, env)
 	var optionalBin, missingHook, mergeDriver, ticketAttr bool
 	for _, f := range report.Findings {
 		switch {
@@ -485,7 +485,7 @@ func TestRunAggregatesAndFlagsIdentity(t *testing.T) {
 		{Path: ulidB + ".md", Content: mismatch},
 		{Path: ulidC + ".md", Content: "garbage without a fence\n"},
 	}
-	report := doctor.Run(config.Default(), files, doctor.Env{GitInstalled: true})
+	report := doctor.Run(config.Default(), files, nil, doctor.Env{GitInstalled: true})
 	if report.OK {
 		t.Fatal("expected OK=false with a malformed file and an id mismatch present")
 	}
@@ -509,10 +509,27 @@ func TestRunAggregatesAndFlagsIdentity(t *testing.T) {
 	}
 }
 
+func TestRunReportsStrayFiles(t *testing.T) {
+	t.Parallel()
+	report := doctor.Run(config.Default(), nil, []string{"README.md"}, doctor.Env{GitInstalled: true})
+	if report.OK {
+		t.Fatal("expected OK=false with a stray file present")
+	}
+	var found bool
+	for _, f := range report.Findings {
+		if f.Class == doctor.ClassStray && f.Path == "README.md" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected a %s finding for README.md, got %+v", doctor.ClassStray, report.Findings)
+	}
+}
+
 func TestRunFreshnessSeam(t *testing.T) {
 	t.Parallel()
 	env := doctor.Env{GitInstalled: true, InsideWorkTree: true}
-	report := doctor.Run(config.Default(), nil, env)
+	report := doctor.Run(config.Default(), nil, nil, env)
 	if !report.OK {
 		t.Fatalf("empty repo should be OK, got %+v", report)
 	}
@@ -522,7 +539,7 @@ func TestRunFreshnessSeam(t *testing.T) {
 
 	fresh := env
 	fresh.Freshness = &doctor.Freshness{Built: true, Fresh: false, Reason: "head-advanced"}
-	stale := doctor.Run(config.Default(), nil, fresh)
+	stale := doctor.Run(config.Default(), nil, nil, fresh)
 	for _, f := range stale.Findings {
 		if f.Class == doctor.ClassFreshness && f.Severity == doctor.SeverityWarning {
 			return

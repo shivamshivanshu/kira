@@ -65,7 +65,7 @@ func TestListWithMatchesActivity(t *testing.T) {
 	}
 	cfg := config.Default()
 	it := &datamodel.Item{
-		ID: "01HZZ0ACT0000000000000000", Number: "KIRA-1", Type: datamodel.TypeTicket,
+		ID: "01HZZ0ACT00000000000000000", Number: "KIRA-1", Type: datamodel.TypeTicket,
 		Title: "Act", State: "TODO", Labels: []string{},
 		Created: "2026-05-01T00:00:00Z", Updated: "2026-05-01T00:00:00Z",
 	}
