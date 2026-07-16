@@ -3,6 +3,7 @@ package core
 import (
 	"strings"
 
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
@@ -113,11 +114,7 @@ func frontmatterField(line string) (key, value string, ok bool) {
 	if !scalarFields[key] {
 		return "", "", false
 	}
-	return key, unquoteScalar(line[colon+1:]), true
-}
-
-func unquoteScalar(v string) string {
-	return strings.Trim(strings.TrimSpace(v), `"'`)
+	return key, codec.DecodeScalar(line[colon+1:]), true
 }
 
 func fmEvents(created bool, minus, plus map[string]string, ts, sha string) []datamodel.Event {

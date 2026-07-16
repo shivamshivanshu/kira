@@ -84,6 +84,35 @@ func TestBlameNullFieldOmittedUnlessEvent(t *testing.T) {
 	}
 }
 
+func TestBlameDecodesQuotedTitleWithoutCorruption(t *testing.T) {
+	s := eventRepo(t)
+	cfg := config.Default()
+	it := eventTicket()
+
+	commit := func(title, date string) {
+		t.Helper()
+		it.Title = title
+		it.Updated = date
+		if _, err := s.fs().WriteItem(it); err != nil {
+			t.Fatal(err)
+		}
+		gitRun(t, s, date, "add", "-A")
+		gitRun(t, s, date, "commit", "-m", "change")
+	}
+	quoted := `he said "hi" and left`
+	commit("plain title", "2026-01-05T10:00:00Z")
+	commit(quoted, "2026-01-06T10:00:00Z")
+
+	res, err := s.Blame(cfg, it.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := blameField(res, "title")
+	if f == nil || f.Value != quoted {
+		t.Errorf("title = %+v, want %q uncorrupted", f, quoted)
+	}
+}
+
 func TestBlameMergeLossIsSyntheticDegraded(t *testing.T) {
 	s := eventRepo(t)
 	cfg := config.Default()

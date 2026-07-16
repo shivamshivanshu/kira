@@ -109,6 +109,18 @@ func EmitScalar(s string) string {
 	return emitQuoted(s)
 }
 
+func DecodeScalar(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" || (trimmed[0] != '"' && trimmed[0] != '\'') {
+		return trimmed
+	}
+	var v string
+	if err := yaml.Unmarshal([]byte(trimmed), &v); err != nil {
+		return trimmed
+	}
+	return v
+}
+
 func emitFlowScalar(s string) string {
 	if plainSafe(s) {
 		return s

@@ -142,8 +142,12 @@ func TestEmitScalarMatchesYAMLReference(t *testing.T) {
 		corpus = append(corpus, string(b))
 	}
 	for _, s := range corpus {
-		if got, want := codec.EmitScalar(s), emitScalarReference(t, s); got != want {
+		emitted := codec.EmitScalar(s)
+		if got, want := emitted, emitScalarReference(t, s); got != want {
 			t.Fatalf("EmitScalar(%q) = %s, want %s", s, got, want)
+		}
+		if got := codec.DecodeScalar(emitted); got != s {
+			t.Fatalf("DecodeScalar(EmitScalar(%q)=%s) = %q, want %q", s, emitted, got, s)
 		}
 		var back []string
 		if err := yaml.Unmarshal([]byte(codec.EmitList([]string{s})), &back); err != nil {
