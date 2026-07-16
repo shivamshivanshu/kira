@@ -27,7 +27,8 @@ stdout 'good'
 stdout 'error'
 
 # a mutation resolving to the corrupt ticket fails cleanly, no panic
-! exec kira edit 01HZZZZZZZZZZZZZZZZZZZZZZC --set title=x
+! exec kira edit 01HZZZZZZZZZZZZZZZZZZZZZZC --field title=x
+stderr 'resolves to no item'
 ! stderr 'panic'
 
 -- conflict.md --
