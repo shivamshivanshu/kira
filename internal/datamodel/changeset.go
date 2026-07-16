@@ -13,6 +13,7 @@ type ChangeSource string
 const (
 	SourceCLI     ChangeSource = "cli"
 	SourceTrailer ChangeSource = "trailer"
+	SourceSync    ChangeSource = "sync"
 )
 
 type ChangeSet struct {

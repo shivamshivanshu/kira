@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
@@ -18,16 +19,16 @@ func Hash(cfg *datamodel.Config) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func GrantedHash(cacheDir string) string {
+func grantedHash(cacheDir string) string {
 	data, err := os.ReadFile(filepath.Join(cacheDir, trustFile))
 	if err != nil {
 		return ""
 	}
-	return string(data)
+	return strings.TrimSpace(string(data))
 }
 
 func Trusted(cacheDir string, cfg *datamodel.Config) bool {
-	granted := GrantedHash(cacheDir)
+	granted := grantedHash(cacheDir)
 	return granted != "" && granted == Hash(cfg)
 }
 

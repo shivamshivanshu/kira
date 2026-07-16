@@ -213,6 +213,26 @@ func validateAutomationHooks(where string, hooks []datamodel.AutomationHook) err
 		if _, err := h.TimeoutDuration(); err != nil {
 			return errx.User("config: %s.timeout: invalid duration %q", at, h.Timeout)
 		}
+		if err := validateAutomationMatch(at, h); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateAutomationMatch(at string, h datamodel.AutomationHook) error {
+	if h.Match == nil {
+		return nil
+	}
+	switch h.On {
+	case datamodel.EventItemCreated:
+		if h.Match.To != "" || h.Match.From != "" {
+			return errx.User("config: %s.match: to/from are never set on %q events", at, h.On)
+		}
+	case datamodel.EventSyncCompleted:
+		if h.Match.Type != "" || h.Match.To != "" || h.Match.From != "" {
+			return errx.User("config: %s.match: type/to/from are never set on %q events", at, h.On)
+		}
 	}
 	return nil
 }

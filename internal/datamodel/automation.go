@@ -1,6 +1,7 @@
 package datamodel
 
 import (
+	"fmt"
 	"strings"
 	"time"
 )
@@ -18,18 +19,18 @@ const (
 var AutomationEvents = []EventName{EventItemCreated, EventItemStateChanged, EventSyncCompleted}
 
 type AutomationHook struct {
-	Name    string           `yaml:"name"`
-	On      EventName        `yaml:"on"`
-	Run     string           `yaml:"run"`
-	Enabled *bool            `yaml:"enabled"`
-	Timeout string           `yaml:"timeout"`
-	Match   *AutomationMatch `yaml:"match"`
+	Name    string           `yaml:"name" json:"name"`
+	On      EventName        `yaml:"on" json:"on"`
+	Run     string           `yaml:"run" json:"run"`
+	Enabled *bool            `yaml:"enabled" json:"enabled"`
+	Timeout string           `yaml:"timeout" json:"timeout"`
+	Match   *AutomationMatch `yaml:"match" json:"match"`
 }
 
 type AutomationMatch struct {
-	To   string `yaml:"to"`
-	From string `yaml:"from"`
-	Type string `yaml:"type"`
+	To   string `yaml:"to" json:"to"`
+	From string `yaml:"from" json:"from"`
+	Type string `yaml:"type" json:"type"`
 }
 
 func (h AutomationHook) IsEnabled() bool { return h.Enabled == nil || *h.Enabled }
@@ -41,6 +42,9 @@ func (h AutomationHook) TimeoutDuration() (time.Duration, error) {
 	d, err := time.ParseDuration(h.Timeout)
 	if err != nil {
 		return DefaultAutomationTimeout, err
+	}
+	if d <= 0 {
+		return DefaultAutomationTimeout, fmt.Errorf("timeout must be positive, got %q", h.Timeout)
 	}
 	return d, nil
 }

@@ -2,6 +2,8 @@ package automation_test
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -80,6 +82,16 @@ func TestHashChangesWithConfigAndIsStable(t *testing.T) {
 	}
 }
 
+func TestHashIsPinnedToTheJSONContract(t *testing.T) {
+	cfg := &datamodel.Config{Automation: []datamodel.AutomationHook{
+		{Name: "notify", On: datamodel.EventItemCreated, Run: "echo hi", Timeout: "5s"},
+	}}
+	const want = "8747084ea3e7ce1aef46e2dd64e19cfb63c8b515a8d948c54b081b70a6cb3d75"
+	if got := automation.Hash(cfg); got != want {
+		t.Fatalf("Hash = %s, want %s (json contract for AutomationHook changed — this breaks every granted trust file)", got, want)
+	}
+}
+
 func TestTrustRoundTripAndRevokeOnEdit(t *testing.T) {
 	dir := t.TempDir()
 	cfg := &datamodel.Config{Automation: []datamodel.AutomationHook{{Name: "x", On: datamodel.EventItemCreated, Run: "true"}}}
@@ -96,6 +108,18 @@ func TestTrustRoundTripAndRevokeOnEdit(t *testing.T) {
 	}
 	if !automation.Trusted(dir, cfg) {
 		t.Fatal("granted config must be trusted")
+	}
+
+	path := filepath.Join(dir, "automation.trust")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read trust file: %v", err)
+	}
+	if err := os.WriteFile(path, append(data, '\n'), 0o644); err != nil {
+		t.Fatalf("rewrite trust file: %v", err)
+	}
+	if !automation.Trusted(dir, cfg) {
+		t.Fatal("an editor-added trailing newline in the trust file must not revoke trust")
 	}
 
 	cfg.Automation[0].Run = "false"
@@ -140,7 +164,7 @@ func TestPayloadShapeForStateChanged(t *testing.T) {
 }
 
 func TestPayloadOmitsItemForSync(t *testing.T) {
-	ev := automation.Event{Name: datamodel.EventSyncCompleted, Source: "sync"}
+	ev := automation.Event{Name: datamodel.EventSyncCompleted, Source: datamodel.SourceSync}
 	raw, err := automation.Payload(ev, "/repo", "2026-07-13T00:00:00Z", automation.Actor{})
 	if err != nil {
 		t.Fatalf("payload: %v", err)

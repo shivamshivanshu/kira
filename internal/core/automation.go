@@ -52,7 +52,7 @@ func (s *Store) fireSyncCompleted(cfg *datamodel.Config, report *syncx.Report) {
 	if len(cfg.Automation) == 0 && len(cfg.UserAutomation) == 0 {
 		return
 	}
-	s.fire(cfg, automation.Event{Name: datamodel.EventSyncCompleted, Source: "sync", Sync: report})
+	s.fire(cfg, automation.Event{Name: datamodel.EventSyncCompleted, Source: datamodel.SourceSync, Sync: report})
 }
 
 func (s *Store) eventFor(cfg *datamodel.Config, cs *datamodel.ChangeSet) (automation.Event, bool) {
