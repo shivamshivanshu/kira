@@ -103,8 +103,8 @@ func runEditor(editor string, stdio editorx.Stdio, initial string, validate func
 		return "", errx.Env("creating editor buffer: %v", err)
 	}
 	path := tmp.Name()
-	tmp.Close()
-	defer os.Remove(path)
+	_ = tmp.Close()
+	defer func() { _ = os.Remove(path) }()
 
 	buffer := initial
 	annotated := false

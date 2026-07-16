@@ -13,12 +13,15 @@ import (
 
 const maxRebaseIterations = 100
 
+// SyncOpts configures a Sync run.
 type SyncOpts struct {
 	Push   bool
 	Dirty  syncx.DirtyPolicy
 	Remote string
 }
 
+// Sync pulls and rebases against the remote, reconciles and reindexes local
+// tickets, and optionally pushes, reporting the outcome of each step.
 func (s *Store) Sync(cfg *datamodel.Config, opts SyncOpts, reindexer syncx.Reindexer) (report *syncx.Report, err error) {
 	if err := s.requireRepo(); err != nil {
 		return nil, err
@@ -157,14 +160,14 @@ func (s *Store) pullRebase(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts,
 		return errx.Conflict("%v", err)
 	}
 	if cfg.Merge.Policy != datamodel.MergeAuto {
-		repo.RebaseAbort()
+		_ = repo.RebaseAbort()
 		report.Add("pull", syncx.StepFailed, "merge.policy manual: conflicts left for you")
 		return errx.Conflict("rebase halted with conflicts (merge.policy: manual)")
 	}
 	for range maxRebaseIterations {
 		unmerged, err := s.autoResolve(cfg, repo)
 		if err != nil {
-			repo.RebaseAbort()
+			_ = repo.RebaseAbort()
 			return err
 		}
 		// A successful auto-resolve clears every modify/modify kira conflict, so
@@ -172,12 +175,12 @@ func (s *Store) pullRebase(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts,
 		// could not parse/apply) is terminal — abort at once naming it rather
 		// than spinning until the iteration cap on unchanging state.
 		if len(unmerged) > 0 {
-			repo.RebaseAbort()
+			_ = repo.RebaseAbort()
 			report.Add("pull", syncx.StepFailed, "unresolved conflicts: "+strings.Join(unmerged, ", "))
 			return errx.Conflict("rebase halted, could not auto-resolve: %s", strings.Join(unmerged, ", "))
 		}
 		if err := repo.RebaseContinue(); err != nil && !repo.RebaseInProgress() {
-			repo.RebaseAbort()
+			_ = repo.RebaseAbort()
 			report.Add("pull", syncx.StepFailed, err.Error())
 			return errx.Conflict("%v", err)
 		}
@@ -186,7 +189,7 @@ func (s *Store) pullRebase(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts,
 			return nil
 		}
 	}
-	repo.RebaseAbort()
+	_ = repo.RebaseAbort()
 	report.Add("pull", syncx.StepFailed, "did not converge")
 	return errx.Conflict("rebase did not converge")
 }

@@ -12,13 +12,16 @@ import (
 	"strings"
 )
 
+// Repo is a git working tree rooted at Dir.
 type Repo struct{ Dir string }
 
+// Installed reports whether a git executable is on PATH.
 func Installed() bool {
 	_, err := exec.LookPath("git")
 	return err == nil
 }
 
+// Output runs git with args in r.Dir and returns trimmed stdout.
 func (r Repo) Output(args ...string) (string, error) {
 	out, err := r.OutputRaw(args...)
 	return strings.TrimSpace(out), err
@@ -31,6 +34,7 @@ func gitCommand(dir string, env []string, args ...string) *exec.Cmd {
 	return cmd
 }
 
+// OutputRaw runs git with args in r.Dir and returns stdout untrimmed.
 func (r Repo) OutputRaw(args ...string) (string, error) {
 	return r.outputRaw(nil, args...)
 }
@@ -57,21 +61,26 @@ func (r Repo) splitLines(args ...string) ([]string, error) {
 	return strings.Split(out, "\n"), nil
 }
 
+// InsideWorkTree returns an error unless r.Dir is inside a git work tree.
 func (r Repo) InsideWorkTree() error {
 	_, err := r.Output("rev-parse", "--is-inside-work-tree")
 	return err
 }
 
+// Stage runs `git add` on paths.
 func (r Repo) Stage(paths ...string) error {
 	_, err := r.Output(append([]string{"add", "--"}, paths...)...)
 	return err
 }
 
+// Unstage runs `git restore --staged` on paths.
 func (r Repo) Unstage(paths ...string) error {
 	_, err := r.Output(append([]string{"restore", "--staged", "--"}, paths...)...)
 	return err
 }
 
+// Commit runs `git commit` with subject as the first -m and, if trailerVal
+// is set, a second -m of "trailerKey: trailerVal".
 func (r Repo) Commit(subject, trailerKey, trailerVal string) error {
 	if trailerVal == "" {
 		return r.CommitParts(subject)
@@ -79,10 +88,13 @@ func (r Repo) Commit(subject, trailerKey, trailerVal string) error {
 	return r.CommitParts(subject, trailerKey+": "+trailerVal)
 }
 
+// CommitParts runs `git commit` with each part as its own -m.
 func (r Repo) CommitParts(parts ...string) error {
 	return r.CommitScoped(nil, parts...)
 }
 
+// CommitScoped runs `git commit` with each part as its own -m, scoped to
+// pathspecs if any are given.
 func (r Repo) CommitScoped(pathspecs []string, parts ...string) error {
 	args := []string{"commit"}
 	for _, p := range parts {
@@ -102,18 +114,23 @@ func (r Repo) logPatch(args ...string) (string, error) {
 	return r.Output(append([]string{"log", format, "-p", fullFileContext}, args...)...)
 }
 
+// FileLog returns the full-context patch log for relPath.
 func (r Repo) FileLog(relPath string) (string, error) {
 	return r.logPatch("--", relPath)
 }
 
+// RangePatch returns the full-context patch log for pathspec over revRange.
 func (r Repo) RangePatch(revRange, pathspec string) (string, error) {
 	return r.logPatch(revRange, "--", pathspec)
 }
 
+// LastCommitFor returns the SHA of the most recent commit touching relPath.
 func (r Repo) LastCommitFor(relPath string) (string, error) {
 	return r.Output("log", "-1", "--format=%H", "--", relPath)
 }
 
+// LastCommits returns, for every path under pathspec, the SHA of its most
+// recent commit, keyed by path relative to r.Dir.
 func (r Repo) LastCommits(pathspec string) (map[string]string, error) {
 	out, err := r.Output("log", "--format="+nulFmt+"%H", "--name-only", "--", pathspec)
 	if err != nil {
@@ -145,10 +162,14 @@ func (r Repo) LastCommits(pathspec string) (map[string]string, error) {
 	return shaByPath, nil
 }
 
+// FileCommitMeta returns SHA, author, commit date, and parents for every
+// commit touching relPath.
 func (r Repo) FileCommitMeta(relPath string) (string, error) {
 	return r.Output("log", "--format=%H%x00%an%x00%cI%x00%P", "--", relPath)
 }
 
+// RevListSince returns the commits on rev since the given duration/date
+// expression.
 func (r Repo) RevListSince(rev, since string) ([]Commit, error) {
 	format := "--format=%H" + nulFmt + "%s" + nulFmt + "%an" + nulFmt + "%cI"
 	out, err := r.Output("rev-list", "--since="+since, format, rev)
@@ -166,6 +187,7 @@ func (r Repo) RevListSince(rev, since string) ([]Commit, error) {
 	return commits, nil
 }
 
+// GitPath resolves rel to an absolute path under the repo's .git directory.
 func (r Repo) GitPath(rel string) (string, error) {
 	out, err := r.Output("rev-parse", "--git-path", rel)
 	if err != nil {
@@ -177,6 +199,8 @@ func (r Repo) GitPath(rel string) (string, error) {
 	return out, nil
 }
 
+// AppendInfoAttribute adds line to the repo's info/attributes file if it is
+// not already present.
 func (r Repo) AppendInfoAttribute(line string) error {
 	path, err := r.GitPath(infoAttributesPath)
 	if err != nil {
@@ -197,6 +221,9 @@ func containsLine(content, line string) bool {
 	return false
 }
 
+// AppendLineIfMissing appends line to the file at path unless it already
+// contains that line, creating the file's content fresh if it does not
+// exist.
 func AppendLineIfMissing(path, line string) error {
 	existing, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
@@ -212,6 +239,8 @@ func AppendLineIfMissing(path, line string) error {
 	return os.WriteFile(path, []byte(body+line+"\n"), 0o644)
 }
 
+// RemoveLineIfPresent removes line from the file at path if present; it is a
+// no-op if path does not exist.
 func RemoveLineIfPresent(path, line string) error {
 	existing, err := os.ReadFile(path)
 	if err != nil {
@@ -233,6 +262,7 @@ func RemoveLineIfPresent(path, line string) error {
 	return os.WriteFile(path, []byte(strings.Join(kept, "")), 0o644)
 }
 
+// RebaseInProgress reports whether r is in the middle of a rebase.
 func (r Repo) RebaseInProgress() bool {
 	for _, rel := range []string{"rebase-merge", "rebase-apply"} {
 		p, err := r.GitPath(rel)
@@ -246,6 +276,7 @@ func (r Repo) RebaseInProgress() bool {
 	return false
 }
 
+// UnmergedPaths returns paths still marked unmerged (diff-filter=U).
 func (r Repo) UnmergedPaths() ([]string, error) {
 	lines, err := r.splitLines("diff", "--name-only", "--diff-filter=U")
 	if err != nil {
@@ -254,11 +285,13 @@ func (r Repo) UnmergedPaths() ([]string, error) {
 	return r.relToDir(lines)
 }
 
+// SetConfig runs `git config key val`.
 func (r Repo) SetConfig(key, val string) error {
 	_, err := r.Output("config", key, val)
 	return err
 }
 
+// ConfigValue returns the value of key, or "" if unset.
 func (r Repo) ConfigValue(key string) string {
 	v, err := r.Output("config", "--get", key)
 	if err != nil {
@@ -267,6 +300,7 @@ func (r Repo) ConfigValue(key string) string {
 	return v
 }
 
+// UnsetConfig removes key if it is set.
 func (r Repo) UnsetConfig(key string) error {
 	if r.ConfigValue(key) == "" {
 		return nil
@@ -275,11 +309,14 @@ func (r Repo) UnsetConfig(key string) error {
 	return err
 }
 
+// BatchObject is one result from CatFileBatch.
 type BatchObject struct {
 	Content string
 	Found   bool
 }
 
+// CatFileBatch runs `git cat-file --batch` over specs and returns one
+// BatchObject per spec, in order.
 func (r Repo) CatFileBatch(specs []string) ([]BatchObject, error) {
 	cmd := gitCommand(r.Dir, nil, "cat-file", "--batch")
 	cmd.Stdin = strings.NewReader(strings.Join(specs, "\n") + "\n")
@@ -323,12 +360,14 @@ func parseCatFileBatch(buf []byte, n int) ([]BatchObject, error) {
 	return out, nil
 }
 
+// MergeText runs a three-way `git merge-file` over base/ours/theirs in a
+// scratch directory, reporting whether the result has conflict markers.
 func MergeText(base, ours, theirs string) (merged string, conflict bool, err error) {
 	dir, err := os.MkdirTemp("", "kira-merge")
 	if err != nil {
 		return "", false, err
 	}
-	defer os.RemoveAll(dir)
+	defer func() { _ = os.RemoveAll(dir) }()
 
 	write := func(name, content string) (string, error) {
 		p := filepath.Join(dir, name)

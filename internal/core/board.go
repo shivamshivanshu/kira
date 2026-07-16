@@ -19,9 +19,10 @@ var reservedBoardKeys = map[string]bool{
 }
 
 func boardView(b datamodel.Board) datamodel.BoardView {
-	return datamodel.BoardView{Key: b.Key, Name: b.Name, Description: b.Description, Default: b.Default, Archived: b.Archived}
+	return datamodel.BoardView(b)
 }
 
+// BoardOpts filters and scopes a Board query.
 type BoardOpts struct {
 	Type   string
 	Epic   string
@@ -32,6 +33,8 @@ type BoardOpts struct {
 	At     string
 }
 
+// Board returns the workflow columns for opts.Type, populated with the
+// matching items (optionally scoped to opts.Epic) grouped by state.
 func (s *Store) Board(cfg *datamodel.Config, opts BoardOpts) (*datamodel.BoardResult, error) {
 	ld, err := s.read(cfg, loadOpts{at: opts.At, useIndex: true})
 	if err != nil {
@@ -136,7 +139,9 @@ func adoptImplicitBoard(locked *datamodel.Config) (*datamodel.Board, error) {
 	return &datamodel.Board{Key: locked.Project.Key, Name: name, Default: true}, nil
 }
 
-func (s *Store) BoardCreate(cfg *datamodel.Config, key, name, description string) (*datamodel.BoardCreateResult, error) {
+// BoardCreate adds a new board to the config, adopting the project as an
+// implicit board first if none exist yet.
+func (s *Store) BoardCreate(_ *datamodel.Config, key, name, description string) (*datamodel.BoardCreateResult, error) {
 	if !config.ValidBoardKey(key) {
 		return nil, errx.User("board key %q must match %s", key, config.BoardKeyPattern)
 	}
@@ -177,6 +182,7 @@ func (s *Store) BoardCreate(cfg *datamodel.Config, key, name, description string
 	return &datamodel.BoardCreateResult{Created: true, Board: boardView(board)}, nil
 }
 
+// BoardRename changes the display name of the board keyed by key.
 func (s *Store) BoardRename(cfg *datamodel.Config, key, name string) (*datamodel.BoardUpdateResult, error) {
 	if strings.TrimSpace(name) == "" {
 		return nil, errx.User("board name must not be empty")
@@ -187,6 +193,8 @@ func (s *Store) BoardRename(cfg *datamodel.Config, key, name string) (*datamodel
 	})
 }
 
+// BoardArchive archives the board keyed by key, refusing to archive the last
+// active board.
 func (s *Store) BoardArchive(cfg *datamodel.Config, key string) (*datamodel.BoardUpdateResult, error) {
 	return s.updateBoard(cfg, key, "archive", true, func(b datamodel.Board) datamodel.Board {
 		b.Archived = true
@@ -194,6 +202,7 @@ func (s *Store) BoardArchive(cfg *datamodel.Config, key string) (*datamodel.Boar
 	})
 }
 
+// BoardUnarchive un-archives the board keyed by key.
 func (s *Store) BoardUnarchive(cfg *datamodel.Config, key string) (*datamodel.BoardUpdateResult, error) {
 	return s.updateBoard(cfg, key, "unarchive", false, func(b datamodel.Board) datamodel.Board {
 		b.Archived = false
@@ -201,7 +210,7 @@ func (s *Store) BoardUnarchive(cfg *datamodel.Config, key string) (*datamodel.Bo
 	})
 }
 
-func (s *Store) updateBoard(cfg *datamodel.Config, key, verb string, guardLastActive bool, mutate func(datamodel.Board) datamodel.Board) (*datamodel.BoardUpdateResult, error) {
+func (s *Store) updateBoard(_ *datamodel.Config, key, verb string, guardLastActive bool, mutate func(datamodel.Board) datamodel.Board) (*datamodel.BoardUpdateResult, error) {
 	var view datamodel.BoardView
 	err := s.mutateConfig(func(data []byte, locked *datamodel.Config) (configEdit, error) {
 		target, ok := locked.BoardByKey(key)
@@ -243,6 +252,7 @@ func (s *Store) updateBoard(cfg *datamodel.Config, key, verb string, guardLastAc
 	return &datamodel.BoardUpdateResult{Board: view}, nil
 }
 
+// BoardList returns the effective (active plus adopted-implicit) boards.
 func (s *Store) BoardList(cfg *datamodel.Config) (*datamodel.BoardListResult, error) {
 	boards := cfg.EffectiveBoards()
 	views := make([]datamodel.BoardView, len(boards))
@@ -252,6 +262,8 @@ func (s *Store) BoardList(cfg *datamodel.Config) (*datamodel.BoardListResult, er
 	return &datamodel.BoardListResult{Boards: views}, nil
 }
 
+// AdjacentAllowed reports whether the workflow for typ allows moving from
+// state from to state to.
 func AdjacentAllowed(cfg *datamodel.Config, typ, from, to string) bool {
 	wf, ok := cfg.Workflows[typ]
 	if !ok {

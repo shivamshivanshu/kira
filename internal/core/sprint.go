@@ -15,8 +15,11 @@ import (
 
 const activeSprintFile = "active-sprint"
 
+// ErrNoActiveSprint indicates no sprint has been activated via SprintActivate.
 var ErrNoActiveSprint = errors.New("no active sprint is set")
 
+// ActiveSprintKey returns the currently activated sprint key, or "" if none
+// is active.
 func (s *Store) ActiveSprintKey() string {
 	b, err := os.ReadFile(filepath.Join(s.fs().CacheDir(), activeSprintFile))
 	if err != nil {
@@ -26,9 +29,11 @@ func (s *Store) ActiveSprintKey() string {
 }
 
 func sprintView(sp datamodel.Sprint) datamodel.SprintView {
-	return datamodel.SprintView{Key: sp.Key, Name: sp.Name, Start: sp.Start, End: sp.End}
+	return datamodel.SprintView(sp)
 }
 
+// ResolveSprintKey resolves key to a configured sprint key, expanding the
+// "active" alias via ActiveSprintKey.
 func (s *Store) ResolveSprintKey(cfg *datamodel.Config, key string) (string, error) {
 	if key == "active" {
 		active := s.ActiveSprintKey()
@@ -47,7 +52,8 @@ func inSprint(it *datamodel.Item, key string) bool {
 	return it.Sprint != nil && *it.Sprint == key
 }
 
-func (s *Store) SprintCreate(cfg *datamodel.Config, sp datamodel.Sprint) (*datamodel.SprintCreateResult, error) {
+// SprintCreate appends a new sprint to the config.
+func (s *Store) SprintCreate(_ *datamodel.Config, sp datamodel.Sprint) (*datamodel.SprintCreateResult, error) {
 	err := s.mutateConfig(func(data []byte, locked *datamodel.Config) (configEdit, error) {
 		out, err := config.AppendSprint(data, sp)
 		if err != nil {
@@ -61,6 +67,8 @@ func (s *Store) SprintCreate(cfg *datamodel.Config, sp datamodel.Sprint) (*datam
 	return &datamodel.SprintCreateResult{Created: true, Sprint: sprintView(sp)}, nil
 }
 
+// SprintList returns every configured sprint with its item counts and
+// whether it is the active sprint.
 func (s *Store) SprintList(cfg *datamodel.Config) (*datamodel.SprintListResult, error) {
 	ld, err := s.read(cfg, loadOpts{})
 	if err != nil {
@@ -84,6 +92,8 @@ func (s *Store) SprintList(cfg *datamodel.Config) (*datamodel.SprintListResult, 
 	return &datamodel.SprintListResult{Sprints: rows}, nil
 }
 
+// SprintActivate sets key as the active sprint, returning the previously
+// active key (if any).
 func (s *Store) SprintActivate(cfg *datamodel.Config, key string) (*datamodel.SprintActivateResult, error) {
 	if !cfg.HasSprint(key) {
 		return nil, errx.User("%q is not a key in the configured sprints", key)
@@ -99,6 +109,9 @@ func (s *Store) SprintActivate(cfg *datamodel.Config, key string) (*datamodel.Sp
 	return &datamodel.SprintActivateResult{Activated: key, Previous: prev}, nil
 }
 
+// SprintClose closes the sprint keyed by key, optionally moving its
+// unfinished items to moveTo, and clears it as the active sprint if it was
+// active.
 func (s *Store) SprintClose(cfg *datamodel.Config, key, moveTo string) (*datamodel.SprintCloseResult, error) {
 	if !cfg.HasSprint(key) {
 		return nil, errx.User("%q is not a key in the configured sprints", key)

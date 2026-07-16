@@ -19,6 +19,7 @@ func indexByEpic(items []*datamodel.Item) (map[string]*datamodel.Item, map[strin
 	return byID, children
 }
 
+// EpicProgress reports the done/total ticket counts under every epic.
 func (s *Store) EpicProgress(cfg *datamodel.Config) (map[string]datamodel.EpicProgress, error) {
 	ld, err := s.read(cfg, loadOpts{useIndex: true})
 	if err != nil {
@@ -29,15 +30,19 @@ func (s *Store) EpicProgress(cfg *datamodel.Config) (map[string]datamodel.EpicPr
 	out := make(map[string]datamodel.EpicProgress)
 	for _, it := range items {
 		if it.Type == datamodel.TypeEpic {
-			out[it.ID] = epicProgress(cfg, children, it.ID)
+			p, err := epicProgress(cfg, children, it.ID)
+			if err != nil {
+				return nil, err
+			}
+			out[it.ID] = p
 		}
 	}
 	return out, nil
 }
 
-func epicProgress(cfg *datamodel.Config, children map[string][]*datamodel.Item, epicID string) datamodel.EpicProgress {
+func epicProgress(cfg *datamodel.Config, children map[string][]*datamodel.Item, epicID string) (datamodel.EpicProgress, error) {
 	var p datamodel.EpicProgress
-	walkEpic(children, epicID, func(c *datamodel.Item) bool { return c.Type == datamodel.TypeEpic }, func(c *datamodel.Item) {
+	err := walkEpic(children, epicID, func(c *datamodel.Item) bool { return c.Type == datamodel.TypeEpic }, func(c *datamodel.Item) {
 		if c.Type == datamodel.TypeEpic {
 			return
 		}
@@ -46,7 +51,7 @@ func epicProgress(cfg *datamodel.Config, children map[string][]*datamodel.Item, 
 			p.Done++
 		}
 	})
-	return p
+	return p, err
 }
 
 func isDropped(cfg *datamodel.Config, it *datamodel.Item) bool {

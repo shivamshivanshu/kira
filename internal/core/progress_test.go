@@ -33,7 +33,10 @@ func TestEpicProgressDroppedExcludedFromNumerator(t *testing.T) {
 		},
 		"E2": {ticket("T4", "DONE", nil)},
 	}
-	p := epicProgress(progressCfg(), children, "E1")
+	p, err := epicProgress(progressCfg(), children, "E1")
+	if err != nil {
+		t.Fatalf("epicProgress: %v", err)
+	}
 	if p.Total != 4 {
 		t.Errorf("total = %d, want 4 (dropped counts toward denominator)", p.Total)
 	}
@@ -53,7 +56,10 @@ func TestEpicProgressHonorsConfiguredDroppedSet(t *testing.T) {
 			ticket("T2", "DONE", &dropped),
 		},
 	}
-	p := epicProgress(cfg, children, "E1")
+	p, err := epicProgress(cfg, children, "E1")
+	if err != nil {
+		t.Fatalf("epicProgress: %v", err)
+	}
 	if p.Total != 2 {
 		t.Errorf("total = %d, want 2", p.Total)
 	}
@@ -67,7 +73,10 @@ func TestEpicProgressDoesNotDescendNonEpicParent(t *testing.T) {
 		"E1": {ticket("T1", "DONE", nil)},
 		"T1": {ticket("T2", "DONE", nil)},
 	}
-	p := epicProgress(progressCfg(), children, "E1")
+	p, err := epicProgress(progressCfg(), children, "E1")
+	if err != nil {
+		t.Fatalf("epicProgress: %v", err)
+	}
 	if p.Total != 1 || p.Done != 1 {
 		t.Errorf("got %d/%d, want 1/1 (non-epic parent T1 must not be descended)", p.Done, p.Total)
 	}
@@ -78,7 +87,10 @@ func TestEpicProgressCycleSafe(t *testing.T) {
 		"E1": {{ID: "E2", Type: datamodel.TypeEpic, State: "OPEN"}, ticket("T1", "DONE", nil)},
 		"E2": {{ID: "E1", Type: datamodel.TypeEpic, State: "OPEN"}},
 	}
-	p := epicProgress(progressCfg(), children, "E1")
+	p, err := epicProgress(progressCfg(), children, "E1")
+	if err == nil {
+		t.Fatal("expected a cycle error for E1 <-> E2")
+	}
 	if p.Total != 1 || p.Done != 1 {
 		t.Errorf("got %d/%d, want 1/1 without infinite recursion", p.Done, p.Total)
 	}

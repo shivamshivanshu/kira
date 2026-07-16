@@ -74,7 +74,8 @@ func TestMatchesFromByCategoryDistinctFromStateKey(t *testing.T) {
 func TestHashChangesWithConfigAndIsStable(t *testing.T) {
 	a := &datamodel.Config{Automation: []datamodel.AutomationHook{{On: datamodel.EventItemCreated, Run: "true"}}}
 	b := &datamodel.Config{Automation: []datamodel.AutomationHook{{On: datamodel.EventItemCreated, Run: "false"}}}
-	if automation.Hash(a) != automation.Hash(a) {
+	first, second := automation.Hash(a), automation.Hash(a)
+	if first != second {
 		t.Fatal("hash must be deterministic for identical config")
 	}
 	if automation.Hash(a) == automation.Hash(b) {
