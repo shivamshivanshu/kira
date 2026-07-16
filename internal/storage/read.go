@@ -105,3 +105,8 @@ func Snapshot(key string, items []*datamodel.Item) id.Snapshot {
 	}
 	return snap
 }
+
+func SnapshotAndResolver(key string, items []*datamodel.Item) (id.Snapshot, *id.Resolver) {
+	snap := Snapshot(key, items)
+	return snap, id.NewResolver(snap)
+}

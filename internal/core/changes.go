@@ -20,11 +20,11 @@ func (s *Store) Changes(ref string) (*datamodel.ChangesResult, error) {
 	}
 	from, err := treeish.Load(repo, sinceSHA)
 	if err != nil {
-		return nil, errx.User("%v", err)
+		return nil, err
 	}
 	to, err := treeish.Load(repo, headSHA)
 	if err != nil {
-		return nil, errx.User("%v", err)
+		return nil, err
 	}
 	fromByID := byULID(from.Items)
 	toByID := byULID(to.Items)
@@ -36,7 +36,7 @@ func (s *Store) Changes(ref string) (*datamodel.ChangesResult, error) {
 
 	items := changedItems(repo, fromByID, toByID, events)
 	sortByKey(items, func(c datamodel.ChangedItem) id.SortKey { return id.NewSortKey(c.Number, c.ID) })
-	return &datamodel.ChangesResult{Since: sinceSHA, Head: headSHA, Items: items}, nil
+	return &datamodel.ChangesResult{Since: sinceSHA, Head: headSHA, Items: items, StderrNotes: mergedWarnings(from, to)}, nil
 }
 
 func changedItems(repo gitx.Repo, fromByID, toByID map[string]*datamodel.Item, events map[string][]datamodel.Event) []datamodel.ChangedItem {

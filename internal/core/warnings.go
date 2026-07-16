@@ -3,8 +3,10 @@ package core
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/treeish"
 )
 
 func emitWarnings(warns []error) {
@@ -22,4 +24,8 @@ func literalWarnings(msgs []string) []datamodel.Warning {
 		out[i] = datamodel.Warning{Code: datamodel.WarnLiteral, Args: []string{m}}
 	}
 	return out
+}
+
+func mergedWarnings(a, b *treeish.Loaded) []datamodel.Warning {
+	return literalWarnings(slices.Concat(a.Warnings, b.Warnings))
 }

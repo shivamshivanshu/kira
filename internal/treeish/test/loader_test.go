@@ -7,20 +7,35 @@ import (
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
-	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/storage"
 	"github.com/shivamshivanshu/kira/internal/testutil"
 	"github.com/shivamshivanshu/kira/internal/treeish"
 )
 
+func writeCommit(t *testing.T, repo gitx.Repo, root, relPath, content, msg string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(relPath)), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.Output("add", "--", relPath); err != nil {
+		t.Fatalf("add: %v", err)
+	}
+	if _, err := repo.Output("commit", "-m", msg); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+}
+
 func initRepo(t *testing.T) (string, gitx.Repo) {
 	t.Helper()
 	root := testutil.InitGitRepo(t)
-	if _, err := core.Init(root, "KIRA", false); err != nil {
-		t.Fatalf("Init: %v", err)
+	repo := gitx.Repo{Dir: root}
+	if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(storage.TicketsPrefix)), 0o755); err != nil {
+		t.Fatal(err)
 	}
-	return root, gitx.Repo{Dir: root}
+	writeCommit(t, repo, root, storage.ConfigRelPath, "project:\n  key: KIRA\n  name: kira\n", "init")
+	return root, repo
 }
 
 func item(ulid, number, state string, aliases []string) *datamodel.Item {
@@ -34,16 +49,7 @@ func item(ulid, number, state string, aliases []string) *datamodel.Item {
 
 func commitItem(t *testing.T, repo gitx.Repo, root string, it *datamodel.Item, msg string) {
 	t.Helper()
-	rel := ".kira/tickets/" + it.ID + ".md"
-	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(rel)), []byte(codec.Serialize(it)), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := repo.Output("add", "--", rel); err != nil {
-		t.Fatalf("add: %v", err)
-	}
-	if _, err := repo.Output("commit", "-m", msg); err != nil {
-		t.Fatalf("commit: %v", err)
-	}
+	writeCommit(t, repo, root, ".kira/tickets/"+it.ID+".md", codec.Serialize(it), msg)
 }
 
 func TestLoadSkipsMalformedItemWithWarning(t *testing.T) {
@@ -53,16 +59,7 @@ func TestLoadSkipsMalformedItemWithWarning(t *testing.T) {
 
 	bad := item("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-2", "TODO", nil)
 	content := strings.Replace(codec.Serialize(bad), "state: TODO\n", "state: TODO\nstate: DONE\n", 1)
-	rel := ".kira/tickets/" + bad.ID + ".md"
-	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(rel)), []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := repo.Output("add", "--", rel); err != nil {
-		t.Fatalf("add: %v", err)
-	}
-	if _, err := repo.Output("commit", "-m", "bad"); err != nil {
-		t.Fatalf("commit: %v", err)
-	}
+	writeCommit(t, repo, root, ".kira/tickets/"+bad.ID+".md", content, "bad")
 
 	loaded, err := treeish.Load(repo, "HEAD")
 	if err != nil {
@@ -73,6 +70,51 @@ func TestLoadSkipsMalformedItemWithWarning(t *testing.T) {
 	}
 	if len(loaded.Warnings) != 1 || !strings.Contains(loaded.Warnings[0], bad.ID) || !strings.Contains(loaded.Warnings[0], "duplicate key") {
 		t.Fatalf("warnings = %q, want a skip note naming the file and the duplicate key", loaded.Warnings)
+	}
+}
+
+func TestLoadSkipsMissingItemBlobWithWarning(t *testing.T) {
+	t.Parallel()
+	root, repo := initRepo(t)
+	commitItem(t, repo, root, item("01J8X8Q7RZTN5Y3VXW2A9K4E7F", "KIRA-1", "TODO", nil), "good")
+	commitItem(t, repo, root, item("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-2", "TODO", nil), "ghost")
+
+	ghostSHA, err := repo.Output("rev-parse", "HEAD:.kira/tickets/01J8X7B1Q2W3E4R5T6Y7U8I9O0.md")
+	if err != nil {
+		t.Fatalf("rev-parse ghost blob: %v", err)
+	}
+	objPath := filepath.Join(root, ".git", "objects", ghostSHA[:2], ghostSHA[2:])
+	if err := os.Remove(objPath); err != nil {
+		t.Fatalf("remove loose object %s: %v", objPath, err)
+	}
+
+	loaded, err := treeish.Load(repo, "HEAD")
+	if err != nil {
+		t.Fatalf("Load must not abort on a missing blob: %v", err)
+	}
+	if len(loaded.Items) != 1 || loaded.Items[0].Number != "KIRA-1" {
+		t.Fatalf("items = %+v, want only KIRA-1", loaded.Items)
+	}
+	if len(loaded.Warnings) != 1 || !strings.Contains(loaded.Warnings[0], "01J8X7B1Q2W3E4R5T6Y7U8I9O0") || !strings.Contains(loaded.Warnings[0], "corrupt tree") {
+		t.Fatalf("warnings = %q, want a skip note naming the ghost item and corrupt tree", loaded.Warnings)
+	}
+}
+
+func TestLoadBeforeInit(t *testing.T) {
+	t.Parallel()
+	root := testutil.InitGitRepo(t)
+	repo := gitx.Repo{Dir: root}
+	writeCommit(t, repo, root, "README.md", "hello\n", "before kira init")
+
+	_, err := treeish.Load(repo, "HEAD")
+	if err == nil {
+		t.Fatal("Load must fail on a commit with no .kira/config.yaml")
+	}
+	if !strings.Contains(err.Error(), storage.ConfigRelPath) {
+		t.Errorf("err = %q, want it to name %s", err, storage.ConfigRelPath)
+	}
+	if strings.Contains(err.Error(), "corrupt") {
+		t.Errorf("err = %q, must not call a genuinely absent config corrupt", err)
 	}
 }
 

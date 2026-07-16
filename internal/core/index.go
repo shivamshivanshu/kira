@@ -2,15 +2,8 @@ package core
 
 import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/index"
-	"github.com/shivamshivanshu/kira/internal/storage"
 )
-
-func snapshotAndResolver(key string, items []*datamodel.Item) (id.Snapshot, *id.Resolver) {
-	snap := storage.Snapshot(key, items)
-	return snap, id.NewResolver(snap)
-}
 
 func indexOptions(cfg *datamodel.Config) index.Options {
 	return index.Options{

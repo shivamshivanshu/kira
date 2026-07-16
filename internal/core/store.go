@@ -68,7 +68,7 @@ func (s *Store) load(cfg *datamodel.Config) (loadResult, error) {
 	for _, it := range items {
 		it.Activity = it.Updated
 	}
-	snap, resolver := snapshotAndResolver(cfg.Project.Key, items)
+	snap, resolver := storage.SnapshotAndResolver(cfg.Project.Key, items)
 	return loadResult{items: items, snap: snap, resolver: resolver, warnings: warnings}, nil
 }
 

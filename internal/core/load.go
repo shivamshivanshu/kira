@@ -9,6 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/index"
+	"github.com/shivamshivanshu/kira/internal/storage"
 	"github.com/shivamshivanshu/kira/internal/treeish"
 )
 
@@ -52,13 +53,13 @@ func (s *Store) readRaw(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
 		}
 		tl, err := treeish.Load(s.repo(), sha)
 		if err != nil {
-			return nil, errx.User("%v", err)
+			return nil, err
 		}
 		return &loaded{items: tl.Items, resolver: tl.Resolver, cfg: tl.Config, notes: literalWarnings(tl.Warnings)}, nil
 	}
 	if opts.useIndex {
 		if items, res, err := index.Load(s.fs(), s.repo(), indexOptions(cfg)); err == nil {
-			_, resolver := snapshotAndResolver(cfg.Project.Key, items)
+			_, resolver := storage.SnapshotAndResolver(cfg.Project.Key, items)
 			return &loaded{items: items, resolver: resolver, cfg: cfg, notes: literalWarnings(res.Warnings)}, nil
 		}
 	}

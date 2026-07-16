@@ -163,6 +163,8 @@ type DiffResult struct {
 	From  string     `json:"from"`
 	To    string     `json:"to"`
 	Items []DiffItem `json:"items"`
+
+	StderrNotes []Warning `json:"-"`
 }
 
 type DiffItem struct {
@@ -199,6 +201,8 @@ type ChangesResult struct {
 	Since string        `json:"since"`
 	Head  string        `json:"head"`
 	Items []ChangedItem `json:"items"`
+
+	StderrNotes []Warning `json:"-"`
 }
 
 type ChangedItem struct {

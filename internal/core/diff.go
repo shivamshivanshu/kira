@@ -19,11 +19,11 @@ func (s *Store) Diff(ref, since string, incoming bool) (*datamodel.DiffResult, e
 	}
 	from, err := treeish.Load(repo, baseSHA)
 	if err != nil {
-		return nil, errx.User("%v", err)
+		return nil, err
 	}
 	to, err := treeish.Load(repo, toSHA)
 	if err != nil {
-		return nil, errx.User("%v", err)
+		return nil, err
 	}
 	return diffSnapshots(repo, from, to, baseSHA, toSHA), nil
 }
@@ -80,7 +80,7 @@ func diffSnapshots(repo gitx.Repo, from, to *treeish.Loaded, fromSHA, toSHA stri
 	}
 
 	sortDiffItems(items)
-	return &datamodel.DiffResult{From: fromSHA, To: toSHA, Items: items}
+	return &datamodel.DiffResult{From: fromSHA, To: toSHA, Items: items, StderrNotes: mergedWarnings(from, to)}
 }
 
 func changedItem(repo gitx.Repo, from, to *datamodel.Item) (datamodel.DiffItem, bool) {
