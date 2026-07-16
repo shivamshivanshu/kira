@@ -57,19 +57,25 @@ func (s *Store) readRaw(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
 		}
 		return &loaded{items: tl.Items, resolver: tl.Resolver, cfg: tl.Config, notes: literalWarnings(tl.Warnings)}, nil
 	}
+	var indexErr error
 	if opts.useIndex {
-		if items, res, err := index.Load(s.fs(), s.repo(), indexOptions(cfg)); err == nil {
+		items, res, err := index.Load(s.fs(), s.repo(), indexOptions(cfg))
+		if err == nil {
 			_, resolver := storage.SnapshotAndResolver(cfg.Project.Key, items)
 			return &loaded{items: items, resolver: resolver, cfg: cfg, notes: literalWarnings(res.Warnings)}, nil
 		}
+		indexErr = err
 	}
+	// s.load always sets Activity = Updated; that is the documented fallback
+	// semantics when the enriched, commit-derived Activity from the index is
+	// unavailable.
 	ld, err := s.load(cfg)
 	if err != nil {
 		return nil, err
 	}
 	notes := literalWarnings(ld.warnings)
 	if opts.useIndex {
-		notes = append([]datamodel.Warning{{Code: datamodel.WarnIndexFallback}}, notes...)
+		notes = append([]datamodel.Warning{{Code: datamodel.WarnIndexFallback, Args: []string{indexErr.Error()}}}, notes...)
 	}
 	return &loaded{items: ld.items, resolver: ld.resolver, cfg: cfg, notes: notes}, nil
 }

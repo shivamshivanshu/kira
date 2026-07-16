@@ -1,6 +1,9 @@
 package index
 
 import (
+	"database/sql"
+	"errors"
+
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/storage"
@@ -23,18 +26,24 @@ func LogEntries(store *storage.FS, itemID, fileHead string, derive func() ([]dat
 		}
 		return events, links, nil
 	}
-	if idx.eventHead(itemID) != fileHead {
-		events, derr := derive()
-		if derr != nil {
-			return nil, nil, derr
+	head, err := idx.eventHead(itemID)
+	if err != nil {
+		return nil, nil, err
+	}
+	var events []datamodel.Event
+	if head != fileHead {
+		events, err = derive()
+		if err != nil {
+			return nil, nil, err
 		}
 		if err := idx.replaceEvents(itemID, fileHead, events); err != nil {
 			return nil, nil, err
 		}
-	}
-	events, err := idx.events(itemID)
-	if err != nil {
-		return nil, nil, err
+	} else {
+		events, err = idx.events(itemID)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	links, err := idx.CommitLinks(itemID)
 	if err != nil {
@@ -43,10 +52,16 @@ func LogEntries(store *storage.FS, itemID, fileHead string, derive func() ([]dat
 	return events, links, nil
 }
 
-func (i *Index) eventHead(itemID string) string {
+func (i *Index) eventHead(itemID string) (string, error) {
 	var head string
-	i.db.QueryRow("SELECT head_sha FROM event_heads WHERE item_id = ?", itemID).Scan(&head)
-	return head
+	err := i.db.QueryRow("SELECT head_sha FROM event_heads WHERE item_id = ?", itemID).Scan(&head)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", errx.Env("querying event head: %v", err)
+	}
+	return head, nil
 }
 
 func (i *Index) replaceEvents(itemID, head string, events []datamodel.Event) error {

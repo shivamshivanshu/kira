@@ -11,7 +11,6 @@ import (
 
 func gitEnv(date string) []string {
 	env := append(os.Environ(),
-		"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null",
 		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@e.c",
 		"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@e.c", "TZ=UTC")
 	if date != "" {

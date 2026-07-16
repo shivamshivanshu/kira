@@ -8,12 +8,12 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
 type Options struct {
@@ -110,15 +110,10 @@ func (i *Index) collectCloses(root gitx.Repo, opts Options, prev meta, numbers m
 }
 
 func latestCloses(commits []gitx.Commit, numbers map[string]string) (candidates []CloseCandidate, unknown []string) {
-	type acc struct {
-		ts  time.Time
-		raw string
-	}
-	latest := map[string]acc{}
+	latest := map[string]string{}
 	unknownSeen := map[string]bool{}
 	var order []string
 	for _, c := range commits {
-		ct, _ := time.Parse(time.RFC3339, c.Timestamp)
 		for _, value := range c.Closes {
 			ulid, ok := numbers[strings.ToUpper(value)]
 			if !ok {
@@ -131,16 +126,28 @@ func latestCloses(commits []gitx.Commit, numbers map[string]string) (candidates 
 			cur, seen := latest[ulid]
 			if !seen {
 				order = append(order, ulid)
-				latest[ulid] = acc{ct, c.Timestamp}
-			} else if ct.After(cur.ts) {
-				latest[ulid] = acc{ct, c.Timestamp}
+				latest[ulid] = c.Timestamp
+			} else if closesLater(c.Timestamp, cur) {
+				latest[ulid] = c.Timestamp
 			}
 		}
 	}
 	for _, ulid := range order {
-		candidates = append(candidates, CloseCandidate{ULID: ulid, CommitterTs: latest[ulid].raw})
+		candidates = append(candidates, CloseCandidate{ULID: ulid, CommitterTs: latest[ulid]})
 	}
 	return candidates, unknown
+}
+
+// closesLater reports whether a supersedes b as the latest close timestamp for
+// an item. A timestamp that fails to parse can never win the race, but it can
+// always be superseded by one that does — an unparseable entry must not get
+// stuck as "latest" forever.
+func closesLater(a, b string) bool {
+	cmp, aOK, bOK := timex.CompareRFC3339(a, b)
+	if aOK && bOK {
+		return cmp > 0
+	}
+	return aOK && !bOK
 }
 
 func PersistLandedWatermark(cacheDir, landedRef, landedHead string) error {

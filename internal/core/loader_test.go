@@ -18,6 +18,15 @@ func hasWarning(notes []datamodel.Warning, code datamodel.WarnCode) bool {
 	return false
 }
 
+func findWarning(notes []datamodel.Warning, code datamodel.WarnCode) (datamodel.Warning, bool) {
+	for _, n := range notes {
+		if n.Code == code {
+			return n, true
+		}
+	}
+	return datamodel.Warning{}, false
+}
+
 func TestItemsIndexFallbackAndLinear(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, ".kira", "tickets"), 0o755); err != nil {
@@ -38,8 +47,12 @@ func TestItemsIndexFallbackAndLinear(t *testing.T) {
 	if len(fallback.items) != 1 || fallback.items[0].ID != it.ID {
 		t.Fatalf("fallback items = %v, want the one written item", fallback.items)
 	}
-	if !hasWarning(fallback.notes, datamodel.WarnIndexFallback) {
+	warn, ok := findWarning(fallback.notes, datamodel.WarnIndexFallback)
+	if !ok {
 		t.Fatalf("index unavailable must surface a fallback warning, got %v", fallback.notes)
+	}
+	if len(warn.Args) == 0 || warn.Args[0] == "" {
+		t.Fatalf("fallback warning must carry the swallowed index error, got %+v", warn)
 	}
 
 	linear, err := s.read(cfg, loadOpts{useIndex: false})

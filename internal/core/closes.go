@@ -2,10 +2,10 @@ package core
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/index"
+	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
 func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed []string, notes []datamodel.Warning, err error) {
@@ -60,15 +60,14 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 }
 
 func reopenedSince(committerTs, updated string) (bool, error) {
-	ct, err := time.Parse(time.RFC3339, committerTs)
-	if err != nil {
-		return false, fmt.Errorf("parsing committer date %q: %w", committerTs, err)
+	cmp, ctOK, utOK := timex.CompareRFC3339(committerTs, updated)
+	if !ctOK {
+		return false, fmt.Errorf("parsing committer date %q", committerTs)
 	}
-	ut, err := time.Parse(time.RFC3339, updated)
-	if err != nil {
-		return false, fmt.Errorf("parsing updated timestamp %q: %w", updated, err)
+	if !utOK {
+		return false, fmt.Errorf("parsing updated timestamp %q", updated)
 	}
-	return ut.After(ct), nil
+	return cmp < 0, nil
 }
 
 func (s *Store) landedRef(cfg *datamodel.Config) string {

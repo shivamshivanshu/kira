@@ -26,10 +26,6 @@ const (
 	actionFull        action = "full"
 )
 
-func (i *Index) EnsureFresh(store *storage.FS, repo gitx.Repo, opts Options) (Result, error) {
-	return i.reindex(store, repo, opts, false)
-}
-
 func (i *Index) reindex(store *storage.FS, repo gitx.Repo, opts Options, force bool) (Result, error) {
 	prev, hasMeta := i.loadMeta()
 	if hasMeta && i.emptyDespiteTickets(store, prev) {
@@ -66,8 +62,9 @@ func (i *Index) reindex(store *storage.FS, repo gitx.Repo, opts Options, force b
 		}
 	}
 
-	if p.decision.name != actionFresh || configChanged {
-		if err := i.fillActivity(); err != nil {
+	needsRebuild := p.decision.name != actionFresh || configChanged
+	if needsRebuild {
+		if err := i.fillActivity(p.decision.name != actionIncremental || configChanged); err != nil {
 			return Result{}, err
 		}
 	}
@@ -76,7 +73,7 @@ func (i *Index) reindex(store *storage.FS, repo gitx.Repo, opts Options, force b
 	if err != nil {
 		return Result{}, err
 	}
-	if p.decision.name != actionFresh || configChanged {
+	if needsRebuild {
 		if err := i.saveMeta(meta{
 			ScanConfigHash:     configHash,
 			LastIndexedHeadSHA: p.head,
@@ -138,6 +135,11 @@ func skipNotes(skipped map[string]skipEntry) []string {
 
 type planResult struct {
 	root       gitx.Repo
+	toplevel   string
+	pathspec   string
+	force      bool
+	hasMeta    bool
+	prev       meta
 	head       string
 	dirtyHash  string
 	dirtyPaths []string
@@ -159,11 +161,17 @@ func plan(store *storage.FS, repo gitx.Repo, force, hasMeta bool, prev meta) (pl
 		return planResult{}, err
 	}
 	dirtyHash, dirtyPaths := dirtyState(ticketAbsPaths(toplevel, statusPaths))
-	d, err := decide(root, toplevel, pathspec, force, hasMeta, head, prev, dirtyHash, dirtyPaths)
+	p := planResult{
+		root: root, toplevel: toplevel, pathspec: pathspec,
+		force: force, hasMeta: hasMeta, prev: prev,
+		head: head, dirtyHash: dirtyHash, dirtyPaths: dirtyPaths,
+	}
+	d, err := p.decide()
 	if err != nil {
 		return planResult{}, err
 	}
-	return planResult{root: root, head: head, dirtyHash: dirtyHash, dirtyPaths: dirtyPaths, decision: d}, nil
+	p.decision = d
+	return p, nil
 }
 
 type decision struct {
@@ -172,18 +180,18 @@ type decision struct {
 	refresh []string
 }
 
-func decide(root gitx.Repo, toplevel, pathspec string, force, hasMeta bool, head string, prev meta, dirtyHash string, dirtyPaths []string) (decision, error) {
+func (p planResult) decide() (decision, error) {
 	switch {
-	case force:
+	case p.force:
 		return decision{name: actionFull, reason: "forced"}, nil
-	case !hasMeta:
+	case !p.hasMeta:
 		return decision{name: actionFull, reason: "missing"}, nil
-	case head == prev.LastIndexedHeadSHA && dirtyHash == prev.DirtyHash:
+	case p.head == p.prev.LastIndexedHeadSHA && p.dirtyHash == p.prev.DirtyHash:
 		return decision{name: actionFresh, reason: "up-to-date"}, nil
-	case head != prev.LastIndexedHeadSHA:
-		anc := head != "" && prev.LastIndexedHeadSHA != ""
+	case p.head != p.prev.LastIndexedHeadSHA:
+		anc := p.head != "" && p.prev.LastIndexedHeadSHA != ""
 		if anc {
-			ok, err := root.IsAncestor(gitx.Ancestor(prev.LastIndexedHeadSHA), gitx.Descendant(head))
+			ok, err := p.root.IsAncestor(gitx.Ancestor(p.prev.LastIndexedHeadSHA), gitx.Descendant(p.head))
 			if err != nil {
 				return decision{}, err
 			}
@@ -192,23 +200,23 @@ func decide(root gitx.Repo, toplevel, pathspec string, force, hasMeta bool, head
 		if !anc {
 			return decision{name: actionFull, reason: "history-rewritten"}, nil
 		}
-		committed, err := root.DiffNameStatus(gitx.DiffFrom(prev.LastIndexedHeadSHA), gitx.DiffTo(head), pathspec)
+		committed, err := p.root.DiffNameStatus(gitx.DiffFrom(p.prev.LastIndexedHeadSHA), gitx.DiffTo(p.head), p.pathspec)
 		if err != nil {
 			return decision{}, err
 		}
-		refresh := unionPaths(ticketAbsPaths(toplevel, committed), unionPaths(dirtyPaths, prev.DirtyPaths))
+		refresh := unionPaths(ticketAbsPaths(p.toplevel, committed), unionPaths(p.dirtyPaths, p.prev.DirtyPaths))
 		return decision{name: actionIncremental, reason: "head-advanced", refresh: refresh}, nil
 	default:
-		return decision{name: actionIncremental, reason: "working-tree-changed", refresh: unionPaths(dirtyPaths, prev.DirtyPaths)}, nil
+		return decision{name: actionIncremental, reason: "working-tree-changed", refresh: unionPaths(p.dirtyPaths, p.prev.DirtyPaths)}, nil
 	}
 }
 
 func (i *Index) dispatch(store *storage.FS, d decision, prevSkips map[string]skipEntry) (map[string]skipEntry, []string, error) {
-	switch {
-	case d.name == actionFull:
+	switch d.name {
+	case actionFull:
 		skips, err := i.full(store)
 		return skips, nil, err
-	case d.name == actionIncremental:
+	case actionIncremental:
 		return i.refresh(store, d.refresh, prevSkips)
 	default:
 		return nil, nil, nil

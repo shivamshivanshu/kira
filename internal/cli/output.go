@@ -26,7 +26,7 @@ func emitMutationWarnings(w io.Writer, warns []datamodel.Warning) {
 func renderWarning(w datamodel.Warning) string {
 	switch w.Code {
 	case datamodel.WarnIndexFallback:
-		return "index unavailable, using linear scan"
+		return fmt.Sprintf("index unavailable (%s), using linear scan", w.Args[0])
 	case datamodel.WarnNoActiveSprint:
 		return "no active sprint set; sprint=active matches nothing (run `kira sprint activate <key>`)"
 	case datamodel.WarnCloseUnknown:

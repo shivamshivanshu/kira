@@ -62,11 +62,16 @@ func (i *Index) full(store *storage.FS) (map[string]skipEntry, error) {
 			skipped[f.name] = duplicateSkip(f.name, f.it.ID, cur.name)
 		}
 	}
+	stmts, err := prepareItemStmts(tx)
+	if err != nil {
+		return nil, err
+	}
+	defer stmts.close()
 	for _, f := range files {
 		if winners[f.it.ID].name != f.name {
 			continue
 		}
-		if err := insertItem(tx, f.it); err != nil {
+		if err := stmts.insert(f.it); err != nil {
 			return nil, err
 		}
 	}
@@ -121,6 +126,12 @@ func (i *Index) refresh(store *storage.FS, absPaths []string, prevSkips map[stri
 		}
 	}
 
+	stmts, err := prepareItemStmts(tx)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer stmts.close()
+
 	skipped := map[string]skipEntry{}
 	claimed := map[string]string{}
 	for qi := 0; qi < len(queue); qi++ {
@@ -152,7 +163,7 @@ func (i *Index) refresh(store *storage.FS, absPaths []string, prevSkips map[stri
 			}
 		}
 		claimed[it.ID] = name
-		if err := insertItem(tx, it); err != nil {
+		if err := stmts.insert(it); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -175,11 +186,52 @@ func fileExists(path string) bool {
 	return err == nil && !fi.IsDir()
 }
 
-func insertItem(tx *sql.Tx, it *datamodel.Item) error {
-	if _, err := tx.Exec(`INSERT INTO items
+// itemStmts holds the item/alias/label/link insert statements prepared once
+// per transaction; modernc's sqlite driver re-prepares on every tx.Exec call,
+// so re-running the same four inserts per item without caching them turns an
+// N-item rebuild into 4N prepares.
+type itemStmts struct {
+	item, alias, label, link *sql.Stmt
+}
+
+func prepareItemStmts(tx *sql.Tx) (itemStmts, error) {
+	item, err := tx.Prepare(`INSERT INTO items
 		(id, number, type, subtype, title, state, resolution, priority, rank,
 		 owner, reporter, epic, sprint, due, estimate, created, updated, activity)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+	if err != nil {
+		return itemStmts{}, errx.Env("preparing item insert: %v", err)
+	}
+	alias, err := tx.Prepare("INSERT INTO aliases (item_id, ord, number) VALUES (?,?,?)")
+	if err != nil {
+		item.Close()
+		return itemStmts{}, errx.Env("preparing alias insert: %v", err)
+	}
+	label, err := tx.Prepare("INSERT INTO labels (item_id, ord, label) VALUES (?,?,?)")
+	if err != nil {
+		item.Close()
+		alias.Close()
+		return itemStmts{}, errx.Env("preparing label insert: %v", err)
+	}
+	link, err := tx.Prepare("INSERT INTO links (item_id, ord, kind, target_id) VALUES (?,?,?,?)")
+	if err != nil {
+		item.Close()
+		alias.Close()
+		label.Close()
+		return itemStmts{}, errx.Env("preparing link insert: %v", err)
+	}
+	return itemStmts{item: item, alias: alias, label: label, link: link}, nil
+}
+
+func (s itemStmts) close() {
+	s.item.Close()
+	s.alias.Close()
+	s.label.Close()
+	s.link.Close()
+}
+
+func (s itemStmts) insert(it *datamodel.Item) error {
+	if _, err := s.item.Exec(
 		it.ID, it.Number, it.Type, nullable(it.Subtype), it.Title, it.State,
 		nullable(it.Resolution), nullable(it.Priority), nullable(it.Rank), nullable(it.Owner),
 		nullable(it.Reporter), nullable(it.Epic), nullable(it.Sprint), nullable(it.Due),
@@ -187,27 +239,25 @@ func insertItem(tx *sql.Tx, it *datamodel.Item) error {
 		return errx.Env("inserting index item %s: %v", it.ID, err)
 	}
 	for ord, alias := range it.Aliases {
-		if _, err := tx.Exec("INSERT INTO aliases (item_id, ord, number) VALUES (?,?,?)", it.ID, ord, alias); err != nil {
+		if _, err := s.alias.Exec(it.ID, ord, alias); err != nil {
 			return errx.Env("inserting index alias: %v", err)
 		}
 	}
 	for ord, label := range it.Labels {
-		if _, err := tx.Exec("INSERT INTO labels (item_id, ord, label) VALUES (?,?,?)", it.ID, ord, label); err != nil {
+		if _, err := s.label.Exec(it.ID, ord, label); err != nil {
 			return errx.Env("inserting index label: %v", err)
 		}
 	}
 	ord := 0
 	for _, target := range it.BlockedBy {
-		if _, err := tx.Exec("INSERT INTO links (item_id, ord, kind, target_id) VALUES (?,?,?,?)",
-			it.ID, ord, datamodel.KeyBlockedBy, target); err != nil {
+		if _, err := s.link.Exec(it.ID, ord, datamodel.KeyBlockedBy, target); err != nil {
 			return errx.Env("inserting index link: %v", err)
 		}
 		ord++
 	}
 	for _, kind := range datamodel.LinkTypes {
 		for _, target := range it.Links[string(kind)] {
-			if _, err := tx.Exec("INSERT INTO links (item_id, ord, kind, target_id) VALUES (?,?,?,?)",
-				it.ID, ord, string(kind), target); err != nil {
+			if _, err := s.link.Exec(it.ID, ord, string(kind), target); err != nil {
 				return errx.Env("inserting index link: %v", err)
 			}
 			ord++
@@ -256,7 +306,22 @@ func nullable[T any](p *T) any {
 	return *p
 }
 
-func (i *Index) fillActivity() error {
+// fillActivity recomputes the activity column (the max of an item's updated
+// timestamp and its latest linked-commit timestamp). full sweeps every item,
+// the only correct option when commit_links may have lost rows out from under
+// an item that wasn't itself reindexed this run (a full rebuild or a scan
+// config change, both of which wipe and rebuild commit_links from scratch).
+// Otherwise, insertItem already primed activity = updated for every row this
+// run touched, so a plain incremental pass only needs to touch items whose
+// commit_links can push activity past that baseline.
+func (i *Index) fillActivity(full bool) error {
+	if full {
+		return i.fillActivityFull()
+	}
+	return i.fillActivityTargeted()
+}
+
+func (i *Index) fillActivityFull() error {
 	latest, err := i.latestCommitTs()
 	if err != nil {
 		return err
@@ -279,8 +344,39 @@ func (i *Index) fillActivity() error {
 	}); err != nil {
 		return err
 	}
+	return applyActivity(i.db, activity)
+}
 
-	tx, err := i.db.Begin()
+func (i *Index) fillActivityTargeted() error {
+	rows, err := i.db.Query(`SELECT c.item_id, c.ts, i.updated
+		FROM commit_links c JOIN items i ON i.id = c.item_id`)
+	if err != nil {
+		return errx.Env("querying commit-link activity: %v", err)
+	}
+	boosted := map[string]string{}
+	if err := eachPair(rows, func(r *sql.Rows) error {
+		var id, ts, updated string
+		if err := r.Scan(&id, &ts, &updated); err != nil {
+			return errx.Env("scanning commit-link activity: %v", err)
+		}
+		if !laterRFC3339(ts, updated) {
+			return nil
+		}
+		if cur, ok := boosted[id]; !ok || laterRFC3339(ts, cur) {
+			boosted[id] = ts
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return applyActivity(i.db, boosted)
+}
+
+func applyActivity(db *sql.DB, activity map[string]string) error {
+	if len(activity) == 0 {
+		return nil
+	}
+	tx, err := db.Begin()
 	if err != nil {
 		return errx.Env("beginning activity tx: %v", err)
 	}

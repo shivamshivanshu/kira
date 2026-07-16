@@ -283,7 +283,7 @@ func TestCommitLinksTrailerAndLenient(t *testing.T) {
 	f.commitTrailer(t, "mention KIRA-2 in the body", "unrelated: line")
 
 	idx := open(t, f)
-	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, trailerOpts(), false); err != nil {
 		t.Fatalf("EnsureFresh: %v", err)
 	}
 	links, err := idx.CommitLinks(a)
@@ -311,7 +311,7 @@ func TestCommitLinksIncrementalAndRewrite(t *testing.T) {
 	f.commitTrailer(t, "commit one", "Kira-Ticket: KIRA-1")
 
 	idx := open(t, f)
-	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, trailerOpts(), false); err != nil {
 		t.Fatalf("EnsureFresh: %v", err)
 	}
 	if links, _ := idx.CommitLinks(a); len(links) != 1 {
@@ -319,7 +319,7 @@ func TestCommitLinksIncrementalAndRewrite(t *testing.T) {
 	}
 
 	f.commitTrailer(t, "commit two", "Kira-Ticket: KIRA-1")
-	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, trailerOpts(), false); err != nil {
 		t.Fatalf("EnsureFresh incremental: %v", err)
 	}
 	if links, _ := idx.CommitLinks(a); len(links) != 2 {
@@ -327,7 +327,7 @@ func TestCommitLinksIncrementalAndRewrite(t *testing.T) {
 	}
 
 	run(t, f.root, "git", "commit", "-q", "--amend", "-m", "commit two amended", "-m", "Kira-Ticket: KIRA-1")
-	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, trailerOpts(), false); err != nil {
 		t.Fatalf("EnsureFresh after rewrite: %v", err)
 	}
 	links, _ := idx.CommitLinks(a)
@@ -379,7 +379,7 @@ func TestCommitLinkKinds(t *testing.T) {
 	f.commitTrailer(t, "[[KIRA-9]] via alias", "unrelated: y")
 
 	idx := open(t, f)
-	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, trailerOpts(), false); err != nil {
 		t.Fatalf("EnsureFresh: %v", err)
 	}
 
@@ -422,7 +422,7 @@ func TestCommitLinkLeadingNumberUnresolvedTrailerBlocks(t *testing.T) {
 	f.commitTrailer(t, "KIRA-1 fix flaky path", "Kira-Ticket: KIRA-15")
 
 	idx := open(t, f)
-	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, trailerOpts(), false); err != nil {
 		t.Fatalf("EnsureFresh: %v", err)
 	}
 	links := mustCommitLinks(t, idx, a)
@@ -442,7 +442,7 @@ func TestCommitLinkLeadingNumberYieldsToMarker(t *testing.T) {
 	f.commitTrailer(t, "KIRA-1 fix [[KIRA-2]] widget", "unrelated: x")
 
 	idx := open(t, f)
-	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, trailerOpts(), false); err != nil {
 		t.Fatalf("EnsureFresh: %v", err)
 	}
 	linksB := mustCommitLinks(t, idx, b)
@@ -470,7 +470,7 @@ func TestCommitLinkLeadingNumber(t *testing.T) {
 	f.commitTrailer(t, "KIRA-9 via alias", "unrelated: z")
 
 	idx := open(t, f)
-	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, trailerOpts(), false); err != nil {
 		t.Fatalf("EnsureFresh: %v", err)
 	}
 
@@ -517,7 +517,7 @@ func TestCommitLinkLeadingNumberSubjectPrefix(t *testing.T) {
 	opts.SubjectPrefix = "kira: "
 
 	idx := open(t, f)
-	if _, err := idx.EnsureFresh(f.store, f.repo, opts); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, opts, false); err != nil {
 		t.Fatalf("EnsureFresh: %v", err)
 	}
 	kinds := kindsOf(mustCommitLinks(t, idx, a))
@@ -541,7 +541,7 @@ func TestCommitLinkLeadingNumberDisabled(t *testing.T) {
 	opts.LinkMarkers = []datamodel.LinkMarker{datamodel.LinkMarkerTrailer, datamodel.LinkMarkerSubject}
 
 	idx := open(t, f)
-	if _, err := idx.EnsureFresh(f.store, f.repo, opts); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, opts, false); err != nil {
 		t.Fatalf("EnsureFresh: %v", err)
 	}
 	links := mustCommitLinks(t, idx, a)
@@ -562,7 +562,7 @@ func TestCommitLinkLeadingNumberRetroactiveReclassify(t *testing.T) {
 	off.LinkMarkers = []datamodel.LinkMarker{datamodel.LinkMarkerTrailer, datamodel.LinkMarkerSubject}
 
 	idx := open(t, f)
-	if _, err := idx.EnsureFresh(f.store, f.repo, off); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, off, false); err != nil {
 		t.Fatalf("EnsureFresh knob-off: %v", err)
 	}
 	links := mustCommitLinks(t, idx, a)
@@ -570,7 +570,7 @@ func TestCommitLinkLeadingNumberRetroactiveReclassify(t *testing.T) {
 		t.Fatalf("knob-off scan should classify as referenced: %+v", links)
 	}
 
-	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, trailerOpts(), false); err != nil {
 		t.Fatalf("EnsureFresh knob-on: %v", err)
 	}
 	links = mustCommitLinks(t, idx, a)
@@ -602,7 +602,7 @@ func TestCommitLinkMarkersDisable(t *testing.T) {
 	opts.ReferenceMarkers = nil
 
 	idx := open(t, f)
-	if _, err := idx.EnsureFresh(f.store, f.repo, opts); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, opts, false); err != nil {
 		t.Fatalf("EnsureFresh: %v", err)
 	}
 	links, err := idx.CommitLinks(a)
@@ -625,7 +625,7 @@ func TestCommitLinkNonPrimaryMarkerReferenced(t *testing.T) {
 	f.commitTrailer(t, "[[KIRA-1]] primary [[KIRA-2]] secondary", "unrelated: x")
 
 	idx := open(t, f)
-	if _, err := idx.EnsureFresh(f.store, f.repo, trailerOpts()); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, trailerOpts(), false); err != nil {
 		t.Fatalf("EnsureFresh: %v", err)
 	}
 	linksA, _ := idx.CommitLinks(a)
@@ -802,7 +802,7 @@ func TestSchemaVersionMismatchRebuilds(t *testing.T) {
 	}
 
 	idx := open(t, f)
-	res, err := idx.EnsureFresh(f.store, f.repo, index.Options{})
+	res, err := index.Refresh(f.store, f.repo, index.Options{}, false)
 	if err != nil {
 		t.Fatalf("stale schema must rebuild transparently, not error: %v", err)
 	}
@@ -862,9 +862,9 @@ func open(t *testing.T, f repoFixture) *index.Index {
 
 func ensure(t *testing.T, idx *index.Index, f repoFixture) (index.Result, []*datamodel.Item) {
 	t.Helper()
-	res, err := idx.EnsureFresh(f.store, f.repo, index.Options{})
+	res, err := index.Refresh(f.store, f.repo, index.Options{}, false)
 	if err != nil {
-		t.Fatalf("EnsureFresh: %v", err)
+		t.Fatalf("Refresh: %v", err)
 	}
 	items, err := idx.Items()
 	if err != nil {
@@ -1164,7 +1164,7 @@ func TestCommitLinkMarkerNonDefaultBoard(t *testing.T) {
 	opts.BoardKeys = []string{"KIRA", "CORE"}
 
 	idx := open(t, f)
-	if _, err := idx.EnsureFresh(f.store, f.repo, opts); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, opts, false); err != nil {
 		t.Fatalf("EnsureFresh: %v", err)
 	}
 	links := mustCommitLinks(t, idx, b)
@@ -1188,7 +1188,7 @@ func TestCommitLinkMarkerRetroactiveReclassify(t *testing.T) {
 	off.LinkMarkers = []datamodel.LinkMarker{datamodel.LinkMarkerTrailer}
 
 	idx := open(t, f)
-	if _, err := idx.EnsureFresh(f.store, f.repo, off); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, off, false); err != nil {
 		t.Fatalf("EnsureFresh markers-off: %v", err)
 	}
 	if links := mustCommitLinks(t, idx, b); len(links) != 1 || links[0].Kind != index.LinkReferenced {
@@ -1197,7 +1197,7 @@ func TestCommitLinkMarkerRetroactiveReclassify(t *testing.T) {
 
 	on := trailerOpts()
 	on.BoardKeys = []string{"KIRA", "CORE"}
-	if _, err := idx.EnsureFresh(f.store, f.repo, on); err != nil {
+	if _, err := index.Refresh(f.store, f.repo, on, false); err != nil {
 		t.Fatalf("EnsureFresh markers-on: %v", err)
 	}
 	links := mustCommitLinks(t, idx, b)
