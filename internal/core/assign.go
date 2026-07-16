@@ -12,7 +12,17 @@ type AssignOpts struct {
 }
 
 func (s *Store) Assign(cfg *datamodel.Config, ref, user string, opts AssignOpts) (*datamodel.MutationResult, error) {
-	user, err := s.resolveMe(cfg, user)
+	b, err := s.BeginBatch(cfg)
+	if err != nil {
+		return nil, err
+	}
+	defer b.Close()
+	return b.Assign(ref, user, opts)
+}
+
+func (b *Batch) Assign(ref, user string, opts AssignOpts) (*datamodel.MutationResult, error) {
+	cfg := b.cfg
+	user, err := b.store.resolveMe(cfg, user)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +42,7 @@ func (s *Store) Assign(cfg *datamodel.Config, ref, user string, opts AssignOpts)
 		return cfg.Commit.SubjectPrefix + orig.Number + " assign " + field + " " + user
 	}
 
-	updated, changed, err := s.mutate(cfg, ref, opts.Force, apply, subjectOf, datamodel.SourceCLI)
+	updated, changed, err := b.Mutate(ref, opts.Force, apply, subjectOf, datamodel.SourceCLI)
 	if err != nil {
 		return nil, err
 	}

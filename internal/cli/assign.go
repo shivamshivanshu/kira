@@ -33,10 +33,15 @@ func newAssignCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if positionalOwner && s.RefExists(cfg, user) {
+			b, err := s.BeginBatch(cfg)
+			if err != nil {
+				return err
+			}
+			defer b.Close()
+			if positionalOwner && b.RefExists(user) {
 				return errx.User("%q resolves to an existing item, not an owner", user).WithHint("did you mean `--owner` to assign multiple ids?")
 			}
-			apply := func(id string) (*datamodel.MutationResult, error) { return s.Assign(cfg, id, user, opts) }
+			apply := func(id string) (*datamodel.MutationResult, error) { return b.Assign(id, user, opts) }
 			line := func(res *datamodel.MutationResult) string { return assignLine(res, user) }
 			out := cmd.OutOrStdout()
 			return runSingleOrBulk(out, cmd.ErrOrStderr(), g.json, ids, apply, line)

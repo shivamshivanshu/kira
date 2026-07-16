@@ -89,14 +89,22 @@ func (s *Store) resolveRef(cfg *datamodel.Config, ref string) (*datamodel.Item, 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	ulid, err := resolveID(ld.resolver, ref)
+	it, err := resolveItem(ld.items, ld.resolver, ref)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if it := findByULID(ld.items, ulid); it != nil {
-		return it, ld.items, ld.resolver, nil
+	return it, ld.items, ld.resolver, nil
+}
+
+func resolveItem(items []*datamodel.Item, resolver *id.Resolver, ref string) (*datamodel.Item, error) {
+	ulid, err := resolveID(resolver, ref)
+	if err != nil {
+		return nil, err
 	}
-	return nil, nil, nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
+	if it := findByULID(items, ulid); it != nil {
+		return it, nil
+	}
+	return nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
 }
 
 func (s *Store) resolveMe(cfg *datamodel.Config, value string) (string, error) {
@@ -182,4 +190,13 @@ func findByULID(items []*datamodel.Item, ulid string) *datamodel.Item {
 		}
 	}
 	return nil
+}
+
+func replaceByULID(items []*datamodel.Item, updated *datamodel.Item) {
+	for i, it := range items {
+		if it.ID == updated.ID {
+			items[i] = updated
+			return
+		}
+	}
 }

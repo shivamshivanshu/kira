@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/index"
 )
 
@@ -13,24 +12,20 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 	for _, value := range scan.Unknown {
 		notes = append(notes, datamodel.Warning{Code: datamodel.WarnCloseUnknown, Args: []string{value, cfg.Commit.CloseTrailer}})
 	}
-	ld, err := s.load(cfg)
+	b, err := s.BeginBatch(cfg)
 	if err != nil {
 		return nil, nil, err
 	}
+	defer b.Close()
 	failed := false
 	closeFailed := func(ref string, cause error) {
 		failed = true
 		notes = append(notes, datamodel.Warning{Code: datamodel.WarnCloseFailed, Args: []string{ref, cause.Error()}})
 	}
 	for _, cand := range scan.Candidates {
-		ulid, resErr := resolveID(ld.resolver, cand.ULID)
+		it, resErr := b.Resolve(cand.ULID)
 		if resErr != nil {
 			closeFailed(cand.ULID, resErr)
-			continue
-		}
-		it := findByULID(ld.items, ulid)
-		if it == nil {
-			closeFailed(cand.ULID, errx.User("resolved %s to %s, which has no file", cand.ULID, ulid))
 			continue
 		}
 		if isDoneState(cfg, it.Type, it.State) {
@@ -48,7 +43,7 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 		if target == "" {
 			continue
 		}
-		if _, mvErr := s.Move(cfg, cand.ULID, target, MoveOpts{Force: true, Source: datamodel.SourceTrailer}); mvErr != nil {
+		if _, mvErr := b.Move(cand.ULID, target, MoveOpts{Force: true, Source: datamodel.SourceTrailer}); mvErr != nil {
 			closeFailed(it.Number, mvErr)
 			continue
 		}

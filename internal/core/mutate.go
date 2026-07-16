@@ -37,7 +37,10 @@ func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply appl
 		return nil, nil, err
 	}
 	defer release()
+	return s.mutateAgainst(cfg, orig, items, resolver, force, apply, subjectOf, source)
+}
 
+func (s *Store) mutateAgainst(cfg *datamodel.Config, orig *datamodel.Item, items []*datamodel.Item, resolver *id.Resolver, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, error) {
 	updated := cloneItem(orig)
 	hard, warns := apply(updated, resolver, items)
 	if len(hard) > 0 {
@@ -53,6 +56,56 @@ func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply appl
 	if err := s.commitMutation(cfg, orig, updated, changed, warns, subjectOf(orig), source); err != nil {
 		return nil, nil, err
 	}
+	return updated, changed, nil
+}
+
+type Batch struct {
+	cfg      *datamodel.Config
+	store    *Store
+	release  func()
+	items    []*datamodel.Item
+	resolver *id.Resolver
+}
+
+func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
+	release, err := s.fs().Lock()
+	if err != nil {
+		return nil, err
+	}
+	ld, err := s.load(cfg)
+	if err != nil {
+		release()
+		return nil, err
+	}
+	return &Batch{cfg: cfg, store: s, release: release, items: ld.items, resolver: ld.resolver}, nil
+}
+
+func (b *Batch) Close() { b.release() }
+
+func (b *Batch) Resolve(ref string) (*datamodel.Item, error) {
+	return resolveItem(b.items, b.resolver, ref)
+}
+
+func (b *Batch) RefExists(ref string) bool {
+	_, err := b.Resolve(ref)
+	return err == nil
+}
+
+func (b *Batch) Mutate(ref string, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, error) {
+	orig, err := b.Resolve(ref)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := guardWritable(orig); err != nil {
+		return nil, nil, err
+	}
+	updated, changed, err := b.store.mutateAgainst(b.cfg, orig, b.items, b.resolver, force, apply, subjectOf, source)
+	if err != nil {
+		return nil, nil, err
+	}
+	// The next item validated in this batch (e.g. against a WIP limit) must
+	// see this commit, not the pre-batch snapshot.
+	replaceByULID(b.items, updated)
 	return updated, changed, nil
 }
 

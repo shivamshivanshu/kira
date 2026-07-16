@@ -132,8 +132,13 @@ func (s *Store) SprintClose(cfg *datamodel.Config, key, moveTo string) (*datamod
 		subjectOf := func(orig *datamodel.Item) string {
 			return fmt.Sprintf("%s%s sprint %s -> %s", cfg.Commit.SubjectPrefix, orig.Number, key, moveTo)
 		}
+		b, err := s.BeginBatch(cfg)
+		if err != nil {
+			return nil, err
+		}
+		defer b.Close()
 		for _, it := range unfinished {
-			if _, _, err := s.mutate(cfg, it.ID, false, apply, subjectOf, datamodel.SourceCLI); err != nil {
+			if _, _, err := b.Mutate(it.ID, false, apply, subjectOf, datamodel.SourceCLI); err != nil {
 				return nil, err
 			}
 		}

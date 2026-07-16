@@ -94,6 +94,16 @@ func (s *Store) LabelList(cfg *datamodel.Config) (*datamodel.LabelListResult, er
 }
 
 func (s *Store) LabelSet(cfg *datamodel.Config, ref, label string, add, force bool) (*datamodel.MutationResult, error) {
+	b, err := s.BeginBatch(cfg)
+	if err != nil {
+		return nil, err
+	}
+	defer b.Close()
+	return b.LabelSet(ref, label, add, force)
+}
+
+func (b *Batch) LabelSet(ref, label string, add, force bool) (*datamodel.MutationResult, error) {
+	cfg := b.cfg
 	apply := func(it *datamodel.Item, _ *id.Resolver, _ []*datamodel.Item) (hard, warns []error) {
 		if add {
 			if !slices.Contains(it.Labels, label) {
@@ -111,7 +121,7 @@ func (s *Store) LabelSet(cfg *datamodel.Config, ref, label string, add, force bo
 	subjectOf := func(orig *datamodel.Item) string {
 		return cfg.Commit.SubjectPrefix + orig.Number + " label " + verb + " " + label
 	}
-	updated, changed, err := s.mutate(cfg, ref, force, apply, subjectOf, datamodel.SourceCLI)
+	updated, changed, err := b.Mutate(ref, force, apply, subjectOf, datamodel.SourceCLI)
 	if err != nil {
 		return nil, err
 	}

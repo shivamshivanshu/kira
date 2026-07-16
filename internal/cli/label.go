@@ -104,11 +104,16 @@ func newLabelMutateCmd(g *globalFlags, add bool) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if s.RefExists(cfg, label) {
+			b, err := s.BeginBatch(cfg)
+			if err != nil {
+				return err
+			}
+			defer b.Close()
+			if b.RefExists(label) {
 				return errx.User("%q resolves to an existing item, not a label", label).WithHint("the last argument must be the label; ids come first")
 			}
 			apply := func(id string) (*datamodel.MutationResult, error) {
-				return s.LabelSet(cfg, id, label, add, force)
+				return b.LabelSet(id, label, add, force)
 			}
 			line := func(res *datamodel.MutationResult) string { return labelLine(res, label, add) }
 			out := cmd.OutOrStdout()

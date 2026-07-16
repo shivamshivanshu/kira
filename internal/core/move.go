@@ -21,6 +21,16 @@ type MoveOpts struct {
 }
 
 func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*datamodel.MoveResult, error) {
+	b, err := s.BeginBatch(cfg)
+	if err != nil {
+		return nil, err
+	}
+	defer b.Close()
+	return b.Move(ref, state, opts)
+}
+
+func (b *Batch) Move(ref, state string, opts MoveOpts) (*datamodel.MoveResult, error) {
+	cfg := b.cfg
 	var from string
 	var wipWarnings []string
 	apply := func(it *datamodel.Item, _ *id.Resolver, items []*datamodel.Item) ([]error, []error) {
@@ -43,12 +53,12 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 	if source == "" {
 		source = datamodel.SourceCLI
 	}
-	updated, _, err := s.mutate(cfg, ref, opts.Force, apply, subjectOf, source)
+	updated, _, err := b.Mutate(ref, opts.Force, apply, subjectOf, source)
 	if err != nil {
 		return nil, err
 	}
 	if opts.Activate {
-		if err := s.setActive(updated.ID); err != nil {
+		if err := b.store.setActive(updated.ID); err != nil {
 			return nil, err
 		}
 	}
