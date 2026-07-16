@@ -29,14 +29,15 @@ func (r Repo) LogTrailers(rangeExpr, ticketKey, closeKey string) ([]Commit, erro
 		nulFmt + "%(trailers:key=" + ticketKey + ",valueonly,separator=" + valueFmt + ")" +
 		nulFmt + "%(trailers:key=" + closeKey + ",valueonly,separator=" + valueFmt + ")" +
 		nulFmt + "%(trailers:only=true)" +
-		nulFmt + "%B"
+		nulFmt + "%B" +
+		nulFmt
 	out, err := r.OutputRaw("log", rangeExpr, "--pretty=format:"+format)
 	if err != nil {
 		return nil, err
 	}
 	tokens := strings.Split(out, nul)
 	var commits []Commit
-	for base := 1; base+nFields <= len(tokens); base += nFields {
+	for base := 1; base+nFields <= len(tokens); base += nFields + 1 {
 		f := tokens[base : base+nFields]
 		commits = append(commits, Commit{
 			SHA:          f[0],

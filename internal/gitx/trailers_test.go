@@ -79,3 +79,35 @@ func TestLogTrailersRecordForgery(t *testing.T) {
 		t.Fatalf("honest commit closes = %q, want KIRA-3", got)
 	}
 }
+
+// git log --pretty=format: inserts an implicit separator newline between
+// commit records; without a trailing sentinel field that newline bleeds
+// into %B, so every record but the last (the oldest commit walked) ends up
+// with a spurious extra trailing newline in Body.
+func TestLogTrailersBodyHasNoSpuriousTrailingNewline(t *testing.T) {
+	dir := t.TempDir()
+	gitRun(t, dir, "init")
+	gitRun(t, dir, "commit", "--allow-empty", "-m", "first commit",
+		"-m", "Kira-Ticket: KIRA-1")
+	gitRun(t, dir, "commit", "--allow-empty", "-m", "second commit",
+		"-m", "Kira-Ticket: KIRA-2")
+
+	repo := Repo{Dir: dir}
+	commits, err := repo.LogTrailers("HEAD", "Kira-Ticket", "Kira-Closes")
+	if err != nil {
+		t.Fatalf("LogTrailers: %v", err)
+	}
+	if len(commits) != 2 {
+		t.Fatalf("got %d records, want 2", len(commits))
+	}
+
+	want := map[string]string{
+		"first commit":  "first commit\n\nKira-Ticket: KIRA-1\n",
+		"second commit": "second commit\n\nKira-Ticket: KIRA-2\n",
+	}
+	for _, c := range commits {
+		if c.Body != want[c.Subject] {
+			t.Fatalf("commit %q Body = %q, want %q (trailing sentinel missing?)", c.Subject, c.Body, want[c.Subject])
+		}
+	}
+}

@@ -2,8 +2,10 @@ package gitx
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -52,9 +54,16 @@ func (r Repo) NumstatNoIndex(a, b string) (added, removed int, err error) {
 		return 0, 0, err
 	}
 	cmd := gitCommand(r.Dir, nil, "diff", "--numstat", "--no-index", "--", ap, bp)
-	var stdout bytes.Buffer
+	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
-	_ = cmd.Run()
+	cmd.Stderr = &stderr
+	runErr := cmd.Run()
+	if runErr != nil {
+		var ee *exec.ExitError
+		if !errors.As(runErr, &ee) || ee.ExitCode() >= 128 {
+			return 0, 0, cmdError("git diff --numstat --no-index", &stderr, runErr)
+		}
+	}
 	fields := strings.Fields(stdout.String())
 	if len(fields) < 2 {
 		return 0, 0, nil

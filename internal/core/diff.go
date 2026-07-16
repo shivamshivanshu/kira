@@ -25,7 +25,7 @@ func (s *Store) Diff(ref, since string, incoming bool) (*datamodel.DiffResult, e
 	if err != nil {
 		return nil, err
 	}
-	return diffSnapshots(repo, from, to, baseSHA, toSHA), nil
+	return diffSnapshots(repo, from, to, baseSHA, toSHA)
 }
 
 func diffEndpoints(repo gitx.Repo, ref, since string, incoming bool) (baseSHA, toSHA string, err error) {
@@ -58,7 +58,7 @@ func diffEndpoints(repo gitx.Repo, ref, since string, incoming bool) (baseSHA, t
 	return baseSHA, toSHA, nil
 }
 
-func diffSnapshots(repo gitx.Repo, from, to *treeish.Loaded, fromSHA, toSHA string) *datamodel.DiffResult {
+func diffSnapshots(repo gitx.Repo, from, to *treeish.Loaded, fromSHA, toSHA string) (*datamodel.DiffResult, error) {
 	fromByID := byULID(from.Items)
 	toByID := byULID(to.Items)
 
@@ -69,7 +69,11 @@ func diffSnapshots(repo gitx.Repo, from, to *treeish.Loaded, fromSHA, toSHA stri
 			items = append(items, datamodel.DiffItem{ID: ulid, Number: t.Number, Title: t.Title, Status: datamodel.DiffCreated})
 			continue
 		}
-		if di, changed := changedItem(repo, f, t); changed {
+		di, changed, err := changedItem(repo, f, t)
+		if err != nil {
+			return nil, err
+		}
+		if changed {
 			items = append(items, di)
 		}
 	}
@@ -80,10 +84,10 @@ func diffSnapshots(repo gitx.Repo, from, to *treeish.Loaded, fromSHA, toSHA stri
 	}
 
 	sortDiffItems(items)
-	return &datamodel.DiffResult{From: fromSHA, To: toSHA, Items: items, StderrNotes: mergedWarnings(from, to)}
+	return &datamodel.DiffResult{From: fromSHA, To: toSHA, Items: items, StderrNotes: mergedWarnings(from, to)}, nil
 }
 
-func changedItem(repo gitx.Repo, from, to *datamodel.Item) (datamodel.DiffItem, bool) {
+func changedItem(repo gitx.Repo, from, to *datamodel.Item) (datamodel.DiffItem, bool, error) {
 	di := datamodel.DiffItem{ID: to.ID, Number: to.Number, Title: to.Title, Status: datamodel.DiffChanged}
 	if from.Number != to.Number {
 		if slices.Contains(to.Aliases, from.Number) {
@@ -93,17 +97,24 @@ func changedItem(repo gitx.Repo, from, to *datamodel.Item) (datamodel.DiffItem, 
 		}
 	}
 	for _, field := range datamodel.ChangedFields(from, to) {
-		di.Changes = append(di.Changes, fieldChange(repo, from, to, field))
+		fc, err := fieldChange(repo, from, to, field)
+		if err != nil {
+			return datamodel.DiffItem{}, false, err
+		}
+		di.Changes = append(di.Changes, fc)
 	}
-	return di, di.Renumbered != nil || len(di.Changes) > 0
+	return di, di.Renumbered != nil || len(di.Changes) > 0, nil
 }
 
-func fieldChange(repo gitx.Repo, from, to *datamodel.Item, field string) datamodel.FieldChange {
+func fieldChange(repo gitx.Repo, from, to *datamodel.Item, field string) (datamodel.FieldChange, error) {
 	if field == datamodel.KeyBody {
-		added, removed, _ := repo.NumstatNoIndex(from.Body, to.Body)
-		return datamodel.FieldChange{Field: field, To: fmt.Sprintf("+%d/-%d lines", added, removed)}
+		added, removed, err := repo.NumstatNoIndex(from.Body, to.Body)
+		if err != nil {
+			return datamodel.FieldChange{}, err
+		}
+		return datamodel.FieldChange{Field: field, To: fmt.Sprintf("+%d/-%d lines", added, removed)}, nil
 	}
-	return datamodel.FieldChange{Field: field, From: fieldString(from, field), To: fieldString(to, field)}
+	return datamodel.FieldChange{Field: field, From: fieldString(from, field), To: fieldString(to, field)}, nil
 }
 
 func sortDiffItems(items []datamodel.DiffItem) {

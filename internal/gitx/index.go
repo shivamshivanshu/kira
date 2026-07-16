@@ -23,7 +23,7 @@ func (r Repo) ToplevelHead() (toplevel, head string, err error) {
 	}
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	if len(lines) < 2 || lines[0] != "true" {
-		return "", "", fmt.Errorf("not inside a git work tree")
+		return "", "", &CmdError{msg: "not inside a git work tree"}
 	}
 	return lines[1], "", nil
 }

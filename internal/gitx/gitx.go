@@ -41,11 +41,7 @@ func (r Repo) outputRaw(env []string, args ...string) (string, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
-		}
-		return "", &CmdError{msg: fmt.Sprintf("git %s: %s", strings.Join(args, " "), msg)}
+		return "", cmdError("git "+strings.Join(args, " "), &stderr, err)
 	}
 	return stdout.String(), nil
 }
@@ -291,7 +287,7 @@ func (r Repo) CatFileBatch(specs []string) ([]BatchObject, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("git cat-file --batch: %s", strings.TrimSpace(stderr.String()))
+		return nil, cmdError("git cat-file --batch", &stderr, err)
 	}
 	return parseCatFileBatch(stdout.Bytes(), len(specs))
 }
@@ -318,7 +314,7 @@ func parseCatFileBatch(buf []byte, n int) ([]BatchObject, error) {
 		if err != nil {
 			return nil, fmt.Errorf("git cat-file --batch: bad size in %q", header)
 		}
-		if pos+size > len(buf) {
+		if pos+size+1 > len(buf) {
 			return nil, fmt.Errorf("git cat-file --batch: truncated content")
 		}
 		out = append(out, BatchObject{Content: string(buf[pos : pos+size]), Found: true})
