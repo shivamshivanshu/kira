@@ -1,6 +1,8 @@
 package core
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -96,6 +98,75 @@ func TestPopStashRestoresCleanly(t *testing.T) {
 	dirty, _ := repo.DirtyPaths(".kira")
 	if len(dirty) == 0 {
 		t.Fatal("popStash must restore the stashed edit to the working tree")
+	}
+}
+
+func conflictingStash(t *testing.T) (*Store, gitx.Repo) {
+	t.Helper()
+	s, repo := seededSyncRepo(t)
+	dirtyKira(t, s, "IN_PROGRESS")
+	if err := repo.Stash(); err != nil {
+		t.Fatalf("stash: %v", err)
+	}
+	commitState(t, s, eventTicket(), "REVIEW", "2026-02-02")
+	return s, repo
+}
+
+func TestPopStashAutoResolvesAndCleansUpStash(t *testing.T) {
+	s, repo := conflictingStash(t)
+
+	if err := s.popStash(config.Default(), repo, &syncx.Report{}); err != nil {
+		t.Fatalf("popStash auto-resolve: %v", err)
+	}
+
+	staged, err := repo.StagedPaths()
+	if err != nil {
+		t.Fatalf("staged paths: %v", err)
+	}
+	if len(staged) != 0 {
+		t.Errorf("auto-resolved pop left staged paths: %v", staged)
+	}
+	stashes, err := repo.Output("stash", "list")
+	if err != nil {
+		t.Fatalf("stash list: %v", err)
+	}
+	if stashes != "" {
+		t.Errorf("auto-resolved pop left a stash entry: %q", stashes)
+	}
+}
+
+func TestPopStashAutoResolveUnstagesCleanDeletion(t *testing.T) {
+	s, repo := seededSyncRepo(t)
+	extraPath := filepath.Join(s.root, "extra.txt")
+	if err := os.WriteFile(extraPath, []byte("keep me\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, s, "2026-02-01T11:00:00Z", "add", "extra.txt")
+	gitRun(t, s, "2026-02-01T11:00:00Z", "commit", "-m", "add extra")
+
+	dirtyKira(t, s, "IN_PROGRESS")
+	if err := os.Remove(extraPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.Stash(); err != nil {
+		t.Fatalf("stash: %v", err)
+	}
+	commitState(t, s, eventTicket(), "REVIEW", "2026-02-02")
+
+	if err := s.popStash(config.Default(), repo, &syncx.Report{}); err != nil {
+		t.Fatalf("popStash auto-resolve: %v", err)
+	}
+
+	// Not StagedPaths: it filters to ACM and would miss a staged deletion.
+	staged, err := repo.Output("diff", "--cached", "--name-only")
+	if err != nil {
+		t.Fatalf("diff --cached: %v", err)
+	}
+	if staged != "" {
+		t.Errorf("clean-merged deletion left staged: %q", staged)
+	}
+	if _, err := os.Stat(extraPath); !os.IsNotExist(err) {
+		t.Errorf("extra.txt still exists on disk, want it deleted")
 	}
 }
 

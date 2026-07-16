@@ -71,6 +71,11 @@ func (r Repo) Stage(paths ...string) error {
 	return err
 }
 
+func (r Repo) Unstage(paths ...string) error {
+	_, err := r.Output(append([]string{"restore", "--staged", "--"}, paths...)...)
+	return err
+}
+
 func (r Repo) Commit(subject, trailerKey, trailerVal string) error {
 	if trailerVal == "" {
 		return r.CommitParts(subject)

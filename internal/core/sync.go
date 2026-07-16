@@ -209,8 +209,19 @@ func (s *Store) popStash(cfg *datamodel.Config, repo gitx.Repo, report *syncx.Re
 		report.Add("stash-pop", syncx.StepFailed, "unresolved: "+strings.Join(unmerged, ", "))
 		return errx.Conflict("stash pop left unresolved conflicts: %s (resolve, then `git stash drop`)", strings.Join(unmerged, ", "))
 	}
+	if err := finishAutoResolvedPop(repo); err != nil {
+		report.Add("stash-pop", syncx.StepFailed, err.Error())
+		return errx.Conflict("auto-resolved stash pop but cleanup failed: %v", err)
+	}
 	report.Add("stash-pop", syncx.StepDone, "auto-resolved conflicts")
 	return nil
+}
+
+func finishAutoResolvedPop(repo gitx.Repo) error {
+	if err := repo.Unstage(":/"); err != nil {
+		return err
+	}
+	return repo.StashDrop()
 }
 
 func (s *Store) autoResolve(repo gitx.Repo) ([]string, error) {

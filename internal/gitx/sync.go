@@ -37,3 +37,8 @@ func (r Repo) StashPop() error {
 	_, err := r.Output("stash", "pop")
 	return err
 }
+
+func (r Repo) StashDrop() error {
+	_, err := r.Output("stash", "drop")
+	return err
+}
