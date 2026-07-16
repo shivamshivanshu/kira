@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -128,6 +129,31 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 	)
 	attachCompletions(root, g)
 	return root, g
+}
+
+func chdirArgFrom(args []string) string {
+	g := &globalFlags{}
+	fs := pflag.NewFlagSet("chdirArg", pflag.ContinueOnError)
+	fs.ParseErrorsWhitelist.UnknownFlags = true
+	fs.Usage = func() {}
+	fs.SetOutput(io.Discard)
+	registerGlobalFlags(fs, g)
+	_ = fs.Parse(args)
+	return g.chdir
+}
+
+// DisableFlagParsing hands a subcommand its full argv, global flags and all,
+// with only cmdName itself removed. This splits that argv back into the
+// global-flag prefix and the subcommand's own args, locating cmdName in argv
+// (the real os.Args) to find the boundary — which is why a bridged
+// (SetArgs-based) Execute() call, where cmdName never appears in os.Args,
+// passes rest through unsplit.
+func stripGlobalPrefix(argv, args []string, cmdName string) (chdir string, rest []string) {
+	i := slices.Index(argv, cmdName)
+	if i >= 0 && i <= len(args) {
+		return chdirArgFrom(args[:i]), args[i:]
+	}
+	return "", args
 }
 
 func openStore(g *globalFlags) (*core.Store, *datamodel.Config, error) {

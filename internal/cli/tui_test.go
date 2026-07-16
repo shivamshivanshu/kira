@@ -62,6 +62,25 @@ func TestCommandRunnerFindDropsGlobalFlags(t *testing.T) {
 	}
 }
 
+func TestCommandRunnerFindHonoursChdir(t *testing.T) {
+	if _, err := exec.LookPath("rg"); err != nil {
+		t.Skip("ripgrep not installed")
+	}
+	dir := initFixture(t)
+	s, cfg := reopen(t, dir)
+	if _, err := s.Create(cfg, core.CreateOpts{Type: "ticket", Title: "Bridged needle", NoEdit: true}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	g := &globalFlags{chdir: dir}
+	out, err := commandRunner(g)([]string{"find", "needle"})
+	if err != nil {
+		t.Fatalf("bridged find with chdir set: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "needle") {
+		t.Fatalf("runner output = %q, want a match for needle", out)
+	}
+}
+
 func TestCommandRunnerRejectsStdinFromFile(t *testing.T) {
 	dir := initFixture(t)
 	s, cfg := reopen(t, dir)

@@ -2,14 +2,12 @@ package cli
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/core"
@@ -46,16 +44,7 @@ func createTypes(g *globalFlags) []string {
 	return types
 }
 
-func chdirArg() string {
-	g := &globalFlags{}
-	fs := pflag.NewFlagSet("chdirArg", pflag.ContinueOnError)
-	fs.ParseErrorsWhitelist.UnknownFlags = true
-	fs.Usage = func() {}
-	fs.SetOutput(io.Discard)
-	registerGlobalFlags(fs, g)
-	_ = fs.Parse(os.Args[1:])
-	return g.chdir
-}
+func chdirArg() string { return chdirArgFrom(os.Args[1:]) }
 
 func newCreateSubCmd(g *globalFlags, typ string) *cobra.Command {
 	var (

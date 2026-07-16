@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"os"
 	"slices"
 
 	"github.com/spf13/cobra"
@@ -24,7 +25,11 @@ func newFindCmd(g *globalFlags) *cobra.Command {
 			if slices.Contains(args, "-h") || slices.Contains(args, "--help") {
 				return cmd.Help()
 			}
-			fa := core.ParseFindArgs(args, knownGlobalFlags)
+			chdir, findArgs := stripGlobalPrefix(os.Args[1:], args, cmd.CalledAs())
+			if g.chdir == "" {
+				g.chdir = chdir
+			}
+			fa := core.ParseFindArgs(findArgs, knownGlobalFlags)
 			if fa.Pattern == "" {
 				return errx.User("find: a search pattern is required").WithHint("example: kira find \"race condition\"")
 			}

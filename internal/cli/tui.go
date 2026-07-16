@@ -72,14 +72,11 @@ func canOfferInit(g *globalFlags, err error) bool {
 func commandRunner(g *globalFlags) func([]string) (string, error) {
 	return func(argv []string) (string, error) {
 		var buf bytes.Buffer
-		root, _ := newRootCmd()
+		root, bridgedG := newRootCmd()
+		bridgedG.chdir = g.chdir
 		root.SetOut(&buf)
 		root.SetErr(&buf)
-		full := []string{"--no-color", "--non-interactive"}
-		if g.chdir != "" {
-			full = append(full, "-C", g.chdir)
-		}
-		root.SetArgs(append(full, argv...))
+		root.SetArgs(append([]string{"--no-color", "--non-interactive"}, argv...))
 		err := root.Execute()
 		return buf.String(), err
 	}
