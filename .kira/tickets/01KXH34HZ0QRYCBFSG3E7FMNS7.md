@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: task
 title: "datamodel cleanup: estimate error wording, ResolutionDropped constant, dead json tags, vocab tests"
-state: REVIEW
+state: DONE
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:50+05:30
-updated: 2026-07-16T19:43:11+05:30
+updated: 2026-07-16T19:51:53+05:30
 ---
 
 ## Description

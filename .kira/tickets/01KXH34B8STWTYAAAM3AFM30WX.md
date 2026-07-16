@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: bug
 title: "gitx parsing robustness: NumstatNoIndex errors, CatFileBatch bounds, trailer sentinel, -z parsing"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:43+05:30
-updated: 2026-07-16T19:43:12+05:30
+updated: 2026-07-16T19:51:54+05:30
 ---
 
 ## Description

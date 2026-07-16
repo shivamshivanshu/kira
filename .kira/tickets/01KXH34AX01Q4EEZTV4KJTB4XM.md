@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: task
 title: "storage: directory sync on rename, shared WriteFileAtomic, portable flock, lock tests"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:42+05:30
-updated: 2026-07-16T19:43:12+05:30
+updated: 2026-07-16T19:51:53+05:30
 ---
 
 ## Description

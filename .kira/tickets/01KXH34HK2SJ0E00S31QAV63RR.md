@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: task
 title: "core DRY batch: findItem, mutateConfig reuse, renumber, RefPattern, storage constants"
-state: REVIEW
+state: DONE
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:49+05:30
-updated: 2026-07-16T19:43:11+05:30
+updated: 2026-07-16T19:51:53+05:30
 ---
 
 ## Description
