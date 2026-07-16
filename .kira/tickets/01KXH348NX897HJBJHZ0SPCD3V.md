@@ -5,13 +5,14 @@ aliases: []
 type: ticket
 subtype: task
 title: "Merge matrix: add delete/modify conflict scenarios"
-state: TODO
+state: WONT_DO
+resolution: dropped
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:40+05:30
-updated: 2026-07-15T01:24:40+05:30
+updated: 2026-07-16T18:55:59+05:30
 ---
 
 ## Description

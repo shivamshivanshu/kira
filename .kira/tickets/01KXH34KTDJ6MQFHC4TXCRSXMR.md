@@ -5,13 +5,14 @@ aliases: []
 type: ticket
 subtype: task
 title: "Perf suite: BenchmarkMutations in A/B compare, determinism dedup, harness hygiene"
-state: TODO
+state: WONT_DO
+resolution: dropped
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:52+05:30
-updated: 2026-07-15T01:24:52+05:30
+updated: 2026-07-16T18:56:00+05:30
 ---
 
 ## Description

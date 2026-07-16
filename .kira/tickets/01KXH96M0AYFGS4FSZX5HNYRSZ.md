@@ -5,13 +5,14 @@ aliases: []
 type: ticket
 subtype: task
 title: "clipx follow-up: renderer write hazard and untested fallbacks (from TUI-4)"
-state: TODO
+state: WONT_DO
+resolution: dropped
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T03:10:49+05:30
-updated: 2026-07-15T03:10:49+05:30
+updated: 2026-07-16T18:55:59+05:30
 ---
 
 ## Description
