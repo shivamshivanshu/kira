@@ -121,7 +121,7 @@ func scalarFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 		out = append(out, schemaErr(datamodel.KeySprint, fmt.Sprintf("%q is not a key in the configured sprints", *it.Sprint)))
 	}
 	if it.Due != nil && *it.Due != "" && !datamodel.ValidDate(*it.Due) {
-		out = append(out, schemaErr(datamodel.KeyDue, fmt.Sprintf("invalid RFC3339 date %q", *it.Due)))
+		out = append(out, schemaErr(datamodel.KeyDue, fmt.Sprintf("invalid date %q, want YYYY-MM-DD", *it.Due)))
 	}
 	return out
 }

@@ -277,10 +277,10 @@ func validateSprints(c *datamodel.Config) error {
 			return errx.User("config: sprints[%s]: empty name", s.Key)
 		}
 		if !datamodel.ValidDate(s.Start) {
-			return errx.User("config: sprints[%s].start: invalid RFC3339 date %q", s.Key, s.Start)
+			return errx.User("config: sprints[%s].start: invalid date %q, want YYYY-MM-DD", s.Key, s.Start)
 		}
 		if !datamodel.ValidDate(s.End) {
-			return errx.User("config: sprints[%s].end: invalid RFC3339 date %q", s.Key, s.End)
+			return errx.User("config: sprints[%s].end: invalid date %q, want YYYY-MM-DD", s.Key, s.End)
 		}
 		if s.Start >= s.End {
 			return errx.User("config: sprints[%s]: start %s is not before end %s", s.Key, s.Start, s.End)

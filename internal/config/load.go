@@ -34,12 +34,18 @@ func LoadWithUser(root string, env func(string) string, warn io.Writer) (*datamo
 	if tier.workon != nil {
 		cfg.Workon = *tier.workon
 	}
-	if err := parseInto(cfg, data); err != nil {
+	ignore := ignorer(warn, filepath.Join(root, storage.ConfigRelPath))
+	if err := parseInto(cfg, data, ignore); err != nil {
 		return nil, err
 	}
-	ignore := ignorer(warn, filepath.Join(root, storage.ConfigRelPath))
+	alreadyWarned := make(map[string]bool, len(tier.uiWarnings))
+	for _, w := range tier.uiWarnings {
+		alreadyWarned[w] = true
+	}
 	for _, w := range UIWarnings(cfg.UI) {
-		ignore("%s", w)
+		if !alreadyWarned[w] {
+			ignore("%s", w)
+		}
 	}
 	cfg.UserAutomation = tier.hooks
 	if tier.commit != nil {
@@ -59,17 +65,52 @@ func readRepoConfig(root string) ([]byte, error) {
 
 func Parse(data []byte) (*datamodel.Config, error) {
 	cfg := Default()
-	if err := parseInto(cfg, data); err != nil {
+	if err := parseInto(cfg, data, nil); err != nil {
 		return nil, err
 	}
 	return cfg, nil
 }
 
-func parseInto(cfg *datamodel.Config, data []byte) error {
-	userEditor := cfg.UI.Editor
+func parseInto(cfg *datamodel.Config, data []byte, ignore ignoreFunc) error {
+	restoreUserEditor := preserveUserEditor(cfg, data, ignore)
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return errx.User("config: %w", err)
 	}
-	cfg.UI.Editor = userEditor
+	restoreUserEditor()
 	return Validate(cfg)
+}
+
+func preserveUserEditor(cfg *datamodel.Config, data []byte, ignore ignoreFunc) func() {
+	userEditor := cfg.UI.Editor
+	if ignore != nil && repoDocSetsUIEditor(data) {
+		ignore("ui.editor is personal; set it in ~/.config/kira/config.yaml")
+	}
+	return func() { cfg.UI.Editor = userEditor }
+}
+
+func repoDocSetsUIEditor(data []byte) bool {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil || len(doc.Content) == 0 {
+		return false
+	}
+	root := doc.Content[0]
+	if root.Kind != yaml.MappingNode {
+		return false
+	}
+	for i := 0; i+1 < len(root.Content); i += 2 {
+		if root.Content[i].Value != userKeyUI {
+			continue
+		}
+		ui := root.Content[i+1]
+		if ui.Kind != yaml.MappingNode {
+			return false
+		}
+		for j := 0; j+1 < len(ui.Content); j += 2 {
+			if ui.Content[j].Value == "editor" {
+				return true
+			}
+		}
+		return false
+	}
+	return false
 }

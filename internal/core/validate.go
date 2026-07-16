@@ -79,7 +79,7 @@ func validateItem(cfg *datamodel.Config, it *datamodel.Item, force bool) (errs, 
 		errs = append(errs, errx.User("field %q: %q is not a key in the configured sprints", datamodel.KeySprint, *it.Sprint).WithHint("%s", sprintHint(cfg, *it.Sprint)))
 	}
 	if it.Due != nil && !datamodel.ValidDate(*it.Due) {
-		errs = append(errs, fmt.Errorf("field %q: invalid RFC3339 date %q", datamodel.KeyDue, *it.Due))
+		errs = append(errs, fmt.Errorf("field %q: invalid date %q, want YYYY-MM-DD", datamodel.KeyDue, *it.Due))
 	}
 	return errs, warns
 }

@@ -35,10 +35,11 @@ func UserConfigDir(env func(string) string) (string, bool) {
 }
 
 type userTier struct {
-	ui     *datamodel.UI
-	workon *datamodel.Workon
-	commit *userCommit
-	hooks  []datamodel.AutomationHook
+	ui         *datamodel.UI
+	workon     *datamodel.Workon
+	commit     *userCommit
+	hooks      []datamodel.AutomationHook
+	uiWarnings []string
 }
 
 type userCommit struct {
@@ -85,11 +86,18 @@ func readUserPrefs(path string, warn io.Writer) userTier {
 		}
 	}
 	def := Default()
-	return userTier{
+	tier := userTier{
 		ui:     decodeUserSection(uiNode, def.UI, userKeyUI, validateUISection, ignore),
 		workon: decodeUserSection(workonNode, def.Workon, userKeyWorkon, validateWorkonSection, ignore),
 		commit: decodeUserSection(commitNode, userCommit{}, userKeyCommit, validateUserCommit, ignore),
 	}
+	if tier.ui != nil {
+		tier.uiWarnings = UIWarnings(*tier.ui)
+		for _, w := range tier.uiWarnings {
+			ignore("%s", w)
+		}
+	}
+	return tier
 }
 
 func validateUserCommit(c userCommit) error {
@@ -117,13 +125,12 @@ func decodeUserSection[T any](node *yaml.Node, def T, label string, validate fun
 
 func readUserHooks(dir string, warn io.Writer) []datamodel.AutomationHook {
 	path := filepath.Join(dir, userHooksYAMLName)
-	if !fileExists(path) {
-		return nil
-	}
 	ignore := ignorer(warn, path)
 	data, err := os.ReadFile(path)
 	if err != nil {
-		ignore("%v", err)
+		if !os.IsNotExist(err) {
+			ignore("%v", err)
+		}
 		return nil
 	}
 	var hooks []datamodel.AutomationHook
