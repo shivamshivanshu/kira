@@ -30,7 +30,7 @@ func Fire(w io.Writer, root, cacheDir string, cfg *datamodel.Config, ev Event, a
 		if len(repo) == 1 {
 			hookWord = "hook"
 		}
-		fmt.Fprintf(w, "kira: %d automation %s defined but not trusted — run `kira automation trust`\n", len(repo), hookWord)
+		_, _ = fmt.Fprintf(w, "kira: %d automation %s defined but not trusted — run `kira automation trust`\n", len(repo), hookWord)
 	}
 	run := firingSet(repoMayFire, repo, user)
 	if len(run) == 0 {
@@ -38,7 +38,7 @@ func Fire(w io.Writer, root, cacheDir string, cfg *datamodel.Config, ev Event, a
 	}
 	stdin, err := Payload(ev, root, time.Now().Format(time.RFC3339), actor())
 	if err != nil {
-		fmt.Fprintf(w, "kira: automation: building payload: %v\n", err)
+		_, _ = fmt.Fprintf(w, "kira: automation: building payload: %v\n", err)
 		return
 	}
 	env := append(os.Environ(), envMirror(ev, root)...)
@@ -106,9 +106,9 @@ func runHook(w io.Writer, root string, h datamodel.AutomationHook, stdin []byte,
 	emitPrefixed(w, name, out.Bytes())
 	switch {
 	case ctx.Err() == context.DeadlineExceeded:
-		fmt.Fprintf(w, "[automation:%s] timed out after %s\n", name, timeout)
+		_, _ = fmt.Fprintf(w, "[automation:%s] timed out after %s\n", name, timeout)
 	case err != nil:
-		fmt.Fprintf(w, "[automation:%s] %v\n", name, err)
+		_, _ = fmt.Fprintf(w, "[automation:%s] %v\n", name, err)
 	}
 }
 
@@ -124,6 +124,6 @@ func emitPrefixed(w io.Writer, name string, out []byte) {
 		if line == "" {
 			continue
 		}
-		fmt.Fprintf(w, "[automation:%s] %s\n", name, line)
+		_, _ = fmt.Fprintf(w, "[automation:%s] %s\n", name, line)
 	}
 }

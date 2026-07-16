@@ -24,13 +24,13 @@ func (e *CrashError) Error() string { return "kira tui crashed" }
 
 func handleCrash(root string, info crashInfo, stderr io.Writer) *CrashError {
 	defer func() { _ = recover() }()
-	guard(func() { fmt.Fprint(stderr, terminalRestore) })
+	guard(func() { _, _ = fmt.Fprint(stderr, terminalRestore) })
 	path := crashLogPath(root)
 	guard(func() { path = writeCrashLog(path, info) })
-	guard(func() { fmt.Fprintln(stderr, "kira crashed: "+firstLine(info.value)) })
-	guard(func() { fmt.Fprintln(stderr, "crash log: "+path) })
+	guard(func() { _, _ = fmt.Fprintln(stderr, "kira crashed: "+firstLine(info.value)) })
+	guard(func() { _, _ = fmt.Fprintln(stderr, "crash log: "+path) })
 	guard(func() {
-		fmt.Fprintln(stderr, "your .kira data is intact — the TUI only reads it; every change commits atomically")
+		_, _ = fmt.Fprintln(stderr, "your .kira data is intact — the TUI only reads it; every change commits atomically")
 	})
 	return &CrashError{LogPath: path}
 }

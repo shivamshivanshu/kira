@@ -11,7 +11,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
-func (s *Store) LabelCreate(cfg *datamodel.Config, names []string) (*datamodel.LabelCreateResult, error) {
+func (s *Store) LabelCreate(_ *datamodel.Config, names []string) (*datamodel.LabelCreateResult, error) {
 	for _, n := range names {
 		if strings.TrimSpace(n) == "" {
 			return nil, errx.User("label name cannot be empty")

@@ -138,7 +138,7 @@ func (s *treeScreen) suspendForSelected(m *model, open func(*core.Store, *datamo
 	return cmd
 }
 
-func (s *treeScreen) back(m *model) bool {
+func (s *treeScreen) back(_ *model) bool {
 	if s.focus == paneDetail {
 		s.focus = paneTree
 		return true

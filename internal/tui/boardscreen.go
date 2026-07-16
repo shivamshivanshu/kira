@@ -201,7 +201,7 @@ func (s *boardScreen) syncDetail(m *model) {
 	s.host.sync(m, card.ID)
 }
 
-func (s *boardScreen) back(m *model) bool {
+func (s *boardScreen) back(_ *model) bool {
 	if s.peek != peekOff {
 		s.peek = peekOff
 		return true

@@ -164,7 +164,7 @@ func (s *Store) commitTrackedHooks(cfg *datamodel.Config, repo gitx.Repo, tracke
 	return err
 }
 
-func (s *Store) ValidateHooks(cfg *datamodel.Config) (*datamodel.HooksValidateResult, error) {
+func (s *Store) ValidateHooks(_ *datamodel.Config) (*datamodel.HooksValidateResult, error) {
 	if err := s.requireRepo(); err != nil {
 		return nil, err
 	}

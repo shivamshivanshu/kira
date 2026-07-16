@@ -40,13 +40,13 @@ func (s *statsScreen) update(m *model, key string) tea.Cmd {
 	return nil
 }
 
-func (s *statsScreen) back(m *model) bool { return false }
+func (s *statsScreen) back(_ *model) bool { return false }
 
-func (s *statsScreen) focusItem(m *model, id string) {}
+func (s *statsScreen) focusItem(_ *model, _ string) {}
 
 func (s *statsScreen) focusedItem() (showfmt.Item, bool) { return showfmt.Item{}, false }
 
-func (s *statsScreen) settle(m *model) {}
+func (s *statsScreen) settle(_ *model) {}
 
 func (s *statsScreen) invalidate() { s.loaded = false }
 

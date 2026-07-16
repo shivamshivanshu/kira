@@ -84,7 +84,7 @@ func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.Creat
 	return res, nil
 }
 
-func (s *Store) resolveHere(cfg *datamodel.Config, opts *CreateOpts) (string, error) {
+func (s *Store) resolveHere(_ *datamodel.Config, opts *CreateOpts) (string, error) {
 	ap, ok := s.readActive()
 	if !ok {
 		return "", errx.User("no active ticket").WithHint("start one with kira workon <id>")

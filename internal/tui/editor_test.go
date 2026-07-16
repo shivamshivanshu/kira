@@ -22,7 +22,7 @@ func TestViewProcessOpensReadonlyTempCopy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("viewProcess: %v", err)
 	}
-	defer os.Remove(tmpPath)
+	defer func() { _ = os.Remove(tmpPath) }()
 
 	if tmpPath == srcPath {
 		t.Fatal("viewer must open a temp copy, not the live store file")

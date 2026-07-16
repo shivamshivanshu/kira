@@ -106,12 +106,12 @@ func (i *Index) dropAllTables() error {
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
-			rows.Close()
+			_ = rows.Close()
 			return errx.Env("scanning index tables: %v", err)
 		}
 		names = append(names, name)
 	}
-	rows.Close()
+	_ = rows.Close()
 	if err := rows.Err(); err != nil {
 		return errx.Env("listing index tables: %v", err)
 	}

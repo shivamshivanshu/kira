@@ -42,7 +42,7 @@ func viewItemCmd(store *core.Store, cfg *datamodel.Config, ref string) (tea.Cmd,
 		return nil, err
 	}
 	return tea.ExecProcess(view, func(err error) tea.Msg {
-		os.Remove(path)
+		_ = os.Remove(path)
 		return editorDoneMsg{err: err}
 	}), nil
 }
@@ -58,7 +58,7 @@ func viewProcess(store *core.Store, cfg *datamodel.Config, ref string) (*exec.Cm
 	}
 	ed, err := editorx.Command(cfg.UI.Editor)
 	if err != nil {
-		os.Remove(path)
+		_ = os.Remove(path)
 		return nil, "", fmt.Errorf("%w: %s", err, editorx.ConfigHint)
 	}
 	return ed.View(path), path, nil
@@ -78,7 +78,7 @@ func readonlyCopy(content string) (string, error) {
 		err = closeErr
 	}
 	if err != nil {
-		os.Remove(path)
+		_ = os.Remove(path)
 		return "", err
 	}
 	return path, nil

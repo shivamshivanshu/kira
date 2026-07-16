@@ -14,7 +14,7 @@ func Filters(cfg *datamodel.Config) *datamodel.FilterListResult {
 	return &datamodel.FilterListResult{Filters: views}
 }
 
-func (s *Store) ConfigSet(cfg *datamodel.Config, key, value string) (*datamodel.ConfigSetResult, error) {
+func (s *Store) ConfigSet(_ *datamodel.Config, key, value string) (*datamodel.ConfigSetResult, error) {
 	err := s.mutateConfig(func(data []byte, locked *datamodel.Config) (configEdit, error) {
 		out, err := config.SetScalar(data, key, value)
 		if err != nil {

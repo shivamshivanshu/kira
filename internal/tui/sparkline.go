@@ -7,14 +7,14 @@ import (
 
 var (
 	sparkRich  = []rune("▁▂▃▄▅▆▇█")
-	sparkAscii = []rune(".:-=+*#@")
+	sparkASCII = []rune(".:-=+*#@")
 )
 
 func sparkline(vals []float64, rich bool) string {
 	if len(vals) == 0 {
 		return ""
 	}
-	ramp := sparkAscii
+	ramp := sparkASCII
 	if rich {
 		ramp = sparkRich
 	}
