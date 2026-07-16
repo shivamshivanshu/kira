@@ -16,6 +16,8 @@ import (
 	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
+// Options configures how commit trailers and subjects are scanned for ticket
+// links, references, and closes.
 type Options struct {
 	ProjectKey       string
 	BoardKeys        []string
@@ -28,13 +30,18 @@ type Options struct {
 	ReferenceMarkers []datamodel.ReferenceMarker
 }
 
+// LinkKind distinguishes a commit that links an item (via trailer, subject
+// marker, or leading number) from one that merely references it.
 type LinkKind string
 
+// LinkLinked and LinkReferenced are the two kinds of commit-to-item association.
 const (
 	LinkLinked     LinkKind = "linked"
 	LinkReferenced LinkKind = "referenced"
 )
 
+// CommitLink is a single commit associated with an item via trailer or
+// reference scanning.
 type CommitLink struct {
 	SHA     string
 	Subject string
@@ -43,11 +50,13 @@ type CommitLink struct {
 	Kind    LinkKind
 }
 
+// CloseCandidate is an item eligible to be closed by a landed commit.
 type CloseCandidate struct {
 	ULID        string
 	CommitterTs string
 }
 
+// CloseScan is the result of scanning landed commits for items to close.
 type CloseScan struct {
 	LandedRef  string
 	LandedHead string
@@ -150,6 +159,8 @@ func closesLater(a, b string) bool {
 	return aOK && !bOK
 }
 
+// PersistLandedWatermark records landedHead as the last-scanned commit for
+// landedRef, so the next scan for that ref starts from it.
 func PersistLandedWatermark(cacheDir, landedRef, landedHead string) error {
 	m, ok := loadMetaAt(cacheDir)
 	if !ok {
@@ -235,7 +246,7 @@ func (i *Index) upsertCommitLinks(commits []gitx.Commit, numbers map[string]stri
 	if err != nil {
 		return errx.Env("beginning commit-link tx: %v", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	if rewrite {
 		if _, err := tx.Exec("DELETE FROM commit_links"); err != nil {
 			return errx.Env("clearing commit links: %v", err)
@@ -246,13 +257,13 @@ func (i *Index) upsertCommitLinks(commits []gitx.Commit, numbers map[string]stri
 	if err != nil {
 		return errx.Env("preparing commit-link insert: %v", err)
 	}
-	defer insLinked.Close()
+	defer func() { _ = insLinked.Close() }()
 	insReferenced, err := tx.Prepare(`INSERT OR IGNORE INTO commit_links
 		(item_id, sha, subject, author, ts, kind) VALUES (?,?,?,?,?,?)`)
 	if err != nil {
 		return errx.Env("preparing commit-link insert: %v", err)
 	}
-	defer insReferenced.Close()
+	defer func() { _ = insReferenced.Close() }()
 
 	pol := newLinkPolicy(opts, numbers)
 	for _, c := range commits {
@@ -398,13 +409,15 @@ func (i *Index) numberToULID() (map[string]string, error) {
 	return numbers, nil
 }
 
+// CommitLinks returns the commits linked to or referencing itemID, linked
+// commits first and each group newest first.
 func (i *Index) CommitLinks(itemID string) ([]CommitLink, error) {
 	rows, err := i.db.Query(`SELECT sha, subject, author, ts, kind FROM commit_links
 		WHERE item_id = ? ORDER BY kind = ? DESC, ts DESC, rowid`, itemID, LinkLinked)
 	if err != nil {
 		return nil, errx.Env("querying commit links: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var links []CommitLink
 	for rows.Next() {
 		var l CommitLink

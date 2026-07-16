@@ -770,7 +770,7 @@ func TestForeignKeyCascadeOnDelete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	var labels int
 	if err := db.QueryRow("SELECT count(*) FROM labels WHERE item_id = ?", ulid).Scan(&labels); err != nil {
 		t.Fatal(err)
@@ -796,7 +796,7 @@ func TestSchemaVersionMismatchRebuilds(t *testing.T) {
 	if _, err := db.Exec("PRAGMA user_version=3"); err != nil {
 		t.Fatal(err)
 	}
-	db.Close()
+	_ = db.Close()
 	if err := os.Remove(filepath.Join(f.store.CacheDir(), "meta.json")); err != nil {
 		t.Fatal(err)
 	}
@@ -856,7 +856,7 @@ func open(t *testing.T, f repoFixture) *index.Index {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	t.Cleanup(func() { idx.Close() })
+	t.Cleanup(func() { _ = idx.Close() })
 	return idx
 }
 
@@ -1223,7 +1223,7 @@ func TestCrashedRebuildLeavesEmptyDBRecovers(t *testing.T) {
 	if _, err := db.Exec("DELETE FROM items"); err != nil {
 		t.Fatal(err)
 	}
-	db.Close()
+	_ = db.Close()
 
 	items, res, err := index.Load(f.store, f.repo, index.Options{})
 	if err != nil {

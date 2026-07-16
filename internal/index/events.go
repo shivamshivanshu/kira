@@ -9,12 +9,14 @@ import (
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
+// LogEntries returns an item's cached events and commit links, recomputing the
+// events from derive when the cache is missing or stale for fileHead.
 func LogEntries(store *storage.FS, itemID, fileHead string, derive func() ([]datamodel.Event, error)) ([]datamodel.Event, []CommitLink, error) {
 	idx, err := Open(store.CacheDir())
 	if err != nil {
 		return nil, nil, err
 	}
-	defer idx.Close()
+	defer func() { _ = idx.Close() }()
 	if fileHead == "" {
 		events, derr := derive()
 		if derr != nil {
@@ -69,7 +71,7 @@ func (i *Index) replaceEvents(itemID, head string, events []datamodel.Event) err
 	if err != nil {
 		return errx.Env("beginning events tx: %v", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	if _, err := tx.Exec("DELETE FROM events WHERE item_id = ?", itemID); err != nil {
 		return errx.Env("clearing events: %v", err)
 	}
@@ -93,7 +95,7 @@ func (i *Index) events(itemID string) ([]datamodel.Event, error) {
 	if err != nil {
 		return nil, errx.Env("querying events: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var out []datamodel.Event
 	for rows.Next() {
 		var e datamodel.Event

@@ -29,7 +29,7 @@ func (i *Index) full(store *storage.FS) (map[string]skipEntry, error) {
 	if err != nil {
 		return nil, errx.Env("beginning index tx: %v", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	for _, table := range []string{"aliases", "labels", "links", "items"} {
 		if _, err := tx.Exec("DELETE FROM " + table); err != nil {
 			return nil, errx.Env("clearing index %s: %v", table, err)
@@ -82,7 +82,7 @@ func (i *Index) refresh(store *storage.FS, absPaths []string, prevSkips map[stri
 	if err != nil {
 		return nil, nil, errx.Env("beginning index tx: %v", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	deleteByID := func(id string) error {
 		if _, err := tx.Exec("DELETE FROM items WHERE id = ?", id); err != nil {
@@ -199,7 +199,7 @@ func prepareItemStmts(tx *sql.Tx) (itemStmts, error) {
 		stmt, err := tx.Prepare(query)
 		if err != nil {
 			for _, p := range prepared {
-				p.Close()
+				_ = p.Close()
 			}
 			return nil, errx.Env("preparing %s: %v", what, err)
 		}
@@ -230,10 +230,10 @@ func prepareItemStmts(tx *sql.Tx) (itemStmts, error) {
 }
 
 func (s itemStmts) close() {
-	s.item.Close()
-	s.alias.Close()
-	s.label.Close()
-	s.link.Close()
+	_ = s.item.Close()
+	_ = s.alias.Close()
+	_ = s.label.Close()
+	_ = s.link.Close()
 }
 
 func (s itemStmts) insert(it *datamodel.Item) error {
@@ -386,12 +386,12 @@ func applyActivity(db *sql.DB, activity map[string]string) error {
 	if err != nil {
 		return errx.Env("beginning activity tx: %v", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	stmt, err := tx.Prepare("UPDATE items SET activity = ? WHERE id = ?")
 	if err != nil {
 		return errx.Env("preparing activity update: %v", err)
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 	for id, ts := range activity {
 		if _, err := stmt.Exec(ts, id); err != nil {
 			return errx.Env("updating item activity: %v", err)

@@ -8,6 +8,8 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
+// ReadCached reads items straight from the on-disk index cache, read-only and
+// without refreshing it; it returns nil, nil if no cache exists yet.
 func ReadCached(cacheDir string) ([]*datamodel.Item, error) {
 	if _, err := os.Stat(dbPath(cacheDir)); err != nil {
 		return nil, nil
@@ -16,10 +18,11 @@ func ReadCached(cacheDir string) ([]*datamodel.Item, error) {
 	if err != nil {
 		return nil, errx.Env("opening index read-only: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	return (&Index{db: db, cacheDir: cacheDir}).Items()
 }
 
+// Items returns all cached items along with their aliases, labels, and links.
 func (i *Index) Items() ([]*datamodel.Item, error) {
 	items, byID, err := i.scanItems()
 	if err != nil {
@@ -44,7 +47,7 @@ func (i *Index) scanItems() ([]*datamodel.Item, map[string]*datamodel.Item, erro
 	if err != nil {
 		return nil, nil, errx.Env("querying index items: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var items []*datamodel.Item
 	byID := map[string]*datamodel.Item{}
@@ -90,7 +93,7 @@ func (i *Index) attachLinks(byID map[string]*datamodel.Item) error {
 	if err != nil {
 		return errx.Env("querying index links: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var itemID, kind, target string
 		if err := rows.Scan(&itemID, &kind, &target); err != nil {
@@ -130,7 +133,7 @@ func (i *Index) eachChild(q string, byID map[string]*datamodel.Item, add func(*d
 }
 
 func eachPair(rows *sql.Rows, fn func(*sql.Rows) error) error {
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		if err := fn(rows); err != nil {
 			return err
