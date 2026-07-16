@@ -27,11 +27,14 @@ func (s *Store) Tree(cfg *datamodel.Config, ref, at string) (*datamodel.TreeResu
 	build := newTreeBuilder(children)
 
 	if ref != "" {
-		it, err := findItem(items, resolver, ref)
+		ulid, err := resolveID(resolver, ref)
 		if err != nil {
 			return nil, err
 		}
-		ulid := it.ID
+		it := byID[ulid]
+		if it == nil {
+			return nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
+		}
 		node, err := build.node(it)
 		if err != nil {
 			return nil, err

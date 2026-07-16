@@ -135,6 +135,17 @@ func skipNotes(skipped map[string]skipEntry) []string {
 
 type planResult struct {
 	root       gitx.Repo
+	head       string
+	dirtyHash  string
+	dirtyPaths []string
+	decision   decision
+}
+
+// decisionInputs holds everything decide needs but that plan's caller never
+// reads again once a decision is made — kept off planResult so that type only
+// carries state which outlives plan().
+type decisionInputs struct {
+	root       gitx.Repo
 	toplevel   string
 	pathspec   string
 	force      bool
@@ -143,7 +154,6 @@ type planResult struct {
 	head       string
 	dirtyHash  string
 	dirtyPaths []string
-	decision   decision
 }
 
 func plan(store *storage.FS, repo gitx.Repo, force, hasMeta bool, prev meta) (planResult, error) {
@@ -161,17 +171,16 @@ func plan(store *storage.FS, repo gitx.Repo, force, hasMeta bool, prev meta) (pl
 		return planResult{}, err
 	}
 	dirtyHash, dirtyPaths := dirtyState(ticketAbsPaths(toplevel, statusPaths))
-	p := planResult{
+	in := decisionInputs{
 		root: root, toplevel: toplevel, pathspec: pathspec,
 		force: force, hasMeta: hasMeta, prev: prev,
 		head: head, dirtyHash: dirtyHash, dirtyPaths: dirtyPaths,
 	}
-	d, err := p.decide()
+	d, err := in.decide()
 	if err != nil {
 		return planResult{}, err
 	}
-	p.decision = d
-	return p, nil
+	return planResult{root: root, head: head, dirtyHash: dirtyHash, dirtyPaths: dirtyPaths, decision: d}, nil
 }
 
 type decision struct {
@@ -180,7 +189,7 @@ type decision struct {
 	refresh []string
 }
 
-func (p planResult) decide() (decision, error) {
+func (p decisionInputs) decide() (decision, error) {
 	switch {
 	case p.force:
 		return decision{name: actionFull, reason: "forced"}, nil

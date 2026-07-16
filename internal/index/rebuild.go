@@ -13,7 +13,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/storage"
-	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
 type parsedFile struct {
@@ -195,30 +194,37 @@ type itemStmts struct {
 }
 
 func prepareItemStmts(tx *sql.Tx) (itemStmts, error) {
-	item, err := tx.Prepare(`INSERT INTO items
+	var prepared []*sql.Stmt
+	prepare := func(query, what string) (*sql.Stmt, error) {
+		stmt, err := tx.Prepare(query)
+		if err != nil {
+			for _, p := range prepared {
+				p.Close()
+			}
+			return nil, errx.Env("preparing %s: %v", what, err)
+		}
+		prepared = append(prepared, stmt)
+		return stmt, nil
+	}
+
+	item, err := prepare(`INSERT INTO items
 		(id, number, type, subtype, title, state, resolution, priority, rank,
 		 owner, reporter, epic, sprint, due, estimate, created, updated, activity)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, "item insert")
 	if err != nil {
-		return itemStmts{}, errx.Env("preparing item insert: %v", err)
+		return itemStmts{}, err
 	}
-	alias, err := tx.Prepare("INSERT INTO aliases (item_id, ord, number) VALUES (?,?,?)")
+	alias, err := prepare("INSERT INTO aliases (item_id, ord, number) VALUES (?,?,?)", "alias insert")
 	if err != nil {
-		item.Close()
-		return itemStmts{}, errx.Env("preparing alias insert: %v", err)
+		return itemStmts{}, err
 	}
-	label, err := tx.Prepare("INSERT INTO labels (item_id, ord, label) VALUES (?,?,?)")
+	label, err := prepare("INSERT INTO labels (item_id, ord, label) VALUES (?,?,?)", "label insert")
 	if err != nil {
-		item.Close()
-		alias.Close()
-		return itemStmts{}, errx.Env("preparing label insert: %v", err)
+		return itemStmts{}, err
 	}
-	link, err := tx.Prepare("INSERT INTO links (item_id, ord, kind, target_id) VALUES (?,?,?,?)")
+	link, err := prepare("INSERT INTO links (item_id, ord, kind, target_id) VALUES (?,?,?,?)", "link insert")
 	if err != nil {
-		item.Close()
-		alias.Close()
-		label.Close()
-		return itemStmts{}, errx.Env("preparing link insert: %v", err)
+		return itemStmts{}, err
 	}
 	return itemStmts{item: item, alias: alias, label: label, link: link}, nil
 }
@@ -337,7 +343,7 @@ func (i *Index) fillActivityFull() error {
 			return errx.Env("scanning item activity: %v", err)
 		}
 		activity[id] = updated
-		if ts, ok := latest[id]; ok && laterRFC3339(ts, updated) {
+		if ts, ok := latest[id]; ok && closesLater(ts, updated) {
 			activity[id] = ts
 		}
 		return nil
@@ -359,10 +365,10 @@ func (i *Index) fillActivityTargeted() error {
 		if err := r.Scan(&id, &ts, &updated); err != nil {
 			return errx.Env("scanning commit-link activity: %v", err)
 		}
-		if !laterRFC3339(ts, updated) {
+		if !closesLater(ts, updated) {
 			return nil
 		}
-		if cur, ok := boosted[id]; !ok || laterRFC3339(ts, cur) {
+		if cur, ok := boosted[id]; !ok || closesLater(ts, cur) {
 			boosted[id] = ts
 		}
 		return nil
@@ -405,7 +411,7 @@ func (i *Index) latestCommitTs() (map[string]string, error) {
 		if err := r.Scan(&id, &ts); err != nil {
 			return errx.Env("scanning commit-link timestamp: %v", err)
 		}
-		if cur, ok := latest[id]; !ok || laterRFC3339(ts, cur) {
+		if cur, ok := latest[id]; !ok || closesLater(ts, cur) {
 			latest[id] = ts
 		}
 		return nil
@@ -413,9 +419,4 @@ func (i *Index) latestCommitTs() (map[string]string, error) {
 		return nil, err
 	}
 	return latest, nil
-}
-
-func laterRFC3339(a, b string) bool {
-	cmp, aOK, bOK := timex.CompareRFC3339(a, b)
-	return aOK && bOK && cmp > 0
 }
