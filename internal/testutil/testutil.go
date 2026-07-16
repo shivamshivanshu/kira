@@ -10,6 +10,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/gitx"
 )
 
+// GitInit initializes dir as a git repo with a hermetic test identity.
 func GitInit(dir string) error {
 	repo := gitx.Repo{Dir: dir}
 	for _, args := range [][]string{
@@ -25,15 +26,17 @@ func GitInit(dir string) error {
 }
 
 func init() {
-	os.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
-	os.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
-	os.Setenv("VISUAL", "")
-	os.Setenv("EDITOR", "true")
+	_ = os.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	_ = os.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+	_ = os.Setenv("VISUAL", "")
+	_ = os.Setenv("EDITOR", "true")
 
 	neutralUserConfigDir := filepath.Join(os.TempDir(), fmt.Sprintf("kira-testutil-xdg-%d", os.Getpid()))
-	os.Setenv("XDG_CONFIG_HOME", neutralUserConfigDir)
+	_ = os.Setenv("XDG_CONFIG_HOME", neutralUserConfigDir)
 }
 
+// InitGitRepo creates a temp dir, initializes it as a git repo, and returns
+// its path. It fails the test on error.
 func InitGitRepo(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()

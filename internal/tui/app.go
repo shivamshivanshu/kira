@@ -1,3 +1,4 @@
+// Package tui implements kira's terminal UI: the tree, board, and stats screens.
 package tui
 
 import (
@@ -281,11 +282,6 @@ func (m model) treeScreen() (*treeScreen, bool) {
 func (m model) boardScreen() (*boardScreen, bool) {
 	bs, ok := m.screens[viewBoard].(*boardScreen)
 	return bs, ok
-}
-
-func (m model) statsScreen() (*statsScreen, bool) {
-	ss, ok := m.screens[viewStats].(*statsScreen)
-	return ss, ok
 }
 
 func (m *model) switchView(v view) {

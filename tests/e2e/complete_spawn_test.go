@@ -60,13 +60,13 @@ func kiraBinary(t *testing.T) string {
 
 func gitCountingShim(t *testing.T) (dir, counter string) {
 	t.Helper()
-	real, err := exec.LookPath("git")
+	gitPath, err := exec.LookPath("git")
 	if err != nil {
 		t.Fatalf("locate git: %v", err)
 	}
 	dir = t.TempDir()
 	counter = filepath.Join(dir, "count")
-	script := "#!/bin/sh\nprintf 'x\\n' >> \"$KIRA_SPAWN_COUNTER\"\nexec " + real + " \"$@\"\n"
+	script := "#!/bin/sh\nprintf 'x\\n' >> \"$KIRA_SPAWN_COUNTER\"\nexec " + gitPath + " \"$@\"\n"
 	if err := os.WriteFile(filepath.Join(dir, "git"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}

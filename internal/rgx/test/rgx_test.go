@@ -78,7 +78,7 @@ func TestSearch(t *testing.T) {
 		if err := os.Chmod(bad, 0o000); err != nil {
 			t.Fatal(err)
 		}
-		defer os.Chmod(bad, 0o644)
+		defer func() { _ = os.Chmod(bad, 0o644) }()
 
 		lines, err := rgx.Search(dir, []string{"race"}, "items")
 		if err == nil {

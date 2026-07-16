@@ -68,29 +68,29 @@ func lex(input string) ([]token, error) {
 	i := 0
 	for i < len(input) {
 		r, w := utf8.DecodeRuneInString(input[i:])
-		switch {
-		case r == ' ' || r == '\t' || r == '\n' || r == '\r':
+		switch r {
+		case ' ', '\t', '\n', '\r':
 			i += w
-		case r == '(':
+		case '(':
 			toks = append(toks, token{tokLParen, "(", i})
 			i += w
-		case r == ')':
+		case ')':
 			toks = append(toks, token{tokRParen, ")", i})
 			i += w
-		case r == ',':
+		case ',':
 			toks = append(toks, token{tokComma, ",", i})
 			i += w
-		case r == '=':
+		case '=':
 			toks = append(toks, token{tokEq, "=", i})
 			i += w
-		case r == '!':
+		case '!':
 			if i+w < len(input) && input[i+w] == '=' {
 				toks = append(toks, token{tokNe, "!=", i})
 				i += w + 1
 			} else {
 				return nil, &Error{Pos: i, Msg: "expected '=' after '!'"}
 			}
-		case r == '<':
+		case '<':
 			if i+w < len(input) && input[i+w] == '=' {
 				toks = append(toks, token{tokLe, "<=", i})
 				i += w + 1
@@ -98,7 +98,7 @@ func lex(input string) ([]token, error) {
 				toks = append(toks, token{tokLt, "<", i})
 				i += w
 			}
-		case r == '>':
+		case '>':
 			if i+w < len(input) && input[i+w] == '=' {
 				toks = append(toks, token{tokGe, ">=", i})
 				i += w + 1
@@ -106,7 +106,7 @@ func lex(input string) ([]token, error) {
 				toks = append(toks, token{tokGt, ">", i})
 				i += w
 			}
-		case r == '"':
+		case '"':
 			s, next, err := lexString(input, i)
 			if err != nil {
 				return nil, err

@@ -12,11 +12,15 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
+// WriteItem serializes it and writes it to its item file, returning the path
+// relative to the store root.
 func (s *FS) WriteItem(it *datamodel.Item) (string, error) {
 	it.Body = codec.CanonicalizeCommentBody(it.Body)
 	return s.WriteItemRaw(it.ID, codec.Serialize(it))
 }
 
+// WriteItemRaw writes content to the item file for ulid, returning the path
+// relative to the store root.
 func (s *FS) WriteItemRaw(ulid, content string) (string, error) {
 	if err := os.MkdirAll(s.ItemsDir(), 0o755); err != nil {
 		return "", errx.User("creating tickets dir: %v", err)
@@ -41,8 +45,8 @@ func WriteFileAtomic(dst string, content []byte) error {
 	committed := false
 	defer func() {
 		if !committed {
-			f.Close()
-			os.Remove(tmp)
+			_ = f.Close()
+			_ = os.Remove(tmp)
 		}
 	}()
 
@@ -67,7 +71,7 @@ func syncDir(dir string) error {
 	if err != nil {
 		return err
 	}
-	defer d.Close()
+	defer func() { _ = d.Close() }()
 	err = d.Sync()
 	if err != nil && runtime.GOOS == "darwin" && errors.Is(err, syscall.EINVAL) {
 		return nil

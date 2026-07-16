@@ -17,6 +17,8 @@ var (
 	lockPollInterval = 20 * time.Millisecond
 )
 
+// Lock acquires an exclusive, cross-process lock on the store and returns a
+// function that releases it.
 func (s *FS) Lock() (func(), error) {
 	if err := os.MkdirAll(s.CacheDir(), 0o755); err != nil {
 		return nil, errx.User("creating cache dir: %v", err)
@@ -30,12 +32,12 @@ func (s *FS) Lock() (func(), error) {
 	for {
 		if err := unix.Flock(int(f.Fd()), unix.LOCK_EX|unix.LOCK_NB); err == nil {
 			return func() {
-				unix.Flock(int(f.Fd()), unix.LOCK_UN)
-				f.Close()
+				_ = unix.Flock(int(f.Fd()), unix.LOCK_UN)
+				_ = f.Close()
 			}, nil
 		}
 		if time.Now().After(deadline) {
-			f.Close()
+			_ = f.Close()
 			return nil, errx.Conflict("another kira process holds the lock on %s", s.root)
 		}
 		time.Sleep(lockPollInterval)
