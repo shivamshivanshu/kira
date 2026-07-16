@@ -26,13 +26,9 @@ func (s *Store) BoardMove(cfg *datamodel.Config, ref, targetKey string) (*datamo
 	if err != nil {
 		return nil, err
 	}
-	ulid, err := resolveID(ld.resolver, ref)
+	it, err := findItem(ld.items, ld.resolver, ref)
 	if err != nil {
 		return nil, err
-	}
-	it := findByULID(ld.items, ulid)
-	if it == nil {
-		return nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
 	}
 	if err := guardWritable(it); err != nil {
 		return nil, err

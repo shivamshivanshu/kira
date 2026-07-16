@@ -66,16 +66,12 @@ func (s *Store) resolveScope(cfg *datamodel.Config, opts StatsOpts, items []*dat
 
 	set := items
 	if opts.Epic != "" {
-		ulid, err := resolveID(resolver, opts.Epic)
+		epic, err := findItem(items, resolver, opts.Epic)
 		if err != nil {
 			return nil, nil, err
 		}
-		epic := findByULID(items, ulid)
-		if epic == nil {
-			return nil, nil, errx.User("resolved %s to %s, which has no file", opts.Epic, ulid)
-		}
-		scope.Epic, scope.EpicNumber = ulid, epic.Number
-		set, err = descendants(items, ulid)
+		scope.Epic, scope.EpicNumber = epic.ID, epic.Number
+		set, err = descendants(items, epic.ID)
 		if err != nil {
 			return nil, nil, err
 		}

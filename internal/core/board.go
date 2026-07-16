@@ -92,6 +92,7 @@ type configEdit struct {
 	data    []byte
 	commit  datamodel.Commit
 	subject string
+	noop    bool
 }
 
 func (s *Store) mutateConfig(edit func(data []byte, locked *datamodel.Config) (configEdit, error)) error {
@@ -113,6 +114,9 @@ func (s *Store) mutateConfig(edit func(data []byte, locked *datamodel.Config) (c
 	e, err := edit(data, locked)
 	if err != nil {
 		return err
+	}
+	if e.noop {
+		return nil
 	}
 	if err := os.WriteFile(fs.ConfigPath(), e.data, filePerm); err != nil {
 		return errx.Env("writing config: %v", err)

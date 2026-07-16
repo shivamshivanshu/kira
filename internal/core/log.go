@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/index"
 	"github.com/shivamshivanshu/kira/internal/timex"
 )
@@ -15,21 +14,16 @@ func (s *Store) Log(cfg *datamodel.Config, ref string) (*datamodel.LogResult, er
 	if err != nil {
 		return nil, err
 	}
-	items, resolver := ld.items, ld.resolver
-	ulid, err := resolveID(resolver, ref)
+	it, err := findItem(ld.items, ld.resolver, ref)
 	if err != nil {
 		return nil, err
-	}
-	it := findByULID(items, ulid)
-	if it == nil {
-		return nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
 	}
 
-	events, links, err := s.logEntries(ulid)
+	events, links, err := s.logEntries(it.ID)
 	if err != nil {
 		return nil, err
 	}
-	return &datamodel.LogResult{ID: ulid, Number: it.Number, Entries: interleave(events, links)}, nil
+	return &datamodel.LogResult{ID: it.ID, Number: it.Number, Entries: interleave(events, links)}, nil
 }
 
 func (s *Store) logEntries(ulid string) ([]datamodel.Event, []index.CommitLink, error) {

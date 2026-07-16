@@ -84,7 +84,7 @@ func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
 func (b *Batch) Close() { b.release() }
 
 func (b *Batch) Resolve(ref string) (*datamodel.Item, error) {
-	return resolveItem(b.items, b.resolver, ref)
+	return findItem(b.items, b.resolver, ref)
 }
 
 func (b *Batch) RefExists(ref string) bool {

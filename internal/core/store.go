@@ -89,14 +89,14 @@ func (s *Store) resolveRef(cfg *datamodel.Config, ref string) (*datamodel.Item, 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	it, err := resolveItem(ld.items, ld.resolver, ref)
+	it, err := findItem(ld.items, ld.resolver, ref)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	return it, ld.items, ld.resolver, nil
 }
 
-func resolveItem(items []*datamodel.Item, resolver *id.Resolver, ref string) (*datamodel.Item, error) {
+func findItem(items []*datamodel.Item, resolver *id.Resolver, ref string) (*datamodel.Item, error) {
 	ulid, err := resolveID(resolver, ref)
 	if err != nil {
 		return nil, err

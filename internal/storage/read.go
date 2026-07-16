@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
@@ -59,7 +58,6 @@ func (s *FS) itemsDirEntries(keep func(name string) bool) ([]string, error) {
 			names = append(names, e.Name())
 		}
 	}
-	slices.Sort(names)
 	return names, nil
 }
 
@@ -103,7 +101,7 @@ func (s *FS) LoadAll() ([]*datamodel.Item, []string, error) {
 }
 
 func SkipNote(name string, err error) string {
-	return fmt.Sprintf("skipped .kira/tickets/%s: %v; run kira doctor", name, err)
+	return fmt.Sprintf("skipped %s/%s: %v; run kira doctor", TicketsPrefix, name, err)
 }
 
 func Snapshot(key string, items []*datamodel.Item) id.Snapshot {

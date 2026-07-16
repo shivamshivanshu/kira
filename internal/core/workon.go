@@ -113,10 +113,8 @@ func doingTarget(cfg *datamodel.Config, it *datamodel.Item) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	for _, st := range wf.States {
-		if st.Key == it.State && st.Category == datamodel.CategoryDoing {
-			return "", false
-		}
+	if cat, ok := cfg.CategoryOf(it.Type, it.State); ok && cat == datamodel.CategoryDoing {
+		return "", false
 	}
 	return firstStateInCategory(wf, datamodel.CategoryDoing)
 }

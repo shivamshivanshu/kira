@@ -10,9 +10,10 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
-const gitattributesLine = ".kira/** text eol=lf"
+var gitattributesLine = storage.DirName + "/** text eol=lf"
 
 func Init(startDir, key string, force bool, prompter ...Prompter) (*datamodel.InitResult, error) {
 	root := startDir
@@ -61,7 +62,7 @@ func Init(startDir, key string, force bool, prompter ...Prompter) (*datamodel.In
 
 	files := map[string]string{
 		fs.ConfigPath(): initConfigYAML(key, name),
-		filepath.Join(fs.KiraDir(), ".gitignore"):    ".cache/\n",
+		filepath.Join(fs.KiraDir(), ".gitignore"):    storage.CacheDirName + "/\n",
 		filepath.Join(fs.TemplateDir(), "ticket.md"): defaultTemplate(datamodel.TypeTicket),
 		filepath.Join(fs.TemplateDir(), "epic.md"):   defaultTemplate(datamodel.TypeEpic),
 	}

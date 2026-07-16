@@ -2,7 +2,6 @@ package core
 
 import (
 	"maps"
-	"os"
 	"slices"
 	"strings"
 
@@ -20,50 +19,33 @@ func (s *Store) LabelCreate(cfg *datamodel.Config, names []string) (*datamodel.L
 	}
 	res := &datamodel.LabelCreateResult{Created: []string{}, AlreadyKnown: []string{}}
 
-	fs := s.fs()
-	release, err := fs.Lock()
-	if err != nil {
-		return nil, err
-	}
-	defer release()
-
-	data, err := os.ReadFile(fs.ConfigPath())
-	if err != nil {
-		return nil, errx.User("reading config: %v", err)
-	}
-	current, err := config.Parse(data)
-	if err != nil {
-		return nil, errx.User("%v", err)
-	}
-	known := make(map[string]bool, len(current.Labels.Known))
-	for _, n := range current.Labels.Known {
-		known[n] = true
-	}
-	var toAdd []string
-	for _, n := range names {
-		if known[n] {
-			res.AlreadyKnown = append(res.AlreadyKnown, n)
-			continue
+	err := s.mutateConfig(func(data []byte, locked *datamodel.Config) (configEdit, error) {
+		known := make(map[string]bool, len(locked.Labels.Known))
+		for _, n := range locked.Labels.Known {
+			known[n] = true
 		}
-		known[n] = true
-		toAdd = append(toAdd, n)
-	}
-	if len(toAdd) == 0 {
-		return res, nil
-	}
-
-	out, err := config.AppendKnownLabels(data, toAdd)
+		var toAdd []string
+		for _, n := range names {
+			if known[n] {
+				res.AlreadyKnown = append(res.AlreadyKnown, n)
+				continue
+			}
+			known[n] = true
+			toAdd = append(toAdd, n)
+		}
+		if len(toAdd) == 0 {
+			return configEdit{noop: true}, nil
+		}
+		out, err := config.AppendKnownLabels(data, toAdd)
+		if err != nil {
+			return configEdit{}, errx.User("%v", err)
+		}
+		res.Created = toAdd
+		return configEdit{data: out, commit: locked.Commit, subject: "label create " + strings.Join(toAdd, ",")}, nil
+	})
 	if err != nil {
-		return nil, errx.User("%v", err)
-	}
-	if err := os.WriteFile(fs.ConfigPath(), out, filePerm); err != nil {
-		return nil, errx.Env("writing config: %v", err)
-	}
-	subject := cfg.Commit.SubjectPrefix + "label create " + strings.Join(toAdd, ",")
-	if _, err := s.finalize(cfg.Commit.Mode, commitSpec{trailerKey: cfg.Commit.Trailer, subject: subject}, fs.RelToRoot(fs.ConfigPath())); err != nil {
 		return nil, err
 	}
-	res.Created = toAdd
 	return res, nil
 }
 

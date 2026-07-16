@@ -1,12 +1,16 @@
 package core
 
-import "github.com/shivamshivanshu/kira/internal/errx"
+import (
+	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/storage"
+)
 
 const (
 	mergeDriverName = "kira field-level auto-merge"
 	mergeDriverCmd  = "kira merge-file %O %A %B"
-	mergeAttrLine   = ".kira/tickets/*.md merge=kira"
 )
+
+var mergeAttrLine = storage.TicketsPrefix + "/*.md merge=kira"
 
 func (s *Store) RegisterMergeDriver() error {
 	repo := s.repo()

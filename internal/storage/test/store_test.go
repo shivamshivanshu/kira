@@ -66,4 +66,7 @@ func TestDiscoverMissingIsEnvError(t *testing.T) {
 	if !errors.As(err, &ce) || ce.Code != errx.ExitEnv {
 		t.Fatalf("want errx.ExitEnv error, got %v", err)
 	}
+	if !errors.Is(err, storage.ErrStoreNotFound) {
+		t.Fatalf("error should match ErrStoreNotFound sentinel, got %v", err)
+	}
 }

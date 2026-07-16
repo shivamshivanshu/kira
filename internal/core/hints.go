@@ -9,13 +9,11 @@ import (
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
-var editableFields = datamodel.EditableFields
-
 func fieldHint(key string) string {
-	if n := errx.Nearest(key, editableFields); n != "" {
+	if n := errx.Nearest(key, datamodel.EditableFields); n != "" {
 		return "did you mean `--field " + n + "=...`?"
 	}
-	return "editable fields: " + strings.Join(editableFields, ", ")
+	return "editable fields: " + strings.Join(datamodel.EditableFields, ", ")
 }
 
 func sprintKeys(cfg *datamodel.Config) []string {

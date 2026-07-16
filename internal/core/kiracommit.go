@@ -1,7 +1,6 @@
 package core
 
 import (
-	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -76,7 +75,7 @@ func (s *Store) summarizeDirty(cfg *datamodel.Config, dirty []string) (numbers, 
 			body = append(body, p)
 			continue
 		}
-		ulid := strings.TrimSuffix(path.Base(p), path.Ext(p))
+		ulid := storage.ULIDFromPath(p)
 		it, ok := byID[ulid]
 		if !ok {
 			body = append(body, p)

@@ -19,15 +19,11 @@ func (s *Store) Blame(cfg *datamodel.Config, ref string) (*datamodel.BlameResult
 	if err != nil {
 		return nil, err
 	}
-	items, resolver := ld.items, ld.resolver
-	ulid, err := resolveID(resolver, ref)
+	it, err := findItem(ld.items, ld.resolver, ref)
 	if err != nil {
 		return nil, err
 	}
-	it := findByULID(items, ulid)
-	if it == nil {
-		return nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
-	}
+	ulid := it.ID
 
 	events, _, err := s.cachedEvents(ulid, s.fileHead(ulid))
 	if err != nil {
