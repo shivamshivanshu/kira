@@ -32,6 +32,7 @@ var setKeys = map[string]setKind{
 	"estimate.unit":         kindLiteral,
 }
 
+// SetKeys returns the list of config keys that can be set via SetScalar.
 func SetKeys() []string {
 	return slices.Sorted(maps.Keys(setKeys))
 }

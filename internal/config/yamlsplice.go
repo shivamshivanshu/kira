@@ -119,9 +119,10 @@ func flowCloseIndex(line string, open int) int {
 				quote = 0
 			}
 		case quote == '"':
-			if c == '\\' {
+			switch c {
+			case '\\':
 				j++
-			} else if c == '"' {
+			case '"':
 				quote = 0
 			}
 		case c == '\'' || c == '"':

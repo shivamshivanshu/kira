@@ -9,6 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
+// AppendKnownLabels appends label names to the known labels list in the config data.
 func AppendKnownLabels(data []byte, names []string) ([]byte, error) {
 	for _, name := range names {
 		var err error

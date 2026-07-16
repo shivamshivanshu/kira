@@ -7,6 +7,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
+// AppendSprint appends a sprint entry to the sprints list in the config data.
 func AppendSprint(data []byte, sp datamodel.Sprint) ([]byte, error) {
 	entry, err := inlineSprintEntry(sp)
 	if err != nil {

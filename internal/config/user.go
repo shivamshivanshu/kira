@@ -24,6 +24,7 @@ const (
 	userKeyAutomation = "automation"
 )
 
+// UserConfigDir returns the user's kira config directory path and whether it could be resolved.
 func UserConfigDir(env func(string) string) (string, bool) {
 	if xdg := env("XDG_CONFIG_HOME"); xdg != "" {
 		return filepath.Join(xdg, userConfigDirName), true
@@ -50,7 +51,7 @@ type ignoreFunc func(format string, args ...any)
 
 func ignorer(warn io.Writer, path string) ignoreFunc {
 	return func(format string, args ...any) {
-		fmt.Fprintf(warn, "%s: %s; ignored\n", path, fmt.Sprintf(format, args...))
+		_, _ = fmt.Fprintf(warn, "%s: %s; ignored\n", path, fmt.Sprintf(format, args...))
 	}
 }
 

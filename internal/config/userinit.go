@@ -20,6 +20,7 @@ func mustTemplate(name string) string {
 	return string(data)
 }
 
+// InitUser initializes the user's kira config directory and returns the result.
 func InitUser(env func(string) string) (*datamodel.ConfigInitResult, error) {
 	dir, ok := UserConfigDir(env)
 	if !ok {
@@ -41,6 +42,7 @@ func InitUser(env func(string) string) (*datamodel.ConfigInitResult, error) {
 	return &datamodel.ConfigInitResult{Path: dir, Created: true, Files: written}, nil
 }
 
+// PresentUserFiles returns which kira config files exist in the given directory.
 func PresentUserFiles(dir string) []string {
 	present := make([]string, 0, 2)
 	for _, name := range []string{userConfigFileName, userHooksYAMLName} {

@@ -11,6 +11,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
+// AddBoard appends a board entry to the config data.
 func AddBoard(data []byte, b datamodel.Board, materializeImplicit *datamodel.Board) ([]byte, error) {
 	original, err := Parse(data)
 	if err != nil {
@@ -78,6 +79,7 @@ func inlineBoardEntry(b datamodel.Board) (string, error) {
 	return entry + " }", nil
 }
 
+// UpdateBoard updates an existing board entry in the config data.
 func UpdateBoard(data []byte, key string, mutate func(datamodel.Board) datamodel.Board) ([]byte, error) {
 	cfg, err := Parse(data)
 	if err != nil {

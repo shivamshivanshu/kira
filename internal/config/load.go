@@ -13,6 +13,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
+// Load reads and parses the repo's .kira/config.yaml.
 func Load(root string) (*datamodel.Config, error) {
 	data, err := readRepoConfig(root)
 	if err != nil {
@@ -21,6 +22,7 @@ func Load(root string) (*datamodel.Config, error) {
 	return Parse(data)
 }
 
+// LoadWithUser loads the repo config and merges in user preferences from the user config directory.
 func LoadWithUser(root string, env func(string) string, warn io.Writer) (*datamodel.Config, error) {
 	data, err := readRepoConfig(root)
 	if err != nil {
@@ -63,6 +65,7 @@ func readRepoConfig(root string) ([]byte, error) {
 	return data, nil
 }
 
+// Parse parses raw YAML bytes into a Config structure with defaults applied.
 func Parse(data []byte) (*datamodel.Config, error) {
 	cfg := Default()
 	if err := parseInto(cfg, data, nil); err != nil {
