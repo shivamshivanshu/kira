@@ -1,0 +1,22 @@
+[
+  {
+    "ref": "KIRA-1",
+    "result": {
+      "id": "<ULID-1>",
+      "number": "KIRA-1",
+      "from": "TODO",
+      "to": "IN_PROGRESS",
+      "activated": false
+    }
+  },
+  {
+    "ref": "KIRA-2",
+    "result": {
+      "id": "<ULID-2>",
+      "number": "KIRA-2",
+      "from": "TODO",
+      "to": "IN_PROGRESS",
+      "activated": false
+    }
+  }
+]

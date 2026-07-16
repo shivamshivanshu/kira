@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -65,6 +66,15 @@ type globalFlags struct {
 	nonInteractive bool
 }
 
+func registerGlobalFlags(fs *pflag.FlagSet, g *globalFlags) {
+	fs.BoolVar(&g.json, "json", false, "emit machine-readable JSON on stdout")
+	fs.BoolVar(&g.noColor, "no-color", false, "disable ANSI color in human output")
+	fs.StringVarP(&g.chdir, "C", "C", "", "run as if invoked from `path`")
+	fs.BoolVar(&g.quiet, "quiet", false, "suppress non-essential human output")
+	fs.BoolVar(&g.nonInteractive, "non-interactive", false, "")
+	_ = fs.MarkHidden("non-interactive")
+}
+
 func newRootCmd() (*cobra.Command, *globalFlags) {
 	g := &globalFlags{}
 	root := &cobra.Command{
@@ -77,13 +87,7 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 			return runTUI(cmd, g, false, true)
 		},
 	}
-	pf := root.PersistentFlags()
-	pf.BoolVar(&g.json, "json", false, "emit machine-readable JSON on stdout")
-	pf.BoolVar(&g.noColor, "no-color", false, "disable ANSI color in human output")
-	pf.StringVarP(&g.chdir, "C", "C", "", "run as if invoked from `path`")
-	pf.BoolVar(&g.quiet, "quiet", false, "suppress non-essential human output")
-	pf.BoolVar(&g.nonInteractive, "non-interactive", false, "")
-	_ = pf.MarkHidden("non-interactive")
+	registerGlobalFlags(root.PersistentFlags(), g)
 
 	root.AddCommand(
 		newTUICmd(g),

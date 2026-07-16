@@ -96,6 +96,18 @@ func withJSON(args []string) []string {
 	return append(append([]string{}, args...), "--json")
 }
 
+type jsonErrorObj struct {
+	Error string `json:"error"`
+	Hint  string `json:"hint"`
+	Code  int    `json:"code"`
+}
+
+func parseJSONError(stderr string) (jsonErrorObj, error) {
+	var obj jsonErrorObj
+	err := json.Unmarshal([]byte(stderr), &obj)
+	return obj, err
+}
+
 func mustKira(t *testing.T, dir string, args ...string) {
 	t.Helper()
 	if _, stderr, code := kira(t, dir, args...); code != 0 {
@@ -152,6 +164,21 @@ func oneTicket(t *testing.T) string {
 	return dir
 }
 
+func twoTickets(t *testing.T) string {
+	t.Helper()
+	dir := kiraRepo(t)
+	mustKira(t, dir, "create", "ticket", "--title", "First", "--no-edit")
+	mustKira(t, dir, "create", "ticket", "--title", "Second", "--no-edit")
+	return dir
+}
+
+func oneInProgressTicket(t *testing.T) string {
+	t.Helper()
+	dir := oneTicket(t)
+	mustKira(t, dir, "move", "KIRA-1", "IN_PROGRESS")
+	return dir
+}
+
 func automationRepo(t *testing.T) string {
 	t.Helper()
 	dir := kiraRepo(t)
@@ -169,8 +196,7 @@ func automationRepo(t *testing.T) string {
 
 func reviewTicket(t *testing.T) string {
 	t.Helper()
-	dir := oneTicket(t)
-	mustKira(t, dir, "move", "KIRA-1", "IN_PROGRESS")
+	dir := oneInProgressTicket(t)
 	mustKira(t, dir, "move", "KIRA-1", "REVIEW")
 	return dir
 }
@@ -296,6 +322,7 @@ func TestJSONContract(t *testing.T) {
 		{"create-epic", kiraRepo, []string{"create", "epic", "--title", "New epic", "--no-edit"}, false},
 		{"print-template", kiraRepo, []string{"create", "ticket", "--print-template"}, true},
 		{"move", oneTicket, []string{"move", "KIRA-1", "IN_PROGRESS"}, false},
+		{"move-bulk", twoTickets, []string{"move", "KIRA-1", "KIRA-2", "IN_PROGRESS"}, false},
 		{"move-resolution", oneTicket, []string{"move", "KIRA-1", "WONT_DO", "--resolution", "dropped"}, false},
 		{"move-wip-warn", wipLoaded, []string{"move", "KIRA-3", "REVIEW"}, false},
 		{"assign", oneTicket, []string{"assign", "KIRA-1", "shivam"}, false},
@@ -376,18 +403,32 @@ func TestJSONErrors(t *testing.T) {
 			if stderr == "" {
 				t.Errorf("stderr must carry the error, got empty")
 			}
-			var obj struct {
-				Error string `json:"error"`
-				Hint  string `json:"hint"`
-				Code  int    `json:"code"`
-			}
-			if err := json.Unmarshal([]byte(stderr), &obj); err != nil {
+			obj, err := parseJSONError(stderr)
+			if err != nil {
 				t.Errorf("stderr is not a JSON error object: %v (got: %s)", err, stderr)
 			} else if obj.Error == "" || obj.Code != c.wantCode {
 				t.Errorf("json error object malformed: %+v", obj)
 			}
 			checkGolden(t, c.name+".err", scrub(stderr, dir))
 		})
+	}
+}
+
+func TestJSONBulkPartialFailure(t *testing.T) {
+	t.Parallel()
+	dir := oneInProgressTicket(t)
+	out, stderr, code := kira(t, dir, "move", "KIRA-1", "KIRA-999", "REVIEW", "--json")
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1 (stderr: %s)", code, stderr)
+	}
+	checkGolden(t, "move-bulk-partial-failure.json", scrub(out, dir))
+
+	obj, err := parseJSONError(stderr)
+	if err != nil {
+		t.Fatalf("stderr is not a JSON error object: %v (got: %s)", err, stderr)
+	}
+	if obj.Error != "1 of 2 items failed" || obj.Code != 1 {
+		t.Errorf("json error object malformed: %+v", obj)
 	}
 }
 
