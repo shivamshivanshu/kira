@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: bug
 title: "Nested-root git hook shims no-op: GIT_PREFIX-aware Discover from cwd=toplevel"
-state: IN_PROGRESS
+state: REVIEW
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T02:32:26+05:30
-updated: 2026-07-16T15:09:57+05:30
+updated: 2026-07-16T15:22:24+05:30
 ---
 
 ## Description
