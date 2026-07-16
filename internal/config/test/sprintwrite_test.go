@@ -158,6 +158,22 @@ func TestAppendSprintSpacedEmptyFlowList(t *testing.T) {
 	}
 }
 
+func TestAppendSprintSplitLineEmptyFlowList(t *testing.T) {
+	t.Parallel()
+	data := "sprints:\n  []                  # sprint entities\n"
+	out := appendSprint(t, data, s15)
+	cfg, err := config.Parse([]byte(out))
+	if err != nil {
+		t.Fatalf("result does not parse: %v\n%s", err, out)
+	}
+	if len(cfg.Sprints) != 1 || cfg.Sprints[0] != s15 {
+		t.Errorf("parsed sprints = %+v", cfg.Sprints)
+	}
+	if !strings.Contains(out, "# sprint entities") {
+		t.Errorf("trailing comment dropped:\n%s", out)
+	}
+}
+
 func TestAppendSprintNullValue(t *testing.T) {
 	t.Parallel()
 	data := "sprints:\n"

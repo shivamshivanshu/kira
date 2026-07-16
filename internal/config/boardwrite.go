@@ -118,7 +118,7 @@ func UpdateBoard(data []byte, key string, mutate func(datamodel.Board) datamodel
 			return nil, errx.User("config: boards: cannot rewrite a multi-line entry for %q; reformat it inline", key)
 		}
 		i := node.Line - 1
-		open := node.Column - 1
+		open := byteColumn(lines[i], node)
 		closing := -1
 		if open >= 0 && open < len(lines[i]) && lines[i][open] == '{' {
 			closing = flowCloseIndex(lines[i], open)

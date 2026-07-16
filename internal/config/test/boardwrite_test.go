@@ -294,6 +294,28 @@ func TestUpdateBoardInsideInlineFlowList(t *testing.T) {
 	}
 }
 
+func TestUpdateBoardNonASCIISiblingNameByteOffset(t *testing.T) {
+	base := strings.Replace(boardBaseConfig, "version: 1", "version: 2", 1) +
+		"boards: [{ key: KIRA, name: Zürich, default: true }, { key: XYZ, name: Beta }]\n"
+	out, err := config.UpdateBoard([]byte(base), "XYZ", func(b datamodel.Board) datamodel.Board {
+		b.Name = "Beta Squad"
+		return b
+	})
+	if err != nil {
+		t.Fatalf("UpdateBoard: %v", err)
+	}
+	cfg, err := config.Parse(out)
+	if err != nil {
+		t.Fatalf("result does not parse: %v\n%s", err, out)
+	}
+	if b, ok := cfg.BoardByKey("XYZ"); !ok || b.Name != "Beta Squad" {
+		t.Fatalf("rename not applied: %+v", cfg.Boards)
+	}
+	if b, ok := cfg.BoardByKey("KIRA"); !ok || b.Name != "Zürich" {
+		t.Fatalf("multi-byte sibling entry damaged: %+v", cfg.Boards)
+	}
+}
+
 func TestAddBoardPreservesUnrelatedLines(t *testing.T) {
 	imp := implicitKIRA
 	out := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)

@@ -8,6 +8,20 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
+// byteColumn converts n.Column (yaml.v3's 1-based rune count) into a 0-based
+// byte offset into line, since splicing slices raw config lines by byte index.
+func byteColumn(line string, n *yaml.Node) int {
+	col := n.Column - 1
+	if col <= 0 {
+		return col
+	}
+	runes := []rune(line)
+	if col > len(runes) {
+		col = len(runes)
+	}
+	return len(string(runes[:col]))
+}
+
 // appendToTopLevelList splices entry onto data's top-level key list in place
 // rather than re-encoding the document: a whole-file yaml re-encode would
 // normalize comment alignment and flow styles across the hand-edited config.yaml
@@ -47,10 +61,18 @@ func appendNewTopLevelBlock(lines []string, key, entry string) []string {
 }
 
 func openBlockListUnderKey(lines []string, key, val *yaml.Node, entry string) []string {
+	if val.Kind == yaml.SequenceNode && val.Line != key.Line {
+		i := val.Line - 1
+		line := lines[i]
+		open := byteColumn(line, val)
+		if closing := flowCloseIndex(line, open); closing >= 0 {
+			return replaceLine(lines, i, "  - "+entry+line[closing+1:])
+		}
+	}
 	i := key.Line - 1
 	line := lines[i]
 	if val.Kind == yaml.SequenceNode && val.Line == key.Line {
-		open := val.Column - 1
+		open := byteColumn(line, val)
 		if closing := flowCloseIndex(line, open); closing >= 0 {
 			line = line[:open] + line[closing+1:]
 		}
@@ -67,7 +89,7 @@ func appendToBlockList(lines []string, val *yaml.Node, entry string) []string {
 
 func appendToFlowList(lines []string, subsystem string, val *yaml.Node, entry string) ([]string, error) {
 	i := val.Line - 1
-	open := val.Column - 1
+	open := byteColumn(lines[i], val)
 	closing := -1
 	if maxLine(val) == val.Line && open >= 0 && open < len(lines[i]) && lines[i][open] == '[' {
 		closing = flowCloseIndex(lines[i], open)
@@ -158,7 +180,7 @@ func replaceScalarLine(lines []string, leaf *yaml.Node, token string) ([]string,
 		return nil, errx.User("config: value node points outside the file")
 	}
 	line := lines[i]
-	col := leaf.Column - 1
+	col := byteColumn(line, leaf)
 	old := marshalScalar(leaf)
 	if col < 0 || col+len(old) > len(line) || line[col:col+len(old)] != old {
 		return nil, errx.User("config: cannot locate value on line %d", leaf.Line)
