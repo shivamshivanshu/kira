@@ -95,6 +95,8 @@ func TestParseErrors(t *testing.T) {
 		{"IS without EMPTY", "owner IS full", 9},
 		{"state is never empty", "state IS EMPTY", 6},
 		{"created is never empty", "created IS EMPTY", 8},
+		{"activity is never empty", "activity IS EMPTY", 9},
+		{"unknown field before comparison", "onwer=shivam", 0},
 		{"no expression before ORDER BY", "ORDER BY rank", 0},
 		{"ORDER BY in operand position", "NOT ORDER BY rank", 4},
 		{"ORDER BY missing field", "a ORDER BY", 10},

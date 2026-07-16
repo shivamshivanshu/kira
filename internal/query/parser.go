@@ -64,9 +64,10 @@ func (e *boolExpr) String() string {
 func (e *termExpr) String() string { return "(term " + e.text + ")" }
 
 type Order struct {
-	Field string
-	Desc  bool
-	pos   int
+	Field         string
+	Desc          bool
+	pos           int
+	priorityIndex map[string]int
 }
 
 func (o *Order) String() string {
@@ -138,7 +139,7 @@ func allowsOrderedCmp(f string) bool {
 
 func isAlwaysPresent(f string) bool {
 	switch f {
-	case fieldState, fieldType, fieldCategory, fieldCreated, fieldUpdated, fieldBoard:
+	case fieldState, fieldType, fieldCategory, fieldCreated, fieldUpdated, fieldActivity, fieldBoard:
 		return true
 	}
 	return false
@@ -189,6 +190,10 @@ func (p *parser) next() token  { t := p.toks[p.i]; p.i++; return t }
 
 func (p *parser) atOrderBy() bool {
 	return isKeyword(p.peek(), "ORDER") && isKeyword(p.peek2(), "BY")
+}
+
+func (p *parser) startsFieldPredicate() bool {
+	return p.peek2().isCmp() || (isKeyword(p.peek2(), "IN") && p.toks[p.i+2].kind == tokLParen) || isKeyword(p.peek2(), "IS")
 }
 
 func (p *parser) parseOrder() (*Order, error) {
@@ -315,6 +320,8 @@ func (p *parser) parsePrimary() (Expr, error) {
 				p.next()
 				return &boolExpr{field: t.text, want: true}, nil
 			}
+		} else if p.startsFieldPredicate() {
+			return nil, unknownFieldErr(t.pos, t.text)
 		}
 		p.next()
 		return &termExpr{t.text}, nil
@@ -381,6 +388,11 @@ func typeCheckValue(field string, val token, date *time.Time, num *float64) erro
 		d, err := parseDate(val.text)
 		if err != nil {
 			return &Error{Pos: val.pos, Msg: "invalid date " + quote(val.text)}
+		}
+		if field != fieldDue {
+			if _, err := time.Parse(time.DateOnly, val.text); err != nil {
+				return &Error{Pos: val.pos, Msg: "field " + field + " compares by calendar day; use YYYY-MM-DD, not " + quote(val.text)}
+			}
 		}
 		*date = d
 	}

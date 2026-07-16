@@ -137,14 +137,14 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 		if f.value == "" {
 			continue
 		}
-		p, err := query.Match(f.field, f.value, qopts)
+		p, warns, err := query.Match(f.field, f.value, qopts)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		preds = append(preds, p)
-	}
-	if opts.Sprint == "active" && qopts.ActiveSprint == "" {
-		notes = append(notes, datamodel.Warning{Code: datamodel.WarnNoActiveSprint})
+		for _, w := range warns {
+			notes = append(notes, datamodel.Warning{Code: w})
+		}
 	}
 
 	exprs := make([]string, 0, 2)

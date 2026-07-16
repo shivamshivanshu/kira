@@ -208,6 +208,7 @@ func TestCompileErrors(t *testing.T) {
 		{"order by priority needs priorities", "a ORDER BY priority", noPrio, 11},
 		{"owner @me without identity", "owner=@me", opts, 6},
 		{"reporter @me without identity", "reporter=@me", opts, 9},
+		{"full timestamp on a calendar-day field", "created=2026-07-16T20:00:00Z", opts, 8},
 	}
 	for _, tc := range tests {
 		_, err := query.Compile(tc.expr, tc.opts)
@@ -301,7 +302,7 @@ func TestBlockedActivitySyntaxErrors(t *testing.T) {
 
 func TestMatch(t *testing.T) {
 	items, opts, cfg := evalFixture()
-	pred, err := query.Match("owner", "shivam", opts)
+	pred, _, err := query.Match("owner", "shivam", opts)
 	if err != nil {
 		t.Fatalf("Match: %v", err)
 	}
@@ -314,12 +315,12 @@ func TestMatch(t *testing.T) {
 	if n != 2 {
 		t.Errorf("Match owner=shivam matched %d, want 2", n)
 	}
-	if _, err := query.Match("epic", "KIRA-100", opts); err != nil {
+	if _, _, err := query.Match("epic", "KIRA-100", opts); err != nil {
 		t.Errorf("Match epic=KIRA-100: %v", err)
 	}
 	active := opts
 	active.ActiveSprint = "2026-S14"
-	pred, err = query.Match("sprint", "active", active)
+	pred, _, err = query.Match("sprint", "active", active)
 	if err != nil {
 		t.Fatalf("Match sprint=active: %v", err)
 	}
@@ -332,10 +333,29 @@ func TestMatch(t *testing.T) {
 	if n != 1 {
 		t.Errorf("Match sprint=active matched %d, want 1", n)
 	}
-	if _, err := query.Match("created", "2026-01-01", opts); err == nil {
+	if _, warns, err := query.Match("sprint", "active", opts); err != nil || len(warns) != 1 || warns[0] != datamodel.WarnNoActiveSprint {
+		t.Errorf("Match sprint=active without an active sprint: warns=%v err=%v, want [WarnNoActiveSprint] nil", warns, err)
+	}
+	if _, _, err := query.Match("created", "2026-01-01", opts); err == nil {
 		t.Errorf("Match on a date field should be rejected")
 	}
-	if _, err := query.Match("bogus", "x", opts); err == nil {
+	if _, _, err := query.Match("bogus", "x", opts); err == nil {
 		t.Errorf("Match on an unknown field should be rejected")
+	}
+	if pred, _, err := query.Match("estimate", "5", opts); err != nil {
+		t.Errorf("Match estimate=5: %v", err)
+	} else {
+		var nums []string
+		for _, it := range items {
+			if pred(it, cfg) {
+				nums = append(nums, it.Number)
+			}
+		}
+		if len(nums) != 1 || nums[0] != "KIRA-2" {
+			t.Errorf("Match estimate=5 matched %v, want [KIRA-2] (estimate must not default to 0)", nums)
+		}
+	}
+	if _, _, err := query.Match("blocked", "true", opts); err == nil {
+		t.Errorf("Match on a boolean field should be rejected, not silently treated as unknown")
 	}
 }

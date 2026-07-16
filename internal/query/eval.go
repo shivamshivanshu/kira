@@ -48,21 +48,35 @@ func Compile(input string, opts Options) (*Compiled, error) {
 	if err != nil {
 		return nil, err
 	}
-	if q.Order != nil && q.Order.Field == fieldPriority && len(opts.Priorities) == 0 {
-		return nil, &Error{Pos: q.Order.pos, Msg: "ORDER BY priority requires configured priorities"}
+	if q.Order != nil && q.Order.Field == fieldPriority {
+		if len(opts.Priorities) == 0 {
+			return nil, &Error{Pos: q.Order.pos, Msg: "ORDER BY priority requires configured priorities"}
+		}
+		q.Order.priorityIndex = PriorityIndex(opts.Priorities)
 	}
 	return &Compiled{Pred: pred, Order: q.Order, Notes: c.notes}, nil
 }
 
-func Match(field, value string, opts Options) (Predicate, error) {
+func Match(field, value string, opts Options) (Predicate, []datamodel.WarnCode, error) {
 	if !fields[field] {
-		return nil, unknownFieldErr(0, field)
+		return nil, nil, unknownFieldErr(0, field)
 	}
 	if isDateField(field) {
-		return nil, &Error{Pos: 0, Msg: "field " + field + " is not an equality filter"}
+		return nil, nil, &Error{Pos: 0, Msg: "field " + field + " is not an equality filter"}
+	}
+	if isBoolField(field) {
+		return nil, nil, &Error{Pos: 0, Msg: "field " + field + " is boolean; use the query grammar instead"}
+	}
+	pred := &predExpr{field: field, op: token{kind: tokEq, text: "="}, value: value}
+	if err := typeCheckValue(field, token{kind: tokWord, text: value}, &pred.date, &pred.num); err != nil {
+		return nil, nil, err
 	}
 	c := &compiler{opts: opts}
-	return c.compilePred(&predExpr{field: field, op: token{kind: tokEq, text: "="}, value: value})
+	p, err := c.compilePred(pred)
+	if err != nil {
+		return nil, nil, err
+	}
+	return p, c.notes, nil
 }
 
 type compiler struct {
@@ -230,13 +244,9 @@ func compileIsEmpty(n *emptyExpr) Predicate {
 }
 
 func (c *compiler) compileBool(n *boolExpr) (Predicate, error) {
-	switch n.field {
-	case fieldBlocked:
-		pred := c.blockedPred()
-		want := n.want
-		return func(it *datamodel.Item, cfg *datamodel.Config) bool { return pred(it, cfg) == want }, nil
-	}
-	return nil, unknownFieldErr(0, n.field)
+	pred := c.blockedPred()
+	want := n.want
+	return func(it *datamodel.Item, cfg *datamodel.Config) bool { return pred(it, cfg) == want }, nil
 }
 
 func (c *compiler) blockedPred() Predicate {
