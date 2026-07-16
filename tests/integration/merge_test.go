@@ -51,9 +51,9 @@ func TestMain(m *testing.M) {
 	if err := build.Run(); err != nil {
 		panic("build kira: " + err.Error())
 	}
-	os.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	_ = os.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	code := m.Run()
-	os.RemoveAll(dir)
+	_ = os.RemoveAll(dir)
 	os.Exit(code)
 }
 

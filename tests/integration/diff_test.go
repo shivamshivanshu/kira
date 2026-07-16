@@ -35,7 +35,7 @@ func TestDiffDeletedAndBody(t *testing.T) {
 
 	keepPath := filepath.Join(root, filepath.FromSlash(keep.Path))
 	body, _ := os.ReadFile(keepPath)
-	os.WriteFile(keepPath, append(body, []byte("\nan added description line\n")...), 0o644)
+	_ = os.WriteFile(keepPath, append(body, []byte("\nan added description line\n")...), 0o644)
 	if _, err := repo.Output("rm", gone.Path); err != nil {
 		t.Fatalf("git rm: %v", err)
 	}
@@ -93,10 +93,10 @@ func TestDiffNonAliasNumberChangeVisible(t *testing.T) {
 	if hacked == string(body) {
 		t.Fatalf("could not rewrite number line in %s", it.Path)
 	}
-	os.WriteFile(path, []byte(hacked), 0o644)
-	repo.Output("add", "-A")
-	repo.Output("commit", "-m", "hand-edited number, no alias")
-	repo.Output("checkout", mainBranch)
+	_ = os.WriteFile(path, []byte(hacked), 0o644)
+	_, _ = repo.Output("add", "-A")
+	_, _ = repo.Output("commit", "-m", "hand-edited number, no alias")
+	_, _ = repo.Output("checkout", mainBranch)
 
 	res, err := s.Diff("later", "", true)
 	if err != nil {
@@ -133,9 +133,9 @@ func TestDiffDefaultIsMyChangesVsIncoming(t *testing.T) {
 
 	path := filepath.Join(root, filepath.FromSlash(it.Path))
 	body, _ := os.ReadFile(path)
-	os.WriteFile(path, append(body, []byte("\nan added description line\n")...), 0o644)
-	repo.Output("add", "-A")
-	repo.Output("commit", "-m", "edit body on later")
+	_ = os.WriteFile(path, append(body, []byte("\nan added description line\n")...), 0o644)
+	_, _ = repo.Output("add", "-A")
+	_, _ = repo.Output("commit", "-m", "edit body on later")
 
 	mine, err := s.Diff(mainBranch, "", false)
 	if err != nil {

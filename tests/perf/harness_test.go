@@ -52,13 +52,13 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	os.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
-	os.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
-	os.Setenv("EDITOR", "true")
+	_ = os.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	_ = os.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+	_ = os.Setenv("EDITOR", "true")
 	code := m.Run()
 	tmpMu.Lock()
 	for _, d := range tmpDirs {
-		os.RemoveAll(d)
+		_ = os.RemoveAll(d)
 	}
 	tmpMu.Unlock()
 	os.Exit(code)
@@ -194,7 +194,7 @@ func warm(tb testing.TB, bin, dir string) {
 
 func gitShim(tb testing.TB) (dir, counter string) {
 	tb.Helper()
-	real, err := exec.LookPath("git")
+	gitPath, err := exec.LookPath("git")
 	if err != nil {
 		tb.Fatalf("locate git: %v", err)
 	}
@@ -204,7 +204,7 @@ func gitShim(tb testing.TB) (dir, counter string) {
 	}
 	registerTmp(dir)
 	counter = filepath.Join(dir, "count")
-	script := "#!/bin/sh\nprintf 'x\\n' >> \"$KIRA_SPAWN_COUNTER\"\nexec " + real + " \"$@\"\n"
+	script := "#!/bin/sh\nprintf 'x\\n' >> \"$KIRA_SPAWN_COUNTER\"\nexec " + gitPath + " \"$@\"\n"
 	if err := os.WriteFile(filepath.Join(dir, "git"), []byte(script), 0o755); err != nil {
 		tb.Fatal(err)
 	}

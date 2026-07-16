@@ -34,7 +34,7 @@ func run(m *testing.M) int {
 	if err != nil {
 		panic(err)
 	}
-	defer os.RemoveAll(dir)
+	defer func() { _ = os.RemoveAll(dir) }()
 
 	kiraBin = filepath.Join(dir, "kira")
 	build := exec.Command("go", "build", "-o", kiraBin, "github.com/shivamshivanshu/kira/cmd/kira")

@@ -85,7 +85,7 @@ func TestManualModeStagesNoCommit(t *testing.T) {
 	repo := gitx.Repo{Dir: root}
 	cfgPath := filepath.Join(root, ".kira", "config.yaml")
 	data, _ := os.ReadFile(cfgPath)
-	os.WriteFile(cfgPath, []byte(strings.Replace(string(data), "mode: auto", "mode: manual", 1)), 0o644)
+	_ = os.WriteFile(cfgPath, []byte(strings.Replace(string(data), "mode: auto", "mode: manual", 1)), 0o644)
 	for _, args := range [][]string{
 		{"add", ".kira/config.yaml"},
 		{"commit", "-m", "manual mode"},
@@ -182,9 +182,9 @@ func TestEditEditorRepresentsSoftError(t *testing.T) {
 	valid := filepath.Join(dir, "valid.md")
 	counter := filepath.Join(dir, "counter")
 	script := filepath.Join(dir, "editor.sh")
-	os.WriteFile(invalid, []byte(strings.Replace(string(base), "blocked_by: []", "blocked_by: []\nestimate: notanumber", 1)), 0o644)
-	os.WriteFile(valid, []byte(strings.Replace(string(base), "blocked_by: []", "blocked_by: []\nestimate: 5", 1)), 0o644)
-	os.WriteFile(script, []byte("#!/bin/sh\n"+
+	_ = os.WriteFile(invalid, []byte(strings.Replace(string(base), "blocked_by: []", "blocked_by: []\nestimate: notanumber", 1)), 0o644)
+	_ = os.WriteFile(valid, []byte(strings.Replace(string(base), "blocked_by: []", "blocked_by: []\nestimate: 5", 1)), 0o644)
+	_ = os.WriteFile(script, []byte("#!/bin/sh\n"+
 		"n=$(cat \"$KIRA_COUNTER\" 2>/dev/null || echo 0); n=$((n+1)); echo \"$n\" > \"$KIRA_COUNTER\"\n"+
 		"if [ \"$n\" -eq 1 ]; then cp \"$KIRA_INVALID\" \"$1\"; else cp \"$KIRA_VALID\" \"$1\"; fi\n"), 0o755)
 	t.Setenv("KIRA_COUNTER", counter)
