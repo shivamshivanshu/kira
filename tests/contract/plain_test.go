@@ -22,10 +22,7 @@ func TestPlainContract(t *testing.T) {
 			}
 			got := scrub(out, dir)
 			checkGolden(t, "plain/"+c.name+".plain", got)
-			out2, _, _ := kira(t, dir, c.args...)
-			if got != scrub(out2, dir) {
-				t.Errorf("%s not stable across runs:\n%s\n---\n%s", c.name, out, out2)
-			}
+			checkStable(t, c.name, dir, got, c.args...)
 		})
 	}
 }
