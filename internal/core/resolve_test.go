@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
+	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/ptr"
@@ -39,7 +40,7 @@ func TestResolveRefusesWhenLockAlreadyHeld(t *testing.T) {
 	}
 	defer release()
 
-	_, err = s.Resolve(nil, false)
+	_, err = s.Resolve(config.Default(), nil, false)
 	var ce *errx.Error
 	if !errors.As(err, &ce) || ce.Code != errx.ExitConflict {
 		t.Fatalf("err = %v, want errx.Conflict", err)
@@ -79,7 +80,7 @@ func TestResolveSkipsFilenameIDMismatchInsteadOfMisreportingResolved(t *testing.
 	}
 
 	wantRel := ".kira/tickets/01HZZ0TEST0000000000000000.md"
-	res, err := s.Resolve(nil, false)
+	res, err := s.Resolve(config.Default(), nil, false)
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -95,6 +96,77 @@ func TestResolveSkipsFilenameIDMismatchInsteadOfMisreportingResolved(t *testing.
 	}
 	if !slices.Contains(unmerged, wantRel) {
 		t.Errorf("unmerged = %v, want the original conflict still standing at %s", unmerged, wantRel)
+	}
+}
+
+func TestResolveClearsStaleResolutionAfterDivergentEdits(t *testing.T) {
+	s := eventRepo(t)
+	cfg := config.Default()
+	repo := s.repo()
+
+	it := eventTicket()
+	it.State = "REVIEW"
+	if _, err := s.fs().WriteItem(it); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, s, "2026-01-05T10:00:00Z", "add", "-A")
+	gitRun(t, s, "2026-01-05T10:00:00Z", "commit", "-m", "base review")
+	base, err := repo.Output("branch", "--show-current")
+	if err != nil {
+		t.Fatalf("branch --show-current: %v", err)
+	}
+
+	gitRun(t, s, "2026-01-06T10:00:00Z", "checkout", "-b", "other")
+	it.State = "IN_PROGRESS"
+	it.Updated = "2026-01-08T10:00:00Z"
+	if _, err := s.fs().WriteItem(it); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, s, "2026-01-08T10:00:00Z", "add", "-A")
+	gitRun(t, s, "2026-01-08T10:00:00Z", "commit", "-m", "reopened, state only")
+
+	gitRun(t, s, "2026-01-06T10:00:00Z", "checkout", base)
+	it.State = "REVIEW"
+	it.Resolution = ptr.To("stray")
+	it.Updated = "2026-01-07T10:00:00Z"
+	if _, err := s.fs().WriteItem(it); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, s, "2026-01-07T10:00:00Z", "add", "-A")
+	gitRun(t, s, "2026-01-07T10:00:00Z", "commit", "-m", "resolution only, stale")
+
+	if _, err := repo.Output("merge", "other"); err == nil {
+		t.Fatal("expected a merge conflict (both sides touch the updated: line)")
+	}
+	unmerged, err := repo.UnmergedPaths()
+	if err != nil {
+		t.Fatalf("unmerged: %v", err)
+	}
+	if len(unmerged) == 0 {
+		t.Fatal("expected an unmerged path to resolve")
+	}
+
+	res, err := s.Resolve(cfg, nil, false)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if len(res.Resolved) != 1 {
+		t.Fatalf("Resolved = %+v, want exactly 1", res.Resolved)
+	}
+
+	data, err := os.ReadFile(s.fs().ItemPath(it.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	merged, err := codec.Parse(string(data))
+	if err != nil {
+		t.Fatalf("resolved file unparseable: %v", err)
+	}
+	if merged.State != "IN_PROGRESS" {
+		t.Fatalf("test setup: merged state = %q, want IN_PROGRESS (only theirs touched it)", merged.State)
+	}
+	if merged.Resolution != nil {
+		t.Errorf("resolution = %q, want cleared: state %q is not a Done-category state, so a leftover resolution is stale", *merged.Resolution, merged.State)
 	}
 }
 

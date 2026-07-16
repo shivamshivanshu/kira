@@ -75,6 +75,12 @@ func isDoneState(cfg *datamodel.Config, typ, state string) bool {
 	return ok && cat == datamodel.CategoryDone
 }
 
+func clearStaleResolution(cfg *datamodel.Config, it *datamodel.Item) {
+	if !isDoneState(cfg, it.Type, it.State) {
+		it.Resolution = nil
+	}
+}
+
 func categoryString(cfg *datamodel.Config, typ, state string) string {
 	if c, ok := categoryOf(cfg, typ, state); ok {
 		return string(c)

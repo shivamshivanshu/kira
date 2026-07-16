@@ -162,7 +162,11 @@ func TestResolveCleansPlainMergeConflict(t *testing.T) {
 	if err != nil {
 		t.Fatalf("discover: %v", err)
 	}
-	res, err := s.Resolve(nil, false)
+	cfg, err := s.Config()
+	if err != nil {
+		t.Fatalf("config: %v", err)
+	}
+	res, err := s.Resolve(cfg, nil, false)
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}

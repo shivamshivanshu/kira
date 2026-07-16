@@ -5,8 +5,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-
-	"github.com/shivamshivanshu/kira/internal/core"
 )
 
 func newResolveCmd(g *globalFlags) *cobra.Command {
@@ -15,11 +13,11 @@ func newResolveCmd(g *globalFlags) *cobra.Command {
 		Use:   "resolve [id...]",
 		Short: "Auto-resolve conflicted kira items in an in-progress merge",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s, err := core.Discover(g.chdir, g.prompter())
+			s, cfg, err := openStore(g)
 			if err != nil {
 				return err
 			}
-			res, err := s.Resolve(args, interactive)
+			res, err := s.Resolve(cfg, args, interactive)
 			if err != nil {
 				return err
 			}

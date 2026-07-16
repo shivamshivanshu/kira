@@ -568,7 +568,7 @@ func assertMarkersPresent(t *testing.T, root string) {
 
 func resolveAndComplete(t *testing.T, w *world, s *core.Store, cfg *datamodel.Config) {
 	t.Helper()
-	if _, err := s.Resolve(nil, false); err != nil {
+	if _, err := s.Resolve(cfg, nil, false); err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
 	if _, err := w.repo.Output("commit", "--no-edit"); err != nil {
@@ -624,7 +624,7 @@ func assertRecoverable(t *testing.T, repo gitx.Repo, ticket, value string) {
 func assertIdempotent(t *testing.T, w *world, s *core.Store, cfg *datamodel.Config) {
 	t.Helper()
 	before := ticketBytes(t, w.root)
-	if res, err := s.Resolve(nil, false); err != nil {
+	if res, err := s.Resolve(cfg, nil, false); err != nil {
 		t.Fatalf("re-resolve: %v", err)
 	} else if len(res.Resolved) != 0 {
 		t.Fatalf("re-resolve mutated %d already-merged items", len(res.Resolved))

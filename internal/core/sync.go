@@ -162,7 +162,7 @@ func (s *Store) pullRebase(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts,
 		return errx.Conflict("rebase halted with conflicts (merge.policy: manual)")
 	}
 	for range maxRebaseIterations {
-		unmerged, err := s.autoResolve(repo)
+		unmerged, err := s.autoResolve(cfg, repo)
 		if err != nil {
 			repo.RebaseAbort()
 			return err
@@ -200,7 +200,7 @@ func (s *Store) popStash(cfg *datamodel.Config, repo gitx.Repo, report *syncx.Re
 		report.Add("stash-pop", syncx.StepFailed, "conflicts on pop; resolve then `git stash drop`")
 		return errx.Conflict("stash pop conflicted (merge.policy: manual); resolve, then `git stash drop`")
 	}
-	unmerged, err := s.autoResolve(repo)
+	unmerged, err := s.autoResolve(cfg, repo)
 	if err != nil {
 		report.Add("stash-pop", syncx.StepFailed, err.Error())
 		return errx.Conflict("stash pop conflicted and auto-resolve failed: %v", err)
@@ -224,8 +224,8 @@ func finishAutoResolvedPop(repo gitx.Repo) error {
 	return repo.StashDrop()
 }
 
-func (s *Store) autoResolve(repo gitx.Repo) ([]string, error) {
-	if _, err := s.Resolve(nil, false); err != nil {
+func (s *Store) autoResolve(cfg *datamodel.Config, repo gitx.Repo) ([]string, error) {
+	if _, err := s.Resolve(cfg, nil, false); err != nil {
 		return nil, err
 	}
 	unmerged, _ := repo.UnmergedPaths()

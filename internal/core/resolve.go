@@ -12,7 +12,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
-func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResult, error) {
+func (s *Store) Resolve(cfg *datamodel.Config, refs []string, interactive bool) (*datamodel.ResolveResult, error) {
 	if interactive && !s.prompter.Interactive() {
 		return nil, errx.User("--interactive needs a terminal; rerun without it to auto-resolve").WithHint("run in an interactive shell to pick fields by hand")
 	}
@@ -75,6 +75,7 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 		if interactive {
 			s.pickFields(res.Item, oursItem, theirsItem, res.Arbitrated)
 		}
+		clearStaleResolution(cfg, res.Item)
 		rel, err := s.fs().WriteItemRaw(res.Item.ID, codec.Serialize(res.Item))
 		if err != nil {
 			return nil, err

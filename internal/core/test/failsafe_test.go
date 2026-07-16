@@ -247,6 +247,6 @@ func TestResolveRefusesOnUnknown(t *testing.T) {
 		t.Fatal("expected a merge conflict on the ticket file")
 	}
 
-	_, err := s.Resolve(nil, false)
+	_, err := s.Resolve(cfg, nil, false)
 	assertUpgradeRefusal(t, err)
 }
