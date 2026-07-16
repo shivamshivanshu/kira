@@ -62,3 +62,7 @@ Of the 674:
       round of re-scoping once discovered.
 
 ## Comments
+
+<!-- kira:comment id=01KXNSAWDGP80ENNP68J3SJ0RS author=Shivam-Shivanshu ts=2026-07-16T21:09:43+05:30 -->
+All 3 quick-win batches landed and verified: internal/cli (85 errcheck findings across 22 files), automation/index/tui/core (25 findings: errcheck + unused-parameter + var-naming), tests/contract+integration+perf (20 errcheck + 1 redefines-builtin-id). golangci-lint run ./... now reports 0 issues repo-wide (confirmed with --max-issues-per-linter=0 --max-same-issues=0 and a cleared cache too). Full test suite green (1285 tests). Remaining open item: the doc-comment policy decision (3 options in the description) is still unresolved.
+<!-- /kira:comment -->
