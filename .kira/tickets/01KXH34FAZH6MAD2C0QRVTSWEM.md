@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: bug
 title: "find/rgx: flag ordering, -e pattern capture, scanner.Err, NUL-separated parsing"
-state: TODO
+state: IN_PROGRESS
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:47+05:30
-updated: 2026-07-15T01:24:47+05:30
+updated: 2026-07-16T17:47:10+05:30
 ---
 
 ## Description
