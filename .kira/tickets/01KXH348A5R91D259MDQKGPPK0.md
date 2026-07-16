@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: task
 title: "Contract tests: cover the ~20 uncontracted JSON commands and an exit-2 error shape"
-state: IN_PROGRESS
+state: TODO
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:40+05:30
-updated: 2026-07-16T14:00:20+05:30
+updated: 2026-07-16T14:08:48+05:30
 ---
 
 ## Description
