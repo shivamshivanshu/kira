@@ -1,15 +1,18 @@
+//go:build unix
+
 package storage
 
 import (
 	"os"
 	"path/filepath"
-	"syscall"
 	"time"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-const (
+var (
 	lockTimeout      = 2 * time.Second
 	lockPollInterval = 20 * time.Millisecond
 )
@@ -25,9 +28,9 @@ func (s *FS) Lock() (func(), error) {
 	}
 	deadline := time.Now().Add(lockTimeout)
 	for {
-		if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err == nil {
+		if err := unix.Flock(int(f.Fd()), unix.LOCK_EX|unix.LOCK_NB); err == nil {
 			return func() {
-				syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+				unix.Flock(int(f.Fd()), unix.LOCK_UN)
 				f.Close()
 			}, nil
 		}

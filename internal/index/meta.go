@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
 type skipEntry struct {
@@ -50,13 +51,8 @@ func saveMetaAt(cacheDir string, m meta) error {
 	if err != nil {
 		return errx.User("encoding index meta: %v", err)
 	}
-	tmp := metaPath(cacheDir) + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+	if err := storage.WriteFileAtomic(metaPath(cacheDir), data); err != nil {
 		return errx.Env("writing index meta: %v", err)
-	}
-	if err := os.Rename(tmp, metaPath(cacheDir)); err != nil {
-		os.Remove(tmp)
-		return errx.Env("renaming index meta: %v", err)
 	}
 	return nil
 }
