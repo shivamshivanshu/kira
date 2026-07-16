@@ -46,11 +46,9 @@ func TestInstallHooksRepairsMangledShim(t *testing.T) {
 	}
 }
 
-func TestInstallHooksRefusesHandRolledKiraHook(t *testing.T) {
-	s, cfg, _ := stagedFixture(t)
-	dst := installedHookPath(t, s, "post-merge")
-	handRolled := "#!/bin/sh\nmy-linter --staged\nexec kira hooks run post-merge \"$@\"\n"
-	if err := os.WriteFile(dst, []byte(handRolled), 0o755); err != nil {
+func assertHookRefused(t *testing.T, s *Store, cfg *datamodel.Config, dst, content string) {
+	t.Helper()
+	if err := os.WriteFile(dst, []byte(content), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -68,7 +66,7 @@ func TestInstallHooksRefusesHandRolledKiraHook(t *testing.T) {
 		t.Fatal("no post-merge status in install result")
 	}
 	if status.Installed || status.Chained {
-		t.Errorf("hand-rolled kira hook must be refused, got installed=%v chained=%v", status.Installed, status.Chained)
+		t.Errorf("hook must be refused, got installed=%v chained=%v", status.Installed, status.Chained)
 	}
 	if status.Note == "" {
 		t.Error("refusal must carry a note explaining the fix")
@@ -77,9 +75,16 @@ func TestInstallHooksRefusesHandRolledKiraHook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != handRolled {
-		t.Errorf("hand-rolled hook modified:\n%q", got)
+	if string(got) != content {
+		t.Errorf("refused hook modified:\n%q", got)
 	}
+}
+
+func TestInstallHooksRefusesHandRolledKiraHook(t *testing.T) {
+	s, cfg, _ := stagedFixture(t)
+	dst := installedHookPath(t, s, hooks.PostMerge)
+	handRolled := "#!/bin/sh\nmy-linter --staged\nexec kira hooks run post-merge \"$@\"\n"
+	assertHookRefused(t, s, cfg, dst, handRolled)
 }
 
 func TestUninstallHooksLeavesHandRolledKiraHook(t *testing.T) {
@@ -107,6 +112,19 @@ func TestUninstallHooksLeavesHandRolledKiraHook(t *testing.T) {
 	}
 	if string(got) != handRolled {
 		t.Errorf("hand-rolled hook modified on uninstall:\n%q", got)
+	}
+}
+
+func TestInstallHooksRefusesHookEndingInExecOrExit(t *testing.T) {
+	for name, content := range map[string]string{
+		"exec": "#!/bin/sh\nexec my-other-tool \"$@\"\n",
+		"exit": "#!/bin/sh\nmy-other-tool\nexit $?\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			s, cfg, _ := stagedFixture(t)
+			dst := installedHookPath(t, s, hooks.PostMerge)
+			assertHookRefused(t, s, cfg, dst, content)
+		})
 	}
 }
 

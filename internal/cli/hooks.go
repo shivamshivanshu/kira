@@ -125,9 +125,9 @@ func newHooksRunCmd(g *globalFlags) *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			switch name := args[0]; name {
-			case "post-merge":
+			case hooks.PostMerge:
 				return runHookPostMerge(cmd, g)
-			case "prepare-commit-msg":
+			case hooks.PrepareCommitMsg:
 				if len(args) < 2 {
 					return errx.User("prepare-commit-msg needs the commit message file argument")
 				}
@@ -199,7 +199,7 @@ func runHookPreCommit(g *globalFlags) error {
 
 func newHooksPostMergeCmd(g *globalFlags) *cobra.Command {
 	return &cobra.Command{
-		Use:    "post-merge",
+		Use:    hooks.PostMerge,
 		Short:  "post-merge hook entry point: reconcile ID collisions and fire landed closes",
 		Hidden: true,
 		Args:   cobra.ArbitraryArgs,
@@ -211,7 +211,7 @@ func newHooksPostMergeCmd(g *globalFlags) *cobra.Command {
 
 func newHooksPrepareCommitMsgCmd(g *globalFlags) *cobra.Command {
 	return &cobra.Command{
-		Use:    "prepare-commit-msg <file>",
+		Use:    hooks.PrepareCommitMsg + " <file>",
 		Short:  "prepare-commit-msg hook entry point: append the ticket trailer",
 		Hidden: true,
 		Args:   cobra.MinimumNArgs(1),
@@ -223,7 +223,7 @@ func newHooksPrepareCommitMsgCmd(g *globalFlags) *cobra.Command {
 
 func newHooksPreCommitCmd(g *globalFlags) *cobra.Command {
 	return &cobra.Command{
-		Use:    "pre-commit",
+		Use:    hooks.PreCommit,
 		Short:  "pre-commit hook entry point: validate staged kira items",
 		Hidden: true,
 		Args:   cobra.ArbitraryArgs,

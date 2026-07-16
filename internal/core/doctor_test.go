@@ -20,7 +20,7 @@ func assertDoctorAgreesWithHooksStatus(t *testing.T, s *Store) {
 	if !status.OK {
 		t.Fatalf("hooks status not OK: %+v", status)
 	}
-	for _, name := range hooks.Default {
+	for _, name := range hooks.Defaults() {
 		if !slices.Contains(env.TrackedHooks, name) {
 			t.Errorf("doctor does not track hook %s: %v", name, env.TrackedHooks)
 		}
@@ -42,7 +42,7 @@ func TestDoctorEnvHonorsCoreHooksPath(t *testing.T) {
 	if _, err := s.InstallHooks(cfg, HooksInstallOpts{IntoHooksPath: true}); err != nil {
 		t.Fatalf("install: %v", err)
 	}
-	for _, name := range hooks.Default {
+	for _, name := range hooks.Defaults() {
 		if _, err := os.Stat(filepath.Join(s.Root(), ".githooks", name)); err != nil {
 			t.Fatalf("hook %s not installed under core.hooksPath: %v", name, err)
 		}

@@ -30,7 +30,7 @@ func (s *Store) InstallHooks(cfg *datamodel.Config, opts HooksInstallOpts) (*dat
 		return nil, errx.User("this repo routes hooks through core.hooksPath (%s)", dir).
 			WithHint("re-run with --into-hooks-path to install kira shims there")
 	}
-	names := append([]string(nil), hooks.Default...)
+	names := hooks.Defaults()
 	if opts.WithPreCommit {
 		names = append(names, hooks.PreCommit)
 	}
@@ -117,13 +117,17 @@ func (s *Store) installGitHook(repo gitx.Repo, name, script string) (datamodel.H
 			status.Installed = true
 			return status, nil
 		}
-		if _, chained := hooks.Classify(content, name); chained {
+		if hooks.HasMarker(content) {
 			status.Installed, status.Chained = true, true
 			return status, nil
 		}
 		status.Note = "it already runs kira alongside other commands; remove kira's lines and re-run `kira hooks install`, or keep managing it by hand"
 	default:
-		if hooks.IsShellScript(content) {
+		switch {
+		case !hooks.IsShellScript(content):
+		case hooks.EndsInExecOrExit(content):
+			status.Note = "ends in exec or exit, so appending kira's hook would never run; add kira's line by hand instead"
+		default:
 			if err := writeExecutable(dst, hooks.Chain(content, name)); err != nil {
 				return status, err
 			}
@@ -166,7 +170,7 @@ func (s *Store) ValidateHooks(cfg *datamodel.Config) (*datamodel.HooksValidateRe
 	}
 	repo := s.repo()
 	result := &datamodel.HooksValidateResult{OK: true}
-	for _, name := range hooks.Default {
+	for _, name := range hooks.Defaults() {
 		status := datamodel.HookStatus{Name: name}
 		if dst, err := s.gitHookPath(repo, name); err == nil {
 			if content, err := os.ReadFile(dst); err == nil {

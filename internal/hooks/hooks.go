@@ -17,12 +17,20 @@ const (
 	markerEnd = "# /kira:chain"
 )
 
-var Default = []string{"post-merge", "prepare-commit-msg"}
+const (
+	PostMerge        = "post-merge"
+	PrepareCommitMsg = "prepare-commit-msg"
+	PreCommit        = "pre-commit"
+)
 
-const PreCommit = "pre-commit"
+var defaultHooks = []string{PostMerge, PrepareCommitMsg}
+
+func Defaults() []string {
+	return append([]string(nil), defaultHooks...)
+}
 
 func Known() []string {
-	return append(append([]string(nil), Default...), PreCommit)
+	return append(Defaults(), PreCommit)
 }
 
 func Script(name string) (string, bool) {
@@ -33,7 +41,7 @@ func Script(name string) (string, bool) {
 	return string(data), true
 }
 
-func hasMarker(content string) bool {
+func HasMarker(content string) bool {
 	return strings.Contains(content, marker)
 }
 
@@ -42,20 +50,22 @@ func hasMarker(content string) bool {
 // re-install idempotency stays coupled to the script text (pinned by a test).
 func Invokes(content, name string) bool {
 	return strings.Contains(content, "kira hooks run "+name) ||
-		strings.Contains(content, "kira hooks "+name)
+		strings.Contains(content, "kira hooks "+name) ||
+		strings.Contains(content, ".kira/hooks/"+name)
 }
 
 func IsPureShim(content, name string) bool {
-	if hasMarker(content) {
+	if HasMarker(content) {
 		return false
 	}
+	delegation := delegationLineRe(name)
 	delegates := false
 	for line := range strings.Lines(content) {
 		trimmed := strings.TrimSpace(line)
 		switch {
-		case trimmed == "" || strings.HasPrefix(trimmed, "#"):
+		case isBlankOrComment(trimmed):
 		case guardLineRe.MatchString(trimmed):
-		case delegationLineRe(name).MatchString(trimmed):
+		case delegation.MatchString(trimmed):
 			delegates = true
 		default:
 			return false
@@ -74,8 +84,8 @@ func delegationLineRe(name string) *regexp.Regexp {
 }
 
 func Classify(content, name string) (installed, chained bool) {
-	chained = hasMarker(content)
-	return chained || Invokes(content, name), chained
+	chained = HasMarker(content)
+	return StateOf(content, name) != StateForeign, chained
 }
 
 func IsShellScript(content string) bool {
@@ -89,8 +99,15 @@ func IsShellScript(content string) bool {
 		return false
 	}
 	interp := fields[0]
-	if path.Base(interp) == "env" && len(fields) > 1 {
-		interp = fields[1]
+	if path.Base(interp) == "env" {
+		rest := fields[1:]
+		for len(rest) > 0 && strings.HasPrefix(rest[0], "-") {
+			rest = rest[1:]
+		}
+		if len(rest) == 0 {
+			return false
+		}
+		interp = rest[0]
 	}
 	switch path.Base(interp) {
 	case "sh", "bash", "zsh", "dash", "ash", "ksh":
@@ -99,8 +116,26 @@ func IsShellScript(content string) bool {
 	return false
 }
 
+func EndsInExecOrExit(content string) bool {
+	lines := strings.Split(strings.TrimRight(content, "\n"), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		trimmed := strings.TrimSpace(lines[i])
+		if isBlankOrComment(trimmed) {
+			continue
+		}
+		return execOrExitLineRe.MatchString(trimmed)
+	}
+	return false
+}
+
+func isBlankOrComment(trimmedLine string) bool {
+	return trimmedLine == "" || strings.HasPrefix(trimmedLine, "#")
+}
+
+var execOrExitLineRe = regexp.MustCompile(`^(exec|exit)\b`)
+
 func Chain(content, name string) string {
-	if hasMarker(content) {
+	if HasMarker(content) {
 		return content
 	}
 	if content != "" && !strings.HasSuffix(content, "\n") {
@@ -117,13 +152,20 @@ func chainBlockAddedNewline(name string) string {
 	return marker + " nonl\n" + chainTail(name)
 }
 
+// git treats a 127 exit from a hook script as failure.
 func chainTail(name string) string {
-	return ".kira/hooks/" + name + " \"$@\"\n" + markerEnd + "\n"
+	shim := ".kira/hooks/" + name
+	return "rc=$?\n" +
+		"if [ -x \"" + shim + "\" ]; then\n" +
+		"  \"" + shim + "\" \"$@\" || exit\n" +
+		"fi\n" +
+		"exit $rc\n" +
+		markerEnd + "\n"
 }
 
 func Unchain(content, name string) (string, bool) {
-	if stripped := strings.Replace(content, chainBlockAddedNewline(name), "", 1); stripped != content {
-		return strings.TrimSuffix(stripped, "\n"), true
+	if stripped := strings.Replace(content, "\n"+chainBlockAddedNewline(name), "", 1); stripped != content {
+		return stripped, true
 	}
 	stripped := strings.Replace(content, chainBlock(name), "", 1)
 	return stripped, stripped != content
@@ -144,7 +186,7 @@ func StateOf(content, name string) State {
 	if ok && content == script {
 		return StateInstalled
 	}
-	if hasMarker(content) {
+	if HasMarker(content) {
 		if strings.Contains(content, chainBlock(name)) || strings.Contains(content, chainBlockAddedNewline(name)) {
 			return StateChained
 		}
