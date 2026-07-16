@@ -5,7 +5,7 @@ aliases: []
 type: ticket
 subtype: task
 title: "Contract test harness quality: checkStable, scrubbing, repoEnv, shared fixture"
-state: IN_PROGRESS
+state: REVIEW
 priority: P2
 labels: []
 epic: null
