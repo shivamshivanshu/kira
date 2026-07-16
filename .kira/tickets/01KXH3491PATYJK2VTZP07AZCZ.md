@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: bug
 title: "chdirArg misparses -Cpath and '--'; bulk outcome contract untested"
-state: IN_PROGRESS
+state: REVIEW
 priority: P1
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:41+05:30
-updated: 2026-07-16T11:53:15+05:30
+updated: 2026-07-16T11:56:18+05:30
 ---
 
 ## Description
