@@ -2,6 +2,7 @@ package core
 
 import (
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -29,6 +30,17 @@ func Discover(startDir string, prompter ...Prompter) (*Store, error) {
 		return nil, err
 	}
 	return &Store{root: store.Root(), store: store, prompter: firstPrompter(prompter)}, nil
+}
+
+// DiscoverGitInvoked is for hook shims and the merge driver: git always runs
+// these with startDir at the repo toplevel, regardless of where the user
+// actually ran the git command. GIT_PREFIX carries that real location as a
+// toplevel-relative path, letting this find a .kira nested below toplevel.
+func DiscoverGitInvoked(startDir string, prompter ...Prompter) (*Store, error) {
+	if prefix := os.Getenv("GIT_PREFIX"); prefix != "" {
+		startDir = filepath.Join(startDir, prefix)
+	}
+	return Discover(startDir, prompter...)
 }
 
 func (s *Store) WithPrompter(p Prompter) *Store {

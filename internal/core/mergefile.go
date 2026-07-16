@@ -13,7 +13,7 @@ import (
 const itemFileMode = 0o644
 
 func MergeFile(repo gitx.Repo, basePath, oursPath, theirsPath string) (*datamodel.MergeResult, error) {
-	store, err := Discover(repo.Dir)
+	store, err := DiscoverGitInvoked(repo.Dir)
 	if err != nil {
 		return nil, err
 	}

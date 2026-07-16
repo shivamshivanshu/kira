@@ -143,7 +143,7 @@ func newHooksRunCmd(g *globalFlags) *cobra.Command {
 }
 
 func hookStore(g *globalFlags) (*core.Store, error) {
-	s, err := core.Discover(g.chdir, g.prompter())
+	s, err := core.DiscoverGitInvoked(g.chdir, g.prompter())
 	if err != nil && errors.Is(err, storage.ErrStoreNotFound) {
 		return nil, nil
 	}

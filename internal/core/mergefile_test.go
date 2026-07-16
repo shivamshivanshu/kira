@@ -100,6 +100,43 @@ func TestMergeFileParseableCleanMerge(t *testing.T) {
 	}
 }
 
+func TestMergeFileHonoursGitPrefixForNestedRoot(t *testing.T) {
+	toplevel := t.TempDir()
+	if err := testutil.GitInit(toplevel); err != nil {
+		t.Fatalf("git init: %v", err)
+	}
+	nested := filepath.Join(toplevel, "sub")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Init(nested, "KIRA", false); err != nil {
+		t.Fatalf("init store: %v", err)
+	}
+	t.Setenv("GIT_PREFIX", "sub/")
+
+	repo := gitx.Repo{Dir: toplevel}
+	base := eventTicket()
+	ours := *base
+	ours.Title = "Mine"
+	theirs := *base
+	theirs.State = "IN_PROGRESS"
+
+	basePath := filepath.Join(toplevel, "base.md")
+	oursPath := filepath.Join(toplevel, "ours.md")
+	theirsPath := filepath.Join(toplevel, "theirs.md")
+	writeItemFile(t, basePath, base)
+	writeItemFile(t, oursPath, &ours)
+	writeItemFile(t, theirsPath, &theirs)
+
+	res, err := MergeFile(repo, basePath, oursPath, theirsPath)
+	if err != nil {
+		t.Fatalf("MergeFile: %v (want it to find the nested store via GIT_PREFIX, matching a real merge driver invocation)", err)
+	}
+	if len(res.Arbitrated) != 0 {
+		t.Fatalf("disjoint field edits arbitrated: %v", res.Arbitrated)
+	}
+}
+
 func TestMergeFileParseablePerFieldConflict(t *testing.T) {
 	repo, dir := mergeFixture(t)
 	base := eventTicket()
