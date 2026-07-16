@@ -93,24 +93,9 @@ func repoDocSetsUIEditor(data []byte) bool {
 	if err := yaml.Unmarshal(data, &doc); err != nil || len(doc.Content) == 0 {
 		return false
 	}
-	root := doc.Content[0]
-	if root.Kind != yaml.MappingNode {
+	_, ui := findTopLevel(&doc, userKeyUI)
+	if ui == nil || ui.Kind != yaml.MappingNode {
 		return false
 	}
-	for i := 0; i+1 < len(root.Content); i += 2 {
-		if root.Content[i].Value != userKeyUI {
-			continue
-		}
-		ui := root.Content[i+1]
-		if ui.Kind != yaml.MappingNode {
-			return false
-		}
-		for j := 0; j+1 < len(ui.Content); j += 2 {
-			if ui.Content[j].Value == "editor" {
-				return true
-			}
-		}
-		return false
-	}
-	return false
+	return childValue(ui, "editor") != nil
 }

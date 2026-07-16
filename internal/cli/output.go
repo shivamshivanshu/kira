@@ -16,9 +16,11 @@ func emitWarningLines(w io.Writer, warns []string) {
 }
 
 func emitMutationWarnings(w io.Writer, warns []datamodel.Warning) {
-	for _, wn := range warns {
-		fmt.Fprintln(w, msgPrefix, "warning:", renderWarning(wn))
+	rendered := make([]string, len(warns))
+	for i, wn := range warns {
+		rendered[i] = renderWarning(wn)
 	}
+	emitWarningLines(w, rendered)
 }
 
 func renderWarning(w datamodel.Warning) string {

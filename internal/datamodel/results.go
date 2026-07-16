@@ -333,10 +333,11 @@ type SprintActivateResult struct {
 }
 
 type SprintCloseResult struct {
-	Closed     string   `json:"closed"`
-	WasActive  bool     `json:"was_active"`
-	Unfinished []string `json:"unfinished"`
-	MovedTo    string   `json:"moved_to,omitempty"`
+	Closed     string    `json:"closed"`
+	WasActive  bool      `json:"was_active"`
+	Unfinished []string  `json:"unfinished"`
+	MovedTo    string    `json:"moved_to,omitempty"`
+	Warnings   []Warning `json:"-"`
 }
 
 type BoardView struct {

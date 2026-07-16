@@ -43,10 +43,12 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 		if target == "" {
 			continue
 		}
-		if _, mvErr := b.Move(cand.ULID, target, MoveOpts{Force: true, Source: datamodel.SourceTrailer}); mvErr != nil {
+		mv, mvErr := b.Move(cand.ULID, target, MoveOpts{Force: true, Source: datamodel.SourceTrailer})
+		if mvErr != nil {
 			closeFailed(it.Number, mvErr)
 			continue
 		}
+		notes = append(notes, literalWarnings(mv.Warnings)...)
 		closed = append(closed, it.Number)
 	}
 	if scan.LandedHead != "" && !failed {

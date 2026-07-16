@@ -124,8 +124,16 @@ func TestApplyClosesMultipleCandidates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("applyCloses: %v", err)
 	}
-	if len(notes) != 0 {
-		t.Fatalf("unexpected notes: %v", notes)
+	// The default workflow has no direct TODO -> DONE edge, so each forced
+	// close surfaces the Move warning that used to be silently dropped
+	// before core/closes.go started forwarding MoveResult.Warnings.
+	if len(notes) != 2 {
+		t.Fatalf("want one forced-transition warning per closed candidate, got %v", notes)
+	}
+	for _, n := range notes {
+		if n.Code != datamodel.WarnLiteral || n.Args[0] != "forced off-graph transition TODO -> DONE" {
+			t.Fatalf("unexpected note: %v", n)
+		}
 	}
 	want := map[string]bool{a.Number: true, b.Number: true}
 	if len(closed) != 2 || !want[closed[0]] || !want[closed[1]] || closed[0] == closed[1] {
