@@ -27,6 +27,7 @@ func GitInit(dir string) error {
 func init() {
 	os.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
 	os.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+	os.Setenv("VISUAL", "")
 	os.Setenv("EDITOR", "true")
 
 	neutralUserConfigDir := filepath.Join(os.TempDir(), fmt.Sprintf("kira-testutil-xdg-%d", os.Getpid()))

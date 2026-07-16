@@ -66,5 +66,5 @@ stderr 'hint: set resolution first'
 env EDITOR=
 env VISUAL=
 ! exec kira create ticket --title 'Second'
-stderr 'no editor configured: set ui.editor or .EDITOR'
+stderr 'no editor configured'
 stderr 'hint: set ui.editor'

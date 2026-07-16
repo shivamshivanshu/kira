@@ -19,6 +19,8 @@ func writeEditorScript(t *testing.T, body string) string {
 	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+body), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	t.Setenv("VISUAL", "")
+	t.Setenv("EDITOR", "sh "+path)
 	return path
 }
 
@@ -38,12 +40,11 @@ func TestEditorModeSurfacesParseError(t *testing.T) {
 	before := mustReadItem(t, s, res.ID)
 
 	counter := filepath.Join(t.TempDir(), "counter")
-	script := writeEditorScript(t,
+	t.Setenv("KIRA_COUNTER", counter)
+	writeEditorScript(t,
 		"n=$(cat \"$KIRA_COUNTER\" 2>/dev/null || echo 0)\n"+
 			"n=$((n+1)); echo \"$n\" > \"$KIRA_COUNTER\"\n"+
 			"if [ \"$n\" -eq 1 ]; then printf 'not a valid item\\n' > \"$1\"; fi\n")
-	t.Setenv("KIRA_COUNTER", counter)
-	t.Setenv("EDITOR", "sh "+script)
 
 	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{})
 	if err == nil {
@@ -66,11 +67,10 @@ func TestEditorModeRefusesLostUpdate(t *testing.T) {
 	concurrent := writeTempItem(t, bumpUpdated(orig))
 	buffer := writeTempItem(t, strings.Replace(orig, "title: \"original\"", "title: \"edited by user\"", 1))
 
-	script := writeEditorScript(t, "cp \"$KIRA_CONCURRENT\" \"$KIRA_ITEM\"\ncp \"$KIRA_BUFFER\" \"$1\"\n")
 	t.Setenv("KIRA_ITEM", storage.New(s.Root()).ItemPath(res.ID))
 	t.Setenv("KIRA_CONCURRENT", concurrent)
 	t.Setenv("KIRA_BUFFER", buffer)
-	t.Setenv("EDITOR", "sh "+script)
+	writeEditorScript(t, "cp \"$KIRA_CONCURRENT\" \"$KIRA_ITEM\"\ncp \"$KIRA_BUFFER\" \"$1\"\n")
 
 	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{})
 	if err == nil {

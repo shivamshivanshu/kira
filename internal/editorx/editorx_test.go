@@ -1,7 +1,9 @@
 package editorx
 
 import (
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -18,9 +20,9 @@ func TestCommandPrecedence(t *testing.T) {
 		wantErr    bool
 	}{
 		{"configured beats env", "cfg-editor --flag", "env-editor", "vis-editor", "cfg-editor --flag", false},
-		{"blank configured falls back", "   ", "env-editor", "vis-editor", "env-editor", false},
-		{"EDITOR beats VISUAL", "", "env-editor", "vis-editor", "env-editor", false},
-		{"VISUAL fallback", "", "", "vis-editor", "vis-editor", false},
+		{"blank configured falls back", "   ", "env-editor", "vis-editor", "vis-editor", false},
+		{"VISUAL beats EDITOR", "", "env-editor", "vis-editor", "vis-editor", false},
+		{"EDITOR fallback", "", "env-editor", "", "env-editor", false},
 		{"nothing set", "", "", "", "", true},
 	}
 	for _, tc := range cases {
@@ -37,8 +39,8 @@ func TestCommandPrecedence(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Command(%q): %v", tc.configured, err)
 			}
-			if got != tc.want {
-				t.Errorf("Command(%q) = %q, want %q", tc.configured, got, tc.want)
+			if got.raw != tc.want {
+				t.Errorf("Command(%q) = %q, want %q", tc.configured, got.raw, tc.want)
 			}
 		})
 	}
@@ -60,10 +62,11 @@ func TestViewAppendsReadonlyFlagForVimFamily(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			cmd, err := View(tc.editor, "/x.md")
+			ed, err := Command(tc.editor)
 			if err != nil {
-				t.Fatalf("View(%q): %v", tc.editor, err)
+				t.Fatalf("Command(%q): %v", tc.editor, err)
 			}
+			cmd := ed.View("/x.md")
 			if !slices.Equal(cmd.Args, tc.want) {
 				t.Errorf("View(%q) args = %v, want %v", tc.editor, cmd.Args, tc.want)
 			}
@@ -81,7 +84,11 @@ func TestEditPreservesQuotedEditorPath(t *testing.T) {
 	}
 	configured := `"` + editorPath + `" --wait`
 
-	if err := Edit(configured, "/draft.md", Stdio{}); err != nil {
+	ed, err := Command(configured)
+	if err != nil {
+		t.Fatalf("Command(%q): %v", configured, err)
+	}
+	if err := ed.Edit("/draft.md", Stdio{}); err != nil {
 		t.Fatalf("Edit(%q): %v", configured, err)
 	}
 	got, err := os.ReadFile(argsFile)
@@ -94,8 +101,16 @@ func TestEditPreservesQuotedEditorPath(t *testing.T) {
 }
 
 func TestEditReportsEditorFailure(t *testing.T) {
-	err := Edit("false", "/draft.md", Stdio{Out: &strings.Builder{}, Err: &strings.Builder{}})
+	ed, err := Command("false")
+	if err != nil {
+		t.Fatalf("Command: %v", err)
+	}
+	err = ed.Edit("/draft.md", Stdio{Out: &strings.Builder{}, Err: &strings.Builder{}})
 	if err == nil || !strings.Contains(err.Error(), "editor false") {
 		t.Fatalf("Edit with failing editor = %v, want editor false error", err)
+	}
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("Edit error = %v, want it to wrap an *exec.ExitError (errors.As)", err)
 	}
 }

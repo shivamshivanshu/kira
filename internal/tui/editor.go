@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -26,7 +27,7 @@ func (s *editorSession) SetStderr(w io.Writer) { s.stdio.Err = w }
 
 func editItemCmd(store *core.Store, cfg *datamodel.Config, ref string) (tea.Cmd, error) {
 	if _, err := editorx.Command(cfg.UI.Editor); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %s", err, editorx.ConfigHint)
 	}
 	session := &editorSession{run: func(stdio editorx.Stdio) error {
 		_, err := store.Edit(cfg, ref, core.EditOpts{Stdio: stdio})
@@ -55,12 +56,12 @@ func viewProcess(store *core.Store, cfg *datamodel.Config, ref string) (*exec.Cm
 	if err != nil {
 		return nil, "", err
 	}
-	view, err := editorx.View(cfg.UI.Editor, path)
+	ed, err := editorx.Command(cfg.UI.Editor)
 	if err != nil {
 		os.Remove(path)
-		return nil, "", err
+		return nil, "", fmt.Errorf("%w: %s", err, editorx.ConfigHint)
 	}
-	return view, path, nil
+	return ed.View(path), path, nil
 }
 
 func readonlyCopy(content string) (string, error) {

@@ -129,6 +129,7 @@ func TestRunEditorRetryLoop(t *testing.T) {
 	t.Setenv("KIRA_COUNTER", counter)
 	t.Setenv("KIRA_INVALID", invalid)
 	t.Setenv("KIRA_VALID", valid)
+	t.Setenv("VISUAL", "")
 	t.Setenv("EDITOR", "sh "+script)
 
 	calls := 0

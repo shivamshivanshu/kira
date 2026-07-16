@@ -94,8 +94,9 @@ func stripErrorBanner(content string) string {
 }
 
 func runEditor(editor string, stdio editorx.Stdio, initial string, validate func(content string) []error) (string, error) {
-	if _, err := editorx.Command(editor); err != nil {
-		return "", errx.Env("%v", err).WithHint("set ui.editor in config or `export EDITOR=vim`")
+	ed, err := editorx.Command(editor)
+	if err != nil {
+		return "", errx.Env("%w", err).WithHint(editorx.ConfigHint)
 	}
 	tmp, err := os.CreateTemp("", "kira-*.md")
 	if err != nil {
@@ -111,8 +112,8 @@ func runEditor(editor string, stdio editorx.Stdio, initial string, validate func
 		if err := os.WriteFile(path, []byte(buffer), 0o600); err != nil {
 			return "", errx.Env("writing editor buffer: %v", err)
 		}
-		if err := editorx.Edit(editor, path, stdio); err != nil {
-			return "", errx.User("%v", err)
+		if err := ed.Edit(path, stdio); err != nil {
+			return "", errx.User("%w", err)
 		}
 		raw, err := os.ReadFile(path)
 		if err != nil {

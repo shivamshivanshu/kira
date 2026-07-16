@@ -29,49 +29,49 @@ func (s Stdio) withDefaults() Stdio {
 	return s
 }
 
-func Command(configured string) (string, error) {
-	for _, candidate := range []string{configured, os.Getenv("EDITOR"), os.Getenv("VISUAL")} {
+// ConfigHint is the remediation text for a "no editor configured" error.
+const ConfigHint = "set ui.editor in config, or export $EDITOR/$VISUAL"
+
+// Editor is only valid when constructed via Command; the zero value must not be used.
+type Editor struct {
+	raw string
+}
+
+func Command(configured string) (Editor, error) {
+	for _, candidate := range []string{configured, os.Getenv("VISUAL"), os.Getenv("EDITOR")} {
 		if ed := strings.TrimSpace(candidate); ed != "" {
-			return ed, nil
+			return Editor{raw: ed}, nil
 		}
 	}
-	return "", errors.New("no editor configured: set ui.editor or $EDITOR")
+	return Editor{}, errors.New("no editor configured")
 }
 
-func shellCommand(editor string, args ...string) *exec.Cmd {
-	return exec.Command("sh", append([]string{"-c", editor + ` "$@"`, editor}, args...)...)
+func (e Editor) name() string {
+	return filepath.Base(strings.Fields(e.raw)[0])
 }
 
-func editorName(editor string) string {
-	return filepath.Base(strings.Fields(editor)[0])
+func (e Editor) build(args ...string) *exec.Cmd {
+	return exec.Command("sh", append([]string{"-c", e.raw + ` "$@"`, e.raw}, args...)...)
 }
 
-func Edit(configured, path string, stdio Stdio) error {
-	editor, err := Command(configured)
-	if err != nil {
-		return err
-	}
+func (e Editor) Edit(path string, stdio Stdio) error {
 	stdio = stdio.withDefaults()
-	cmd := shellCommand(editor, path)
+	cmd := e.build(path)
 	cmd.Stdin = stdio.In
 	cmd.Stdout = stdio.Out
 	cmd.Stderr = stdio.Err
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("editor %s: %v", editorName(editor), err)
+		return fmt.Errorf("editor %s: %w", e.name(), err)
 	}
 	return nil
 }
 
 var vimFamily = map[string]bool{"vi": true, "vim": true, "nvim": true, "gvim": true}
 
-func View(configured, path string) (*exec.Cmd, error) {
-	editor, err := Command(configured)
-	if err != nil {
-		return nil, err
-	}
+func (e Editor) View(path string) *exec.Cmd {
 	args := []string{path}
-	if vimFamily[editorName(editor)] {
+	if vimFamily[e.name()] {
 		args = []string{"-R", path}
 	}
-	return shellCommand(editor, args...), nil
+	return e.build(args...)
 }
