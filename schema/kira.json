@@ -714,7 +714,7 @@
       ],
       "type": "object"
     },
-    "HookState": {
+    "HookStateReport": {
       "additionalProperties": false,
       "properties": {
         "name": {
@@ -738,7 +738,7 @@
       "properties": {
         "hooks": {
           "items": {
-            "$ref": "#/$defs/HookState"
+            "$ref": "#/$defs/HookStateReport"
           },
           "type": "array"
         },
@@ -764,7 +764,7 @@
       "properties": {
         "hooks": {
           "items": {
-            "$ref": "#/$defs/HookState"
+            "$ref": "#/$defs/HookStateReport"
           },
           "type": "array"
         },

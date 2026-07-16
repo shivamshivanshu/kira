@@ -169,7 +169,7 @@ func estimateField() FieldDescriptor {
 			}
 			f, err := strconv.ParseFloat(value, 64)
 			if err != nil {
-				return fmt.Errorf("--field estimate: invalid number %q", value)
+				return fmt.Errorf("field %q: invalid number %q", KeyEstimate, value)
 			}
 			it.Estimate = &f
 			return nil

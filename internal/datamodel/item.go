@@ -32,10 +32,10 @@ type Item struct {
 
 	Body string
 
-	Activity         string   `json:"-"`
-	UnknownKeys      []string `json:"-"`
-	UnknownLinkTypes []string `json:"-"`
-	CRLF             bool     `json:"-"`
+	Activity         string
+	UnknownKeys      []string
+	UnknownLinkTypes []string
+	CRLF             bool
 }
 
 func (it *Item) HasUnknown() bool {

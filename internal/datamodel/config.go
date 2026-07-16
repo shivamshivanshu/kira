@@ -28,8 +28,8 @@ type Config struct {
 	Automation []AutomationHook  `yaml:"automation"`
 	Fields     map[string]any    `yaml:"fields"`
 
-	UserAutomation    []AutomationHook `yaml:"-" json:"-"`
-	UserCommitSubject string           `yaml:"-" json:"-"`
+	UserAutomation    []AutomationHook `yaml:"-"`
+	UserCommitSubject string           `yaml:"-"`
 }
 
 type Project struct {

@@ -14,7 +14,7 @@ func Default() *datamodel.Config {
 					{Key: "IN_PROGRESS", Category: datamodel.CategoryDoing, Wip: 3},
 					{Key: "REVIEW", Category: datamodel.CategoryDoing, Wip: 2},
 					{Key: "DONE", Category: datamodel.CategoryDone},
-					{Key: "WONT_DO", Category: datamodel.CategoryDone, Resolution: "dropped"},
+					{Key: "WONT_DO", Category: datamodel.CategoryDone, Resolution: datamodel.ResolutionDropped},
 				},
 				Initial: "TODO",
 				Transitions: map[string][]datamodel.Transition{
@@ -47,7 +47,7 @@ func Default() *datamodel.Config {
 		People:      datamodel.People{},
 		Priorities:  datamodel.EnumVocab{Values: []string{"P0", "P1", "P2", "P3"}},
 		Subtypes:    datamodel.EnumVocab{Values: []string{"bug", "story", "task", "spike"}},
-		Resolutions: datamodel.EnumVocab{Values: []string{"done", "dropped", "duplicate", "cannot-reproduce"}},
+		Resolutions: datamodel.EnumVocab{Values: []string{"done", datamodel.ResolutionDropped, "duplicate", "cannot-reproduce"}},
 
 		ResolutionsDropped: []string{datamodel.ResolutionDropped},
 		Filters:            map[string]string{},

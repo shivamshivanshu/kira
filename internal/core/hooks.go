@@ -229,7 +229,7 @@ func (s *Store) HooksStatus() (*datamodel.HooksStatusResult, error) {
 		if !stateOK(name, state) {
 			result.OK = false
 		}
-		result.Hooks = append(result.Hooks, datamodel.HookState{Name: name, State: string(state)})
+		result.Hooks = append(result.Hooks, datamodel.HookStateReport{Name: name, State: string(state)})
 	}
 	result.MergeDriver = s.mergeDriverRegistered(repo)
 	if !result.MergeDriver {
@@ -281,8 +281,8 @@ func (s *Store) UninstallHooks() (*datamodel.HooksUninstallResult, error) {
 	return result, nil
 }
 
-func (s *Store) uninstallGitHook(repo gitx.Repo, name string) (datamodel.HookState, error) {
-	hs := datamodel.HookState{Name: name}
+func (s *Store) uninstallGitHook(repo gitx.Repo, name string) (datamodel.HookStateReport, error) {
+	hs := datamodel.HookStateReport{Name: name}
 	dst, err := s.gitHookPath(repo, name)
 	if err != nil {
 		return hs, err
