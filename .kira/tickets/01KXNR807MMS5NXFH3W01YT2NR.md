@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: task
 title: "golangci-lint: doc-comment enforcement disabled and 130 findings still unfixed"
-state: TODO
+state: IN_PROGRESS
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-16T20:50:40+05:30
-updated: 2026-07-16T20:50:40+05:30
+updated: 2026-07-16T21:02:02+05:30
 ---
 
 ## Description
