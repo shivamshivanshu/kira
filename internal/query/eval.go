@@ -245,25 +245,50 @@ func (c *compiler) blockedPred() Predicate {
 		byID[it.ID] = it
 	}
 	return func(it *datamodel.Item, cfg *datamodel.Config) bool {
-		for _, b := range it.BlockedBy {
-			blocker, ok := byID[b]
-			if !ok {
-				continue
-			}
-			cat := categoryOf(cfg, blocker.Type, blocker.State)
-			if cat == "" || cat == string(datamodel.CategoryDone) {
-				continue
-			}
-			return true
-		}
-		return false
+		open, _ := OpenBlockers(cfg, it, byID)
+		return len(open) > 0
 	}
+}
+
+// SkippedBlocker is a blocked_by reference whose open/closed status could not
+// be determined — either it resolves to no known item, or the item's
+// type/state has no configured category. Both are treated as satisfied.
+type SkippedBlocker struct {
+	ID      string
+	Blocker *datamodel.Item // nil if the ID resolves to no known item
+	Reason  string
+}
+
+// OpenBlockers classifies it.BlockedBy against byID (a lookup of ULID to
+// item): open holds blockers whose category is known and not Done; skipped
+// holds blockers that could not be evaluated (and so are treated as
+// satisfied, same as a closed blocker).
+func OpenBlockers(cfg *datamodel.Config, it *datamodel.Item, byID map[string]*datamodel.Item) (open []*datamodel.Item, skipped []SkippedBlocker) {
+	for _, b := range it.BlockedBy {
+		blocker, ok := byID[b]
+		if !ok {
+			skipped = append(skipped, SkippedBlocker{ID: b, Reason: "resolves to no item"})
+			continue
+		}
+		cat, known := cfg.CategoryOf(blocker.Type, blocker.State)
+		if !known {
+			skipped = append(skipped, SkippedBlocker{ID: b, Blocker: blocker, Reason: "has no known state category"})
+			continue
+		}
+		if cat != datamodel.CategoryDone {
+			open = append(open, blocker)
+		}
+	}
+	return open, skipped
 }
 
 var accessors = map[string]func(*datamodel.Item, *datamodel.Config) string{
 	fieldState:      func(it *datamodel.Item, _ *datamodel.Config) string { return it.State },
 	fieldType:       func(it *datamodel.Item, _ *datamodel.Config) string { return it.Type },
-	fieldCategory:   func(it *datamodel.Item, cfg *datamodel.Config) string { return categoryOf(cfg, it.Type, it.State) },
+	fieldCategory: func(it *datamodel.Item, cfg *datamodel.Config) string {
+		cat, _ := cfg.CategoryOf(it.Type, it.State)
+		return string(cat)
+	},
 	fieldOwner:      func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Owner) },
 	fieldReporter:   func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Reporter) },
 	fieldSubtype:    func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Subtype) },
@@ -372,19 +397,6 @@ func anyLinkPresent(links map[string][]string) bool {
 
 func scalarPred(eq bool, want string, get func(*datamodel.Item, *datamodel.Config) string) Predicate {
 	return func(it *datamodel.Item, cfg *datamodel.Config) bool { return (get(it, cfg) == want) == eq }
-}
-
-func categoryOf(cfg *datamodel.Config, typ, state string) string {
-	wf, ok := cfg.Workflows[typ]
-	if !ok {
-		return ""
-	}
-	for _, st := range wf.States {
-		if st.Key == state {
-			return string(st.Category)
-		}
-	}
-	return ""
 }
 
 func estimatePred(op tokKind, want float64) Predicate {

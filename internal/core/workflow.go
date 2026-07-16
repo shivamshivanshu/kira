@@ -2,15 +2,6 @@ package core
 
 import "github.com/shivamshivanshu/kira/internal/datamodel"
 
-func stateIn(wf datamodel.Workflow, key string) (datamodel.State, bool) {
-	for _, st := range wf.States {
-		if st.Key == key {
-			return st, true
-		}
-	}
-	return datamodel.State{}, false
-}
-
 func matchedTransition(wf datamodel.Workflow, from, to string) *datamodel.Transition {
 	for i, t := range wf.Transitions[from] {
 		if t.To == to {
@@ -61,17 +52,8 @@ func MoveTargets(cfg *datamodel.Config, typ, from string) []string {
 	return allowedTargets(wf, from)
 }
 
-func categoryOf(cfg *datamodel.Config, typ, state string) (datamodel.Category, bool) {
-	wf, ok := cfg.Workflows[typ]
-	if !ok {
-		return "", false
-	}
-	st, ok := stateIn(wf, state)
-	return st.Category, ok
-}
-
 func isDoneState(cfg *datamodel.Config, typ, state string) bool {
-	cat, ok := categoryOf(cfg, typ, state)
+	cat, ok := cfg.CategoryOf(typ, state)
 	return ok && cat == datamodel.CategoryDone
 }
 
@@ -82,8 +64,6 @@ func clearStaleResolution(cfg *datamodel.Config, it *datamodel.Item) {
 }
 
 func categoryString(cfg *datamodel.Config, typ, state string) string {
-	if c, ok := categoryOf(cfg, typ, state); ok {
-		return string(c)
-	}
-	return ""
+	c, _ := cfg.CategoryOf(typ, state)
+	return string(c)
 }

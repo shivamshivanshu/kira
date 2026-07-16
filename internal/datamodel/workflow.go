@@ -18,6 +18,24 @@ func (w Workflow) EffectiveWipPolicy() WipPolicy {
 	return WipWarn
 }
 
+func (w Workflow) StateByKey(key string) (State, bool) {
+	for _, st := range w.States {
+		if st.Key == key {
+			return st, true
+		}
+	}
+	return State{}, false
+}
+
+func (c *Config) CategoryOf(typ, state string) (Category, bool) {
+	wf, ok := c.Workflows[typ]
+	if !ok {
+		return "", false
+	}
+	st, ok := wf.StateByKey(state)
+	return st.Category, ok
+}
+
 type State struct {
 	Key        string   `yaml:"key"`
 	Category   Category `yaml:"category"`

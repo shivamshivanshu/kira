@@ -81,14 +81,14 @@ func metricsFrom(cfg *datamodel.Config, it *datamodel.Item, evs []stateTransitio
 		number:  it.Number,
 		dropped: isDropped(cfg, it),
 	}
-	mi.category, _ = categoryOf(cfg, it.Type, it.State)
+	mi.category, _ = cfg.CategoryOf(it.Type, it.State)
 	if c, cerr := it.CreatedTime(); cerr == nil {
 		mi.created = c
 	}
 	wf, hasWorkflow := cfg.Workflows[it.Type]
 	doneSeen := false
 	for _, ev := range evs {
-		cat, _ := categoryOf(cfg, it.Type, ev.to)
+		cat, _ := cfg.CategoryOf(it.Type, ev.to)
 		if cat == datamodel.CategoryDoing {
 			if !mi.hasDoing {
 				mi.hasDoing = true

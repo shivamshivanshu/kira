@@ -35,7 +35,7 @@ func validateItem(cfg *datamodel.Config, it *datamodel.Item, force bool) (errs, 
 	}
 	if wf, ok := cfg.Workflows[it.Type]; !ok {
 		errs = append(errs, fmt.Errorf("field %q: no workflow configured for type %q", datamodel.KeyType, it.Type))
-	} else if _, defined := stateIn(wf, it.State); !defined {
+	} else if _, defined := wf.StateByKey(it.State); !defined {
 		errs = append(errs, fmt.Errorf("field %q: %q is not a state in the %s workflow", datamodel.KeyState, it.State, it.Type))
 	}
 
@@ -106,7 +106,7 @@ func validateResolutionState(cfg *datamodel.Config, orig, it *datamodel.Item) []
 	if orig != nil && it.State == orig.State && ptr.Equal(it.Resolution, orig.Resolution) {
 		return nil
 	}
-	if cat, known := categoryOf(cfg, it.Type, it.State); known && cat != datamodel.CategoryDone {
+	if cat, known := cfg.CategoryOf(it.Type, it.State); known && cat != datamodel.CategoryDone {
 		return []error{errx.User("field %q: only allowed on done-category states; %s is %s", datamodel.KeyResolution, it.State, cat).WithHint("clear it with `kira edit --field resolution=`")}
 	}
 	return nil

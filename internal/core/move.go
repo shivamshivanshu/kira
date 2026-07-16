@@ -9,6 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/query"
 	"github.com/shivamshivanshu/kira/internal/workon"
 )
 
@@ -67,7 +68,7 @@ func applyStateChange(cfg *datamodel.Config, it *datamodel.Item, from string, op
 	if !ok {
 		return []error{fmt.Errorf("no workflow configured for type %q", it.Type)}, nil, nil
 	}
-	target, ok := stateIn(wf, state)
+	target, ok := wf.StateByKey(state)
 	if !ok {
 		return []error{errx.User("%q is not a state in the %s workflow", state, it.Type).WithHint("%s", stateHint(wf, state))}, nil, nil
 	}
@@ -164,28 +165,20 @@ func wipGuard(wf datamodel.Workflow, it *datamodel.Item, items []*datamodel.Item
 
 func blockersClosedGuard(cfg *datamodel.Config, it *datamodel.Item, items []*datamodel.Item, from, state string, force bool) (hard, warns []error) {
 	byID := byULID(items)
-	var open []string
-	for _, b := range it.BlockedBy {
-		blocker, ok := byID[b]
-		if !ok {
-			warns = append(warns, fmt.Errorf("blocked_by %s resolves to no item; treating blocker as satisfied", b))
-			continue
-		}
-		cat, known := categoryOf(cfg, blocker.Type, blocker.State)
-		if !known {
-			warns = append(warns, fmt.Errorf("blocked_by %s has no known state category; treating blocker as satisfied", numberOrID(blocker, b)))
-			continue
-		}
-		if cat != datamodel.CategoryDone {
-			open = append(open, numberOrID(blocker, b))
-		}
+	open, skipped := query.OpenBlockers(cfg, it, byID)
+	for _, s := range skipped {
+		warns = append(warns, fmt.Errorf("blocked_by %s %s; treating blocker as satisfied", numberOrID(s.Blocker, s.ID), s.Reason))
 	}
 	if len(open) > 0 {
-		refs := strings.Join(open, ", ")
-		if !force {
-			return []error{errx.User("%s -> %s is blocked by open items: %s", from, state, refs).WithHint("close the blockers first, or use `--force` to override")}, nil
+		refs := make([]string, len(open))
+		for i, b := range open {
+			refs[i] = numberOrID(b, b.ID)
 		}
-		warns = append(warns, fmt.Errorf("forced past blocker guard: %s still open", refs))
+		joined := strings.Join(refs, ", ")
+		if !force {
+			return []error{errx.User("%s -> %s is blocked by open items: %s", from, state, joined).WithHint("close the blockers first, or use `--force` to override")}, nil
+		}
+		warns = append(warns, fmt.Errorf("forced past blocker guard: %s still open", joined))
 	}
 	return nil, warns
 }
