@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: bug
 title: "Automation validation batch: timeout<=0, dead match keys, trust-hash pinning"
-state: IN_PROGRESS
+state: REVIEW
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:46+05:30
-updated: 2026-07-16T17:47:10+05:30
+updated: 2026-07-16T18:29:54+05:30
 ---
 
 ## Description
