@@ -22,20 +22,20 @@ func TestAllocateIsMaxUnionPlusOne(t *testing.T) {
 	for trial := 0; trial < 500; trial++ {
 		var items []id.Item
 		union := map[int]bool{}
-		max := 0
+		highest := 0
 		nItems := rng.Intn(8)
 		for i := 0; i < nItems; i++ {
 			num := rng.Intn(1000) + 1
 			union[num] = true
-			if num > max {
-				max = num
+			if num > highest {
+				highest = num
 			}
 			var aliases []string
 			for j := 0; j < rng.Intn(4); j++ {
 				a := rng.Intn(1000) + 1
 				union[a] = true
-				if a > max {
-					max = a
+				if a > highest {
+					highest = a
 				}
 				aliases = append(aliases, fmt.Sprintf("KIRA-%d", a))
 			}
@@ -46,7 +46,7 @@ func TestAllocateIsMaxUnionPlusOne(t *testing.T) {
 			})
 		}
 		got := id.Allocate(id.Snapshot{Key: "KIRA", Items: items})
-		want := max + 1
+		want := highest + 1
 		if got.N != want {
 			t.Fatalf("trial %d: Allocate.N = %d, want max+1 = %d", trial, got.N, want)
 		}

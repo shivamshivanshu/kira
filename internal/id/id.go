@@ -8,16 +8,20 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
+// ULID is the type of kira's immutable item identifiers.
 type ULID = ulid.ULID
 
+// entropy is the shared monotonic random source for ULID generation.
 var entropy = &ulid.LockedMonotonicReader{
 	MonotonicReader: ulid.Monotonic(rand.Reader, 0),
 }
 
+// Mint returns a new ULID seeded from the current time.
 func Mint() ULID { return mint(time.Now()) }
 
 func mint(t time.Time) ULID { return ulid.MustNew(ulid.Timestamp(t), entropy) }
 
+// ParseULID parses a ULID string with strict base32 charset validation.
 func ParseULID(s string) (ULID, error) { return ulid.ParseStrict(s) }
 
 // ParseULIDLoose reports whether s is ULID-shaped (26 chars, no timestamp

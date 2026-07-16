@@ -8,11 +8,13 @@ import (
 
 const hashSuffixLen = 6
 
+// Number represents a display number in the form KEY-n.
 type Number struct {
 	Key string
 	N   int
 }
 
+// String returns the display number as a formatted KEY-n string.
 func (n Number) String() string { return fmt.Sprintf("%s-%d", n.Key, n.N) }
 
 func splitLastDash(s string) (key, suffix string, ok bool) {
@@ -23,11 +25,13 @@ func splitLastDash(s string) (key, suffix string, ok bool) {
 	return s[:i], s[i+1:], true
 }
 
+// KeyOf extracts the KEY portion from a display number string.
 func KeyOf(number string) string {
 	key, _, _ := splitLastDash(number)
 	return key
 }
 
+// ParseNumber parses a display number string into a Number struct.
 func ParseNumber(s string) (Number, error) {
 	key, suffix, ok := splitLastDash(s)
 	if !ok || suffix == "" {
@@ -40,6 +44,7 @@ func ParseNumber(s string) (Number, error) {
 	return Number{Key: key, N: n}, nil
 }
 
+// HighestN returns the highest integer suffix among all numbers and aliases for a given key in the snapshot.
 func HighestN(snap Snapshot, key string) int {
 	highest := 0
 	bump := func(raw string) {
@@ -56,6 +61,7 @@ func HighestN(snap Snapshot, key string) int {
 	return highest
 }
 
+// Allocate returns the next sequential number for the snapshot's key.
 func Allocate(snap Snapshot) Number {
 	return Number{Key: snap.Key, N: HighestN(snap, snap.Key) + 1}
 }
@@ -80,6 +86,7 @@ func allDigits(s string) bool {
 	return true
 }
 
+// Allocator generates display numbers either sequentially or by deriving from ULIDs.
 type Allocator struct {
 	hashStyle bool
 	key       string
@@ -87,6 +94,7 @@ type Allocator struct {
 	taken     map[string]bool
 }
 
+// NewAllocator creates an Allocator in either sequential or hash-based mode.
 func NewAllocator(hashStyle bool, snap Snapshot, key string) *Allocator {
 	a := &Allocator{hashStyle: hashStyle, key: key}
 	if hashStyle {
@@ -97,6 +105,7 @@ func NewAllocator(hashStyle bool, snap Snapshot, key string) *Allocator {
 	return a
 }
 
+// Alloc returns a display number for the given ULID.
 func (a *Allocator) Alloc(u ULID) string {
 	if !a.hashStyle {
 		number := Number{Key: a.key, N: a.next}.String()

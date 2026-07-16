@@ -10,33 +10,40 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
+// Item represents an item in a snapshot with its ULID, display number, and aliases.
 type Item struct {
 	ULID    string
 	Number  string
 	Aliases []string
 }
 
+// Snapshot represents a set of items for resolution purposes.
 type Snapshot struct {
 	Key   string
 	Items []Item
 }
 
+// NotFoundError indicates that a token does not resolve to any item.
 type NotFoundError struct {
 	Token      string
 	Suggestion string
 }
 
+// Error returns the error message for NotFoundError.
 func (e *NotFoundError) Error() string { return fmt.Sprintf("id: %q resolves to no item", e.Token) }
 
+// AmbiguousError indicates that a token resolves to multiple items.
 type AmbiguousError struct {
 	Token      string
 	Candidates []string
 }
 
+// Error returns the error message for AmbiguousError.
 func (e *AmbiguousError) Error() string {
 	return fmt.Sprintf("%q is ambiguous between %s", e.Token, strings.Join(e.Candidates, ", "))
 }
 
+// Resolver resolves item identifiers (ULIDs, display numbers, or aliases) to ULIDs.
 type Resolver struct {
 	sortedULIDs      []string
 	liveByNumber     map[string][]string
@@ -46,6 +53,7 @@ type Resolver struct {
 	numberByBareN    map[string][]string
 }
 
+// NewResolver creates a Resolver from a snapshot.
 func NewResolver(snap Snapshot) *Resolver {
 	r := &Resolver{
 		sortedULIDs:      make([]string, len(snap.Items)),
@@ -105,6 +113,7 @@ func (r *Resolver) ambiguous(token string, holders []string) error {
 	return &AmbiguousError{Token: token, Candidates: cands}
 }
 
+// Resolve returns the ULID for the given identifier token (ULID, display number, or alias).
 func (r *Resolver) Resolve(token string) (string, error) {
 	t := strings.TrimSpace(token)
 	if t == "" {
