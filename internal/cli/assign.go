@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -43,8 +44,9 @@ func newAssignCmd(g *globalFlags) *cobra.Command {
 			}
 			apply := func(id string) (*datamodel.MutationResult, error) { return b.Assign(id, user, opts) }
 			line := func(res *datamodel.MutationResult) string { return assignLine(res, user) }
+			warn := func(w io.Writer, res *datamodel.MutationResult) { emitMutationWarnings(w, res.Warnings) }
 			out := cmd.OutOrStdout()
-			return runSingleOrBulk(out, cmd.ErrOrStderr(), g.json, ids, apply, line)
+			return runSingleOrBulk(out, cmd.ErrOrStderr(), g.json, ids, apply, line, warn)
 		},
 	}
 	f := cmd.Flags()

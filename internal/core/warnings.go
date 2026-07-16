@@ -1,24 +1,25 @@
 package core
 
 import (
-	"errors"
-	"fmt"
-	"os"
 	"slices"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/treeish"
 )
 
-func emitWarnings(warns []error) {
-	for _, w := range warns {
-		fmt.Fprintln(os.Stderr, "kira: warning:", w.Error())
-		var ce *errx.Error
-		if errors.As(w, &ce) && ce.Hint != "" {
-			fmt.Fprintln(os.Stderr, "  hint:", ce.Hint)
-		}
+func warningStrings(warns []error) []string {
+	if len(warns) == 0 {
+		return nil
 	}
+	out := make([]string, len(warns))
+	for i, w := range warns {
+		out[i] = w.Error()
+	}
+	return out
+}
+
+func warningsFromErrors(warns []error) []datamodel.Warning {
+	return literalWarnings(warningStrings(warns))
 }
 
 func literalWarnings(msgs []string) []datamodel.Warning {

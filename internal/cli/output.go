@@ -9,6 +9,18 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
+func emitWarningLines(w io.Writer, warns []string) {
+	for _, m := range warns {
+		fmt.Fprintln(w, msgPrefix, "warning:", m)
+	}
+}
+
+func emitMutationWarnings(w io.Writer, warns []datamodel.Warning) {
+	for _, wn := range warns {
+		fmt.Fprintln(w, msgPrefix, "warning:", renderWarning(wn))
+	}
+}
+
 func renderWarning(w datamodel.Warning) string {
 	switch w.Code {
 	case datamodel.WarnIndexFallback:

@@ -107,10 +107,11 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 
 	changed := datamodel.ChangedFields(orig, updated)
 	subject := cfg.Commit.SubjectPrefix + updated.Number + " edit " + strings.Join(changed, ",")
-	if err := s.commitMutation(cfg, orig, updated, changed, warns, subject, datamodel.SourceCLI); err != nil {
+	finalWarns, err := s.commitMutation(cfg, orig, updated, changed, warns, subject, datamodel.SourceCLI)
+	if err != nil {
 		return nil, err
 	}
-	return &datamodel.MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed}, nil
+	return &datamodel.MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed, Warnings: warningsFromErrors(finalWarns)}, nil
 }
 
 func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) (string, string, error) {

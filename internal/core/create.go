@@ -165,7 +165,7 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 		Subject: subject,
 		Source:  datamodel.SourceCLI,
 	}
-	if err := s.commit(cfg, cs, warns); err != nil {
+	if err := s.commit(cfg, cs); err != nil {
 		return nil, err
 	}
 	res := &datamodel.CreateResult{
@@ -182,6 +182,7 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 		Priority:   finalItem.Priority,
 		Resolution: finalItem.Resolution,
 		Path:       path,
+		Warnings:   warningsFromErrors(warns),
 	}
 	if finalItem.Epic != nil {
 		if num, ok := epicNumberMap(ld.items)[*finalItem.Epic]; ok {

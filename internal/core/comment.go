@@ -70,7 +70,7 @@ func (s *Store) Comment(cfg *datamodel.Config, ref string, opts CommentOpts) (*d
 		Subject: subject,
 		Source:  datamodel.SourceCLI,
 	}
-	if err := s.commit(cfg, cs, nil); err != nil {
+	if err := s.commit(cfg, cs); err != nil {
 		return nil, err
 	}
 	return &datamodel.CommentResult{ID: orig.ID, Number: orig.Number, CommentID: c.ID}, nil

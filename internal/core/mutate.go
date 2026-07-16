@@ -31,32 +31,33 @@ func (s *Store) lockAndResolve(cfg *datamodel.Config, ref string) (func(), *data
 	return release, orig, items, resolver, nil
 }
 
-func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, error) {
+func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, []error, error) {
 	release, orig, items, resolver, err := s.lockAndResolve(cfg, ref)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	defer release()
 	return s.mutateAgainst(cfg, orig, items, resolver, force, apply, subjectOf, source)
 }
 
-func (s *Store) mutateAgainst(cfg *datamodel.Config, orig *datamodel.Item, items []*datamodel.Item, resolver *id.Resolver, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, error) {
+func (s *Store) mutateAgainst(cfg *datamodel.Config, orig *datamodel.Item, items []*datamodel.Item, resolver *id.Resolver, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, []error, error) {
 	updated := cloneItem(orig)
 	hard, warns := apply(updated, resolver, items)
 	if len(hard) > 0 {
-		return nil, nil, errx.Invalid(invalidItemPrefix, hard)
+		return nil, nil, nil, errx.Invalid(invalidItemPrefix, hard)
 	}
 	vhard, vwarns := validateMutation(cfg, orig, updated, resolver, items, force)
 	if len(vhard) > 0 {
-		return nil, nil, errx.Invalid(invalidItemPrefix, vhard)
+		return nil, nil, nil, errx.Invalid(invalidItemPrefix, vhard)
 	}
 	warns = append(warns, vwarns...)
 
 	changed := datamodel.ChangedFields(orig, updated)
-	if err := s.commitMutation(cfg, orig, updated, changed, warns, subjectOf(orig), source); err != nil {
-		return nil, nil, err
+	finalWarns, err := s.commitMutation(cfg, orig, updated, changed, warns, subjectOf(orig), source)
+	if err != nil {
+		return nil, nil, nil, err
 	}
-	return updated, changed, nil
+	return updated, changed, finalWarns, nil
 }
 
 type Batch struct {
@@ -91,36 +92,36 @@ func (b *Batch) RefExists(ref string) bool {
 	return err == nil
 }
 
-func (b *Batch) Mutate(ref string, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, error) {
+func (b *Batch) Mutate(ref string, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, []error, error) {
 	orig, err := b.Resolve(ref)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if err := guardWritable(orig); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	updated, changed, err := b.store.mutateAgainst(b.cfg, orig, b.items, b.resolver, force, apply, subjectOf, source)
+	updated, changed, warns, err := b.store.mutateAgainst(b.cfg, orig, b.items, b.resolver, force, apply, subjectOf, source)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	// The next item validated in this batch (e.g. against a WIP limit) must
 	// see this commit, not the pre-batch snapshot.
 	replaceByULID(b.items, updated)
-	return updated, changed, nil
+	return updated, changed, warns, nil
 }
 
-func (s *Store) commitMutation(cfg *datamodel.Config, before, updated *datamodel.Item, changed []string, warns []error, subject string, source datamodel.ChangeSource) error {
+func (s *Store) commitMutation(cfg *datamodel.Config, before, updated *datamodel.Item, changed []string, warns []error, subject string, source datamodel.ChangeSource) ([]error, error) {
 	if len(changed) == 0 {
-		return nil
+		return nil, nil
 	}
 	updated.Updated = time.Now().Format(time.RFC3339)
 	warns = scopeVocabWarnings(warns, changed)
 
 	path, err := s.fs().WriteItem(updated)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return s.commit(cfg, &datamodel.ChangeSet{
+	if err := s.commit(cfg, &datamodel.ChangeSet{
 		Kind:    datamodel.ChangeMutated,
 		Before:  before,
 		After:   updated,
@@ -128,7 +129,10 @@ func (s *Store) commitMutation(cfg *datamodel.Config, before, updated *datamodel
 		Paths:   []string{path},
 		Subject: subject,
 		Source:  source,
-	}, warns)
+	}); err != nil {
+		return nil, err
+	}
+	return warns, nil
 }
 
 func scopeVocabWarnings(warns []error, changed []string) []error {
@@ -143,8 +147,7 @@ func scopeVocabWarnings(warns []error, changed []string) []error {
 	return out
 }
 
-func (s *Store) commit(cfg *datamodel.Config, cs *datamodel.ChangeSet, warns []error) error {
-	emitWarnings(warns)
+func (s *Store) commit(cfg *datamodel.Config, cs *datamodel.ChangeSet) error {
 	sha, err := s.finalize(cfg.Commit.Mode, commitSpec{trailerKey: cfg.Commit.Trailer, subject: cs.Subject, trailerNumber: cs.After.Number}, cs.Paths...)
 	if err != nil {
 		return err

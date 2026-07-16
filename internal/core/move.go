@@ -32,16 +32,12 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 func (b *Batch) Move(ref, state string, opts MoveOpts) (*datamodel.MoveResult, error) {
 	cfg := b.cfg
 	var from string
-	var wipWarnings []string
 	apply := func(it *datamodel.Item, _ *id.Resolver, items []*datamodel.Item) ([]error, []error) {
 		from = it.State
 		it.State = state
 		hard, warns, wipWarns := applyStateChange(cfg, it, from, opts, nil, items)
 		if len(hard) > 0 {
 			return hard, nil
-		}
-		for _, e := range wipWarns {
-			wipWarnings = append(wipWarnings, e.Error())
 		}
 		return nil, append(warns, wipWarns...)
 	}
@@ -53,7 +49,7 @@ func (b *Batch) Move(ref, state string, opts MoveOpts) (*datamodel.MoveResult, e
 	if source == "" {
 		source = datamodel.SourceCLI
 	}
-	updated, _, err := b.Mutate(ref, opts.Force, apply, subjectOf, source)
+	updated, _, warns, err := b.Mutate(ref, opts.Force, apply, subjectOf, source)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +64,7 @@ func (b *Batch) Move(ref, state string, opts MoveOpts) (*datamodel.MoveResult, e
 		From:      from,
 		To:        updated.State,
 		Activated: opts.Activate,
-		Warnings:  wipWarnings,
+		Warnings:  warningStrings(warns),
 	}, nil
 }
 

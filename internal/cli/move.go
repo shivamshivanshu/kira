@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -27,8 +28,9 @@ func newMoveCmd(g *globalFlags) *cobra.Command {
 			}
 			defer b.Close()
 			apply := func(id string) (*datamodel.MoveResult, error) { return b.Move(id, state, opts) }
+			warn := func(w io.Writer, res *datamodel.MoveResult) { emitWarningLines(w, res.Warnings) }
 			out := cmd.OutOrStdout()
-			return runSingleOrBulk(out, cmd.ErrOrStderr(), g.json, ids, apply, moveLine)
+			return runSingleOrBulk(out, cmd.ErrOrStderr(), g.json, ids, apply, moveLine, warn)
 		},
 	}
 	f := cmd.Flags()

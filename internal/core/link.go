@@ -47,11 +47,11 @@ func (s *Store) Link(cfg *datamodel.Config, ref string, opts LinkOpts) (*datamod
 		return fmt.Sprintf("%s%s %s %s %s", cfg.Commit.SubjectPrefix, orig.Number, verb, edge, opts.Ref)
 	}
 
-	updated, changed, err := s.mutate(cfg, ref, opts.Force, apply, subjectOf, datamodel.SourceCLI)
+	updated, changed, warns, err := s.mutate(cfg, ref, opts.Force, apply, subjectOf, datamodel.SourceCLI)
 	if err != nil {
 		return nil, err
 	}
-	return &datamodel.MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed}, nil
+	return &datamodel.MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed, Warnings: warningsFromErrors(warns)}, nil
 }
 
 func linkEpic(it *datamodel.Item, resolver *id.Resolver, opts LinkOpts) []error {

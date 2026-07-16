@@ -27,6 +27,7 @@ func newWorkonCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			emitMutationWarnings(cmd.ErrOrStderr(), res.Warnings)
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}

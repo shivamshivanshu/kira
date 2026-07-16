@@ -121,9 +121,9 @@ func (b *Batch) LabelSet(ref, label string, add, force bool) (*datamodel.Mutatio
 	subjectOf := func(orig *datamodel.Item) string {
 		return cfg.Commit.SubjectPrefix + orig.Number + " label " + verb + " " + label
 	}
-	updated, changed, err := b.Mutate(ref, force, apply, subjectOf, datamodel.SourceCLI)
+	updated, changed, warns, err := b.Mutate(ref, force, apply, subjectOf, datamodel.SourceCLI)
 	if err != nil {
 		return nil, err
 	}
-	return &datamodel.MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed}, nil
+	return &datamodel.MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed, Warnings: warningsFromErrors(warns)}, nil
 }

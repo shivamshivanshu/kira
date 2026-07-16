@@ -8,7 +8,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-func runBulk[T any](out, errW io.Writer, jsonMode bool, ids []string, apply func(string) (T, error), line func(T) string) error {
+func runBulk[T any](out, errW io.Writer, jsonMode bool, ids []string, apply func(string) (T, error), line func(T) string, warn func(io.Writer, T)) error {
 	outcomes := make([]datamodel.BulkOutcome, 0, len(ids))
 	failed := 0
 	for _, id := range ids {
@@ -22,6 +22,9 @@ func runBulk[T any](out, errW io.Writer, jsonMode bool, ids []string, apply func
 			continue
 		}
 		outcomes = append(outcomes, datamodel.BulkOutcome{Ref: id, Result: res})
+		if warn != nil {
+			warn(errW, res)
+		}
 		if !jsonMode {
 			fmt.Fprintln(out, line(res))
 		}
@@ -37,11 +40,14 @@ func runBulk[T any](out, errW io.Writer, jsonMode bool, ids []string, apply func
 	return nil
 }
 
-func runSingleOrBulk[T any](out, errW io.Writer, jsonMode bool, ids []string, apply func(string) (T, error), line func(T) string) error {
+func runSingleOrBulk[T any](out, errW io.Writer, jsonMode bool, ids []string, apply func(string) (T, error), line func(T) string, warn func(io.Writer, T)) error {
 	if len(ids) == 1 {
 		res, err := apply(ids[0])
 		if err != nil {
 			return err
+		}
+		if warn != nil {
+			warn(errW, res)
 		}
 		if jsonMode {
 			return emitJSON(out, res)
@@ -49,5 +55,5 @@ func runSingleOrBulk[T any](out, errW io.Writer, jsonMode bool, ids []string, ap
 		fmt.Fprintln(out, line(res))
 		return nil
 	}
-	return runBulk(out, errW, jsonMode, ids, apply, line)
+	return runBulk(out, errW, jsonMode, ids, apply, line, warn)
 }

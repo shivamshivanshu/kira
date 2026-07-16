@@ -1,7 +1,6 @@
 package core_test
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -811,24 +810,6 @@ func TestEditResolutionOnlyOnDoneStates(t *testing.T) {
 	}
 }
 
-func captureStderr(t *testing.T, fn func()) string {
-	t.Helper()
-	old := os.Stderr
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	os.Stderr = w
-	defer func() { os.Stderr = old }()
-	fn()
-	w.Close()
-	data, err := io.ReadAll(r)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(data)
-}
-
 func TestEditStateSetEffectSkipsExplicitEdits(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
@@ -892,13 +873,17 @@ func TestEditStateWipGuard(t *testing.T) {
 		}
 	}
 
-	out := captureStderr(t, func() {
-		if err := editState(s, cfg, nums[3], "IN_PROGRESS", false); err != nil {
-			t.Fatalf("edit over limit under warn policy must not block: %v", err)
-		}
-	})
-	if !strings.Contains(out, "WIP limit") || !strings.Contains(out, "4 > 3") {
-		t.Fatalf("stderr = %q, want an over-WIP-limit warning at 4 > 3", out)
+	res, err := s.Edit(cfg, nums[3], core.EditOpts{Fields: []core.FieldEdit{{Key: "state", Value: "IN_PROGRESS"}}})
+	if err != nil {
+		t.Fatalf("edit over limit under warn policy must not block: %v", err)
+	}
+	var msgs []string
+	for _, w := range res.Warnings {
+		msgs = append(msgs, w.Args[0])
+	}
+	joined := strings.Join(msgs, "\n")
+	if !strings.Contains(joined, "WIP limit") || !strings.Contains(joined, "4 > 3") {
+		t.Fatalf("Warnings = %q, want an over-WIP-limit warning at 4 > 3", joined)
 	}
 
 	wf := cfg.Workflows[datamodel.TypeTicket]

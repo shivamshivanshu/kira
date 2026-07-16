@@ -43,6 +43,8 @@ type CreateResult struct {
 	Priority   *string  `json:"priority"`
 	Resolution *string  `json:"resolution"`
 	Path       string   `json:"path"`
+
+	Warnings []Warning `json:"-"`
 }
 
 type ListItem struct {
@@ -151,6 +153,8 @@ type MutationResult struct {
 	ID      string   `json:"id"`
 	Number  string   `json:"number"`
 	Changed []string `json:"changed"`
+
+	Warnings []Warning `json:"-"`
 }
 
 type BulkOutcome struct {
@@ -524,6 +528,8 @@ type WorkonResult struct {
 	Moved         bool   `json:"moved"`
 	From          string `json:"from,omitempty"`
 	To            string `json:"to,omitempty"`
+
+	Warnings []Warning `json:"-"`
 }
 
 type NowSource string

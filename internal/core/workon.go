@@ -61,11 +61,14 @@ func (s *Store) Workon(cfg *datamodel.Config, ref string, opts WorkonOpts) (*dat
 	if !opts.NoMove {
 		if to, ok := doingTarget(cfg, it); ok {
 			res, err := target.Move(cfg, ref, to, MoveOpts{})
+			var msgs []string
 			if err != nil {
-				emitWarnings([]error{fmt.Errorf("workon: skipped doing-transition: %v", err)})
+				msgs = []string{fmt.Sprintf("workon: skipped doing-transition: %v", err)}
 			} else {
 				result.Moved, result.From, result.To = true, res.From, res.To
+				msgs = res.Warnings
 			}
+			result.Warnings = literalWarnings(msgs)
 		}
 	}
 	return result, nil

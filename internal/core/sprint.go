@@ -138,7 +138,7 @@ func (s *Store) SprintClose(cfg *datamodel.Config, key, moveTo string) (*datamod
 		}
 		defer b.Close()
 		for _, it := range unfinished {
-			if _, _, err := b.Mutate(it.ID, false, apply, subjectOf, datamodel.SourceCLI); err != nil {
+			if _, _, _, err := b.Mutate(it.ID, false, apply, subjectOf, datamodel.SourceCLI); err != nil {
 				return nil, err
 			}
 		}

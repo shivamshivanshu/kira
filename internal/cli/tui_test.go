@@ -33,6 +33,34 @@ func TestCommandRunnerMovesTicketThroughCoreService(t *testing.T) {
 	}
 }
 
+func TestCommandRunnerMoveWipWarningReachesStderr(t *testing.T) {
+	dir := initFixture(t)
+	s, cfg := reopen(t, dir)
+	var nums []string
+	for _, title := range []string{"a", "b", "c", "d"} {
+		res, err := s.Create(cfg, core.CreateOpts{Type: "ticket", Title: title, NoEdit: true})
+		if err != nil {
+			t.Fatalf("create: %v", err)
+		}
+		nums = append(nums, res.Number)
+	}
+
+	g := &globalFlags{chdir: dir}
+	for _, num := range nums[:3] {
+		if _, err := commandRunner(g)([]string{"move", num, "IN_PROGRESS"}); err != nil {
+			t.Fatalf("move %s: %v", num, err)
+		}
+	}
+
+	out, err := commandRunner(g)([]string{"move", nums[3], "IN_PROGRESS"})
+	if err != nil {
+		t.Fatalf("move over the wip limit must warn, not fail: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "warning") || !strings.Contains(out, "WIP limit") {
+		t.Fatalf("commandRunner output = %q, want a WIP-limit warning surfaced through cmd.ErrOrStderr()", out)
+	}
+}
+
 func TestCommandRunnerReportsError(t *testing.T) {
 	dir := initFixture(t)
 	g := &globalFlags{chdir: dir}
