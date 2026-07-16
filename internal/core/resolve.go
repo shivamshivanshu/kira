@@ -1,8 +1,6 @@
 package core
 
 import (
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -18,6 +16,11 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 	if interactive && !s.prompter.Interactive() {
 		return nil, errx.User("--interactive needs a terminal; rerun without it to auto-resolve").WithHint("run in an interactive shell to pick fields by hand")
 	}
+	release, err := s.fs().Lock()
+	if err != nil {
+		return nil, err
+	}
+	defer release()
 	repo := s.repo()
 	unmerged, err := repo.UnmergedPaths()
 	if err != nil {
@@ -72,10 +75,15 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 		if interactive {
 			s.pickFields(res.Item, oursItem, theirsItem, res.Arbitrated)
 		}
-		if err := s.writeResolvedFile(path, res.Item); err != nil {
+		rel, err := s.fs().WriteItemRaw(res.Item.ID, codec.Serialize(res.Item))
+		if err != nil {
 			return nil, err
 		}
-		staged = append(staged, path)
+		if rel != path {
+			result.Skipped = append(result.Skipped, path)
+			continue
+		}
+		staged = append(staged, rel)
 		result.Resolved = append(result.Resolved, mergeResultOf(res))
 	}
 	if len(staged) > 0 {
@@ -84,14 +92,6 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 		}
 	}
 	return result, nil
-}
-
-func (s *Store) writeResolvedFile(path string, it *datamodel.Item) error {
-	abs := filepath.Join(s.root, filepath.FromSlash(path))
-	if err := os.WriteFile(abs, []byte(codec.Serialize(it)), itemFileMode); err != nil {
-		return errx.Env("writing %s: %v", path, err)
-	}
-	return nil
 }
 
 func parseOrNil(content string) *datamodel.Item {
