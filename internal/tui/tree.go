@@ -2,6 +2,7 @@ package tui
 
 import (
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 
@@ -217,7 +218,7 @@ func (tm *treeModel) renderRow(t theme.Theme, ic iconSet, ti treeItem, width int
 		{" ", t.Text}, {ic.categoryGlyph(cat, ti.fields.Resolution), t.CategoryStyle(cat)},
 		{" ", t.Text}, {"[" + ti.fields.State + "]", t.CategoryStyle(cat)},
 	}
-	if overdue(ti.fields.Due, ti.fields.Category) {
+	if datamodel.IsOverdue(ti.fields.Due, ti.fields.Category, time.Now()) {
 		right = append(right, rowSegment{" ", t.Text}, rowSegment{ic.overdueGlyph(), t.Heat.Hot})
 	}
 	if showProgress && ti.isEpic() {

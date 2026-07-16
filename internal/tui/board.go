@@ -4,6 +4,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 
@@ -128,7 +129,7 @@ func renderCard(t theme.Theme, ic iconSet, cat datamodel.Category, it datamodel.
 		{prio, priorityHue(t, ic.priorityTier(priority))}, {" ", t.Text},
 		{glyph, t.CategoryStyle(cat)}, {" ", t.Text},
 	}
-	if overdue(it.Due, it.Category) {
+	if datamodel.IsOverdue(it.Due, it.Category, time.Now()) {
 		segments = append(segments, rowSegment{ic.overdueGlyph(), t.Heat.Hot}, rowSegment{" ", t.Text})
 	}
 	segments = append(segments, rowSegment{it.Number, t.Dim}, rowSegment{"  ", t.Text})

@@ -48,12 +48,12 @@ func inSprint(it *datamodel.Item, key string) bool {
 }
 
 func (s *Store) SprintCreate(cfg *datamodel.Config, sp datamodel.Sprint) (*datamodel.SprintCreateResult, error) {
-	err := s.mutateConfig(func(data []byte, _ *datamodel.Config) (configEdit, error) {
+	err := s.mutateConfig(func(data []byte, locked *datamodel.Config) (configEdit, error) {
 		out, err := config.AppendSprint(data, sp)
 		if err != nil {
 			return configEdit{}, errx.User("%v", err)
 		}
-		return configEdit{data: out, commit: cfg.Commit, subject: "sprint create " + sp.Key}, nil
+		return configEdit{data: out, commit: locked.Commit, subject: "sprint create " + sp.Key}, nil
 	})
 	if err != nil {
 		return nil, err
@@ -130,7 +130,7 @@ func (s *Store) SprintClose(cfg *datamodel.Config, key, moveTo string) (*datamod
 			return nil, nil
 		}
 		subjectOf := func(orig *datamodel.Item) string {
-			return fmt.Sprintf(cfg.Commit.SubjectPrefix+"%s sprint %s -> %s", orig.Number, key, moveTo)
+			return fmt.Sprintf("%s%s sprint %s -> %s", cfg.Commit.SubjectPrefix, orig.Number, key, moveTo)
 		}
 		for _, it := range unfinished {
 			if _, _, err := s.mutate(cfg, it.ID, false, apply, subjectOf, datamodel.SourceCLI); err != nil {

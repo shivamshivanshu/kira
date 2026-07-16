@@ -45,8 +45,8 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 			if opts.Here && (!opts.NoEdit || opts.Title == "") {
 				return errx.User("--here requires --no-edit and --title")
 			}
-			if opts.Blocking && !opts.Here {
-				return errx.User("--blocking requires --here")
+			if err := opts.ValidateBlocking(); err != nil {
+				return err
 			}
 			s, cfg, err := openStore(g)
 			if err != nil {

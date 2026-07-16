@@ -145,7 +145,7 @@ func detailMeta(t theme.Theme, ic iconSet, res *datamodel.ShowResult) string {
 		parts = append(parts, priorityHue(t, ic.priorityTier(*res.Priority)).Render(*res.Priority))
 	}
 	if res.Due != nil && *res.Due != "" {
-		if overdue(res.Due, res.Category) {
+		if datamodel.IsOverdue(res.Due, res.Category, time.Now()) {
 			parts = append(parts, t.Dim.Render("due ")+t.Heat.Hot.Render(*res.Due+" overdue"))
 		} else {
 			parts = append(parts, t.Dim.Render("due ")+*res.Due)

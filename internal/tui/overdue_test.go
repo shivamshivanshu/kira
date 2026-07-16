@@ -3,25 +3,9 @@ package tui
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
-
-func TestOverdueUsesLocalCalendarDate(t *testing.T) {
-	saved := time.Local
-	time.Local = time.FixedZone("west", -8*60*60)
-	defer func() { time.Local = saved }()
-
-	today := time.Now().Format(time.DateOnly)
-	if overdue(&today, "todo") {
-		t.Errorf("a due date of today (%s, zone %s) must not be overdue", today, time.Local)
-	}
-	yesterday := time.Now().AddDate(0, 0, -1).Format(time.DateOnly)
-	if !overdue(&yesterday, "todo") {
-		t.Errorf("a due date of yesterday (%s) must be overdue", yesterday)
-	}
-}
 
 func treeWithDue(state, category, due string) treeModel {
 	nodes := []datamodel.TreeNode{{ID: "T1", Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "Late"}}

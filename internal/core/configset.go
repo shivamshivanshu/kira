@@ -15,12 +15,12 @@ func Filters(cfg *datamodel.Config) *datamodel.FilterListResult {
 }
 
 func (s *Store) ConfigSet(cfg *datamodel.Config, key, value string) (*datamodel.ConfigSetResult, error) {
-	err := s.mutateConfig(func(data []byte, _ *datamodel.Config) (configEdit, error) {
+	err := s.mutateConfig(func(data []byte, locked *datamodel.Config) (configEdit, error) {
 		out, err := config.SetScalar(data, key, value)
 		if err != nil {
 			return configEdit{}, errx.User("%v", err)
 		}
-		return configEdit{data: out, commit: cfg.Commit, subject: "config set " + key}, nil
+		return configEdit{data: out, commit: locked.Commit, subject: "config set " + key}, nil
 	})
 	if err != nil {
 		return nil, err

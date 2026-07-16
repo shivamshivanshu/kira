@@ -1,6 +1,34 @@
 package timex
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
+
+func TestOverdue(t *testing.T) {
+	now, err := time.Parse(time.DateOnly, "2026-07-16")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name string
+		due  string
+		want bool
+	}{
+		{"past date is overdue", "2026-07-15", true},
+		{"today is not overdue", "2026-07-16", false},
+		{"future date is not overdue", "2026-07-17", false},
+		{"empty due is not overdue", "", false},
+		{"malformed due is not overdue", "not-a-date", false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := Overdue(c.due, now); got != c.want {
+				t.Errorf("Overdue(%q, %s) = %v, want %v", c.due, now, got, c.want)
+			}
+		})
+	}
+}
 
 func TestCompareRFC3339(t *testing.T) {
 	t.Run("same instant across offsets", func(t *testing.T) {

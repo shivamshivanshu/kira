@@ -55,6 +55,15 @@ func (s *Store) resolveScope(cfg *datamodel.Config, opts StatsOpts, items []*dat
 		scope.Weeks = defaultWeeks
 	}
 
+	var since time.Time
+	if opts.Since != "" {
+		var err error
+		since, err = time.ParseInLocation(time.DateOnly, opts.Since, time.Local)
+		if err != nil {
+			return nil, nil, errx.User("--since %q: %v", opts.Since, err)
+		}
+	}
+
 	set := items
 	if opts.Epic != "" {
 		ulid, err := resolveID(resolver, opts.Epic)
@@ -84,7 +93,14 @@ func (s *Store) resolveScope(cfg *datamodel.Config, opts StatsOpts, items []*dat
 
 	if sprintKey != "" || opts.Since != "" {
 		set = slices.DeleteFunc(slices.Clone(set), func(it *datamodel.Item) bool {
-			return (sprintKey != "" && !inSprint(it, sprintKey)) || (opts.Since != "" && it.Created < opts.Since)
+			if sprintKey != "" && !inSprint(it, sprintKey) {
+				return true
+			}
+			if opts.Since == "" {
+				return false
+			}
+			created, err := it.CreatedTime()
+			return err != nil || created.Before(since)
 		})
 	}
 	return scope, set, nil

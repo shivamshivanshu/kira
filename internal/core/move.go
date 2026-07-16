@@ -36,7 +36,7 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 		return nil, append(warns, wipWarns...)
 	}
 	subjectOf := func(orig *datamodel.Item) string {
-		return fmt.Sprintf(cfg.Commit.SubjectPrefix+"%s state %s -> %s", orig.Number, orig.State, state)
+		return fmt.Sprintf("%s%s state %s -> %s", cfg.Commit.SubjectPrefix, orig.Number, orig.State, state)
 	}
 
 	source := opts.Source

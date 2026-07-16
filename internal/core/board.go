@@ -177,38 +177,40 @@ func (s *Store) BoardRename(cfg *datamodel.Config, key, name string) (*datamodel
 	if strings.TrimSpace(name) == "" {
 		return nil, errx.User("board name must not be empty")
 	}
-	return s.updateBoard(cfg, key, "rename", func(b datamodel.Board) datamodel.Board {
+	return s.updateBoard(cfg, key, "rename", false, func(b datamodel.Board) datamodel.Board {
 		b.Name = name
 		return b
 	})
 }
 
 func (s *Store) BoardArchive(cfg *datamodel.Config, key string) (*datamodel.BoardUpdateResult, error) {
-	active := cfg.ActiveBoards()
-	if len(active) == 1 && strings.EqualFold(active[0].Key, key) {
-		return nil, errx.User("cannot archive %s: it is the last active board", key).
-			WithHint("create or unarchive another board first")
-	}
-	return s.updateBoard(cfg, key, "archive", func(b datamodel.Board) datamodel.Board {
+	return s.updateBoard(cfg, key, "archive", true, func(b datamodel.Board) datamodel.Board {
 		b.Archived = true
 		return b
 	})
 }
 
 func (s *Store) BoardUnarchive(cfg *datamodel.Config, key string) (*datamodel.BoardUpdateResult, error) {
-	return s.updateBoard(cfg, key, "unarchive", func(b datamodel.Board) datamodel.Board {
+	return s.updateBoard(cfg, key, "unarchive", false, func(b datamodel.Board) datamodel.Board {
 		b.Archived = false
 		return b
 	})
 }
 
-func (s *Store) updateBoard(cfg *datamodel.Config, key, verb string, mutate func(datamodel.Board) datamodel.Board) (*datamodel.BoardUpdateResult, error) {
+func (s *Store) updateBoard(cfg *datamodel.Config, key, verb string, guardLastActive bool, mutate func(datamodel.Board) datamodel.Board) (*datamodel.BoardUpdateResult, error) {
 	var view datamodel.BoardView
 	err := s.mutateConfig(func(data []byte, locked *datamodel.Config) (configEdit, error) {
 		target, ok := locked.BoardByKey(key)
 		if !ok {
 			return configEdit{}, errx.User("no such board %q", key).
 				WithHint("boards: %s", strings.Join(activeBoardKeys(locked.ActiveBoards()), ", "))
+		}
+		if guardLastActive {
+			active := locked.ActiveBoards()
+			if len(active) == 1 && strings.EqualFold(active[0].Key, key) {
+				return configEdit{}, errx.User("cannot archive %s: it is the last active board", key).
+					WithHint("create or unarchive another board first")
+			}
 		}
 		if locked.Boards == nil {
 			adopted, err := adoptImplicitBoard(locked)

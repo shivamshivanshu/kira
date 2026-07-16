@@ -15,8 +15,8 @@ func CompareRFC3339(a, b string) (cmp int, aOK, bOK bool) {
 	return 0, aOK, bOK
 }
 
-func Overdue(due string, done bool, now time.Time) bool {
-	if due == "" || done {
+func Overdue(due string, now time.Time) bool {
+	if _, err := time.Parse(time.DateOnly, due); err != nil {
 		return false
 	}
 	return due < now.Format(time.DateOnly)

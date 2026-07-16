@@ -41,6 +41,16 @@ type CreateOpts struct {
 	Blocking bool
 }
 
+// ValidateBlocking checks --blocking's precondition, shared by the CLI (for a
+// fail-fast rejection before opening the store) and Store.Create (so the
+// invariant holds for any caller, not just the CLI).
+func (opts CreateOpts) ValidateBlocking() error {
+	if opts.Blocking && !opts.Here {
+		return errx.User("--blocking requires --here")
+	}
+	return nil
+}
+
 func (s *Store) ResolveTemplate(opts CreateOpts) (string, error) {
 	base, err := s.templateDraft(opts.Type, opts.Subtype)
 	if err != nil {
@@ -50,6 +60,9 @@ func (s *Store) ResolveTemplate(opts CreateOpts) (string, error) {
 }
 
 func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.CreateResult, error) {
+	if err := opts.ValidateBlocking(); err != nil {
+		return nil, err
+	}
 	var hereActive string
 	if opts.Here {
 		active, err := s.resolveHere(cfg, &opts)
