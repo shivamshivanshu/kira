@@ -10,6 +10,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/query"
 )
 
 const BoardKeyPattern = `^[A-Z][A-Z0-9]{1,9}$`
@@ -231,12 +232,12 @@ func validateVocabList(key string, list []string) error {
 }
 
 func validateFilters(c *datamodel.Config) error {
-	for name, query := range c.Filters {
+	for name, q := range c.Filters {
 		if name == "" {
 			return errx.User("config: filters: empty filter name")
 		}
-		if strings.TrimSpace(query) == "" {
-			return errx.User("config: filters.%s: empty query", name)
+		if _, err := query.Parse(q); err != nil {
+			return errx.User("config: filters.%s: %v", name, err)
 		}
 	}
 	return nil

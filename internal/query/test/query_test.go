@@ -1,64 +1,28 @@
-package query
+package query_test
 
 import (
 	"sort"
 	"strings"
 	"testing"
 
-	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/query"
 )
 
-func strp(s string) *string   { return &s }
-func f64p(f float64) *float64 { return &f }
-
-func fixture() (items []*datamodel.Item, opts Options, cfg *datamodel.Config) {
-	cfg = config.Default()
-	epicID := id.Mint().String()
-	it1ID := id.Mint().String()
-	it2ID := id.Mint().String()
-	it3ID := id.Mint().String()
-
-	epic := &datamodel.Item{
-		ID: epicID, Number: "KIRA-100", Type: datamodel.TypeEpic, Title: "Big epic",
-		State: "ACTIVE", Created: "2026-07-01T00:00:00Z", Updated: "2026-07-01T00:00:00Z",
-	}
-	it1 := &datamodel.Item{
-		ID: it1ID, Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "Fix race in snapshot",
-		State: "IN_PROGRESS", Owner: strp("shivam"), Priority: strp("P1"),
-		Labels: []string{"bug"}, Epic: strp(epicID),
-		Subtype: strp("bug"), Rank: strp("aam"), Sprint: strp("2026-S14"),
-		Due: strp("2026-07-20"), Estimate: f64p(3),
-		BlockedBy: []string{it2ID}, Links: map[string][]string{string(datamodel.LinkRelates): {it3ID}},
-		Created: "2026-07-05T00:00:00Z", Updated: "2026-07-06T00:00:00Z",
-	}
-	it2 := &datamodel.Item{
-		ID: it2ID, Number: "KIRA-2", Type: datamodel.TypeTicket, Title: "Perf tuning",
-		State: "TODO", Owner: strp("alice"), Labels: []string{"perf"},
-		Priority: strp("P0"), Due: strp("2026-07-01"), Estimate: f64p(5),
-		Reporter: strp("shivam"),
-		Created:  "2026-07-10T00:00:00Z", Updated: "2026-07-10T00:00:00Z",
-	}
-	it3 := &datamodel.Item{
-		ID: it3ID, Number: "KIRA-3", Type: datamodel.TypeTicket, Title: "Done thing",
-		State: "DONE", Owner: strp("shivam"), Labels: []string{"bug", "perf"},
-		Resolution: strp("done"),
-		Created:    "2026-06-01T00:00:00Z", Updated: "2026-06-02T00:00:00Z",
-	}
-	items = []*datamodel.Item{epic, it1, it2, it3}
-
+func evalFixture() (items []*datamodel.Item, opts query.Options, cfg *datamodel.Config) {
+	items, cfg = fixture()
 	snap := id.Snapshot{Key: "KIRA"}
 	for _, it := range items {
 		snap.Items = append(snap.Items, id.Item{ULID: it.ID, Number: it.Number, Aliases: it.Aliases})
 	}
-	opts = Options{Resolver: id.NewResolver(snap), Priorities: cfg.Priorities.Values}
+	opts = query.Options{Resolver: id.NewResolver(snap), Priorities: cfg.Priorities.Values}
 	return items, opts, cfg
 }
 
-func matchNums(t *testing.T, expr string, items []*datamodel.Item, opts Options, cfg *datamodel.Config) []string {
+func matchNums(t *testing.T, expr string, items []*datamodel.Item, opts query.Options, cfg *datamodel.Config) []string {
 	t.Helper()
-	c, err := Compile(expr, opts)
+	c, err := query.Compile(expr, opts)
 	if err != nil {
 		t.Fatalf("Compile(%q): %v", expr, err)
 	}
@@ -73,7 +37,7 @@ func matchNums(t *testing.T, expr string, items []*datamodel.Item, opts Options,
 }
 
 func TestEval(t *testing.T) {
-	items, opts, cfg := fixture()
+	items, opts, cfg := evalFixture()
 	tests := []struct {
 		expr string
 		want []string
@@ -155,7 +119,7 @@ func TestEval(t *testing.T) {
 }
 
 func TestEvalMe(t *testing.T) {
-	items, opts, cfg := fixture()
+	items, opts, cfg := evalFixture()
 	opts.Me = "shivam"
 	tests := []struct {
 		expr string
@@ -174,7 +138,7 @@ func TestEvalMe(t *testing.T) {
 }
 
 func TestEvalSprintActive(t *testing.T) {
-	items, opts, cfg := fixture()
+	items, opts, cfg := evalFixture()
 
 	opts.ActiveSprint = "2026-S14"
 	for _, expr := range []string{"sprint=active", "sprint IN (active, 2026-S99)"} {
@@ -182,7 +146,7 @@ func TestEvalSprintActive(t *testing.T) {
 			t.Errorf("%q with active sprint matched %v, want [KIRA-1]", expr, got)
 		}
 	}
-	c, err := Compile("sprint=active", opts)
+	c, err := query.Compile("sprint=active", opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +161,7 @@ func TestEvalSprintActive(t *testing.T) {
 	if got := matchNums(t, "sprint!=active", items, opts, cfg); len(got) != len(items) {
 		t.Errorf("sprint!=active with no active sprint matched %v, want all", got)
 	}
-	c, err = Compile("sprint=active", opts)
+	c, err = query.Compile("sprint=active", opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +171,7 @@ func TestEvalSprintActive(t *testing.T) {
 }
 
 func TestEvalInEstimate(t *testing.T) {
-	items, opts, cfg := fixture()
+	items, opts, cfg := evalFixture()
 	zero := &datamodel.Item{
 		ID: id.Mint().String(), Number: "KIRA-0", Type: datamodel.TypeTicket, Title: "Zero estimate",
 		State: "TODO", Estimate: f64p(0), Created: "2026-07-05T00:00:00Z", Updated: "2026-07-05T00:00:00Z",
@@ -220,20 +184,20 @@ func TestEvalInEstimate(t *testing.T) {
 }
 
 func TestEvalInCreatedDate(t *testing.T) {
-	items, opts, cfg := fixture()
+	items, opts, cfg := evalFixture()
 	if got := matchNums(t, "created IN (2026-07-01)", items, opts, cfg); strings.Join(got, ",") != "KIRA-100" {
 		t.Errorf("created IN (2026-07-01) matched %v, want [KIRA-100]", got)
 	}
 }
 
 func TestCompileErrors(t *testing.T) {
-	_, opts, _ := fixture()
+	_, opts, _ := evalFixture()
 	noPrio := opts
 	noPrio.Priorities = nil
 	tests := []struct {
 		name string
 		expr string
-		opts Options
+		opts query.Options
 		pos  int
 	}{
 		{"unresolved epic", "epic=KIRA-999", opts, 5},
@@ -246,8 +210,8 @@ func TestCompileErrors(t *testing.T) {
 		{"reporter @me without identity", "reporter=@me", opts, 9},
 	}
 	for _, tc := range tests {
-		_, err := Compile(tc.expr, tc.opts)
-		qe, ok := err.(*Error)
+		_, err := query.Compile(tc.expr, tc.opts)
+		qe, ok := err.(*query.Error)
 		if !ok {
 			t.Fatalf("%s: Compile(%q) err = %v, want *Error", tc.name, tc.expr, err)
 		}
@@ -255,13 +219,13 @@ func TestCompileErrors(t *testing.T) {
 			t.Errorf("%s: pos = %d, want %d (%s)", tc.name, qe.Pos, tc.pos, qe.Msg)
 		}
 	}
-	if _, err := Compile("priority=P1", noPrio); err != nil {
+	if _, err := query.Compile("priority=P1", noPrio); err != nil {
 		t.Errorf("priority=P1 must stay legal without a priority vocabulary: %v", err)
 	}
 }
 
 func TestEvalBlocked(t *testing.T) {
-	items, opts, cfg := fixture()
+	items, opts, cfg := evalFixture()
 	waitsOnDone := &datamodel.Item{
 		ID: id.Mint().String(), Number: "KIRA-4", Type: datamodel.TypeTicket, Title: "waits on done",
 		State: "TODO", BlockedBy: []string{items[3].ID},
@@ -296,7 +260,7 @@ func TestEvalBlocked(t *testing.T) {
 }
 
 func TestEvalActivity(t *testing.T) {
-	items, opts, cfg := fixture()
+	items, opts, cfg := evalFixture()
 	items[0].Activity = items[0].Updated
 	items[1].Activity = "2026-07-15T00:00:00Z"
 	items[2].Activity = items[2].Updated
@@ -317,27 +281,27 @@ func TestEvalActivity(t *testing.T) {
 		}
 	}
 
-	c, err := Compile("state=TODO ORDER BY activity", opts)
+	c, err := query.Compile("state=TODO ORDER BY activity", opts)
 	if err != nil {
 		t.Fatalf("ORDER BY activity: %v", err)
 	}
-	if c.Order == nil || c.Order.Field != fieldActivity {
+	if c.Order == nil || c.Order.Field != "activity" {
 		t.Errorf("ORDER BY activity did not parse into an activity order: %+v", c.Order)
 	}
 }
 
 func TestBlockedActivitySyntaxErrors(t *testing.T) {
-	_, opts, _ := fixture()
+	_, opts, _ := evalFixture()
 	for _, expr := range []string{"state=TODO ORDER BY blocked", "blocked IS EMPTY", "blocked = maybe", "blocked IN (true)"} {
-		if _, err := Compile(expr, opts); err == nil {
+		if _, err := query.Compile(expr, opts); err == nil {
 			t.Errorf("Compile(%q) should error", expr)
 		}
 	}
 }
 
 func TestMatch(t *testing.T) {
-	items, opts, cfg := fixture()
-	pred, err := Match("owner", "shivam", opts)
+	items, opts, cfg := evalFixture()
+	pred, err := query.Match("owner", "shivam", opts)
 	if err != nil {
 		t.Fatalf("Match: %v", err)
 	}
@@ -350,12 +314,12 @@ func TestMatch(t *testing.T) {
 	if n != 2 {
 		t.Errorf("Match owner=shivam matched %d, want 2", n)
 	}
-	if _, err := Match("epic", "KIRA-100", opts); err != nil {
+	if _, err := query.Match("epic", "KIRA-100", opts); err != nil {
 		t.Errorf("Match epic=KIRA-100: %v", err)
 	}
 	active := opts
 	active.ActiveSprint = "2026-S14"
-	pred, err = Match("sprint", "active", active)
+	pred, err = query.Match("sprint", "active", active)
 	if err != nil {
 		t.Fatalf("Match sprint=active: %v", err)
 	}
@@ -368,10 +332,10 @@ func TestMatch(t *testing.T) {
 	if n != 1 {
 		t.Errorf("Match sprint=active matched %d, want 1", n)
 	}
-	if _, err := Match("created", "2026-01-01", opts); err == nil {
+	if _, err := query.Match("created", "2026-01-01", opts); err == nil {
 		t.Errorf("Match on a date field should be rejected")
 	}
-	if _, err := Match("bogus", "x", opts); err == nil {
+	if _, err := query.Match("bogus", "x", opts); err == nil {
 		t.Errorf("Match on an unknown field should be rejected")
 	}
 }

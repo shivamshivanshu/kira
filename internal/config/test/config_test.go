@@ -300,6 +300,11 @@ func TestValidationRejections(t *testing.T) {
 			yaml:    "version: 1\nautomation:\n  - {on: item.created, run: \"true\", timeout: not-a-duration}\n",
 			wantKey: "automation[0].timeout",
 		},
+		{
+			name:    "filter with broken query grammar",
+			yaml:    "version: 1\nfilters:\n  broken: \"state = \"\n",
+			wantKey: "filters.broken",
+		},
 	}
 
 	for _, tc := range cases {

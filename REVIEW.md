@@ -136,7 +136,7 @@ Look hard at: predicate/order compile against the field registry; date/priority 
 - [ ] internal/query/parser.go — Parses tokens into a boolean expression tree plus ORDER BY clause.
 - [ ] internal/query/lexer_test.go — Tests token kinds, string escapes, positions, and lex errors.
 - [ ] internal/query/parser_test.go — Tests canonical parse output and parse error positions.
-- [ ] internal/query/query_test.go — Tests predicate evaluation, sprint=active, compile errors, and Match.
+- [ ] internal/query/test/query_test.go — Tests predicate evaluation, sprint=active, compile errors, and Match.
 - [ ] internal/query/test/order_test.go — Tests ORDER BY sorting across priority, rank, dates, estimate, owner.
 
 ## 10a. Core: store + read verbs — `internal/core`
