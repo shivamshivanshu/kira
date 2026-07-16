@@ -8,7 +8,8 @@ import (
 	"github.com/shivamshivanshu/kira/internal/syncx"
 )
 
-type payload struct {
+// HookPayload is the JSON written to an automation hook's stdin.
+type HookPayload struct {
 	PayloadVersion int                    `json:"payload_version"`
 	Event          datamodel.EventName    `json:"event"`
 	Source         datamodel.ChangeSource `json:"source,omitempty"`
@@ -20,11 +21,13 @@ type payload struct {
 	From           string                 `json:"from,omitempty"`
 	To             string                 `json:"to,omitempty"`
 	ToCategory     string                 `json:"to_category,omitempty"`
+	FromCategory   string                 `json:"from_category,omitempty"`
+	Commit         string                 `json:"commit,omitempty"`
 	Sync           *syncx.Report          `json:"sync,omitempty"`
 }
 
 func Payload(ev Event, repo, ts string, actor Actor) ([]byte, error) {
-	p := payload{
+	p := HookPayload{
 		PayloadVersion: PayloadVersion,
 		Event:          ev.Name,
 		Source:         ev.Source,
@@ -35,6 +38,8 @@ func Payload(ev Event, repo, ts string, actor Actor) ([]byte, error) {
 		From:           ev.From,
 		To:             ev.To,
 		ToCategory:     ev.ToCategory,
+		FromCategory:   ev.FromCategory,
+		Commit:         ev.Commit,
 		Sync:           ev.Sync,
 		Item:           ev.Item,
 	}

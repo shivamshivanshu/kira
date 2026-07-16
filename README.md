@@ -17,5 +17,5 @@ kira                                   # launch the interactive TUI (default wit
 ## Documentation
 
 - `kira --help` and `kira <command> --help` — the command surface.
-- [schema/kira.json](schema/kira.json) — published JSON schema for every `--json` output.
+- [schema/kira.json](schema/kira.json) — published JSON schema for every `--json` output and the automation hook-stdin payload.
 - `.kira/config.yaml` — the annotated project configuration; `kira config init` scaffolds personal preferences.

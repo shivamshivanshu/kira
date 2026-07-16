@@ -2,6 +2,7 @@ package automation
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
@@ -125,6 +126,47 @@ func TestFireRecursionGuardSkipsHooks(t *testing.T) {
 	Fire(&w, t.TempDir(), t.TempDir(), cfg, Event{Name: datamodel.EventItemCreated}, func() Actor { return Actor{} })
 	if w.Len() != 0 {
 		t.Fatalf("Fire under recursion guard wrote %q, want nothing", w.String())
+	}
+}
+
+func TestEnvMirrorAgreesWithPayloadItem(t *testing.T) {
+	item := &datamodel.ShowResult{ID: "01ABC", Number: "KIRA-9", Type: "epic", Title: "Widen scope"}
+	ev := Event{Name: datamodel.EventItemCreated, Item: item}
+
+	env := envMirror(ev, "/repo")
+	get := func(key string) string {
+		prefix := key + "="
+		for _, kv := range env {
+			if strings.HasPrefix(kv, prefix) {
+				return strings.TrimPrefix(kv, prefix)
+			}
+		}
+		t.Fatalf("env var %s not set", key)
+		return ""
+	}
+	if got := get("KIRA_ITEM"); got != item.ID {
+		t.Errorf("KIRA_ITEM = %q, want %q", got, item.ID)
+	}
+	if got := get("KIRA_NUMBER"); got != item.Number {
+		t.Errorf("KIRA_NUMBER = %q, want %q", got, item.Number)
+	}
+	if got := get("KIRA_TYPE"); got != item.Type {
+		t.Errorf("KIRA_TYPE = %q, want %q", got, item.Type)
+	}
+	if got := get("KIRA_TITLE"); got != item.Title {
+		t.Errorf("KIRA_TITLE = %q, want %q", got, item.Title)
+	}
+
+	raw, err := Payload(ev, "/repo", "2026-07-16T00:00:00Z", Actor{})
+	if err != nil {
+		t.Fatalf("payload: %v", err)
+	}
+	var got HookPayload
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if got.Item.Number != item.Number || got.Item.Type != item.Type {
+		t.Fatalf("json payload item = %+v, want it to match the env-mirrored item", got.Item)
 	}
 }
 

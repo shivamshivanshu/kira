@@ -14,7 +14,7 @@ import (
 
 func TestMatchesWildcardWhenNoMatchBlock(t *testing.T) {
 	h := datamodel.AutomationHook{On: datamodel.EventItemStateChanged}
-	ev := automation.Event{Name: datamodel.EventItemStateChanged, To: "done", Type: "ticket"}
+	ev := automation.Event{Name: datamodel.EventItemStateChanged, To: "done", Item: &datamodel.ShowResult{Type: "ticket"}}
 	if !automation.Matches(h, ev) {
 		t.Fatal("hook with no match block should fire on its event")
 	}
@@ -44,7 +44,7 @@ func TestMatchesToByStateKeyAndCategory(t *testing.T) {
 }
 
 func TestMatchesTypeAndFrom(t *testing.T) {
-	ev := automation.Event{Name: datamodel.EventItemStateChanged, From: "todo", FromCategory: "todo", Type: "epic"}
+	ev := automation.Event{Name: datamodel.EventItemStateChanged, From: "todo", FromCategory: "todo", Item: &datamodel.ShowResult{Type: "epic"}}
 	wrongType := datamodel.AutomationHook{On: datamodel.EventItemStateChanged, Match: &datamodel.AutomationMatch{Type: "ticket"}}
 	rightFrom := datamodel.AutomationHook{On: datamodel.EventItemStateChanged, Match: &datamodel.AutomationMatch{From: "todo", Type: "epic"}}
 	if automation.Matches(wrongType, ev) {
@@ -130,13 +130,15 @@ func TestTrustRoundTripAndRevokeOnEdit(t *testing.T) {
 
 func TestPayloadShapeForStateChanged(t *testing.T) {
 	ev := automation.Event{
-		Name:       datamodel.EventItemStateChanged,
-		Source:     datamodel.SourceCLI,
-		Item:       &datamodel.ShowResult{ID: "01ABC", Number: "KIRA-1", State: "done"},
-		Changes:    map[string]automation.Change{"state": {Old: "todo", New: "done"}},
-		From:       "todo",
-		To:         "done",
-		ToCategory: "done",
+		Name:         datamodel.EventItemStateChanged,
+		Source:       datamodel.SourceCLI,
+		Item:         &datamodel.ShowResult{ID: "01ABC", Number: "KIRA-1", State: "done"},
+		Changes:      map[string]automation.Change{"state": {Old: "todo", New: "done"}},
+		From:         "todo",
+		To:           "done",
+		FromCategory: "doing",
+		ToCategory:   "done",
+		Commit:       "deadbeef",
 	}
 	raw, err := automation.Payload(ev, "/repo", "2026-07-13T00:00:00Z", automation.Actor{Name: "t", Email: "t@e"})
 	if err != nil {
@@ -149,7 +151,7 @@ func TestPayloadShapeForStateChanged(t *testing.T) {
 	if got["payload_version"].(float64) != 1 {
 		t.Fatalf("payload_version = %v, want 1", got["payload_version"])
 	}
-	for _, k := range []string{"event", "source", "ts", "repo", "actor", "item", "changes", "from", "to", "to_category"} {
+	for _, k := range []string{"event", "source", "ts", "repo", "actor", "item", "changes", "from", "to", "to_category", "from_category", "commit"} {
 		if _, ok := got[k]; !ok {
 			t.Fatalf("payload missing key %q: %s", k, raw)
 		}

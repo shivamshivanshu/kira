@@ -1,5 +1,21 @@
 {
   "$defs": {
+    "Actor": {
+      "additionalProperties": false,
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "email"
+      ],
+      "type": "object"
+    },
     "BlameField": {
       "additionalProperties": false,
       "properties": {
@@ -225,6 +241,22 @@
       },
       "required": [
         "ref"
+      ],
+      "type": "object"
+    },
+    "Change": {
+      "additionalProperties": false,
+      "properties": {
+        "new": {
+          "type": "string"
+        },
+        "old": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "old",
+        "new"
       ],
       "type": "object"
     },
@@ -711,6 +743,78 @@
       "required": [
         "ts",
         "field"
+      ],
+      "type": "object"
+    },
+    "HookPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "actor": {
+          "$ref": "#/$defs/Actor"
+        },
+        "changes": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Change"
+          },
+          "type": "object"
+        },
+        "commit": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "from_category": {
+          "type": "string"
+        },
+        "item": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ShowResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "payload_version": {
+          "type": "integer"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "sync": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Report"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "to": {
+          "type": "string"
+        },
+        "to_category": {
+          "type": "string"
+        },
+        "ts": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "payload_version",
+        "event",
+        "ts",
+        "repo",
+        "actor"
       ],
       "type": "object"
     },
@@ -1280,6 +1384,21 @@
       ],
       "type": "object"
     },
+    "Report": {
+      "additionalProperties": false,
+      "properties": {
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/Step"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "steps"
+      ],
+      "type": "object"
+    },
     "ResolveResult": {
       "additionalProperties": false,
       "properties": {
@@ -1739,6 +1858,25 @@
       ],
       "type": "object"
     },
+    "Step": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "status"
+      ],
+      "type": "object"
+    },
     "TreeGroup": {
       "additionalProperties": false,
       "properties": {
@@ -1843,6 +1981,6 @@
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Machine-readable output shapes for kira commands run with --json.",
-  "title": "kira --json output"
+  "description": "Machine-readable shapes for kira commands run with --json and for the automation hook-stdin payload.",
+  "title": "kira --json output and automation payload"
 }

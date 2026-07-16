@@ -10,7 +10,7 @@ func Matches(hook datamodel.AutomationHook, ev Event) bool {
 	if m == nil {
 		return true
 	}
-	if m.Type != "" && m.Type != ev.Type {
+	if m.Type != "" && m.Type != ev.itemType() {
 		return false
 	}
 	if m.To != "" && m.To != ev.To && m.To != ev.ToCategory {

@@ -1,5 +1,6 @@
-// Package schema generates a JSON Schema for kira's --json output shapes,
-// keeping the datamodel result structs the single source of truth.
+// Package schema generates a JSON Schema for kira's --json output shapes and
+// its automation hook-stdin payload, keeping the datamodel result structs and
+// automation.HookPayload the single source of truth.
 package schema
 
 import (
@@ -8,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/shivamshivanshu/kira/internal/automation"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
@@ -52,6 +54,7 @@ func topLevelTypes() []reflect.Type {
 		reflect.TypeFor[datamodel.CommitResult](),
 		reflect.TypeFor[datamodel.HooksStatusResult](),
 		reflect.TypeFor[datamodel.HooksUninstallResult](),
+		reflect.TypeFor[automation.HookPayload](),
 	}
 }
 
@@ -62,8 +65,8 @@ func Generate() ([]byte, error) {
 	}
 	doc := map[string]any{
 		"$schema":     "https://json-schema.org/draft/2020-12/schema",
-		"title":       "kira --json output",
-		"description": "Machine-readable output shapes for kira commands run with --json.",
+		"title":       "kira --json output and automation payload",
+		"description": "Machine-readable shapes for kira commands run with --json and for the automation hook-stdin payload.",
 		"$defs":       defs,
 	}
 	var buf bytes.Buffer

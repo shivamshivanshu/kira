@@ -30,10 +30,33 @@ type Event struct {
 	FromCategory string
 	ToCategory   string
 	Sync         *syncx.Report
+	Commit       string
+}
 
-	ItemID string
-	Number string
-	Type   string
-	Title  string
-	Commit string
+func (e Event) itemID() string {
+	if e.Item == nil {
+		return ""
+	}
+	return e.Item.ID
+}
+
+func (e Event) itemNumber() string {
+	if e.Item == nil {
+		return ""
+	}
+	return e.Item.Number
+}
+
+func (e Event) itemType() string {
+	if e.Item == nil {
+		return ""
+	}
+	return e.Item.Type
+}
+
+func (e Event) itemTitle() string {
+	if e.Item == nil {
+		return ""
+	}
+	return e.Item.Title
 }

@@ -83,10 +83,6 @@ func (s *Store) baseEvent(cfg *datamodel.Config, name datamodel.EventName, sourc
 		Name:   name,
 		Source: source,
 		Item:   &snapshot,
-		ItemID: it.ID,
-		Number: it.Number,
-		Type:   it.Type,
-		Title:  it.Title,
 	}
 }
 
