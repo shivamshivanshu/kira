@@ -24,7 +24,7 @@ func newConfigCmd(g *globalFlags) *cobra.Command {
 			if !ok {
 				return errx.Env("cannot resolve user config directory: set HOME or XDG_CONFIG_HOME")
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), dir)
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), dir)
 			renderPresentFiles(cmd.OutOrStdout(), config.PresentUserFiles(dir))
 			return nil
 		},
@@ -54,21 +54,21 @@ func newConfigInitCmd(g *globalFlags) *cobra.Command {
 
 func renderConfigInit(w io.Writer, res *datamodel.ConfigInitResult) {
 	if res.Created {
-		fmt.Fprintf(w, "Created user config in %s\n", res.Path)
+		_, _ = fmt.Fprintf(w, "Created user config in %s\n", res.Path)
 		for _, f := range res.Files {
-			fmt.Fprintf(w, "  %s\n", f)
+			_, _ = fmt.Fprintf(w, "  %s\n", f)
 		}
 		return
 	}
-	fmt.Fprintf(w, "%s already exists; leaving it untouched\n", res.Path)
+	_, _ = fmt.Fprintf(w, "%s already exists; leaving it untouched\n", res.Path)
 	renderPresentFiles(w, res.Files)
 }
 
 func renderPresentFiles(w io.Writer, files []string) {
 	if len(files) > 0 {
-		fmt.Fprintf(w, "  present: %s\n", strings.Join(files, ", "))
+		_, _ = fmt.Fprintf(w, "  present: %s\n", strings.Join(files, ", "))
 	} else {
-		fmt.Fprintln(w, "  present: none")
+		_, _ = fmt.Fprintln(w, "  present: none")
 	}
 }
 
@@ -94,14 +94,14 @@ func newConfigFiltersCmd(g *globalFlags) *cobra.Command {
 
 func renderFilterList(w io.Writer, res *datamodel.FilterListResult) {
 	if len(res.Filters) == 0 {
-		fmt.Fprintln(w, "no filters configured")
+		_, _ = fmt.Fprintln(w, "no filters configured")
 		return
 	}
 	tw := newTabWriter(w)
 	for _, f := range res.Filters {
-		fmt.Fprintf(tw, "%s\t%s\n", f.Name, f.Query)
+		_, _ = fmt.Fprintf(tw, "%s\t%s\n", f.Name, f.Query)
 	}
-	tw.Flush()
+	_ = tw.Flush()
 }
 
 func newConfigSetCmd(g *globalFlags) *cobra.Command {
@@ -121,7 +121,7 @@ func newConfigSetCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Set %s = %s\n", res.Key, res.Value)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Set %s = %s\n", res.Key, res.Value)
 			return nil
 		},
 	}

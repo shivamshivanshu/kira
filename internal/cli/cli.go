@@ -23,6 +23,7 @@ const (
 	msgNoItems = "no items"
 )
 
+// Main is the CLI entry point invoked by cmd/kira.
 func Main() int {
 	root, g := newRootCmd()
 	if err := root.Execute(); err != nil {
@@ -52,9 +53,9 @@ func renderError(w io.Writer, err error, jsonMode bool) int {
 		}{err.Error(), hint, int(code)})
 		return int(code)
 	}
-	fmt.Fprintln(w, msgPrefix, err)
+	_, _ = fmt.Fprintln(w, msgPrefix, err)
 	if hint != "" {
-		fmt.Fprintln(w, "  hint:", hint)
+		_, _ = fmt.Fprintln(w, "  hint:", hint)
 	}
 	return int(code)
 }
@@ -84,7 +85,7 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runTUI(cmd, g, false, true)
 		},
 	}

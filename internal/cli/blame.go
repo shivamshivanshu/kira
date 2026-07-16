@@ -34,13 +34,13 @@ func newBlameCmd(g *globalFlags) *cobra.Command {
 
 func renderBlame(w io.Writer, res *datamodel.BlameResult) {
 	tw := newTabWriter(w)
-	fmt.Fprintln(tw, "FIELD\tVALUE\tWHEN\tBY\tSOURCE")
+	_, _ = fmt.Fprintln(tw, "FIELD\tVALUE\tWHEN\tBY\tSOURCE")
 	for _, f := range res.Fields {
 		source := f.SourceKind
 		if f.Degraded {
 			source += " (degraded)"
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", f.Field, f.Value, f.When, f.By, source)
+		_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", f.Field, f.Value, f.When, f.By, source)
 	}
-	tw.Flush()
+	_ = tw.Flush()
 }

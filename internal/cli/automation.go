@@ -22,7 +22,7 @@ func printHookLines(w io.Writer, hooks []datamodel.AutomationHookView) {
 		if !h.Enabled {
 			line += " [disabled]"
 		}
-		fmt.Fprintln(w, line)
+		_, _ = fmt.Fprintln(w, line)
 	}
 }
 
@@ -79,7 +79,7 @@ func newAutomationTrustCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(out, res)
 			}
-			fmt.Fprintf(out, "trusted %d automation hooks\n", len(res.Hooks))
+			_, _ = fmt.Fprintf(out, "trusted %d automation hooks\n", len(res.Hooks))
 			return nil
 		},
 	}
@@ -87,13 +87,13 @@ func newAutomationTrustCmd(g *globalFlags) *cobra.Command {
 
 func printAutomationList(out io.Writer, res *datamodel.AutomationListResult) {
 	if len(res.Hooks) == 0 {
-		fmt.Fprintln(out, "no automation hooks defined")
+		_, _ = fmt.Fprintln(out, "no automation hooks defined")
 		return
 	}
 	printHookLines(out, res.Hooks)
 	if res.Trusted {
-		fmt.Fprintln(out, "trust: trusted")
+		_, _ = fmt.Fprintln(out, "trust: trusted")
 	} else {
-		fmt.Fprintln(out, "trust: not trusted (run `kira automation trust`)")
+		_, _ = fmt.Fprintln(out, "trust: not trusted (run `kira automation trust`)")
 	}
 }

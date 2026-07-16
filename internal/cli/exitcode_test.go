@@ -22,7 +22,7 @@ func TestIndexOpenOnReadOnlyFSExitsEnv(t *testing.T) {
 	if err := os.Chmod(parent, 0o500); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chmod(parent, 0o700)
+	defer func() { _ = os.Chmod(parent, 0o700) }()
 
 	_, err := index.Open(filepath.Join(parent, "cache"))
 	if err == nil {

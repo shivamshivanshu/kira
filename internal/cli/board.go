@@ -74,7 +74,7 @@ func newBoardCmd(g *globalFlags) *cobra.Command {
 	return cmd
 }
 
-func storeActionRunE[T any](g *globalFlags, action func(*core.Store, *datamodel.Config, []string) (T, error), print func(io.Writer, T)) func(*cobra.Command, []string) error {
+func storeActionRunE[T any](g *globalFlags, action func(*core.Store, *datamodel.Config, []string) (T, error), render func(io.Writer, T)) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		s, cfg, err := openStore(g)
 		if err != nil {
@@ -87,7 +87,7 @@ func storeActionRunE[T any](g *globalFlags, action func(*core.Store, *datamodel.
 		if g.json {
 			return emitJSON(cmd.OutOrStdout(), res)
 		}
-		print(cmd.OutOrStdout(), res)
+		render(cmd.OutOrStdout(), res)
 		return nil
 	}
 }
@@ -102,7 +102,7 @@ func newBoardUnarchiveCmd(g *globalFlags) *cobra.Command {
 				return s.BoardUnarchive(cfg, args[0])
 			},
 			func(w io.Writer, res *datamodel.BoardUpdateResult) {
-				fmt.Fprintf(w, "Unarchived board %s\n", res.Board.Key)
+				_, _ = fmt.Fprintf(w, "Unarchived board %s\n", res.Board.Key)
 			}),
 	}
 }
@@ -117,7 +117,7 @@ func newBoardRenameCmd(g *globalFlags) *cobra.Command {
 				return s.BoardRename(cfg, args[0], args[1])
 			},
 			func(w io.Writer, res *datamodel.BoardUpdateResult) {
-				fmt.Fprintf(w, "Renamed board %s to %s\n", res.Board.Key, res.Board.Name)
+				_, _ = fmt.Fprintf(w, "Renamed board %s to %s\n", res.Board.Key, res.Board.Name)
 			}),
 	}
 }
@@ -132,7 +132,7 @@ func newBoardArchiveCmd(g *globalFlags) *cobra.Command {
 				return s.BoardArchive(cfg, args[0])
 			},
 			func(w io.Writer, res *datamodel.BoardUpdateResult) {
-				fmt.Fprintf(w, "Archived board %s\n", res.Board.Key)
+				_, _ = fmt.Fprintf(w, "Archived board %s\n", res.Board.Key)
 			}),
 	}
 }
@@ -147,7 +147,7 @@ func newBoardMoveCmd(g *globalFlags) *cobra.Command {
 				return s.BoardMove(cfg, args[0], args[1])
 			},
 			func(w io.Writer, res *datamodel.BoardMoveResult) {
-				fmt.Fprintf(w, "Moved %s -> %s\n", res.From, res.To)
+				_, _ = fmt.Fprintf(w, "Moved %s -> %s\n", res.From, res.To)
 			}),
 	}
 }
@@ -163,7 +163,7 @@ func newBoardCreateCmd(g *globalFlags) *cobra.Command {
 				return s.BoardCreate(cfg, args[0], name, description)
 			},
 			func(w io.Writer, res *datamodel.BoardCreateResult) {
-				fmt.Fprintf(w, "Created board %s\n", res.Board.Key)
+				_, _ = fmt.Fprintf(w, "Created board %s\n", res.Board.Key)
 			}),
 	}
 	f := cmd.Flags()
@@ -177,7 +177,7 @@ func newBoardListCmd(g *globalFlags) *cobra.Command {
 		Use:   "list",
 		Short: "List configured boards",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			s, cfg, err := openStore(g)
 			if err != nil {
 				return err
@@ -198,7 +198,7 @@ func newBoardListCmd(g *globalFlags) *cobra.Command {
 				if b.Archived {
 					line += " (archived)"
 				}
-				fmt.Fprintln(out, line)
+				_, _ = fmt.Fprintln(out, line)
 			}
 			return nil
 		},

@@ -63,7 +63,7 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 				if g.json {
 					return emitJSON(cmd.OutOrStdout(), map[string]string{"template": tmpl})
 				}
-				fmt.Fprint(cmd.OutOrStdout(), tmpl)
+				_, _ = fmt.Fprint(cmd.OutOrStdout(), tmpl)
 				return nil
 			}
 			if err := pickBoardIfAmbiguous(cmd, g, cfg, &opts); err != nil {
@@ -77,7 +77,7 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Created %s %s\n", res.Number, res.Title)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created %s %s\n", res.Number, res.Title)
 			return nil
 		},
 	}
@@ -120,9 +120,9 @@ func pickBoardIfAmbiguous(cmd *cobra.Command, g *globalFlags, cfg *datamodel.Con
 		return nil
 	}
 	out := cmd.ErrOrStderr()
-	fmt.Fprintln(out, "Select a board:")
+	_, _ = fmt.Fprintln(out, "Select a board:")
 	for i, b := range boards {
-		fmt.Fprintf(out, "  %d) %s  %s\n", i+1, b.Key, b.Name)
+		_, _ = fmt.Fprintf(out, "  %d) %s  %s\n", i+1, b.Key, b.Name)
 	}
 	answer := strings.TrimSpace(termx.ReadLineDefault("board", boards[0].Key))
 	if n, err := strconv.Atoi(answer); err == nil {

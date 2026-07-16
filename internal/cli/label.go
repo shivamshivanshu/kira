@@ -39,10 +39,10 @@ func newLabelCreateCmd(g *globalFlags) *cobra.Command {
 				return emitJSON(out, res)
 			}
 			for _, n := range res.Created {
-				fmt.Fprintf(out, "Created label %s\n", n)
+				_, _ = fmt.Fprintf(out, "Created label %s\n", n)
 			}
 			for _, n := range res.AlreadyKnown {
-				fmt.Fprintf(out, "Label %s already exists\n", n)
+				_, _ = fmt.Fprintf(out, "Label %s already exists\n", n)
 			}
 			return nil
 		},
@@ -74,15 +74,15 @@ func newLabelListCmd(g *globalFlags) *cobra.Command {
 
 func renderLabelList(w io.Writer, res *datamodel.LabelListResult) {
 	if len(res.Labels) == 0 {
-		fmt.Fprintln(w, "no labels")
+		_, _ = fmt.Fprintln(w, "no labels")
 		return
 	}
 	tw := newTabWriter(w)
-	fmt.Fprintln(tw, "LABEL\tITEMS")
+	_, _ = fmt.Fprintln(tw, "LABEL\tITEMS")
 	for _, l := range res.Labels {
-		fmt.Fprintf(tw, "%s\t%d\n", l.Name, l.Count)
+		_, _ = fmt.Fprintf(tw, "%s\t%d\n", l.Name, l.Count)
 	}
-	tw.Flush()
+	_ = tw.Flush()
 }
 
 func newLabelAddCmd(g *globalFlags) *cobra.Command { return newLabelMutateCmd(g, true) }

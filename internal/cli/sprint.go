@@ -28,7 +28,7 @@ func newSprintCreateCmd(g *globalFlags) *cobra.Command {
 		Use:   "create --key KEY --name NAME --start DATE --end DATE",
 		Short: "Append a sprint to config sprints (committed like any config mutation)",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			s, cfg, err := openStore(g)
 			if err != nil {
 				return err
@@ -40,7 +40,7 @@ func newSprintCreateCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Created sprint %s (%s -> %s)\n", res.Sprint.Key, res.Sprint.Start, res.Sprint.End)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created sprint %s (%s -> %s)\n", res.Sprint.Key, res.Sprint.Start, res.Sprint.End)
 			return nil
 		},
 	}
@@ -57,7 +57,7 @@ func newSprintListCmd(g *globalFlags) *cobra.Command {
 		Use:   "list",
 		Short: "List configured sprints with the active marker and item counts",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			s, cfg, err := openStore(g)
 			if err != nil {
 				return err
@@ -70,7 +70,7 @@ func newSprintListCmd(g *globalFlags) *cobra.Command {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
 			if len(res.Sprints) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), "No sprints configured (use `kira sprint create`)")
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No sprints configured (use `kira sprint create`)")
 				return nil
 			}
 			for _, row := range res.Sprints {
@@ -78,7 +78,7 @@ func newSprintListCmd(g *globalFlags) *cobra.Command {
 				if row.Active {
 					marker = "*"
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "%s %s  %s  %s -> %s  %d/%d done\n",
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %s  %s  %s -> %s  %d/%d done\n",
 					marker, row.Key, row.Name, row.Start, row.End, row.Items.Done, row.Items.Total)
 			}
 			return nil
@@ -104,9 +104,9 @@ func newSprintActivateCmd(g *globalFlags) *cobra.Command {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
 			if res.Previous != "" && res.Previous != res.Activated {
-				fmt.Fprintf(cmd.OutOrStdout(), "Activated sprint %s (was %s)\n", res.Activated, res.Previous)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Activated sprint %s (was %s)\n", res.Activated, res.Previous)
 			} else {
-				fmt.Fprintf(cmd.OutOrStdout(), "Activated sprint %s\n", res.Activated)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Activated sprint %s\n", res.Activated)
 			}
 			return nil
 		},
@@ -133,15 +133,15 @@ func newSprintCloseCmd(g *globalFlags) *cobra.Command {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
 			out := cmd.OutOrStdout()
-			fmt.Fprintf(out, "Closed sprint %s\n", res.Closed)
+			_, _ = fmt.Fprintf(out, "Closed sprint %s\n", res.Closed)
 			for _, num := range res.Unfinished {
-				fmt.Fprintf(out, "  unfinished: %s\n", num)
+				_, _ = fmt.Fprintf(out, "  unfinished: %s\n", num)
 			}
 			if res.MovedTo != "" {
-				fmt.Fprintf(out, "Moved %d unfinished item(s) to %s\n", len(res.Unfinished), res.MovedTo)
+				_, _ = fmt.Fprintf(out, "Moved %d unfinished item(s) to %s\n", len(res.Unfinished), res.MovedTo)
 			}
 			if res.WasActive {
-				fmt.Fprintln(out, "Cleared the active-sprint pointer")
+				_, _ = fmt.Fprintln(out, "Cleared the active-sprint pointer")
 			}
 			return nil
 		},
