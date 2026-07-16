@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: task
 title: "Deduplicate blocker-open walk: shared CategoryOf + OpenBlockers helper"
-state: IN_PROGRESS
+state: REVIEW
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:35+05:30
-updated: 2026-07-16T16:02:57+05:30
+updated: 2026-07-16T16:13:06+05:30
 ---
 
 ## Description
