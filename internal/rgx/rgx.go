@@ -11,6 +11,11 @@ import (
 	"strings"
 )
 
+const (
+	ScannerInitialBuffer = 64 * 1024
+	ScannerMaxLineSize   = 4 * 1024 * 1024
+)
+
 type Line struct {
 	Path    string
 	IsMatch bool
@@ -30,35 +35,49 @@ func ParseLine(s string) (Line, bool) {
 	if m == nil {
 		return Line{}, false
 	}
-	n, _ := strconv.Atoi(m[3])
+	n, err := strconv.Atoi(m[3])
+	if err != nil {
+		return Line{}, false
+	}
 	return Line{Path: m[1], IsMatch: m[2] == ":", LineNo: n, Text: m[4]}, true
 }
 
-func Search(dir string, args []string) ([]Line, bool, error) {
-	rgArgs := append([]string{
-		"--line-number", "--no-heading", "--with-filename", "--color=never",
-	}, args...)
+// Search owns the full rg invocation's flag ordering: passthru first, then
+// the enforced output flags, so enforced flags win over a passthru attempt
+// to override them (e.g. --heading), and only then the "--" path terminator.
+func Search(dir string, passthru []string, path string) ([]Line, error) {
+	rgArgs := make([]string, 0, len(passthru)+6)
+	rgArgs = append(rgArgs, passthru...)
+	rgArgs = append(rgArgs, "--line-number", "--no-heading", "--with-filename", "--color=never", "--", path)
+
 	cmd := exec.Command("rg", rgArgs...)
 	cmd.Dir = dir
 	out, err := cmd.Output()
+
+	var runErr error
 	if err != nil {
 		var ee *exec.ExitError
-		if errors.As(err, &ee) {
-			if ee.ExitCode() == 1 {
-				return nil, false, nil
-			}
-			msg := strings.TrimSpace(string(ee.Stderr))
-			if msg == "" {
-				msg = "ripgrep failed"
-			}
-			return nil, false, errors.New(msg)
+		if !errors.As(err, &ee) {
+			return nil, fmt.Errorf("running ripgrep: %v", err)
 		}
-		return nil, false, fmt.Errorf("running ripgrep: %v", err)
+		if ee.ExitCode() == 1 {
+			return nil, nil
+		}
+		msg := strings.TrimSpace(string(ee.Stderr))
+		if msg == "" {
+			msg = "ripgrep failed"
+		}
+		runErr = errors.New(msg)
 	}
 
+	lines, scanErr := scanLines(out)
+	return lines, errors.Join(runErr, scanErr)
+}
+
+func scanLines(out []byte) ([]Line, error) {
 	var lines []Line
 	scanner := bufio.NewScanner(bytes.NewReader(out))
-	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	scanner.Buffer(make([]byte, 0, ScannerInitialBuffer), ScannerMaxLineSize)
 	for scanner.Scan() {
 		raw := scanner.Text()
 		l, ok := ParseLine(raw)
@@ -67,5 +86,5 @@ func Search(dir string, args []string) ([]Line, bool, error) {
 		}
 		lines = append(lines, l)
 	}
-	return lines, true, nil
+	return lines, scanner.Err()
 }

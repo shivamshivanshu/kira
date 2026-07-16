@@ -157,6 +157,8 @@ func TestParseFindArgs(t *testing.T) {
 		{"value flag skips its arg", []string{"-m", "3", "foo"}, "foo", false, false, []string{"-m", "3", "foo"}},
 		{"context value skipped", []string{"-C", "2", "bar"}, "bar", false, false, []string{"-C", "2", "bar"}},
 		{"pattern before flags", []string{"baz", "-i"}, "baz", true, false, []string{"baz", "-i"}},
+		{"-e captures its value", []string{"-e", "foo"}, "foo", false, false, []string{"-e", "foo"}},
+		{"--regexp= attached form", []string{"--regexp=foo"}, "foo", false, false, []string{"--regexp=foo"}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

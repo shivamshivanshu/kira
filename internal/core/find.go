@@ -22,11 +22,6 @@ const (
 	RowSeparator
 )
 
-const (
-	scannerInitialBuffer = 64 * 1024
-	scannerMaxLineSize   = 4 * 1024 * 1024
-)
-
 type FindRow struct {
 	Kind   RowKind
 	ID     string
@@ -66,20 +61,31 @@ var rgFlagsTakingValue = map[string]bool{
 	"--replace": true,
 }
 
+var patternFlags = map[string]bool{"-e": true, "--regexp": true}
+
 func ParseFindArgs(args, dropExact []string) FindArgs {
 	drop := make(map[string]bool, len(dropExact))
 	for _, d := range dropExact {
 		drop[d] = true
 	}
 	var fa FindArgs
-	nextArgIsFlagValue := false
+	pendingValueFlag := ""
 	for _, a := range args {
 		if drop[a] {
 			continue
 		}
 		fa.Passthru = append(fa.Passthru, a)
-		if nextArgIsFlagValue {
-			nextArgIsFlagValue = false
+		if pendingValueFlag != "" {
+			if patternFlags[pendingValueFlag] && fa.Pattern == "" {
+				fa.Pattern = a
+			}
+			pendingValueFlag = ""
+			continue
+		}
+		if flag, value, ok := strings.Cut(a, "="); ok && rgFlagsTakingValue[flag] {
+			if patternFlags[flag] && fa.Pattern == "" {
+				fa.Pattern = value
+			}
 			continue
 		}
 		switch {
@@ -88,7 +94,7 @@ func ParseFindArgs(args, dropExact []string) FindArgs {
 		case a == "-w" || a == "--word-regexp":
 			fa.Word = true
 		case rgFlagsTakingValue[a]:
-			nextArgIsFlagValue = true
+			pendingValueFlag = a
 		case !strings.HasPrefix(a, "-") && fa.Pattern == "":
 			fa.Pattern = a
 		}
@@ -111,17 +117,7 @@ func (s *Store) findRipgrep(args FindArgs, items []*datamodel.Item) ([]FindRow, 
 	byID := byULID(items)
 
 	fs := s.fs()
-	rgArgs := make([]string, 0, len(args.Passthru)+2)
-	rgArgs = append(rgArgs, args.Passthru...)
-	rgArgs = append(rgArgs, "--", fs.RelToRoot(fs.ItemsDir()))
-
-	lines, matched, err := rgx.Search(fs.Root(), rgArgs)
-	if err != nil {
-		return nil, errx.User("find: %s", err)
-	}
-	if !matched {
-		return nil, nil
-	}
+	lines, err := rgx.Search(fs.Root(), args.Passthru, fs.RelToRoot(fs.ItemsDir()))
 
 	var rows []FindRow
 	for _, l := range lines {
@@ -138,6 +134,9 @@ func (s *Store) findRipgrep(args FindArgs, items []*datamodel.Item) ([]FindRow, 
 		} else {
 			rows = append(rows, FindRow{Kind: RowContext, Number: number, Line: l.LineNo, Text: l.Text})
 		}
+	}
+	if err != nil {
+		return rows, errx.User("find: %s", err)
 	}
 	return rows, nil
 }
@@ -159,7 +158,7 @@ func (s *Store) findFallback(args FindArgs, items []*datamodel.Item) ([]FindRow,
 	}
 
 	var rows []FindRow
-	buf := make([]byte, 0, scannerInitialBuffer)
+	buf := make([]byte, 0, rgx.ScannerInitialBuffer)
 	fs := s.fs()
 	for _, it := range items {
 		data, err := os.ReadFile(fs.ItemPath(it.ID))
@@ -168,13 +167,16 @@ func (s *Store) findFallback(args FindArgs, items []*datamodel.Item) ([]FindRow,
 		}
 		lineNo := 0
 		scanner := bufio.NewScanner(bytes.NewReader(data))
-		scanner.Buffer(buf, scannerMaxLineSize)
+		scanner.Buffer(buf, rgx.ScannerMaxLineSize)
 		for scanner.Scan() {
 			lineNo++
 			line := scanner.Text()
 			if re.MatchString(line) {
 				rows = append(rows, FindRow{Kind: RowMatch, ID: it.ID, Number: it.Number, Line: lineNo, Text: line})
 			}
+		}
+		if err := scanner.Err(); err != nil {
+			return rows, errx.User("reading %s: %v", it.Number, err)
 		}
 	}
 	return rows, nil
