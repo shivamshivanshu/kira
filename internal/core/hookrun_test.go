@@ -13,7 +13,6 @@ import (
 
 func stagedFixture(t *testing.T) (*Store, *datamodel.Config, gitx.Repo) {
 	t.Helper()
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	dir := t.TempDir()
 	if err := testutil.GitInit(dir); err != nil {
 		t.Fatalf("git init: %v", err)

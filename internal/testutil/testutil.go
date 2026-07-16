@@ -2,7 +2,9 @@
 package testutil
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/gitx"
@@ -26,6 +28,9 @@ func init() {
 	os.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
 	os.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
 	os.Setenv("EDITOR", "true")
+
+	neutralUserConfigDir := filepath.Join(os.TempDir(), fmt.Sprintf("kira-testutil-xdg-%d", os.Getpid()))
+	os.Setenv("XDG_CONFIG_HOME", neutralUserConfigDir)
 }
 
 func InitGitRepo(t *testing.T) string {
