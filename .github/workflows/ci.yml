@@ -31,3 +31,29 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with:
           version: v1.64.8
+
+  tag:
+    needs: [build-test, lint]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: tag-push
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
+      - name: Tag and push next patch version
+        run: |
+          latest="$(git tag -l 'v*.*.*' | sort -V | tail -n1)"
+          if [ -z "$latest" ]; then
+            next="v0.0.1"
+          else
+            IFS='.' read -r major minor patch <<< "${latest#v}"
+            next="v${major}.${minor}.$((patch + 1))"
+          fi
+          git tag "$next"
+          git push origin "$next"
