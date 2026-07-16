@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: bug
 title: "core correctness batch: SubjectPrefix %-escapes, locked-config guards, --since parsing, Overdue"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:44+05:30
-updated: 2026-07-16T17:46:44+05:30
+updated: 2026-07-16T18:45:00+05:30
 ---
 
 ## Description

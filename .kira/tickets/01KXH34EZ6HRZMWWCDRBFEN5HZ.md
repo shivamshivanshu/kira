@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: task
 title: "editorx: precedence order, parsed Editor type, error contract"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:47+05:30
-updated: 2026-07-16T16:02:40+05:30
+updated: 2026-07-16T18:45:01+05:30
 ---
 
 ## Description

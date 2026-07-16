@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: bug
 title: "Two-tier config: user-tier UI warnings blamed on repo path; repo ui.editor silently dropped"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:36+05:30
-updated: 2026-07-16T18:29:55+05:30
+updated: 2026-07-16T18:45:00+05:30
 ---
 
 ## Description
