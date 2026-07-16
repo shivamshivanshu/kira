@@ -33,7 +33,7 @@
   "estimate": 3,
   "created": "<TS>",
   "updated": "<TS>",
-  "body": "\n## Description\n\n## Acceptance criteria\n\n## Comments\n\n<!-- kira:comment id=<ULID-4> author=unknown ts=<TS> -->\nfirst comment\n<!-- /kira:comment -->\n",
+  "body": "\n## Description\n\n## Acceptance criteria\n\n<!-- kira:comment id=<ULID-4> author=unknown ts=<TS> -->\nfirst comment\n<!-- /kira:comment -->\n",
   "comments": [
     {
       "id": "<ULID-4>",

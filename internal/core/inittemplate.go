@@ -56,7 +56,7 @@ subtypes:    [bug, story, task, spike]   # validates subtype; [] = free-form
 resolutions: [done, dropped, duplicate, cannot-reproduce]  # validates resolution; [] = free-form
 
 commit:
-  mode: auto                  # auto | manual | prompt
+  mode: auto                  # auto | manual | prompt (prompt needs a terminal; without one, changes stage but are not committed)
   trailer: Kira-Ticket        # trailer key that links a commit to its ticket
   close_trailer: Kira-Closes  # trailer key that closes a ticket when the commit lands
   link_markers: [trailer, subject, leading_number]  # what links a commit: trailer, a [[KIRA-n]] subject marker, and/or a bare KIRA-n leading the subject

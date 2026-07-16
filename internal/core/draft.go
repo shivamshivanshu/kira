@@ -136,6 +136,6 @@ func runEditor(editor string, stdio editorx.Stdio, initial string, validate func
 func defaultTemplate(typ string) string {
 	return serializeDraft(draft{
 		Type: typ,
-		Body: "\n## Description\n\n## Acceptance criteria\n\n## Comments\n",
+		Body: "\n## Description\n\n## Acceptance criteria\n",
 	})
 }

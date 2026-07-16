@@ -19,6 +19,7 @@ stdout '^2$'
 exec kira create ticket --title Staged --no-edit
 stdout 'Created KIRA-1'
 stderr 'staged, not committed \(commit.mode=prompt, non-interactive\); run `kira commit`'
+stderr 'hint: commit.mode=prompt requires an interactive terminal; re-run interactively, or set commit.mode to auto or manual'
 exec git rev-list --count HEAD
 stdout '^2$'
 exec git status --porcelain
