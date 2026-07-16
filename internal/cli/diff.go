@@ -56,30 +56,30 @@ func newDiffCmd(g *globalFlags) *cobra.Command {
 func renderDiffHeader(w io.Writer, status datamodel.DiffStatus, number, title string) {
 	switch status {
 	case datamodel.DiffCreated:
-		fmt.Fprintf(w, "created %s  %s\n", number, title)
+		_, _ = fmt.Fprintf(w, "created %s  %s\n", number, title)
 	case datamodel.DiffDeleted:
-		fmt.Fprintf(w, "deleted %s  %s\n", number, title)
+		_, _ = fmt.Fprintf(w, "deleted %s  %s\n", number, title)
 	default:
-		fmt.Fprintf(w, "%s  %s\n", number, title)
+		_, _ = fmt.Fprintf(w, "%s  %s\n", number, title)
 	}
 }
 
 func renderDiff(w io.Writer, res *datamodel.DiffResult) {
 	if len(res.Items) == 0 {
-		fmt.Fprintln(w, "no backlog differences")
+		_, _ = fmt.Fprintln(w, "no backlog differences")
 		return
 	}
 	for _, it := range res.Items {
 		renderDiffHeader(w, it.Status, it.Number, it.Title)
 		if it.Renumbered != nil {
-			fmt.Fprintf(w, "  renumbered %s -> %s\n", it.Renumbered.From, it.Renumbered.To)
+			_, _ = fmt.Fprintf(w, "  renumbered %s -> %s\n", it.Renumbered.From, it.Renumbered.To)
 		}
 		for _, c := range it.Changes {
 			if c.Field == datamodel.KeyBody {
-				fmt.Fprintf(w, "  body edited (%s)\n", c.To)
+				_, _ = fmt.Fprintf(w, "  body edited (%s)\n", c.To)
 				continue
 			}
-			fmt.Fprintf(w, "  %s: %s -> %s\n", c.Field, c.From, c.To)
+			_, _ = fmt.Fprintf(w, "  %s: %s -> %s\n", c.Field, c.From, c.To)
 		}
 	}
 }

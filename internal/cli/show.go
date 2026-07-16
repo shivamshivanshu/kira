@@ -34,14 +34,14 @@ func newShowCmd(g *globalFlags) *cobra.Command {
 			}
 			emitStderrNotes(cmd.ErrOrStderr(), res.StderrNotes)
 			if res.Skew != nil {
-				fmt.Fprintln(cmd.ErrOrStderr(), msgPrefix, renderSkew(res.Skew))
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), msgPrefix, renderSkew(res.Skew))
 			}
 			if format != "" {
 				out, err := showfmt.Format(showfmt.Form(format), showfmt.Item{ID: res.ID, Number: res.Number, Title: res.Title})
 				if err != nil {
 					return err
 				}
-				fmt.Fprintln(cmd.OutOrStdout(), out)
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), out)
 				return nil
 			}
 			if g.json {
@@ -61,10 +61,10 @@ func renderSkew(sk *datamodel.Skew) string {
 }
 
 func renderShow(w io.Writer, r *datamodel.ShowResult) {
-	fmt.Fprintf(w, "%s  %s  [%s]\n", r.Number, r.Title, r.State)
+	_, _ = fmt.Fprintf(w, "%s  %s  [%s]\n", r.Number, r.Title, r.State)
 	line := func(label, value string) {
 		if value != "" {
-			fmt.Fprintf(w, "%-10s %s\n", label+":", value)
+			_, _ = fmt.Fprintf(w, "%-10s %s\n", label+":", value)
 		}
 	}
 	line("id", r.ID)
@@ -84,6 +84,6 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 	line("created", r.Created)
 	line("updated", r.Updated)
 	if strings.TrimSpace(r.Body) != "" {
-		fmt.Fprintf(w, "\n%s", r.Body)
+		_, _ = fmt.Fprintf(w, "\n%s", r.Body)
 	}
 }

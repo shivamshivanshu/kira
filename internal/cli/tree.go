@@ -43,19 +43,19 @@ func newTreeCmd(g *globalFlags) *cobra.Command {
 
 func renderTree(w io.Writer, res *datamodel.TreeResult) {
 	if len(res.Nodes) == 0 {
-		fmt.Fprintln(w, msgNoItems)
+		_, _ = fmt.Fprintln(w, msgNoItems)
 		return
 	}
 	tw := newTabWriter(w)
 	for _, n := range res.Nodes {
 		renderTreeNode(tw, n, 0)
 	}
-	tw.Flush()
+	_ = tw.Flush()
 }
 
 func renderTreeNode(w io.Writer, n datamodel.TreeNode, depth int) {
 	indent := strings.Repeat("  ", depth)
-	fmt.Fprintf(w, "%s%s\t%s\t%s\n", indent, n.Number, n.Type, n.Title)
+	_, _ = fmt.Fprintf(w, "%s%s\t%s\t%s\n", indent, n.Number, n.Type, n.Title)
 	for _, c := range n.Children {
 		renderTreeNode(w, c, depth+1)
 	}
@@ -63,7 +63,7 @@ func renderTreeNode(w io.Writer, n datamodel.TreeNode, depth int) {
 
 func renderTreeGroups(w io.Writer, res *datamodel.ListResult) {
 	if res.Count == 0 {
-		fmt.Fprintln(w, msgNoItems)
+		_, _ = fmt.Fprintln(w, msgNoItems)
 		return
 	}
 	byID := make(map[string]datamodel.ListItem, len(res.Items))
@@ -74,15 +74,15 @@ func renderTreeGroups(w io.Writer, res *datamodel.ListResult) {
 	for _, grp := range res.Tree {
 		switch label := epicLabel(grp); label {
 		case "":
-			fmt.Fprintln(tw, "(no epic)")
+			_, _ = fmt.Fprintln(tw, "(no epic)")
 		default:
-			fmt.Fprintf(tw, "%s\t\t\t\t(epic)\n", label)
+			_, _ = fmt.Fprintf(tw, "%s\t\t\t\t(epic)\n", label)
 		}
 		for _, ulid := range grp.Items {
-			fmt.Fprintln(tw, "  "+formatItemRow(datamodel.DefaultListColumns, byID[ulid]))
+			_, _ = fmt.Fprintln(tw, "  "+formatItemRow(datamodel.DefaultListColumns, byID[ulid]))
 		}
 	}
-	tw.Flush()
+	_ = tw.Flush()
 }
 
 func epicLabel(grp datamodel.TreeGroup) string {

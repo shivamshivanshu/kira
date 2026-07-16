@@ -164,7 +164,7 @@ func runHookPostMerge(cmd *cobra.Command, g *globalFlags) error {
 		return err
 	}
 	for _, r := range res.Renumbered {
-		fmt.Fprintf(cmd.ErrOrStderr(), "%s renumbered %s -> %s\n", msgPrefix, r.From, r.To)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "%s renumbered %s -> %s\n", msgPrefix, r.From, r.To)
 	}
 	idx, err := s.Index(cfg, false, true)
 	if err != nil {
@@ -172,7 +172,7 @@ func runHookPostMerge(cmd *cobra.Command, g *globalFlags) error {
 	}
 	emitStderrNotes(cmd.ErrOrStderr(), idx.StderrNotes)
 	for _, num := range idx.Closed {
-		fmt.Fprintf(cmd.ErrOrStderr(), "%s closed %s\n", msgPrefix, num)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "%s closed %s\n", msgPrefix, num)
 	}
 	return nil
 }
@@ -237,17 +237,17 @@ func printHooksInstall(out io.Writer, res *datamodel.HooksInstallResult) {
 	for _, h := range res.Hooks {
 		switch {
 		case h.Chained:
-			fmt.Fprintf(out, "hook %s: chained onto existing hook\n", h.Name)
+			_, _ = fmt.Fprintf(out, "hook %s: chained onto existing hook\n", h.Name)
 		case h.Installed:
-			fmt.Fprintf(out, "hook %s: installed\n", h.Name)
+			_, _ = fmt.Fprintf(out, "hook %s: installed\n", h.Name)
 		case h.Note != "":
-			fmt.Fprintf(out, "hook %s: refused — %s\n", h.Name, h.Note)
+			_, _ = fmt.Fprintf(out, "hook %s: refused — %s\n", h.Name, h.Note)
 		default:
-			fmt.Fprintf(out, "hook %s: refused — .git/hooks/%s is an unrecognized existing hook; add kira's block by hand\n", h.Name, h.Name)
+			_, _ = fmt.Fprintf(out, "hook %s: refused — .git/hooks/%s is an unrecognized existing hook; add kira's block by hand\n", h.Name, h.Name)
 		}
 	}
 	if res.MergeDriver {
-		fmt.Fprintln(out, "merge driver: registered")
+		_, _ = fmt.Fprintln(out, "merge driver: registered")
 	}
 }
 
@@ -257,12 +257,12 @@ func printHooksValidate(out io.Writer, res *datamodel.HooksValidateResult) {
 		if h.Installed {
 			state = "installed"
 		}
-		fmt.Fprintf(out, "hook %s: %s\n", h.Name, state)
+		_, _ = fmt.Fprintf(out, "hook %s: %s\n", h.Name, state)
 	}
 	if res.MergeDriver {
-		fmt.Fprintln(out, "merge driver: registered")
+		_, _ = fmt.Fprintln(out, "merge driver: registered")
 	} else {
-		fmt.Fprintln(out, "merge driver: not registered (run `kira hooks install`)")
+		_, _ = fmt.Fprintln(out, "merge driver: not registered (run `kira hooks install`)")
 	}
 }
 
@@ -272,26 +272,26 @@ func printHooksStatus(out io.Writer, res *datamodel.HooksStatusResult) {
 		if h.State == string(hooks.StateDrifted) {
 			suffix = " (differs from kira's current shim)"
 		}
-		fmt.Fprintf(out, "hook %s: %s%s\n", h.Name, h.State, suffix)
+		_, _ = fmt.Fprintf(out, "hook %s: %s%s\n", h.Name, h.State, suffix)
 	}
 	if res.MergeDriver {
-		fmt.Fprintln(out, "merge driver: registered")
+		_, _ = fmt.Fprintln(out, "merge driver: registered")
 	} else {
-		fmt.Fprintln(out, "merge driver: not registered (run `kira hooks install`)")
+		_, _ = fmt.Fprintln(out, "merge driver: not registered (run `kira hooks install`)")
 	}
 	if res.HooksPath != "" {
-		fmt.Fprintf(out, "core.hooksPath: %s (hooks live there)\n", res.HooksPath)
+		_, _ = fmt.Fprintf(out, "core.hooksPath: %s (hooks live there)\n", res.HooksPath)
 	}
 }
 
 func printHooksUninstall(out, errOut io.Writer, res *datamodel.HooksUninstallResult) {
 	for _, h := range res.Hooks {
-		fmt.Fprintf(out, "hook %s: %s\n", h.Name, h.State)
+		_, _ = fmt.Fprintf(out, "hook %s: %s\n", h.Name, h.State)
 		if h.Note != "" {
-			fmt.Fprintf(errOut, "%s warning: %s\n", msgPrefix, h.Note)
+			_, _ = fmt.Fprintf(errOut, "%s warning: %s\n", msgPrefix, h.Note)
 		}
 	}
 	if res.MergeDriver {
-		fmt.Fprintln(out, "merge driver: unregistered")
+		_, _ = fmt.Fprintln(out, "merge driver: unregistered")
 	}
 }

@@ -37,5 +37,5 @@ func printCommit(out io.Writer, res *datamodel.CommitResult) {
 	if len(sha) > 7 {
 		sha = sha[:7]
 	}
-	fmt.Fprintf(out, "committed %s: %s (%d files)\n", sha, res.Subject, res.Files)
+	_, _ = fmt.Fprintf(out, "committed %s: %s (%d files)\n", sha, res.Subject, res.Files)
 }

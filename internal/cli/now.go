@@ -36,10 +36,10 @@ func newNowCmd(g *globalFlags) *cobra.Command {
 }
 
 func renderNow(w io.Writer, r *datamodel.NowResult) {
-	fmt.Fprintf(w, "%s  %s  [%s]\n", r.Number, r.Title, r.State)
+	_, _ = fmt.Fprintf(w, "%s  %s  [%s]\n", r.Number, r.Title, r.State)
 	line := func(label, value string) {
 		if value != "" {
-			fmt.Fprintf(w, "%-12s %s\n", label+":", value)
+			_, _ = fmt.Fprintf(w, "%-12s %s\n", label+":", value)
 		}
 	}
 	line("in state", timex.HumanSince(r.StateSince, time.Now()))
@@ -60,6 +60,6 @@ func renderNow(w io.Writer, r *datamodel.NowResult) {
 	}
 	line("commits", fmt.Sprintf("%d since last state change", len(r.Commits)))
 	for _, c := range r.Commits {
-		fmt.Fprintf(w, "  %s  %s\n", shortSHA(c.SHA), c.Subject)
+		_, _ = fmt.Fprintf(w, "  %s  %s\n", shortSHA(c.SHA), c.Subject)
 	}
 }

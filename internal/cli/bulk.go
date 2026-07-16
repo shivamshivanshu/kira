@@ -17,7 +17,7 @@ func runBulk[T any](out, errW io.Writer, jsonMode bool, ids []string, apply func
 			failed++
 			outcomes = append(outcomes, datamodel.BulkOutcome{Ref: id, Error: err.Error()})
 			if !jsonMode {
-				fmt.Fprintln(errW, msgPrefix, id+":", err)
+				_, _ = fmt.Fprintln(errW, msgPrefix, id+":", err)
 			}
 			continue
 		}
@@ -26,7 +26,7 @@ func runBulk[T any](out, errW io.Writer, jsonMode bool, ids []string, apply func
 			warn(errW, res)
 		}
 		if !jsonMode {
-			fmt.Fprintln(out, line(res))
+			_, _ = fmt.Fprintln(out, line(res))
 		}
 	}
 	if jsonMode {
@@ -52,7 +52,7 @@ func runSingleOrBulk[T any](out, errW io.Writer, jsonMode bool, ids []string, ap
 		if jsonMode {
 			return emitJSON(out, res)
 		}
-		fmt.Fprintln(out, line(res))
+		_, _ = fmt.Fprintln(out, line(res))
 		return nil
 	}
 	return runBulk(out, errW, jsonMode, ids, apply, line, warn)

@@ -55,11 +55,11 @@ func renderFind(w io.Writer, rows []core.FindRow) {
 	for _, r := range rows {
 		switch r.Kind {
 		case core.RowSeparator:
-			fmt.Fprintln(w, r.Text)
+			_, _ = fmt.Fprintln(w, r.Text)
 		case core.RowContext:
-			fmt.Fprintf(w, "%s-%d-%s\n", r.Number, r.Line, r.Text)
+			_, _ = fmt.Fprintf(w, "%s-%d-%s\n", r.Number, r.Line, r.Text)
 		default:
-			fmt.Fprintf(w, "%s:%d:%s\n", r.Number, r.Line, r.Text)
+			_, _ = fmt.Fprintf(w, "%s:%d:%s\n", r.Number, r.Line, r.Text)
 		}
 	}
 }

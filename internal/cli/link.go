@@ -65,9 +65,9 @@ func newLinkCmd(g *globalFlags) *cobra.Command {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
 			if len(res.Changed) == 0 {
-				fmt.Fprintf(cmd.OutOrStdout(), "%s: no changes\n", res.Number)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s: no changes\n", res.Number)
 			} else {
-				fmt.Fprintf(cmd.OutOrStdout(), "Linked %s\n", res.Number)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Linked %s\n", res.Number)
 			}
 			return nil
 		},

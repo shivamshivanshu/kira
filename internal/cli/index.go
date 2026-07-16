@@ -26,9 +26,9 @@ func newIndexCmd(g *globalFlags) *cobra.Command {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
 			if !g.quiet {
-				fmt.Fprintf(cmd.OutOrStdout(), "index %s (%s): %d items\n", res.Action, res.Reason, res.Items)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "index %s (%s): %d items\n", res.Action, res.Reason, res.Items)
 				for _, num := range res.Closed {
-					fmt.Fprintf(cmd.OutOrStdout(), "closed %s (Kira-Closes)\n", num)
+					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "closed %s (Kira-Closes)\n", num)
 				}
 			}
 			return nil

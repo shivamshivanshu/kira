@@ -23,7 +23,7 @@ func newInitCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Initialized kira in %s (project key %s)\n", res.Path, res.ProjectKey)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Initialized kira in %s (project key %s)\n", res.Path, res.ProjectKey)
 			return nil
 		},
 	}

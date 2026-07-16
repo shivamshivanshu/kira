@@ -11,7 +11,7 @@ import (
 
 func emitWarningLines(w io.Writer, warns []string) {
 	for _, m := range warns {
-		fmt.Fprintln(w, msgPrefix, "warning:", m)
+		_, _ = fmt.Fprintln(w, msgPrefix, "warning:", m)
 	}
 }
 

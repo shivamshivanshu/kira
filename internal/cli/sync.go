@@ -57,9 +57,9 @@ func newSyncCmd(g *globalFlags) *cobra.Command {
 func printSyncReport(out io.Writer, report *syncx.Report) {
 	for _, step := range report.Steps {
 		if step.Detail != "" {
-			fmt.Fprintf(out, "%-10s %s (%s)\n", step.Name+":", step.Status, step.Detail)
+			_, _ = fmt.Fprintf(out, "%-10s %s (%s)\n", step.Name+":", step.Status, step.Detail)
 		} else {
-			fmt.Fprintf(out, "%-10s %s\n", step.Name+":", step.Status)
+			_, _ = fmt.Fprintf(out, "%-10s %s\n", step.Name+":", step.Status)
 		}
 	}
 }

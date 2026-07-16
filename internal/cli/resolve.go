@@ -26,18 +26,18 @@ func newResolveCmd(g *globalFlags) *cobra.Command {
 			}
 			out := cmd.OutOrStdout()
 			if len(res.Resolved) == 0 && len(res.Skipped) == 0 {
-				fmt.Fprintln(out, "No conflicted kira items to resolve")
+				_, _ = fmt.Fprintln(out, "No conflicted kira items to resolve")
 				return nil
 			}
 			for _, r := range res.Resolved {
 				if len(r.Arbitrated) > 0 {
-					fmt.Fprintf(out, "Resolved %s (auto-merged: %s)\n", r.Number, strings.Join(r.Arbitrated, ", "))
+					_, _ = fmt.Fprintf(out, "Resolved %s (auto-merged: %s)\n", r.Number, strings.Join(r.Arbitrated, ", "))
 				} else {
-					fmt.Fprintf(out, "Resolved %s\n", r.Number)
+					_, _ = fmt.Fprintf(out, "Resolved %s\n", r.Number)
 				}
 			}
 			for _, sk := range res.Skipped {
-				fmt.Fprintf(cmd.ErrOrStderr(), "Skipped %s (needs manual resolution)\n", sk)
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Skipped %s (needs manual resolution)\n", sk)
 			}
 			return nil
 		},

@@ -42,16 +42,16 @@ func newChangesCmd(g *globalFlags) *cobra.Command {
 
 func renderChanges(w io.Writer, res *datamodel.ChangesResult) {
 	if len(res.Items) == 0 {
-		fmt.Fprintln(w, "no changes")
+		_, _ = fmt.Fprintln(w, "no changes")
 		return
 	}
 	for _, it := range res.Items {
 		renderDiffHeader(w, it.Status, it.Number, it.Title)
 		for _, e := range it.Events {
-			fmt.Fprintf(w, "  %s  %s: %s -> %s\n", e.Ts, e.Field, e.Old, e.New)
+			_, _ = fmt.Fprintf(w, "  %s  %s: %s -> %s\n", e.Ts, e.Field, e.Old, e.New)
 		}
 		if it.Body != nil {
-			fmt.Fprintf(w, "  body: +%d/-%d lines\n", it.Body.Added, it.Body.Removed)
+			_, _ = fmt.Fprintf(w, "  body: +%d/-%d lines\n", it.Body.Added, it.Body.Removed)
 		}
 	}
 }

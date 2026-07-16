@@ -38,9 +38,9 @@ func renderReport(w io.Writer, report *doctor.Report, asJSON bool) error {
 		return emitJSON(w, report)
 	}
 	for _, f := range report.Findings {
-		fmt.Fprintf(w, "%-7s %-15s %s%s\n", f.Severity, f.Class, findingLocation(f), f.Message)
+		_, _ = fmt.Fprintf(w, "%-7s %-15s %s%s\n", f.Severity, f.Class, findingLocation(f), f.Message)
 	}
-	fmt.Fprintf(w, "%s: %d %s, %d %s, %d info\n",
+	_, _ = fmt.Fprintf(w, "%s: %d %s, %d %s, %d info\n",
 		reportVerdict(report),
 		report.Summary.Error, plural(report.Summary.Error, "error"),
 		report.Summary.Warning, plural(report.Summary.Warning, "warning"),

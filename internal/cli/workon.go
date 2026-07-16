@@ -48,11 +48,11 @@ func printWorkon(cmd *cobra.Command, res *datamodel.WorkonResult) {
 		verb = "Created"
 	}
 	if res.Worktree != "" {
-		fmt.Fprintf(out, "%s worktree %s on branch %s for %s\n", verb, res.Worktree, res.Branch, res.Number)
+		_, _ = fmt.Fprintf(out, "%s worktree %s on branch %s for %s\n", verb, res.Worktree, res.Branch, res.Number)
 	} else {
-		fmt.Fprintf(out, "%s branch %s for %s\n", verb, res.Branch, res.Number)
+		_, _ = fmt.Fprintf(out, "%s branch %s for %s\n", verb, res.Branch, res.Number)
 	}
 	if res.Moved {
-		fmt.Fprintf(out, "Moved %s: %s -> %s\n", res.Number, res.From, res.To)
+		_, _ = fmt.Fprintf(out, "Moved %s: %s -> %s\n", res.Number, res.From, res.To)
 	}
 }

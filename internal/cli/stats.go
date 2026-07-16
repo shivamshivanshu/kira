@@ -61,10 +61,10 @@ func renderStats(out io.Writer, res *datamodel.StatsResult) {
 		if len(parts) > 0 {
 			scope = strings.Join(parts, ", ")
 		}
-		fmt.Fprintf(out, "Stats (%s)\n", scope)
+		_, _ = fmt.Fprintf(out, "Stats (%s)\n", scope)
 	}
 	if c := res.Completion; c != nil {
-		fmt.Fprintf(out, "  completion: %s\n", statsfmt.CompletionLine(c))
+		_, _ = fmt.Fprintf(out, "  completion: %s\n", statsfmt.CompletionLine(c))
 	}
 	renderPercentiles(out, "cycle time", res.CycleTime)
 	renderPercentiles(out, "lead time", res.LeadTime)
@@ -73,10 +73,10 @@ func renderStats(out io.Writer, res *datamodel.StatsResult) {
 		for i, n := range res.Throughput {
 			nums[i] = strconv.Itoa(n)
 		}
-		fmt.Fprintf(out, "  throughput/week: %s\n", strings.Join(nums, " "))
+		_, _ = fmt.Fprintf(out, "  throughput/week: %s\n", strings.Join(nums, " "))
 	}
 	if r := res.Reopens; r != nil && r.Count > 0 {
-		fmt.Fprintf(out, "  reopens: %d across %s\n", r.Count, strings.Join(r.Items, ", "))
+		_, _ = fmt.Fprintf(out, "  reopens: %d across %s\n", r.Count, strings.Join(r.Items, ", "))
 	}
 }
 
@@ -84,9 +84,9 @@ func renderPercentiles(out io.Writer, label string, p *datamodel.Percentiles) {
 	if p == nil || p.N == 0 {
 		return
 	}
-	fmt.Fprintf(out, "  %s (days): %s", label, statsfmt.PercentileLine(p))
+	_, _ = fmt.Fprintf(out, "  %s (days): %s", label, statsfmt.PercentileLine(p))
 	if p.DegradedN > 0 {
-		fmt.Fprintf(out, "  (%d best-effort)", p.DegradedN)
+		_, _ = fmt.Fprintf(out, "  (%d best-effort)", p.DegradedN)
 	}
-	fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out)
 }

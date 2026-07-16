@@ -31,7 +31,7 @@ func newCommentCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Commented on %s\n", res.Number)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Commented on %s\n", res.Number)
 			return nil
 		},
 	}

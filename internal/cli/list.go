@@ -54,7 +54,7 @@ func newListCmd(g *globalFlags) *cobra.Command {
 
 func emitStderrNotes(w io.Writer, notes []datamodel.Warning) {
 	for _, n := range notes {
-		fmt.Fprintln(w, msgPrefix, renderWarning(n))
+		_, _ = fmt.Fprintln(w, msgPrefix, renderWarning(n))
 	}
 }
 
@@ -68,16 +68,16 @@ func renderListResult(w io.Writer, res *datamodel.ListResult, columns []string) 
 
 func renderList(w io.Writer, res *datamodel.ListResult, columns []string) {
 	if res.Count == 0 {
-		fmt.Fprintln(w, msgNoItems)
+		_, _ = fmt.Fprintln(w, msgNoItems)
 		return
 	}
 	cols := resolveColumns(columns)
 	tw := newTabWriter(w)
-	fmt.Fprintln(tw, columnHeader(cols))
+	_, _ = fmt.Fprintln(tw, columnHeader(cols))
 	for _, it := range res.Items {
-		fmt.Fprintln(tw, formatItemRow(cols, it))
+		_, _ = fmt.Fprintln(tw, formatItemRow(cols, it))
 	}
-	tw.Flush()
+	_ = tw.Flush()
 }
 
 func resolveColumns(columns []string) []string {

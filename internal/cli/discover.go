@@ -43,7 +43,7 @@ func newDiscoverCmd(g *globalFlags) *cobra.Command {
 				return err
 			}
 			if len(cands) == 0 {
-				fmt.Fprintln(cmd.ErrOrStderr(), msgPrefix, "no items to pick from")
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), msgPrefix, "no items to pick from")
 				return nil
 			}
 
@@ -118,6 +118,6 @@ func dispatchAction(cmd *cobra.Command, s *core.Store, cfg *datamodel.Config, ac
 
 func renderCandidateList(w io.Writer, cands []core.Candidate) {
 	for _, c := range cands {
-		fmt.Fprintln(w, candidateLine(c))
+		_, _ = fmt.Fprintln(w, candidateLine(c))
 	}
 }

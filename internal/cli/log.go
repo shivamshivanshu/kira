@@ -34,15 +34,15 @@ func newLogCmd(g *globalFlags) *cobra.Command {
 
 func renderLog(w io.Writer, res *datamodel.LogResult) {
 	if len(res.Entries) == 0 {
-		fmt.Fprintln(w, "no history")
+		_, _ = fmt.Fprintln(w, "no history")
 		return
 	}
 	for _, e := range res.Entries {
 		if e.Kind == "commit" {
-			fmt.Fprintf(w, "%s  commit %s %s (%s)\n", e.Ts, shortSHA(e.SHA), e.Subject, e.Author)
+			_, _ = fmt.Fprintf(w, "%s  commit %s %s (%s)\n", e.Ts, shortSHA(e.SHA), e.Subject, e.Author)
 			continue
 		}
-		fmt.Fprintf(w, "%s  %s: %s -> %s\n", e.Ts, e.Field, e.Old, e.New)
+		_, _ = fmt.Fprintf(w, "%s  %s: %s -> %s\n", e.Ts, e.Field, e.Old, e.New)
 	}
 }
 
