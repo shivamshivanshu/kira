@@ -41,12 +41,15 @@ jobs:
     concurrency:
       group: tag-push
       cancel-in-progress: false
+    outputs:
+      tag: ${{ steps.next.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-tags: true
 
       - name: Tag and push next patch version
+        id: next
         run: |
           latest="$(git tag -l 'v*.*.*' | sort -V | tail -n1)"
           if [ -z "$latest" ]; then
@@ -57,3 +60,24 @@ jobs:
           fi
           git tag "$next"
           git push origin "$next"
+          echo "tag=$next" >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.tag.outputs.tag }}
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: v2.5.1
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
