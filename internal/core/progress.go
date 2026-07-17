@@ -47,7 +47,7 @@ func epicProgress(cfg *datamodel.Config, children map[string][]*datamodel.Item, 
 			return
 		}
 		p.Total++
-		if cat, ok := cfg.CategoryOf(c.Type, c.State); ok && cat == datamodel.CategoryDone && !isDropped(cfg, c) {
+		if cat, ok := cfg.CategoryOf(c.Type, c.State); ok && cat == datamodel.CategoryDone {
 			p.Done++
 		}
 	})

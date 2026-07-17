@@ -22,7 +22,7 @@ func ticket(id, state string, resolution *string) *datamodel.Item {
 	return &datamodel.Item{ID: id, Type: datamodel.TypeTicket, State: state, Resolution: resolution}
 }
 
-func TestEpicProgressDroppedExcludedFromNumerator(t *testing.T) {
+func TestEpicProgressDroppedCountsAsDone(t *testing.T) {
 	dropped := datamodel.ResolutionDropped
 	children := map[string][]*datamodel.Item{
 		"E1": {
@@ -38,33 +38,10 @@ func TestEpicProgressDroppedExcludedFromNumerator(t *testing.T) {
 		t.Fatalf("epicProgress: %v", err)
 	}
 	if p.Total != 4 {
-		t.Errorf("total = %d, want 4 (dropped counts toward denominator)", p.Total)
+		t.Errorf("total = %d, want 4", p.Total)
 	}
-	if p.Done != 2 {
-		t.Errorf("done = %d, want 2 (dropped excluded from numerator, sub-epic recursed)", p.Done)
-	}
-}
-
-func TestEpicProgressHonorsConfiguredDroppedSet(t *testing.T) {
-	cfg := progressCfg()
-	cfg.ResolutionsDropped = []string{"wont-fix"}
-	wontfix := "wont-fix"
-	dropped := datamodel.ResolutionDropped
-	children := map[string][]*datamodel.Item{
-		"E1": {
-			ticket("T1", "DONE", &wontfix),
-			ticket("T2", "DONE", &dropped),
-		},
-	}
-	p, err := epicProgress(cfg, children, "E1")
-	if err != nil {
-		t.Fatalf("epicProgress: %v", err)
-	}
-	if p.Total != 2 {
-		t.Errorf("total = %d, want 2", p.Total)
-	}
-	if p.Done != 1 {
-		t.Errorf("done = %d, want 1 (configured wont-fix excluded; literal dropped no longer special)", p.Done)
+	if p.Done != 3 {
+		t.Errorf("done = %d, want 3 (dropped counts as done, sub-epic recursed)", p.Done)
 	}
 }
 
