@@ -162,7 +162,11 @@ func plan(store *storage.FS, repo gitx.Repo, force, hasMeta bool, prev meta) (pl
 		return planResult{}, err
 	}
 	root := gitx.Repo{Dir: toplevel}
-	pathspec, err := filepath.Rel(toplevel, store.ItemsDir())
+	itemsDir := store.ItemsDir()
+	if resolved, err := filepath.EvalSymlinks(itemsDir); err == nil {
+		itemsDir = resolved
+	}
+	pathspec, err := filepath.Rel(toplevel, itemsDir)
 	if err != nil {
 		return planResult{}, errx.User("locating tickets under repo: %v", err)
 	}

@@ -1364,3 +1364,41 @@ func TestSkippedDuplicateReindexedWhenWinnerDeleted(t *testing.T) {
 		t.Fatalf("stale duplicate warning must clear: %v", res.Warnings)
 	}
 }
+
+func TestDirtyPathsSurviveToplevelSymlinkResolution(t *testing.T) {
+	t.Parallel()
+	base := t.TempDir()
+	actual := filepath.Join(base, "real")
+	if err := os.MkdirAll(actual, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := testutil.GitInit(actual); err != nil {
+		t.Fatalf("git init: %v", err)
+	}
+	linked := filepath.Join(base, "linked")
+	if err := os.Symlink(actual, linked); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(linked, ".kira", "tickets"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	f := repoFixture{root: linked, store: storage.New(linked), repo: gitx.Repo{Dir: linked}}
+
+	const id = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	f.writeTicket(t, id, ticket(id, "KIRA-1", "v1"))
+	f.commit(t, "one")
+
+	open(t, f)
+	if _, err := index.Refresh(f.store, f.repo, index.Options{}, false); err != nil {
+		t.Fatalf("initial Refresh: %v", err)
+	}
+
+	f.writeTicket(t, id, ticket(id, "KIRA-1", "v2"))
+	res, err := index.Refresh(f.store, f.repo, index.Options{}, false)
+	if err != nil {
+		t.Fatalf("Refresh with a dirty edit through a symlinked toplevel: %v", err)
+	}
+	if res.Action != "incremental" {
+		t.Fatalf("action=%q want incremental", res.Action)
+	}
+}
