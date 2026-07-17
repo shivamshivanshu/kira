@@ -178,7 +178,7 @@ func historyLine(ev datamodel.HistoryEvent) string {
 
 func histTime(ts string) string {
 	if parsed, err := time.Parse(time.RFC3339, ts); err == nil {
-		return parsed.Local().Format("2006-01-02 15:04")
+		return parsed.Format("2006-01-02 15:04")
 	}
 	return ts
 }
