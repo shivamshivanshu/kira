@@ -8,7 +8,7 @@ import (
 
 func TestSpawnCounts(t *testing.T) {
 	requirePerf(t)
-	bin := kiraBin(t)
+	bin := kiraBinary(t)
 	dir := fixture(t, 1000)
 	shimDir, counter := gitShim(t)
 
@@ -27,7 +27,7 @@ func TestSpawnCounts(t *testing.T) {
 
 func TestSpawnCountsMutations(t *testing.T) {
 	requirePerf(t)
-	bin := kiraBin(t)
+	bin := kiraBinary(t)
 	shimDir, counter := gitShim(t)
 
 	var b strings.Builder

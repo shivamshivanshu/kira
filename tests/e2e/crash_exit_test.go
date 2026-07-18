@@ -5,16 +5,15 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/shivamshivanshu/kira/internal/testutil"
 )
 
 func TestTUICrashExitsFour(t *testing.T) {
-	bin := filepath.Join(t.TempDir(), "kira")
-	if out, err := exec.Command("go", "build", "-o", bin, "../../cmd/kira").CombinedOutput(); err != nil {
-		t.Fatalf("build kira: %v\n%s", err, out)
-	}
+	bin := testutil.KiraBinary(t)
 
 	dir := t.TempDir()
-	env := []string{"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null", "PATH=" + pathEnv()}
+	env := append(testutil.HermeticEnvironment(), "PATH="+pathEnv())
 	mustRun(t, dir, env, "git", "init")
 	mustRun(t, dir, env, "git", "config", "user.email", "t@e.com")
 	mustRun(t, dir, env, "git", "config", "user.name", "t")

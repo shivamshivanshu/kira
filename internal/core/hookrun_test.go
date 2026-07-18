@@ -14,9 +14,7 @@ import (
 func stagedFixture(t *testing.T) (*Store, *datamodel.Config, gitx.Repo) {
 	t.Helper()
 	dir := t.TempDir()
-	if err := testutil.GitInit(dir); err != nil {
-		t.Fatalf("git init: %v", err)
-	}
+	testutil.InitializeRepository(t, dir)
 	if _, err := Init(dir, "KIRA", false); err != nil {
 		t.Fatalf("init store: %v", err)
 	}

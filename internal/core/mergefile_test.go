@@ -43,9 +43,7 @@ func TestGitTextMergeConflict(t *testing.T) {
 func mergeFixture(t *testing.T) (gitx.Repo, string) {
 	t.Helper()
 	dir := t.TempDir()
-	if err := testutil.GitInit(dir); err != nil {
-		t.Fatalf("git init: %v", err)
-	}
+	testutil.InitializeRepository(t, dir)
 	if _, err := Init(dir, "KIRA", false); err != nil {
 		t.Fatalf("init store: %v", err)
 	}
@@ -102,9 +100,7 @@ func TestMergeFileParseableCleanMerge(t *testing.T) {
 
 func TestMergeFileHonoursGitPrefixForNestedRoot(t *testing.T) {
 	toplevel := t.TempDir()
-	if err := testutil.GitInit(toplevel); err != nil {
-		t.Fatalf("git init: %v", err)
-	}
+	testutil.InitializeRepository(t, toplevel)
 	nested := filepath.Join(toplevel, "sub")
 	if err := os.MkdirAll(nested, 0o755); err != nil {
 		t.Fatal(err)

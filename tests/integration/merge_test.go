@@ -3,7 +3,6 @@ package integration
 import (
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -13,6 +12,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/testutil"
 )
 
 func setMergePolicyManual(t *testing.T, root string) {
@@ -41,19 +41,10 @@ func initStore(t *testing.T, root string) {
 func coreDiscover(root string) (*core.Store, error) { return core.Discover(root) }
 
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "kira-int-bin")
-	if err != nil {
-		panic(err)
-	}
-	bin := filepath.Join(dir, "kira")
-	build := exec.Command("go", "build", "-o", bin, "github.com/shivamshivanshu/kira/cmd/kira")
-	build.Stderr = os.Stderr
-	if err := build.Run(); err != nil {
-		panic("build kira: " + err.Error())
-	}
-	_ = os.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	testutil.ApplyHermeticEnvironment()
+	bin := testutil.KiraBinary(nil)
+	_ = os.Setenv("PATH", filepath.Dir(bin)+string(os.PathListSeparator)+os.Getenv("PATH"))
 	code := m.Run()
-	_ = os.RemoveAll(dir)
 	os.Exit(code)
 }
 

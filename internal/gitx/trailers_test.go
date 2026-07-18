@@ -1,17 +1,20 @@
-package gitx
+package gitx_test
 
 import (
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/testutil"
 )
 
 func gitTry(dir string, args ...string) ([]byte, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(),
-		"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null",
+	cmd.Env = append(os.Environ(), testutil.HermeticEnvironment()...)
+	cmd.Env = append(cmd.Env,
 		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@e.c",
 		"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@e.c",
 	)
@@ -39,7 +42,7 @@ func TestLogTrailersRecordForgery(t *testing.T) {
 	gitRun(t, dir, "commit", "--allow-empty", "-m", "chore: honest",
 		"-m", "Kira-Ticket: KIRA-3", "-m", "Kira-Closes: KIRA-3")
 
-	repo := Repo{Dir: dir}
+	repo := gitx.Repo{Dir: dir}
 	commits, err := repo.LogTrailers("HEAD", "Kira-Ticket", "Kira-Closes")
 	if err != nil {
 		t.Fatalf("LogTrailers: %v", err)
@@ -49,7 +52,7 @@ func TestLogTrailersRecordForgery(t *testing.T) {
 		t.Fatalf("record forgery: got %d records, want 2 (one per real commit)", len(commits))
 	}
 
-	var forgedCommit, honest *Commit
+	var forgedCommit, honest *gitx.Commit
 	for i := range commits {
 		switch commits[i].Subject {
 		case "feat: real work":
@@ -92,7 +95,7 @@ func TestLogTrailersBodyHasNoSpuriousTrailingNewline(t *testing.T) {
 	gitRun(t, dir, "commit", "--allow-empty", "-m", "second commit",
 		"-m", "Kira-Ticket: KIRA-2")
 
-	repo := Repo{Dir: dir}
+	repo := gitx.Repo{Dir: dir}
 	commits, err := repo.LogTrailers("HEAD", "Kira-Ticket", "Kira-Closes")
 	if err != nil {
 		t.Fatalf("LogTrailers: %v", err)

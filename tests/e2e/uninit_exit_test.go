@@ -4,21 +4,19 @@ import (
 	"bytes"
 	"errors"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/shivamshivanshu/kira/internal/testutil"
 )
 
 func TestBareTUINonTTYExitsThree(t *testing.T) {
-	bin := filepath.Join(t.TempDir(), "kira")
-	if out, err := exec.Command("go", "build", "-o", bin, "../../cmd/kira").CombinedOutput(); err != nil {
-		t.Fatalf("build kira: %v\n%s", err, out)
-	}
+	bin := testutil.KiraBinary(t)
 
 	dir := t.TempDir()
 	cmd := exec.Command(bin)
 	cmd.Dir = dir
-	cmd.Env = []string{"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null", "PATH=" + pathEnv()}
+	cmd.Env = append(testutil.HermeticEnvironment(), "PATH="+pathEnv())
 	cmd.Stdin = strings.NewReader("")
 	cmd.Stdout = &bytes.Buffer{}
 	cmd.Stderr = &bytes.Buffer{}

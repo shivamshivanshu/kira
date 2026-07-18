@@ -13,7 +13,7 @@ const (
 
 func TestColdStartSmoke(t *testing.T) {
 	requirePerf(t)
-	bin := kiraBin(t)
+	bin := kiraBinary(t)
 	dir := fixture(t, 100)
 
 	var best time.Duration

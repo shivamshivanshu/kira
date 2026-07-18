@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/shivamshivanshu/kira/internal/testutil"
 )
 
 var update = flag.Bool("update", false, "regenerate golden files instead of comparing")
@@ -36,12 +38,7 @@ func run(m *testing.M) int {
 	}
 	defer func() { _ = os.RemoveAll(dir) }()
 
-	kiraBin = filepath.Join(dir, "kira")
-	build := exec.Command("go", "build", "-o", kiraBin, "github.com/shivamshivanshu/kira/cmd/kira")
-	build.Stderr = os.Stderr
-	if err := build.Run(); err != nil {
-		panic("build kira: " + err.Error())
-	}
+	kiraBin = testutil.KiraBinary(nil)
 
 	toolBin = filepath.Join(dir, "toolbin")
 	if err := os.MkdirAll(toolBin, 0o777); err != nil {
@@ -69,11 +66,7 @@ func run(m *testing.M) int {
 // rg/fzf are deliberately absent from toolBin, so find always takes its
 // deterministic pure-Go fallback regardless of what the host has installed.
 func baseEnv() []string {
-	return []string{
-		"PATH=" + toolBin,
-		"GIT_CONFIG_GLOBAL=/dev/null",
-		"GIT_CONFIG_SYSTEM=/dev/null",
-	}
+	return append(testutil.HermeticEnvironment(), "PATH="+toolBin)
 }
 
 func repoEnv(dir string) []string {
@@ -88,7 +81,7 @@ func kira(t *testing.T, dir string, args ...string) (stdout, stderr string, code
 	t.Helper()
 	cmd := exec.Command(kiraBin, args...)
 	cmd.Dir = dir
-	cmd.Env = append(repoEnv(dir), "EDITOR=true")
+	cmd.Env = repoEnv(dir)
 	var out, errBuf bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errBuf
 	err := cmd.Run()
@@ -165,7 +158,7 @@ func buildSeededRepoBase(dir string) {
 	run := func(args ...string) {
 		cmd := exec.Command(kiraBin, args...)
 		cmd.Dir = dir
-		cmd.Env = append(repoEnv(dir), "EDITOR=true")
+		cmd.Env = repoEnv(dir)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			panic(fmt.Sprintf("kira %v: %v: %s", args, err, out))
 		}

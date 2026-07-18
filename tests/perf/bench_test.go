@@ -21,7 +21,7 @@ func BenchmarkCommands(b *testing.B) {
 	if !gitx.Installed() {
 		b.Skip("git not installed")
 	}
-	bin := kiraBin(b)
+	bin := kiraBinary(b)
 	dir := fixture(b, benchSize())
 	for _, c := range commands {
 		b.Run(c.name, func(b *testing.B) {

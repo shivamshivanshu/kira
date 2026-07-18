@@ -15,7 +15,7 @@ func scalingSizes() []int {
 
 func TestScaling(t *testing.T) {
 	requirePerf(t)
-	bin := kiraBin(t)
+	bin := kiraBinary(t)
 	sizes := scalingSizes()
 	shimDir, counter := gitShim(t)
 
