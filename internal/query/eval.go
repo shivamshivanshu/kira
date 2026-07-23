@@ -250,10 +250,7 @@ func (c *compiler) compileBool(n *boolExpr) (Predicate, error) {
 }
 
 func (c *compiler) blockedPred() Predicate {
-	byID := make(map[string]*datamodel.Item, len(c.opts.Items))
-	for _, it := range c.opts.Items {
-		byID[it.ID] = it
-	}
+	byID := datamodel.IndexByID(c.opts.Items)
 	return func(it *datamodel.Item, cfg *datamodel.Config) bool {
 		open, _ := OpenBlockers(cfg, it, byID)
 		return len(open) > 0
@@ -293,8 +290,8 @@ func OpenBlockers(cfg *datamodel.Config, it *datamodel.Item, byID map[string]*da
 }
 
 var accessors = map[string]func(*datamodel.Item, *datamodel.Config) string{
-	fieldState:      func(it *datamodel.Item, _ *datamodel.Config) string { return it.State },
-	fieldType:       func(it *datamodel.Item, _ *datamodel.Config) string { return it.Type },
+	fieldState: func(it *datamodel.Item, _ *datamodel.Config) string { return it.State },
+	fieldType:  func(it *datamodel.Item, _ *datamodel.Config) string { return it.Type },
 	fieldCategory: func(it *datamodel.Item, cfg *datamodel.Config) string {
 		cat, _ := cfg.CategoryOf(it.Type, it.State)
 		return string(cat)

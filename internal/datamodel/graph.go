@@ -3,6 +3,8 @@ package datamodel
 import (
 	"slices"
 	"strings"
+
+	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 type Relation struct {
@@ -24,7 +26,7 @@ func FindCycles(byID map[string]*Item, edges func(*Item) []string) [][]string {
 		black
 	)
 	color := make(map[string]int, len(byID))
-	seen := map[string]bool{}
+	dedup := setx.NewDeduper[string]()
 	var stack []string
 	var cycles [][]string
 
@@ -42,8 +44,7 @@ func FindCycles(byID map[string]*Item, edges func(*Item) []string) [][]string {
 					dfs(v)
 				case gray:
 					cyc := cycleFrom(stack, v)
-					if key := cycleKey(cyc); key != "" && !seen[key] {
-						seen[key] = true
+					if key := cycleKey(cyc); key != "" && dedup.Add(key) {
 						cycles = append(cycles, cyc)
 					}
 				}

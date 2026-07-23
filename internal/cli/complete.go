@@ -9,6 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/showfmt"
 )
 
@@ -211,12 +212,11 @@ func workflowTypes(cfg *datamodel.Config) []string {
 }
 
 func workflowStates(cfg *datamodel.Config) []string {
-	seen := map[string]bool{}
+	dedup := setx.NewDeduper[string]()
 	var out []string
 	for _, wf := range cfg.Workflows {
 		for _, st := range wf.States {
-			if !seen[st.Key] {
-				seen[st.Key] = true
+			if dedup.Add(st.Key) {
 				out = append(out, st.Key)
 			}
 		}

@@ -50,7 +50,7 @@ see `REVIEW.md` for the full bottom-up file list):
 - `config` — loads/validates/defaults `.kira/config.yaml`.
 - `schema` — generates JSON Schema for `--json` output shapes.
 - `seed` — deterministic fixture generation (perf harness, tour/vhs demos).
-- Small leaf utilities: `errx` (user-facing errors + suggestions), `ptr`, `rgx`, `fzfx` (fzf picker), `statsfmt`, `termx`, `timex`, `clipx` (OSC 52 clipboard), `editorx`, `testutil` (hermetic git repo test helpers).
+- Small leaf utilities: `errx` (user-facing errors + suggestions), `ptr`, `rgx`, `fzfx` (fzf picker), `statsfmt`, `termx`, `timex`, `clipx` (OSC 52 clipboard), `editorx`, `testutil` (hermetic git repo test helpers), `setx` (generic dedup/set helpers, zero deps).
 
 `cmd/kira` — the entry point (`os.Exit(cli.Main())`). `schema/kira.json` —
 generated (not hand-edited) output-shape schema. `tests/` — `contract`,

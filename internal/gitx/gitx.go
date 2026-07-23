@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 // shortSHALen matches git's own default abbreviation length.
@@ -148,17 +150,16 @@ func (r Repo) LastCommits(pathspec string) (map[string]string, error) {
 		return nil, err
 	}
 	var paths, shas []string
-	seen := map[string]bool{}
+	dedup := setx.NewDeduper[string]()
 	var sha string
 	for _, line := range strings.Split(out, "\n") {
 		if strings.HasPrefix(line, nul) {
 			sha = line[len(nul):]
 			continue
 		}
-		if line == "" || seen[line] {
+		if line == "" || !dedup.Add(line) {
 			continue
 		}
-		seen[line] = true
 		paths = append(paths, line)
 		shas = append(shas, sha)
 	}

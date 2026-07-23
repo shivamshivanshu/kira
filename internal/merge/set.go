@@ -1,12 +1,13 @@
 package merge
 
+import "github.com/shivamshivanshu/kira/internal/setx"
+
 func setMerge(base, ours, theirs []string) []string {
-	b, o, t := asSet(base), asSet(ours), asSet(theirs)
+	b, o, t := setx.ToSet(base), setx.ToSet(ours), setx.ToSet(theirs)
 	var out []string
-	seen := map[string]bool{}
+	dedup := setx.NewDeduper[string]()
 	push := func(e string) {
-		if !seen[e] {
-			seen[e] = true
+		if dedup.Add(e) {
 			out = append(out, e)
 		}
 	}
@@ -30,11 +31,10 @@ func setMerge(base, ours, theirs []string) []string {
 
 func aliasUnion(lists ...[]string) []string {
 	var out []string
-	seen := map[string]bool{}
+	dedup := setx.NewDeduper[string]()
 	for _, l := range lists {
 		for _, e := range l {
-			if !seen[e] {
-				seen[e] = true
+			if dedup.Add(e) {
 				out = append(out, e)
 			}
 		}
@@ -63,12 +63,4 @@ func linkMerge(base, ours, theirs map[string][]string) map[string][]string {
 		return nil
 	}
 	return out
-}
-
-func asSet(xs []string) map[string]bool {
-	s := make(map[string]bool, len(xs))
-	for _, x := range xs {
-		s[x] = true
-	}
-	return s
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
@@ -105,12 +106,11 @@ func fileFindings(cfg *datamodel.Config, resolver *id.Resolver, s parsedFile, ch
 }
 
 func dedupItems(scans ...[]parsedFile) []*datamodel.Item {
-	seen := map[string]bool{}
+	dedup := setx.NewDeduper[string]()
 	var items []*datamodel.Item
 	for _, sc := range scans {
 		for _, s := range sc {
-			if s.identified() && !seen[s.item.ID] {
-				seen[s.item.ID] = true
+			if s.identified() && dedup.Add(s.item.ID) {
 				items = append(items, s.item)
 			}
 		}

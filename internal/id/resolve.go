@@ -8,6 +8,7 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 // Item represents an item in a snapshot with its ULID, display number, and aliases.
@@ -98,11 +99,10 @@ func (r *Resolver) holdersOf(full string) []string {
 }
 
 func (r *Resolver) ambiguous(token string, holders []string) error {
-	seen := map[string]bool{}
+	dedup := setx.NewDeduper[string]()
 	var cands []string
 	for _, u := range holders {
-		if n := r.liveNumberByULID[u]; !seen[n] {
-			seen[n] = true
+		if n := r.liveNumberByULID[u]; dedup.Add(n) {
 			cands = append(cands, n)
 		}
 	}
