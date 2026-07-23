@@ -4,7 +4,7 @@ number: DX-13
 aliases: []
 type: ticket
 title: "Plain board golden is time-dependent: overdue glyph uses real time.Now()"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
