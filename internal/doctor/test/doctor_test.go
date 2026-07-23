@@ -608,3 +608,17 @@ func TestCheckStaleResolutionWarns(t *testing.T) {
 		t.Fatalf("resolution on a done state must be clean, got %+v", f)
 	}
 }
+
+func TestCheckDoneStateWithNilResolutionWarns(t *testing.T) {
+	t.Parallel()
+	it := valid(ulidA, "KIRA-1")
+	it.State = "WONT_DO"
+	findings := doctor.Check(config.Default(), resolver(it), it)
+	if classes(findings)[doctor.ClassState] != doctor.SeverityWarning {
+		t.Fatalf("expected a missing-resolution warning on a done state with nil resolution, got %+v", findings)
+	}
+	it.Resolution = strp("dropped")
+	if f := doctor.Check(config.Default(), resolver(it), it); hasClass(f, doctor.ClassState) {
+		t.Fatalf("resolution set on a done state must be clean, got %+v", f)
+	}
+}

@@ -54,9 +54,6 @@ func stateFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 }
 
 func resolutionFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
-	if it.Resolution == nil {
-		return nil
-	}
 	wf, ok := cfg.Workflows[it.Type]
 	if !ok {
 		return nil
@@ -65,11 +62,15 @@ func resolutionFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 		if st.Key != it.State {
 			continue
 		}
-		if st.Category == datamodel.CategoryDone {
-			return nil
+		switch {
+		case st.Category == datamodel.CategoryDone && it.Resolution == nil:
+			return []Finding{{Class: ClassState, Severity: SeverityWarning, Field: datamodel.KeyResolution,
+				Message: fmt.Sprintf("done state %s has no resolution set", it.State)}}
+		case st.Category != datamodel.CategoryDone && it.Resolution != nil:
+			return []Finding{{Class: ClassState, Severity: SeverityWarning, Field: datamodel.KeyResolution,
+				Message: fmt.Sprintf("resolution %q on non-done state %s; clear it with `kira edit --field resolution=`", *it.Resolution, it.State)}}
 		}
-		return []Finding{{Class: ClassState, Severity: SeverityWarning, Field: datamodel.KeyResolution,
-			Message: fmt.Sprintf("resolution %q on non-done state %s; clear it with `kira edit --field resolution=`", *it.Resolution, it.State)}}
+		return nil
 	}
 	return nil
 }
