@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: task
 title: "CLI consistency batch: --quiet, crash-vs-json ordering, tree columns, ShortSHA, discover output, storeActionRunE"
-state: TODO
+state: IN_PROGRESS
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:49+05:30
-updated: 2026-07-15T01:24:49+05:30
+updated: 2026-07-23T14:26:55+05:30
 ---
 
 ## Description
