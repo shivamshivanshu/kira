@@ -106,11 +106,22 @@ func describeState(wf datamodel.Workflow, st datamodel.State) string {
 	if st.Resolution != "" {
 		line += ", resolution=" + st.Resolution
 	}
-	line += ": " + transitionHint(wf, st.Key)
+	line += ": " + transitionDescription(wf, st.Key)
 	if requiresBlockersClosed(wf, st.Key) {
 		line += "; blockers_closed: a dangling or unknown blocker counts as satisfied (warns, doesn't block)"
 	}
 	return line
+}
+
+func transitionDescription(wf datamodel.Workflow, from string) string {
+	if wf.EnforceTransitions {
+		return transitionHint(wf, from)
+	}
+	targets := allowedTargets(wf, from)
+	if len(targets) == 0 {
+		return "any state (transitions not enforced)"
+	}
+	return "suggested " + strings.Join(targets, ", ") + "; any state allowed (transitions not enforced)"
 }
 
 func requiresBlockersClosed(wf datamodel.Workflow, from string) bool {
@@ -141,7 +152,8 @@ func explainCommit(cfg, def *datamodel.Config) datamodel.ExplainSection {
 	for _, m := range c.ReferenceMarkers {
 		lines = append(lines, "reference marker: "+describeReferenceMarker(m))
 	}
-	return datamodel.ExplainSection{Name: "commit", Provenance: tierOf(changed(c, def.Commit), false), Lines: lines}
+	userSubject := cfg.UserCommitSubject != ""
+	return datamodel.ExplainSection{Name: "commit", Provenance: tierOf(changed(c, def.Commit) || userSubject, userSubject), Lines: lines}
 }
 
 // describeLinkMarker documents a marker that associates a commit with a

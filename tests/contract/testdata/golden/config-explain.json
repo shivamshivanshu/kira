@@ -16,9 +16,9 @@
         "initial: PLANNED",
         "enforce_transitions: false",
         "wip_policy: warn",
-        "PLANNED (todo): allowed from PLANNED: ACTIVE (or `--force` to override)",
-        "ACTIVE (doing): allowed from ACTIVE: DONE (or `--force` to override)",
-        "DONE (done): no transitions out of DONE; use `--force` to override"
+        "PLANNED (todo): suggested ACTIVE; any state allowed (transitions not enforced)",
+        "ACTIVE (doing): suggested DONE; any state allowed (transitions not enforced)",
+        "DONE (done): any state (transitions not enforced)"
       ]
     },
     {
