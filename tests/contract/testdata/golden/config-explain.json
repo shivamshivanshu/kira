@@ -1,0 +1,99 @@
+{
+  "sections": [
+    {
+      "name": "identity",
+      "provenance": "repo",
+      "lines": [
+        "project: KIRA (001)",
+        "id style: sequential",
+        "board: KIRA (001) [default]"
+      ]
+    },
+    {
+      "name": "workflow: epic",
+      "provenance": "default",
+      "lines": [
+        "initial: PLANNED",
+        "enforce_transitions: false",
+        "wip_policy: warn",
+        "PLANNED (todo): allowed from PLANNED: ACTIVE (or `--force` to override)",
+        "ACTIVE (doing): allowed from ACTIVE: DONE (or `--force` to override)",
+        "DONE (done): no transitions out of DONE; use `--force` to override"
+      ]
+    },
+    {
+      "name": "workflow: ticket",
+      "provenance": "default",
+      "lines": [
+        "initial: TODO",
+        "enforce_transitions: true",
+        "wip_policy: warn",
+        "TODO (todo): allowed from TODO: IN_PROGRESS, WONT_DO (or `--force` to override)",
+        "IN_PROGRESS (doing), wip 3/warn: allowed from IN_PROGRESS: REVIEW, TODO, WONT_DO (or `--force` to override)",
+        "REVIEW (doing), wip 2/warn: allowed from REVIEW: DONE, IN_PROGRESS (or `--force` to override)",
+        "DONE (done): no transitions out of DONE; use `--force` to override",
+        "WONT_DO (done), resolution=dropped: no transitions out of WONT_DO; use `--force` to override"
+      ]
+    },
+    {
+      "name": "commit",
+      "provenance": "default",
+      "lines": [
+        "mode: auto",
+        "subject: \"kira: update {count} items\" (up to 5 ticket numbers listed, then a count)",
+        "trailer: Kira-Ticket (up to 20 numbers)",
+        "close_trailer: Kira-Closes",
+        "link marker: trailer — a \"Kira-Ticket\" git trailer naming the ticket",
+        "link marker: subject — a `[KEY-n]` marker in the commit subject",
+        "link marker: leading_number — a bare KEY-n token leading the subject",
+        "reference marker: bare — a KEY-n token anywhere in the commit body"
+      ]
+    },
+    {
+      "name": "vocab",
+      "provenance": "default",
+      "lines": [
+        "system label: captured (auto-added by `kira create --here`; excluded from vocabulary checks)",
+        "labels: none (advisory)",
+        "people: none (advisory)",
+        "priorities: P0, P1, P2, P3 (advisory)",
+        "subtypes: bug, story, task, spike (advisory)",
+        "resolutions: done, dropped, duplicate, cannot-reproduce (advisory)",
+        "resolutions_dropped: dropped (a done-category resolution treated as a non-completion outcome for epic progress)"
+      ]
+    },
+    {
+      "name": "ui",
+      "provenance": "default",
+      "lines": [
+        "icons: auto (override with the KIRA_ICONS env var: nerd|emoji|text|always|never)",
+        "color: auto",
+        "background: auto"
+      ]
+    },
+    {
+      "name": "workon",
+      "provenance": "default",
+      "lines": [
+        "branch_pattern: {key}/{number}-{slug}",
+        "casing: kebab",
+        "worktree: false (dir ../{repo}-{branch})"
+      ]
+    },
+    {
+      "name": "merge",
+      "provenance": "default",
+      "lines": [
+        "policy: auto"
+      ]
+    },
+    {
+      "name": "sync",
+      "provenance": "default",
+      "lines": [
+        "push: false",
+        "dirty: auto"
+      ]
+    }
+  ]
+}

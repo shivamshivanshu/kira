@@ -30,7 +30,7 @@ func renderWarning(w datamodel.Warning) string {
 	case datamodel.WarnNoActiveSprint:
 		return "no active sprint set; sprint=active matches nothing (run `kira sprint activate <key>`)"
 	case datamodel.WarnCloseUnknown:
-		return fmt.Sprintf("unknown ticket %s in %s", w.Args[0], w.Args[1])
+		return fmt.Sprintf("unknown ticket %s in %s (hint: run `kira config explain` to see the configured close trailer)", w.Args[0], w.Args[1])
 	case datamodel.WarnCloseFailed:
 		return fmt.Sprintf("failed to close %s: %s", w.Args[0], w.Args[1])
 	case datamodel.WarnLiteral:

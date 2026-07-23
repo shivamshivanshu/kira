@@ -806,6 +806,44 @@
       ],
       "type": "object"
     },
+    "ExplainResult": {
+      "additionalProperties": false,
+      "properties": {
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/ExplainSection"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "sections"
+      ],
+      "type": "object"
+    },
+    "ExplainSection": {
+      "additionalProperties": false,
+      "properties": {
+        "lines": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        },
+        "provenance": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "provenance",
+        "lines"
+      ],
+      "type": "object"
+    },
     "FieldChange": {
       "additionalProperties": false,
       "properties": {
@@ -2494,6 +2532,9 @@
     },
     {
       "$ref": "#/$defs/ReconcileResult"
+    },
+    {
+      "$ref": "#/$defs/ExplainResult"
     },
     {
       "$ref": "#/$defs/Report"

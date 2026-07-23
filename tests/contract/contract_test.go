@@ -426,6 +426,7 @@ func TestJSONContract(t *testing.T) {
 		{"sprint-close", activeSprintRepo, []string{"sprint", "close", "2026-S14"}, false, false},
 		{"index", seededRepo, []string{"index"}, false, false},
 		{"doctor", kiraRepo, []string{"doctor"}, true, false},
+		{"config-explain", kiraRepo, []string{"config", "explain"}, true, false},
 		{"log", seededRepo, []string{"log", "KIRA-2"}, true, false},
 		{"stats", seededRepo, []string{"stats"}, true, false},
 		{"blame", seededRepo, []string{"blame", "KIRA-2"}, true, false},

@@ -581,3 +581,22 @@ type CommitResult struct {
 	Files     int      `json:"files"`
 	Items     []string `json:"items"`
 }
+
+// Provenance says which config tier last set an effective value.
+type Provenance string
+
+const (
+	ProvenanceDefault Provenance = "default"
+	ProvenanceRepo    Provenance = "repo"
+	ProvenanceUser    Provenance = "user"
+)
+
+type ExplainSection struct {
+	Name       string     `json:"name"`
+	Provenance Provenance `json:"provenance"`
+	Lines      []string   `json:"lines"`
+}
+
+type ExplainResult struct {
+	Sections []ExplainSection `json:"sections"`
+}

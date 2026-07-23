@@ -17,7 +17,7 @@ import (
 func newConfigCmd(g *globalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
-		Short: "Inspect project config and manage user preferences",
+		Short: "Inspect project config and manage user preferences; see `config explain` for this repo's live rules",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if g.json {
@@ -32,8 +32,37 @@ func newConfigCmd(g *globalFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.AddCommand(newConfigInitCmd(g), newConfigSetCmd(g), newConfigFiltersCmd(g))
+	cmd.AddCommand(newConfigInitCmd(g), newConfigSetCmd(g), newConfigFiltersCmd(g), newConfigExplainCmd(g))
 	return cmd
+}
+
+func newConfigExplainCmd(g *globalFlags) *cobra.Command {
+	return &cobra.Command{
+		Use:   "explain",
+		Short: "Print this repo's effective config as human-readable rules, with provenance",
+		Long: "Print this repo's effective config as human-readable rules, each tagged\n" +
+			"with the tier that set it: default, repo (.kira/config.yaml), or user\n" +
+			"(~/.config/kira/config.yaml). Icon rendering can additionally be forced\n" +
+			"per-invocation with the KIRA_ICONS env var, independent of ui.icons.",
+		Args: cobra.NoArgs,
+		RunE: storeActionRunE(g,
+			func(_ *core.Store, cfg *datamodel.Config, _ []string) (*datamodel.ExplainResult, error) {
+				return core.Explain(cfg), nil
+			},
+			renderExplain),
+	}
+}
+
+func renderExplain(w io.Writer, res *datamodel.ExplainResult) {
+	for i, sec := range res.Sections {
+		if i > 0 {
+			_, _ = fmt.Fprintln(w)
+		}
+		_, _ = fmt.Fprintf(w, "%s (%s)\n", sec.Name, sec.Provenance)
+		for _, line := range sec.Lines {
+			_, _ = fmt.Fprintf(w, "  %s\n", line)
+		}
+	}
 }
 
 func newConfigInitCmd(g *globalFlags) *cobra.Command {

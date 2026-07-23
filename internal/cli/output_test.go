@@ -13,7 +13,7 @@ func TestRenderWarning(t *testing.T) {
 	}{
 		{datamodel.Warning{Code: datamodel.WarnIndexFallback, Args: []string{"boom"}}, "index unavailable (boom), using linear scan"},
 		{datamodel.Warning{Code: datamodel.WarnNoActiveSprint}, "no active sprint set; sprint=active matches nothing (run `kira sprint activate <key>`)"},
-		{datamodel.Warning{Code: datamodel.WarnCloseUnknown, Args: []string{"KIRA-9", "Kira-Closes"}}, "unknown ticket KIRA-9 in Kira-Closes"},
+		{datamodel.Warning{Code: datamodel.WarnCloseUnknown, Args: []string{"KIRA-9", "Kira-Closes"}}, "unknown ticket KIRA-9 in Kira-Closes (hint: run `kira config explain` to see the configured close trailer)"},
 		{datamodel.Warning{Code: datamodel.WarnCloseFailed, Args: []string{"KIRA-2", "boom"}}, "failed to close KIRA-2: boom"},
 		{datamodel.Warning{Code: datamodel.WarnLiteral, Args: []string{"skipped a file"}}, "skipped a file"},
 	}

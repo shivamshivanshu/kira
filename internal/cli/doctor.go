@@ -45,6 +45,7 @@ func renderReport(w io.Writer, report *doctor.Report, asJSON bool) error {
 		report.Summary.Error, plural(report.Summary.Error, "error"),
 		report.Summary.Warning, plural(report.Summary.Warning, "warning"),
 		report.Summary.Info)
+	_, _ = fmt.Fprintln(w, "see `kira config explain` for the rules these checks enforce")
 	return nil
 }
 

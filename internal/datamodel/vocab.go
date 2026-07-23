@@ -6,6 +6,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// CapturedLabel marks items created via `kira create --here`. It is a system
+// label kira manages itself, not part of the user-configured label vocabulary.
+const CapturedLabel = "captured"
+
 type Person struct {
 	Name string   `yaml:"name"`
 	Git  []string `yaml:"git,omitempty"`

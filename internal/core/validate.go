@@ -19,7 +19,7 @@ func (w *vocabWarning) Error() string {
 	return fmt.Sprintf("field %q: %q is not in the known %s vocabulary", w.field, w.value, w.field)
 }
 
-func isSystemLabel(l string) bool { return l == capturedLabel }
+func isSystemLabel(l string) bool { return l == datamodel.CapturedLabel }
 
 func fieldPresent(it *datamodel.Item, field string) bool {
 	d, ok := datamodel.Field(field)

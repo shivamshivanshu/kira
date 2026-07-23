@@ -64,6 +64,7 @@ func topLevelTypes() []reflect.Type {
 		reflect.TypeFor[datamodel.AutomationTrustResult](),
 		reflect.TypeFor[datamodel.CreateTemplateResult](),
 		reflect.TypeFor[datamodel.ReconcileResult](),
+		reflect.TypeFor[datamodel.ExplainResult](),
 		// syncx.Report and doctor.Report both have bare name "Report"; list
 		// syncx.Report first so it keeps the unqualified "Report" $defs key
 		// (it was already reachable, and named that, via HookPayload.Sync

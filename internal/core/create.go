@@ -16,8 +16,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
-const capturedLabel = "captured"
-
 var subtypePattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
 type CreateOpts struct {
@@ -126,8 +124,8 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 		return nil, err
 	}
 	base = applyFlags(base, opts)
-	if opts.Here && !slices.Contains(base.Labels, capturedLabel) {
-		base.Labels = append(base.Labels, capturedLabel)
+	if opts.Here && !slices.Contains(base.Labels, datamodel.CapturedLabel) {
+		base.Labels = append(base.Labels, datamodel.CapturedLabel)
 	}
 
 	d, err := s.draftForCreate(cfg, opts, boardKey, wf.Initial, base)
