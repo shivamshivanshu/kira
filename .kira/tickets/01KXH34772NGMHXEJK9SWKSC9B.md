@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: task
 title: "Schema: register missing result types, add conformance validation, harden generator"
-state: IN_PROGRESS
+state: REVIEW
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:39+05:30
-updated: 2026-07-23T14:26:55+05:30
+updated: 2026-07-23T14:26:56+05:30
 ---
 
 ## Description
