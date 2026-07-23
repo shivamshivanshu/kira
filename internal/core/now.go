@@ -6,6 +6,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/timex"
 	"github.com/shivamshivanshu/kira/internal/workon"
 )
 
@@ -46,7 +47,7 @@ func (s *Store) Now(cfg *datamodel.Config) (*datamodel.NowResult, error) {
 		Category:   category,
 		StateSince: since,
 		Due:        it.Due,
-		Overdue:    datamodel.IsOverdue(it.Due, category, time.Now()),
+		Overdue:    datamodel.IsOverdue(it.Due, category, timex.Now()),
 		Branch:     activeBranch,
 		Source:     source,
 		Blockers:   blockers,

@@ -10,6 +10,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/timex"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
@@ -146,7 +147,7 @@ func detailMeta(t theme.Theme, ic iconSet, res *datamodel.ShowResult) string {
 		parts = append(parts, priorityHue(t, ic.priorityTier(*res.Priority)).Render(*res.Priority))
 	}
 	if res.Due != nil && *res.Due != "" {
-		if datamodel.IsOverdue(res.Due, res.Category, time.Now()) {
+		if datamodel.IsOverdue(res.Due, res.Category, timex.Now()) {
 			parts = append(parts, t.Dim.Render("due ")+t.Heat.Hot.Render(*res.Due+" overdue"))
 		} else {
 			parts = append(parts, t.Dim.Render("due ")+*res.Due)

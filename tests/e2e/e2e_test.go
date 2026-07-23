@@ -17,5 +17,9 @@ func TestMain(m *testing.M) {
 func TestScripts(t *testing.T) {
 	testscript.Run(t, testscript.Params{
 		Dir: "testdata/script",
+		Setup: func(e *testscript.Env) error {
+			e.Setenv("KIRA_NOW", "2026-07-15T09:00:00Z")
+			return nil
+		},
 	})
 }

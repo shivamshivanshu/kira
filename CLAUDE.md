@@ -82,3 +82,7 @@ only on harness failure or cold-start tripwire.
   macOS's `/var` -> `/private/var`), so an unresolved path on the other side
   of a `filepath.Rel` call silently produces a pathspec that climbs outside
   the repo.
+- Time-relative rendered output (overdue glyphs, `now`'s "in state" age) must
+  read the clock through `timex.Now()`, never `time.Now()` directly — tests
+  pin it deterministically via the `KIRA_NOW` env var, the same class of bug
+  as the timezone gotcha above (real wall-clock drift breaking golden tests).

@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
 type Expr interface {
@@ -458,10 +460,7 @@ func (p *parser) parseIsEmpty() (Expr, error) {
 }
 
 func parseDate(s string) (time.Time, error) {
-	if t, err := time.Parse(time.RFC3339, s); err == nil {
-		return t, nil
-	}
-	return time.Parse(time.DateOnly, s)
+	return timex.ParseFlexible(s)
 }
 
 func describe(t token) string {

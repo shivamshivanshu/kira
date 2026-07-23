@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -34,7 +33,7 @@ func renderNow(w io.Writer, r *datamodel.NowResult) {
 			_, _ = fmt.Fprintf(w, "%-12s %s\n", label+":", value)
 		}
 	}
-	line("in state", timex.HumanSince(r.StateSince, time.Now()))
+	line("in state", timex.HumanSince(r.StateSince, timex.Now()))
 	if r.Due != nil {
 		due := *r.Due
 		if r.Overdue {

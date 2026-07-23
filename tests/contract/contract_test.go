@@ -107,7 +107,7 @@ func run(m *testing.M) int {
 // rg/fzf are deliberately absent from toolBin, so find always takes its
 // deterministic pure-Go fallback regardless of what the host has installed.
 func baseEnv() []string {
-	return append(testutil.HermeticEnvironment(), "PATH="+toolBin)
+	return append(testutil.HermeticEnvironment(), "PATH="+toolBin, "KIRA_NOW=2026-07-15T09:00:00Z")
 }
 
 func repoEnv(dir string) []string {

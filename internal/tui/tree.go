@@ -2,12 +2,12 @@ package tui
 
 import (
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/ptr"
+	"github.com/shivamshivanshu/kira/internal/timex"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
@@ -218,7 +218,7 @@ func (tm *treeModel) renderRow(t theme.Theme, ic iconSet, ti treeItem, width int
 		{" ", t.Text}, {ic.categoryGlyph(cat, ti.fields.Resolution), t.CategoryStyle(cat)},
 		{" ", t.Text}, {"[" + ti.fields.State + "]", t.CategoryStyle(cat)},
 	}
-	if datamodel.IsOverdue(ti.fields.Due, ti.fields.Category, time.Now()) {
+	if datamodel.IsOverdue(ti.fields.Due, ti.fields.Category, timex.Now()) {
 		right = append(right, rowSegment{" ", t.Text}, rowSegment{ic.overdueGlyph(), t.Heat.Hot})
 	}
 	if showProgress && ti.isEpic() {
