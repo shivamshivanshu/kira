@@ -124,12 +124,7 @@ func validateBuffer(cfg *datamodel.Config, resolver *id.Resolver, force bool, bu
 }
 
 func validateGraph(updated *datamodel.Item, items []*datamodel.Item) []error {
-	byID := make(map[string]*datamodel.Item, len(items)+1)
-	for _, it := range items {
-		if it.ID != "" {
-			byID[it.ID] = it
-		}
-	}
+	byID := datamodel.IndexByID(items)
 	byID[updated.ID] = updated
 
 	var errs []error

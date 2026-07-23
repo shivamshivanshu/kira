@@ -42,6 +42,17 @@ func (it *Item) HasUnknown() bool {
 	return len(it.UnknownKeys) > 0 || len(it.UnknownLinkTypes) > 0
 }
 
+// IndexByID maps items by ID, skipping any with an empty ID.
+func IndexByID(items []*Item) map[string]*Item {
+	m := make(map[string]*Item, len(items))
+	for _, it := range items {
+		if it.ID != "" {
+			m[it.ID] = it
+		}
+	}
+	return m
+}
+
 const (
 	TypeTicket = "ticket"
 	TypeEpic   = "epic"

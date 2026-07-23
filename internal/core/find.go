@@ -11,6 +11,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/rgx"
+	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
@@ -64,10 +65,7 @@ var rgFlagsTakingValue = map[string]bool{
 var patternFlags = map[string]bool{"-e": true, "--regexp": true}
 
 func ParseFindArgs(args, dropExact []string) FindArgs {
-	drop := make(map[string]bool, len(dropExact))
-	for _, d := range dropExact {
-		drop[d] = true
-	}
+	drop := setx.ToSet(dropExact)
 	var fa FindArgs
 	pendingValueFlag := ""
 	for _, a := range args {

@@ -50,7 +50,6 @@ func (i *Index) scanItems() ([]*datamodel.Item, map[string]*datamodel.Item, erro
 	defer func() { _ = rows.Close() }()
 
 	var items []*datamodel.Item
-	byID := map[string]*datamodel.Item{}
 	for rows.Next() {
 		var it datamodel.Item
 		var subtype, resolution, priority, rank, owner, reporter, epic, sprint, due sql.NullString
@@ -73,9 +72,8 @@ func (i *Index) scanItems() ([]*datamodel.Item, map[string]*datamodel.Item, erro
 			it.Estimate = &estimate.Float64
 		}
 		items = append(items, &it)
-		byID[it.ID] = &it
 	}
-	return items, byID, rows.Err()
+	return items, datamodel.IndexByID(items), rows.Err()
 }
 
 func (i *Index) attachAliases(byID map[string]*datamodel.Item) error {

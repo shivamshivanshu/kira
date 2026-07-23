@@ -90,13 +90,7 @@ func NonEpicParents(items []*datamodel.Item, resolver *id.Resolver) []Finding {
 }
 
 func itemsByID(items []*datamodel.Item) map[string]*datamodel.Item {
-	byID := make(map[string]*datamodel.Item, len(items))
-	for _, it := range items {
-		if it.ID != "" {
-			byID[it.ID] = it
-		}
-	}
-	return byID
+	return datamodel.IndexByID(items)
 }
 
 func resolveRef(ref string, resolver *id.Resolver) string {

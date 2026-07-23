@@ -4,6 +4,7 @@ package merge
 
 import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 type Result struct {
@@ -45,8 +46,8 @@ func Merge(base, ours, theirs *datamodel.Item, remote Side, tm TextMerger) Resul
 }
 
 func arbitrated(base, ours, theirs *datamodel.Item) []string {
-	fromBaseOurs := asSet(datamodel.ChangedFields(base, ours))
-	fromBaseTheirs := asSet(datamodel.ChangedFields(base, theirs))
+	fromBaseOurs := setx.ToSet(datamodel.ChangedFields(base, ours))
+	fromBaseTheirs := setx.ToSet(datamodel.ChangedFields(base, theirs))
 	var out []string
 	for _, f := range datamodel.ChangedFields(ours, theirs) {
 		if fromBaseOurs[f] && fromBaseTheirs[f] {

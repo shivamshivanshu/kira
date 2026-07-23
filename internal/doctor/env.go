@@ -1,5 +1,7 @@
 package doctor
 
+import "github.com/shivamshivanshu/kira/internal/setx"
+
 type Freshness struct {
 	Built  bool   `json:"built"`
 	Fresh  bool   `json:"fresh"`
@@ -65,8 +67,8 @@ func hookFindings(env Env) []Finding {
 	if len(env.TrackedHooks) == 0 {
 		return []Finding{info(ClassHooks, "no tracked hooks in .kira/hooks")}
 	}
-	installed := hookSet(env.InstalledHooks)
-	drifted := hookSet(env.DriftedHooks)
+	installed := setx.ToSet(env.InstalledHooks)
+	drifted := setx.ToSet(env.DriftedHooks)
 	var out []Finding
 	for _, h := range env.TrackedHooks {
 		switch {
@@ -84,14 +86,6 @@ func hookFindings(env Env) []Finding {
 		out = append(out, info(ClassHooks, "ticket merge attribute is not registered in .git/info/attributes; run `kira hooks install`"))
 	}
 	return out
-}
-
-func hookSet(names []string) map[string]bool {
-	set := make(map[string]bool, len(names))
-	for _, n := range names {
-		set[n] = true
-	}
-	return set
 }
 
 func freshnessFinding(f *Freshness) Finding {

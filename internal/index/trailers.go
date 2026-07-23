@@ -13,6 +13,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
@@ -340,12 +341,11 @@ func bodyOutsideTrailers(c gitx.Commit) string {
 }
 
 func keyPrefixes(keys []string, numbers map[string]string) []string {
-	seen := map[string]bool{}
+	dedup := setx.NewDeduper[string]()
 	var prefixes []string
 	add := func(p string) {
 		up := strings.ToUpper(p)
-		if up != "" && !seen[up] {
-			seen[up] = true
+		if up != "" && dedup.Add(up) {
 			prefixes = append(prefixes, up)
 		}
 	}

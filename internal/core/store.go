@@ -176,11 +176,7 @@ func guardWritable(items ...*datamodel.Item) error {
 }
 
 func byULID(items []*datamodel.Item) map[string]*datamodel.Item {
-	m := make(map[string]*datamodel.Item, len(items))
-	for _, it := range items {
-		m[it.ID] = it
-	}
-	return m
+	return datamodel.IndexByID(items)
 }
 
 func findByULID(items []*datamodel.Item, ulid string) *datamodel.Item {
