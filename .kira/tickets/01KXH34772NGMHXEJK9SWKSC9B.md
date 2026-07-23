@@ -5,7 +5,7 @@ aliases: []
 type: ticket
 subtype: task
 title: "Schema: register missing result types, add conformance validation, harden generator"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
