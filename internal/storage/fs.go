@@ -13,6 +13,7 @@ const (
 	DirName          = ".kira"
 	itemsDirName     = "tickets"
 	templatesDirName = "templates"
+	schemaDirName    = "schema"
 	CacheDirName     = ".cache"
 	configFileName   = "config.yaml"
 	itemExt          = ".md"
@@ -63,6 +64,7 @@ func (s *FS) KiraDir() string     { return filepath.Join(s.root, DirName) }
 func (s *FS) ConfigPath() string  { return filepath.Join(s.KiraDir(), configFileName) }
 func (s *FS) ItemsDir() string    { return filepath.Join(s.KiraDir(), itemsDirName) }
 func (s *FS) TemplateDir() string { return filepath.Join(s.KiraDir(), templatesDirName) }
+func (s *FS) SchemaDir() string   { return filepath.Join(s.KiraDir(), schemaDirName) }
 func (s *FS) CacheDir() string    { return filepath.Join(s.KiraDir(), CacheDirName) }
 
 func ItemFilename(ulid string) string { return ulid + itemExt }

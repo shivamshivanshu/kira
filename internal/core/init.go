@@ -8,6 +8,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/storage"
@@ -74,6 +75,13 @@ func Init(startDir, key string, force bool, prompter ...Prompter) (*datamodel.In
 
 	if _, err := config.Load(abs); err != nil {
 		return nil, errx.User("scaffolded config is invalid: %v", err)
+	}
+
+	// Unlike files above, WriteDefaults never overwrites an existing schema
+	// file: schemas are meant to be user-edited, so even a --force
+	// reinitialize must not clobber someone's customization.
+	if err := entityschema.WriteDefaults(fs.SchemaDir()); err != nil {
+		return nil, errx.Env("writing %s: %v", fs.RelToRoot(fs.SchemaDir()), err)
 	}
 
 	if err := ensureGitattributes(filepath.Join(abs, ".gitattributes")); err != nil {

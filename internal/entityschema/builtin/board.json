@@ -1,0 +1,16 @@
+{
+  "name": "board",
+  "identity": { "style": "config" },
+  "fields": [
+    { "name": "key", "type": "string", "required": true, "immutable": true },
+    { "name": "name", "type": "string", "required": true },
+    { "name": "description", "type": "string" },
+    { "name": "default", "type": "bool" },
+    { "name": "archived", "type": "bool" }
+  ],
+  "representation": {
+    "label": "Board",
+    "icon": "board",
+    "list_columns": ["key", "name", "default", "archived"]
+  }
+}

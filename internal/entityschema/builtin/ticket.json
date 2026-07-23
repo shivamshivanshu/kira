@@ -1,0 +1,38 @@
+{
+  "name": "ticket",
+  "workflow": "ticket",
+  "identity": { "style": "sequential", "prefix": "KIRA" },
+  "fields": [
+    { "name": "title", "type": "string", "required": true },
+    { "name": "state", "type": "state", "required": true, "system": true, "guarded": true,
+      "states": [
+        { "key": "TODO", "category": "todo" },
+        { "key": "IN_PROGRESS", "category": "doing" },
+        { "key": "REVIEW", "category": "doing" },
+        { "key": "DONE", "category": "done" },
+        { "key": "WONT_DO", "category": "done" }
+      ] },
+    { "name": "subtype", "type": "enum", "enum": "subtype", "source": "subtypes" },
+    { "name": "priority", "type": "enum", "enum": "priority", "source": "priorities" },
+    { "name": "resolution", "type": "resolution", "enum": "resolution", "source": "resolutions" },
+    { "name": "rank", "type": "string" },
+    { "name": "owner", "type": "ref", "target": "person", "source": "people" },
+    { "name": "reporter", "type": "ref", "target": "person", "source": "people" },
+    { "name": "labels", "type": "enum", "enum": "label", "source": "labels", "list": true, "unique": true },
+    { "name": "epic", "type": "ref", "target": "epic" },
+    { "name": "blocked_by", "type": "ref", "target": "ticket", "list": true, "unique": true },
+    { "name": "sprint", "type": "ref", "target": "sprint", "source": "sprints" },
+    { "name": "due", "type": "date" },
+    { "name": "estimate", "type": "number" },
+    { "name": "aliases", "type": "string", "list": true, "unique": true, "required": true, "system": true },
+    { "name": "created", "type": "datetime", "required": true, "system": true, "immutable": true },
+    { "name": "updated", "type": "datetime", "required": true, "system": true },
+    { "name": "description", "type": "markdown", "placement": "body", "section": "Description" },
+    { "name": "acceptance", "type": "markdown", "placement": "body", "section": "Acceptance criteria" }
+  ],
+  "representation": {
+    "label": "Ticket",
+    "icon": "ticket",
+    "list_columns": ["number", "state", "subtype", "priority", "title"]
+  }
+}
