@@ -61,7 +61,7 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 					return err
 				}
 				if g.json {
-					return emitJSON(cmd.OutOrStdout(), map[string]string{"template": tmpl})
+					return emitJSON(cmd.OutOrStdout(), datamodel.CreateTemplateResult{Template: tmpl})
 				}
 				_, _ = fmt.Fprint(cmd.OutOrStdout(), tmpl)
 				return nil

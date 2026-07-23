@@ -16,6 +16,76 @@
       ],
       "type": "object"
     },
+    "AutomationHookView": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "on": {
+          "enum": [
+            "item.created",
+            "item.state_changed",
+            "sync.completed"
+          ],
+          "type": "string"
+        },
+        "run": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "on",
+        "run",
+        "enabled"
+      ],
+      "type": "object"
+    },
+    "AutomationListResult": {
+      "additionalProperties": false,
+      "properties": {
+        "hooks": {
+          "items": {
+            "$ref": "#/$defs/AutomationHookView"
+          },
+          "type": "array"
+        },
+        "trusted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "hooks",
+        "trusted"
+      ],
+      "type": "object"
+    },
+    "AutomationTrustResult": {
+      "additionalProperties": false,
+      "properties": {
+        "hash": {
+          "type": "string"
+        },
+        "hooks": {
+          "items": {
+            "$ref": "#/$defs/AutomationHookView"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "hooks",
+        "hash"
+      ],
+      "type": "object"
+    },
     "BlameField": {
       "additionalProperties": false,
       "properties": {
@@ -286,6 +356,11 @@
           "type": "string"
         },
         "status": {
+          "enum": [
+            "created",
+            "deleted",
+            "changed"
+          ],
           "type": "string"
         },
         "title": {
@@ -321,6 +396,40 @@
         "since",
         "head",
         "items"
+      ],
+      "type": "object"
+    },
+    "Collision": {
+      "additionalProperties": false,
+      "properties": {
+        "alias_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "keep": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "live_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "kind",
+        "live_ids",
+        "alias_ids",
+        "keep"
       ],
       "type": "object"
     },
@@ -556,8 +665,25 @@
         "title",
         "state",
         "category",
+        "owner",
         "labels",
+        "epic",
+        "epic_number",
+        "priority",
+        "resolution",
         "path"
+      ],
+      "type": "object"
+    },
+    "CreateTemplateResult": {
+      "additionalProperties": false,
+      "properties": {
+        "template": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "template"
       ],
       "type": "object"
     },
@@ -587,6 +713,11 @@
           ]
         },
         "status": {
+          "enum": [
+            "created",
+            "deleted",
+            "changed"
+          ],
           "type": "string"
         },
         "title": {
@@ -621,6 +752,29 @@
         "from",
         "to",
         "items"
+      ],
+      "type": "object"
+    },
+    "DoctorReport": {
+      "additionalProperties": false,
+      "properties": {
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "type": "array"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "summary": {
+          "$ref": "#/$defs/Summary"
+        }
+      },
+      "required": [
+        "ok",
+        "findings",
+        "summary"
       ],
       "type": "object"
     },
@@ -718,6 +872,48 @@
       ],
       "type": "object"
     },
+    "Finding": {
+      "additionalProperties": false,
+      "properties": {
+        "class": {
+          "type": "string"
+        },
+        "collision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Collision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "field": {
+          "type": "string"
+        },
+        "item_id": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "class",
+        "severity",
+        "message"
+      ],
+      "type": "object"
+    },
     "HistoryEvent": {
       "additionalProperties": false,
       "properties": {
@@ -742,7 +938,9 @@
       },
       "required": [
         "ts",
-        "field"
+        "field",
+        "from",
+        "to"
       ],
       "type": "object"
     },
@@ -762,6 +960,11 @@
           "type": "string"
         },
         "event": {
+          "enum": [
+            "item.created",
+            "item.state_changed",
+            "sync.completed"
+          ],
           "type": "string"
         },
         "from": {
@@ -837,6 +1040,48 @@
       ],
       "type": "object"
     },
+    "HookStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "chained": {
+          "type": "boolean"
+        },
+        "installed": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "installed",
+        "chained"
+      ],
+      "type": "object"
+    },
+    "HooksInstallResult": {
+      "additionalProperties": false,
+      "properties": {
+        "hooks": {
+          "items": {
+            "$ref": "#/$defs/HookStatus"
+          },
+          "type": "array"
+        },
+        "merge_driver": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "hooks",
+        "merge_driver"
+      ],
+      "type": "object"
+    },
     "HooksStatusResult": {
       "additionalProperties": false,
       "properties": {
@@ -879,6 +1124,29 @@
       "required": [
         "hooks",
         "merge_driver"
+      ],
+      "type": "object"
+    },
+    "HooksValidateResult": {
+      "additionalProperties": false,
+      "properties": {
+        "hooks": {
+          "items": {
+            "$ref": "#/$defs/HookStatus"
+          },
+          "type": "array"
+        },
+        "merge_driver": {
+          "type": "boolean"
+        },
+        "ok": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "hooks",
+        "merge_driver",
+        "ok"
       ],
       "type": "object"
     },
@@ -1057,7 +1325,13 @@
         "type",
         "state",
         "category",
-        "labels"
+        "owner",
+        "labels",
+        "epic",
+        "epic_number",
+        "priority",
+        "resolution",
+        "due"
       ],
       "type": "object"
     },
@@ -1318,6 +1592,7 @@
         "state",
         "category",
         "state_since",
+        "due",
         "overdue",
         "branch",
         "source",
@@ -1349,6 +1624,21 @@
       ],
       "type": "object"
     },
+    "ReconcileResult": {
+      "additionalProperties": false,
+      "properties": {
+        "renumbered": {
+          "items": {
+            "$ref": "#/$defs/Renumbering"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "renumbered"
+      ],
+      "type": "object"
+    },
     "RenumberEvent": {
       "additionalProperties": false,
       "properties": {
@@ -1360,6 +1650,26 @@
         }
       },
       "required": [
+        "from",
+        "to"
+      ],
+      "type": "object"
+    },
+    "Renumbering": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
         "from",
         "to"
       ],
@@ -1587,13 +1897,23 @@
         "board",
         "aliases",
         "type",
+        "subtype",
         "title",
         "state",
         "category",
+        "resolution",
+        "priority",
+        "rank",
+        "sprint",
+        "due",
+        "owner",
+        "reporter",
         "labels",
+        "epic",
         "blocked_by",
         "links",
         "blocks",
+        "estimate",
         "created",
         "updated",
         "body",
@@ -1877,6 +2197,26 @@
       ],
       "type": "object"
     },
+    "Summary": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "type": "integer"
+        },
+        "info": {
+          "type": "integer"
+        },
+        "warning": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "error",
+        "warning",
+        "info"
+      ],
+      "type": "object"
+    },
     "TreeGroup": {
       "additionalProperties": false,
       "properties": {
@@ -1900,6 +2240,8 @@
         }
       },
       "required": [
+        "epic",
+        "epic_number",
         "items"
       ],
       "type": "object"
@@ -1952,6 +2294,7 @@
         }
       },
       "required": [
+        "root",
         "nodes"
       ],
       "type": "object"
@@ -1978,9 +2321,195 @@
         "go"
       ],
       "type": "object"
+    },
+    "WorkonResult": {
+      "additionalProperties": false,
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "branch_created": {
+          "type": "boolean"
+        },
+        "from": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "moved": {
+          "type": "boolean"
+        },
+        "number": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "worktree": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "branch",
+        "branch_created",
+        "moved"
+      ],
+      "type": "object"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "description": "Machine-readable shapes for kira commands run with --json and for the automation hook-stdin payload.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/CreateResult"
+    },
+    {
+      "$ref": "#/$defs/ListResult"
+    },
+    {
+      "$ref": "#/$defs/TreeResult"
+    },
+    {
+      "$ref": "#/$defs/ShowResult"
+    },
+    {
+      "$ref": "#/$defs/MutationResult"
+    },
+    {
+      "$ref": "#/$defs/BulkOutcome"
+    },
+    {
+      "$ref": "#/$defs/DiffResult"
+    },
+    {
+      "$ref": "#/$defs/ChangesResult"
+    },
+    {
+      "$ref": "#/$defs/FindResult"
+    },
+    {
+      "$ref": "#/$defs/InitResult"
+    },
+    {
+      "$ref": "#/$defs/ConfigSetResult"
+    },
+    {
+      "$ref": "#/$defs/ConfigInitResult"
+    },
+    {
+      "$ref": "#/$defs/LabelCreateResult"
+    },
+    {
+      "$ref": "#/$defs/LabelListResult"
+    },
+    {
+      "$ref": "#/$defs/MergeResult"
+    },
+    {
+      "$ref": "#/$defs/ResolveResult"
+    },
+    {
+      "$ref": "#/$defs/MoveResult"
+    },
+    {
+      "$ref": "#/$defs/CommentResult"
+    },
+    {
+      "$ref": "#/$defs/FilterListResult"
+    },
+    {
+      "$ref": "#/$defs/SprintCreateResult"
+    },
+    {
+      "$ref": "#/$defs/SprintListResult"
+    },
+    {
+      "$ref": "#/$defs/SprintActivateResult"
+    },
+    {
+      "$ref": "#/$defs/SprintCloseResult"
+    },
+    {
+      "$ref": "#/$defs/BoardCreateResult"
+    },
+    {
+      "$ref": "#/$defs/BoardListResult"
+    },
+    {
+      "$ref": "#/$defs/BoardUpdateResult"
+    },
+    {
+      "$ref": "#/$defs/BoardMoveResult"
+    },
+    {
+      "$ref": "#/$defs/IndexResult"
+    },
+    {
+      "$ref": "#/$defs/StatsResult"
+    },
+    {
+      "$ref": "#/$defs/BlameResult"
+    },
+    {
+      "$ref": "#/$defs/LogResult"
+    },
+    {
+      "$ref": "#/$defs/BoardResult"
+    },
+    {
+      "$ref": "#/$defs/VersionResult"
+    },
+    {
+      "$ref": "#/$defs/NowResult"
+    },
+    {
+      "$ref": "#/$defs/CommitResult"
+    },
+    {
+      "$ref": "#/$defs/HooksStatusResult"
+    },
+    {
+      "$ref": "#/$defs/HooksUninstallResult"
+    },
+    {
+      "$ref": "#/$defs/HooksInstallResult"
+    },
+    {
+      "$ref": "#/$defs/HooksValidateResult"
+    },
+    {
+      "$ref": "#/$defs/WorkonResult"
+    },
+    {
+      "$ref": "#/$defs/AutomationListResult"
+    },
+    {
+      "$ref": "#/$defs/AutomationTrustResult"
+    },
+    {
+      "$ref": "#/$defs/CreateTemplateResult"
+    },
+    {
+      "$ref": "#/$defs/ReconcileResult"
+    },
+    {
+      "$ref": "#/$defs/Report"
+    },
+    {
+      "$ref": "#/$defs/DoctorReport"
+    },
+    {
+      "$ref": "#/$defs/HookPayload"
+    },
+    {
+      "items": {
+        "$ref": "#/$defs/BulkOutcome"
+      },
+      "type": "array"
+    }
+  ],
   "title": "kira --json output and automation payload"
 }

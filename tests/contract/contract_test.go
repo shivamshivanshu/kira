@@ -13,10 +13,51 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
+	"github.com/santhosh-tekuri/jsonschema/v6"
+
+	"github.com/shivamshivanshu/kira/internal/schema"
 	"github.com/shivamshivanshu/kira/internal/testutil"
 )
+
+// kiraSchema lazily compiles schema.Generate()'s output once per test run
+// and is shared read-only across the parallel TestJSONContract subtests.
+var kiraSchemaOnce = sync.OnceValues(func() (*jsonschema.Schema, error) {
+	doc, err := schema.Generate()
+	if err != nil {
+		return nil, err
+	}
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(doc))
+	if err != nil {
+		return nil, err
+	}
+	c := jsonschema.NewCompiler()
+	const resourceURL = "kira.json"
+	if err := c.AddResource(resourceURL, inst); err != nil {
+		return nil, err
+	}
+	return c.Compile(resourceURL)
+})
+
+// checkSchemaConformance validates raw command stdout against the generated
+// schema, independent of the checked-in golden — a shape the generator gets
+// wrong would otherwise only be caught if the golden happened to be stale.
+func checkSchemaConformance(t *testing.T, stdout string) {
+	t.Helper()
+	sch, err := kiraSchemaOnce()
+	if err != nil {
+		t.Fatalf("compile schema: %v", err)
+	}
+	inst, err := jsonschema.UnmarshalJSON(strings.NewReader(stdout))
+	if err != nil {
+		t.Fatalf("stdout is not valid JSON: %v", err)
+	}
+	if err := sch.Validate(inst); err != nil {
+		t.Errorf("stdout does not conform to schema/kira.json: %v", err)
+	}
+}
 
 var update = flag.Bool("update", false, "regenerate golden files instead of comparing")
 
@@ -401,6 +442,7 @@ func TestJSONContract(t *testing.T) {
 			if stderr != "" && !c.stderrWarn {
 				t.Errorf("stderr must be empty on success, got: %q", stderr)
 			}
+			checkSchemaConformance(t, out)
 			got := scrub(out, dir)
 			checkGolden(t, c.name+".json", got)
 			if c.readOnly {
@@ -459,6 +501,7 @@ func TestJSONBulkPartialFailure(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1 (stderr: %s)", code, stderr)
 	}
+	checkSchemaConformance(t, out)
 	checkGolden(t, "move-bulk-partial-failure.json", scrub(out, dir))
 
 	obj, err := parseJSONError(stderr)

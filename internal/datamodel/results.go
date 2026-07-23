@@ -570,6 +570,10 @@ type ReconcileResult struct {
 	Renumbered []Renumbering `json:"renumbered"`
 }
 
+type CreateTemplateResult struct {
+	Template string `json:"template"`
+}
+
 type CommitResult struct {
 	Committed bool     `json:"committed"`
 	SHA       string   `json:"sha,omitempty"`
