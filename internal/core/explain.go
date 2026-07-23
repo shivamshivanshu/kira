@@ -207,7 +207,7 @@ func explainVocab(cfg, def *datamodel.Config) datamodel.ExplainSection {
 // an absent/nil list — reflect.DeepEqual would otherwise flag every freshly
 // initialized repo as a "repo" override of an empty default vocabulary.
 func vocabChanged(a, b datamodel.Vocab) bool {
-	return a.Strict != b.Strict || !sliceEqual(a.Known, b.Known)
+	return a.Strict != b.Strict || !slices.Equal(a.Known, b.Known)
 }
 
 func peopleChanged(a, b datamodel.People) bool {
@@ -215,14 +215,7 @@ func peopleChanged(a, b datamodel.People) bool {
 }
 
 func personEqual(a, b datamodel.Person) bool {
-	return a.Name == b.Name && sliceEqual(a.Git, b.Git)
-}
-
-func sliceEqual[T comparable](a, b []T) bool {
-	if len(a) == 0 && len(b) == 0 {
-		return true
-	}
-	return slices.Equal(a, b)
+	return a.Name == b.Name && slices.Equal(a.Git, b.Git)
 }
 
 func describeVocab(field string, known []string, strict bool) string {
