@@ -7,19 +7,15 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
-// ProjectItem converts an Item into the values map Validate expects.
-// Frontmatter scalars map directly off Item's fixed struct fields, since
-// Item's shape predates this package (a later phase may replace it).
-// Markdown fields are read out of the body by the schema's own declared
-// Placement/Section, not a hardcoded section list, so a schema stays the
-// single source of truth for where its content lives.
+// ProjectItem converts an Item into the values map Validate expects. Slices are
+// cloned so a caller can't mutate the source Item through the returned map.
 func ProjectItem(schema Schema, it *datamodel.Item) map[string]any {
 	values := map[string]any{
 		"title":      it.Title,
 		"state":      it.State,
-		"labels":     it.Labels,
-		"blocked_by": it.BlockedBy,
-		"aliases":    it.Aliases,
+		"labels":     slices.Clone(it.Labels),
+		"blocked_by": slices.Clone(it.BlockedBy),
+		"aliases":    slices.Clone(it.Aliases),
 		"created":    it.Created,
 		"updated":    it.Updated,
 	}
@@ -32,9 +28,7 @@ func ProjectItem(schema Schema, it *datamodel.Item) map[string]any {
 	setIfPresent(values, "epic", it.Epic)
 	setIfPresent(values, "sprint", it.Sprint)
 	setIfPresent(values, "due", it.Due)
-	if it.Estimate != nil {
-		values["estimate"] = *it.Estimate
-	}
+	setIfPresent(values, "estimate", it.Estimate)
 
 	sections := bodySections(it.Body)
 	for _, f := range schema.Fields {
@@ -45,15 +39,12 @@ func ProjectItem(schema Schema, it *datamodel.Item) map[string]any {
 	return values
 }
 
-func setIfPresent(values map[string]any, name string, v *string) {
+func setIfPresent[T any](values map[string]any, name string, v *T) {
 	if v != nil {
 		values[name] = *v
 	}
 }
 
-// bodySections splits a Markdown body into its "## Title" sections. Kira's
-// comment thread lives under its own "## Comments" header, so this naturally
-// excludes it from whatever section a schema field names.
 func bodySections(body string) map[string]string {
 	sections := make(map[string]string)
 	current := ""
@@ -72,10 +63,9 @@ func bodySections(body string) map[string]string {
 	return sections
 }
 
-// ConfigVocab projects datamodel.Config vocab into the enums map Validate
-// expects, honoring the same strict/open fallback core.validateItem
-// enforces: a vocab is only membership-checked when it (or the labels
-// fallback it defers to) is strict.
+// ConfigVocab mirrors core.validateItem's strict/open policy: a vocab is
+// membership-checked only when strict, and the system captured label is always
+// admitted under a strict label vocabulary.
 func ConfigVocab(cfg *datamodel.Config) map[string][]string {
 	enums := map[string][]string{}
 	addIfStrict := func(name string, ev datamodel.EnumVocab) {

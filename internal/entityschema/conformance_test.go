@@ -43,7 +43,7 @@ func TestConformanceAgainstRepoTickets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("config.Load: %v", err)
 	}
-	schemas, err := entityschema.NewLoader().Load(fs.SchemaDir())
+	schemas, err := entityschema.Load(fs.SchemaDir())
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestConformanceAgainstConfigBoards(t *testing.T) {
 	if err != nil {
 		t.Fatalf("config.Load: %v", err)
 	}
-	schemas, err := entityschema.NewLoader().Load(fs.SchemaDir())
+	schemas, err := entityschema.Load(fs.SchemaDir())
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}

@@ -7,9 +7,8 @@ import (
 )
 
 func TestLoadBuiltinsWithNoUserDir(t *testing.T) {
-	loader := NewLoader()
 
-	schemas, err := loader.Load("")
+	schemas, err := Load("")
 
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -22,9 +21,8 @@ func TestLoadBuiltinsWithNoUserDir(t *testing.T) {
 }
 
 func TestLoadMissingSchemaDirYieldsBuiltinsOnly(t *testing.T) {
-	loader := NewLoader()
 
-	schemas, err := loader.Load(filepath.Join(t.TempDir(), "does-not-exist"))
+	schemas, err := Load(filepath.Join(t.TempDir(), "does-not-exist"))
 
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -40,9 +38,8 @@ func TestLoadUserFileOverridesBuiltinByName(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "ticket.json"), []byte(custom), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	loader := NewLoader()
 
-	schemas, err := loader.Load(dir)
+	schemas, err := Load(dir)
 
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -58,9 +55,8 @@ func TestLoadUserFileAddsNewType(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "bug.json"), []byte(custom), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	loader := NewLoader()
 
-	schemas, err := loader.Load(dir)
+	schemas, err := Load(dir)
 
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -79,9 +75,8 @@ func TestLoadRejectsStateFieldWithoutStates(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "bad.json"), []byte(custom), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	loader := NewLoader()
 
-	_, err := loader.Load(dir)
+	_, err := Load(dir)
 
 	if err == nil {
 		t.Fatal("expected an error for a state field with no declared states")
@@ -94,9 +89,8 @@ func TestLoadRejectsUnknownFieldType(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "bad.json"), []byte(custom), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	loader := NewLoader()
 
-	_, err := loader.Load(dir)
+	_, err := Load(dir)
 
 	if err == nil {
 		t.Fatal("expected an error for an unknown field type")
@@ -109,11 +103,12 @@ func TestValidateSchemaRejectsMalformedDefinitions(t *testing.T) {
 		"duplicate field":     {Name: "w", Fields: []FieldDef{{Name: "x", Type: FieldString}, {Name: "x", Type: FieldInt}}},
 		"enum without enum":   {Name: "w", Fields: []FieldDef{{Name: "p", Type: FieldEnum}}},
 		"ref without target":  {Name: "w", Fields: []FieldDef{{Name: "o", Type: FieldRef}}},
+		"non-string list":     {Name: "w", Fields: []FieldDef{{Name: "n", Type: FieldInt, List: true}}},
 	}
 
 	for name, schema := range cases {
 		t.Run(name, func(t *testing.T) {
-			if err := validateSchema(schema); err == nil {
+			if err := checkSchemaShape(schema); err == nil {
 				t.Fatalf("expected %s to be rejected", name)
 			}
 		})

@@ -19,17 +19,9 @@ var builtinFiles embed.FS
 
 const builtinDir = "builtin"
 
-// Loader assembles the set of Schemas in effect for a repo: the embedded
-// built-ins, layered over by any .kira/schema/*.json the user has added or
-// overridden by name.
-type Loader struct{}
-
-func NewLoader() *Loader { return &Loader{} }
-
-// Load returns every known Schema keyed by name. dir is a repo's
-// .kira/schema/ directory; a missing directory yields the embedded defaults
-// unchanged.
-func (l *Loader) Load(dir string) (map[string]Schema, error) {
+// Load layers user .kira/schema/*.json over the embedded built-ins, overriding
+// by name; a missing dir yields the built-ins alone.
+func Load(dir string) (map[string]Schema, error) {
 	schemas, err := loadBuiltins()
 	if err != nil {
 		return nil, err
@@ -61,7 +53,6 @@ func (l *Loader) Load(dir string) (map[string]Schema, error) {
 	return schemas, nil
 }
 
-// BuiltinNames returns the embedded schema names, sorted.
 func BuiltinNames() ([]string, error) {
 	schemas, err := loadBuiltins()
 	if err != nil {
@@ -75,10 +66,8 @@ func BuiltinNames() ([]string, error) {
 	return names, nil
 }
 
-// WriteDefaults materializes the embedded built-in schemas into dir as
-// name.json, one file per schema. It never overwrites a file that already
-// exists, so re-running it (e.g. on every `kira init`) is idempotent and
-// never clobbers a user's edited schema.
+// WriteDefaults materializes the embedded built-in schemas into dir, never
+// overwriting an existing file so re-running it never clobbers a user edit.
 func WriteDefaults(dir string) error {
 	entries, err := builtinFiles.ReadDir(builtinDir)
 	if err != nil {
@@ -130,13 +119,13 @@ func parseSchema(filename string, data []byte) (Schema, error) {
 	if err := json.Unmarshal(data, &s); err != nil {
 		return Schema{}, fmt.Errorf("%s: %w", filename, err)
 	}
-	if err := validateSchema(s); err != nil {
+	if err := checkSchemaShape(s); err != nil {
 		return Schema{}, fmt.Errorf("%s: %w", filename, err)
 	}
 	return s, nil
 }
 
-func validateSchema(s Schema) error {
+func checkSchemaShape(s Schema) error {
 	if s.Name == "" {
 		return errors.New(`schema missing "name"`)
 	}
@@ -151,6 +140,9 @@ func validateSchema(s Schema) error {
 		seen[f.Name] = true
 		if !f.Type.Valid() {
 			return fmt.Errorf("schema %q: field %q: unknown type %q", s.Name, f.Name, f.Type)
+		}
+		if f.List && !stringRepresented(f.Type) {
+			return fmt.Errorf("schema %q: field %q: list is only supported for string-valued types, not %q", s.Name, f.Name, f.Type)
 		}
 		switch f.Type {
 		case FieldEnum, FieldResolution:

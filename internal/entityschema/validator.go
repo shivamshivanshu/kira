@@ -8,7 +8,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
-// Violation is one way a value map failed to conform to a Schema.
 type Violation struct {
 	Field   string
 	Message string
@@ -16,26 +15,14 @@ type Violation struct {
 
 func (v Violation) Error() string { return fmt.Sprintf("field %q: %s", v.Field, v.Message) }
 
-// RefResolver checks whether a ref field's value names an existing instance
-// of the target schema. Phase 1 defines the seam but never enforces it: a nil
-// RefResolver (or Validate called with nil) skips ref existence checks
-// entirely, leaving that to a later phase.
+// A nil RefResolver skips ref existence checks (phase 1 defers enforcement).
 type RefResolver interface {
 	Exists(target, id string) bool
 }
 
-// Validate checks values against schema and returns every violation found.
-// It is pure: no IO, no global state.
-//
-// values holds one entry per present field, keyed by FieldDef.Name; an absent
-// key or an explicit nil means the field is unset. Scalars use string, bool,
-// or a numeric Go type; list fields use []string.
-//
-// enums resolves named vocabularies (see ResolveEnums) for enum/resolution
-// fields. A field whose name is absent from enums is treated as an open
-// vocabulary and is not membership-checked — this lets a caller reflect a
-// non-strict datamodel.Vocab by simply omitting that name. State fields carry
-// their own closed value set (FieldDef.States) and are always checked.
+// Validate is pure. values is keyed by FieldDef.Name (absent or nil means
+// unset; list fields use []string). A field name absent from enums is an open
+// vocabulary and is not membership-checked.
 func Validate(schema Schema, values map[string]any, enums map[string][]string, refs RefResolver) []Violation {
 	var out []Violation
 	add := func(field, format string, args ...any) {
@@ -115,13 +102,24 @@ func checkType(f FieldDef, v any, add func(field, format string, args ...any)) b
 	return ok
 }
 
+// stringRepresented reports whether checkType validates t as a string. List
+// validation only handles []string, so non-string list elements are rejected
+// at schema load. Keep in sync with checkType.
+func stringRepresented(t FieldType) bool {
+	switch t {
+	case FieldString, FieldMarkdown, FieldEnum, FieldState, FieldResolution, FieldRef, FieldDate, FieldDatetime:
+		return true
+	}
+	return false
+}
+
 func checkEnumMembership(f FieldDef, value string, enums map[string][]string, add func(field, format string, args ...any)) {
 	if f.Enum == "" {
 		return
 	}
 	allowed, ok := enums[f.Enum]
 	if !ok {
-		return // no vocab supplied for this name: open, unchecked
+		return
 	}
 	if !slices.Contains(allowed, value) {
 		add(f.Name, "value %q is not in the %q vocabulary", value, f.Enum)
