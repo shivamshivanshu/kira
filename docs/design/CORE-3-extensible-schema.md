@@ -48,6 +48,17 @@ user-defined types.
    `kira init` **materializes the shipped defaults** into `.kira/schema/` so a
    new repo has editable starting schemas. User-tier `~/.config` may later hold
    personal *representation* prefs only, never the data contract.
+5. **Free transitions.** `state` is a plain enum; any value → any value is
+   allowed. The transition **graph** (`transitions`, `enforce_transitions`,
+   allowed edges) is dropped in the schema model — membership is the only
+   check. Consequence: the `blockers_closed` require-guard becomes a
+   state-independent close check (warn/block when entering a `done`-category
+   state with open blockers, regardless of path), not a per-edge require.
+   This is a deliberate *behavior* change, so it lands in Phase 2+ (when
+   schema-driven `state` replaces workflow enforcement) and will update the
+   existing transition-enforcement tests — the characterization guarantee
+   covers data *shape*, not transition *policy*. Phase 1 is unaffected
+   (validation-only, no move enforcement).
 
 ## Type system
 
@@ -65,11 +76,13 @@ user-defined types.
 | `enum` | value set referenced by name (`priority_enum`); reusable |
 | `ref` | reference to another entity; `target: <type>`; strongly typed, ULID-bound |
 
-`state` and `resolution` are **compositions**, not new primitives: `state` is an
-`enum` bound to the type's workflow (guarded, transition rules); `resolution` is
-an `enum` gated by done-category. `user`/`label`/`sprint`/`board` fields are
-`enum`/`ref` whose values come from a config list (`source:` pointer) rather than
-an inline set.
+`state` is a **plain `enum`** whose values each carry a `category`
+(todo/doing/done). **Transitions are unconstrained** — any value → any value
+(see Decision 5). Category is retained (drives board columns, done-detection,
+resolution gating, epic progress); only the edges between states go away.
+`resolution` is an `enum` gated by done-category. `user`/`label`/`sprint`/`board`
+fields are `enum`/`ref` whose values come from a config list (`source:` pointer)
+rather than an inline set.
 
 ### Modifiers / attributes (orthogonal to type)
 
