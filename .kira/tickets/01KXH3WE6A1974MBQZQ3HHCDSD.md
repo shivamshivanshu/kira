@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: feature
 title: "kira config explain: print this repo's live rules with provenance"
-state: TODO
+state: IN_PROGRESS
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:37:52+05:30
-updated: 2026-07-15T01:37:52+05:30
+updated: 2026-07-23T14:26:56+05:30
 ---
 
 ## Description
