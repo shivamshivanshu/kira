@@ -26,6 +26,7 @@ type Env struct {
 	InsideWorkTree        bool
 	TrackedHooks          []string
 	InstalledHooks        []string
+	DriftedHooks          []string
 	MergeDriverRegistered bool
 	TicketAttrRegistered  bool
 	MissingOptionalBins   []string
@@ -64,13 +65,15 @@ func hookFindings(env Env) []Finding {
 	if len(env.TrackedHooks) == 0 {
 		return []Finding{info(ClassHooks, "no tracked hooks in .kira/hooks")}
 	}
-	installed := make(map[string]bool, len(env.InstalledHooks))
-	for _, h := range env.InstalledHooks {
-		installed[h] = true
-	}
+	installed := hookSet(env.InstalledHooks)
+	drifted := hookSet(env.DriftedHooks)
 	var out []Finding
 	for _, h := range env.TrackedHooks {
-		if !installed[h] {
+		switch {
+		case installed[h]:
+		case drifted[h]:
+			out = append(out, warn(ClassHooks, "tracked hook "+h+" already runs kira alongside other commands; remove kira's lines and re-run `kira hooks install`, or keep managing it by hand"))
+		default:
 			out = append(out, info(ClassHooks, "tracked hook "+h+" is not installed in .git/hooks; run `kira hooks install`"))
 		}
 	}
@@ -81,6 +84,14 @@ func hookFindings(env Env) []Finding {
 		out = append(out, info(ClassHooks, "ticket merge attribute is not registered in .git/info/attributes; run `kira hooks install`"))
 	}
 	return out
+}
+
+func hookSet(names []string) map[string]bool {
+	set := make(map[string]bool, len(names))
+	for _, n := range names {
+		set[n] = true
+	}
+	return set
 }
 
 func freshnessFinding(f *Freshness) Finding {

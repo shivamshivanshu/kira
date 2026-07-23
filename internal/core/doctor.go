@@ -83,7 +83,7 @@ func (s *Store) doctorEnv() doctor.Env {
 		return env
 	}
 	env.TrackedHooks = s.trackedHookNames()
-	env.InstalledHooks = s.installedHooks(repo, env.TrackedHooks)
+	env.InstalledHooks, env.DriftedHooks = s.classifyTrackedHooks(repo, env.TrackedHooks)
 	env.MergeDriverRegistered = repo.ConfigValue("merge.kira.driver") != ""
 	env.TicketAttrRegistered = repo.InfoAttributeHasLine(mergeAttrLine)
 	env.Freshness = doctor.ResolveFreshness(indexFreshness{store: s.fs(), repo: repo})
@@ -104,22 +104,16 @@ func (s *Store) trackedHookNames() []string {
 	return out
 }
 
-func (s *Store) installedHooks(repo gitx.Repo, tracked []string) []string {
-	var out []string
+func (s *Store) classifyTrackedHooks(repo gitx.Repo, tracked []string) (installed, drifted []string) {
 	for _, name := range tracked {
-		dst, err := s.gitHookPath(repo, name)
-		if err != nil {
-			continue
-		}
-		data, err := os.ReadFile(dst)
-		if err != nil {
-			continue
-		}
-		if installed, _ := hooks.Classify(string(data), name); installed {
-			out = append(out, name)
+		switch state := s.hookState(repo, name); {
+		case state.Installed():
+			installed = append(installed, name)
+		case state == hooks.StateDrifted:
+			drifted = append(drifted, name)
 		}
 	}
-	return out
+	return installed, drifted
 }
 
 type indexFreshness struct {

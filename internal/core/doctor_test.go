@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/doctor"
@@ -72,7 +73,7 @@ func TestDoctorEnvHonorsLinkedWorktree(t *testing.T) {
 	assertDoctorAgreesWithHooksStatus(t, ws)
 }
 
-func TestDoctorEnvDetectsPlainInvocationHook(t *testing.T) {
+func TestDoctorEnvDetectsPlainInvocationHookAsDrifted(t *testing.T) {
 	s, _, repo := stagedFixture(t)
 	tracked := filepath.Join(s.fs().KiraDir(), "hooks")
 	if err := os.MkdirAll(tracked, 0o755); err != nil {
@@ -90,9 +91,66 @@ func TestDoctorEnvDetectsPlainInvocationHook(t *testing.T) {
 		t.Fatalf("write hook: %v", err)
 	}
 
-	got := s.installedHooks(repo, []string{"post-merge"})
-	if !slices.Contains(got, "post-merge") {
-		t.Fatalf("a plainly-installed hook invoking 'kira hooks post-merge' must be detected, got %v", got)
+	installed, drifted := s.classifyTrackedHooks(repo, []string{"post-merge"})
+	if slices.Contains(installed, "post-merge") {
+		t.Fatalf("a hand-rolled hook invoking 'kira hooks post-merge' is drifted, not cleanly installed, got installed=%v", installed)
+	}
+	if !slices.Contains(drifted, "post-merge") {
+		t.Fatalf("a hand-rolled hook invoking 'kira hooks post-merge' must be detected as drifted, got %v", drifted)
+	}
+}
+
+func TestDoctorAndHooksStatusAgreeOnDriftedInvokingHook(t *testing.T) {
+	// Given a post-merge hook that invokes kira alongside another command,
+	// with no kira:chain marker and not a pure shim — StateDrifted.
+	s, cfg, _ := stagedFixture(t)
+	if _, err := s.InstallHooks(cfg, HooksInstallOpts{}); err != nil {
+		t.Fatalf("install: %v", err)
+	}
+	dst := installedHookPath(t, s, "post-merge")
+	body := "#!/bin/sh\nmy-linter --staged\nexec kira hooks run post-merge \"$@\"\n"
+	if err := os.WriteFile(dst, []byte(body), 0o755); err != nil {
+		t.Fatalf("write hook: %v", err)
+	}
+
+	// When doctor classifies it and hooks status reports its state.
+	env := s.doctorEnv()
+	status, err := s.HooksStatus()
+	if err != nil {
+		t.Fatalf("hooks status: %v", err)
+	}
+	report, err := s.DoctorReport(cfg)
+	if err != nil {
+		t.Fatalf("doctor report: %v", err)
+	}
+
+	// Then both must treat it as drifted, not cleanly installed.
+	if slices.Contains(env.InstalledHooks, "post-merge") {
+		t.Errorf("doctor must not count a drifted-but-invoking hook as installed, got %v", env.InstalledHooks)
+	}
+	if !slices.Contains(env.DriftedHooks, "post-merge") {
+		t.Errorf("doctor must report post-merge as drifted, got %v", env.DriftedHooks)
+	}
+	var statusState string
+	for _, h := range status.Hooks {
+		if h.Name == "post-merge" {
+			statusState = h.State
+		}
+	}
+	if statusState != string(hooks.StateDrifted) {
+		t.Errorf("hooks status must report post-merge as drifted, got %q", statusState)
+	}
+	if status.OK {
+		t.Error("hooks status must not be OK while post-merge is drifted")
+	}
+	var driftFinding bool
+	for _, f := range report.Findings {
+		if f.Class == doctor.ClassHooks && f.Severity == doctor.SeverityWarning && strings.Contains(f.Message, "post-merge") {
+			driftFinding = true
+		}
+	}
+	if !driftFinding {
+		t.Errorf("doctor report must surface a warning finding for the drifted hook, got %+v", report.Findings)
 	}
 }
 

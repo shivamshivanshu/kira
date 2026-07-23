@@ -239,13 +239,7 @@ func (s *Store) HooksStatus() (*datamodel.HooksStatusResult, error) {
 }
 
 func stateOK(name string, state hooks.State) bool {
-	switch state {
-	case hooks.StateInstalled, hooks.StateChained:
-		return true
-	case hooks.StateMissing:
-		return name == hooks.PreCommit
-	}
-	return false
+	return state.Installed() || (state == hooks.StateMissing && name == hooks.PreCommit)
 }
 
 func (s *Store) hookState(repo gitx.Repo, name string) hooks.State {

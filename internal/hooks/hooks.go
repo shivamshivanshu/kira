@@ -84,8 +84,8 @@ func delegationLineRe(name string) *regexp.Regexp {
 }
 
 func Classify(content, name string) (installed, chained bool) {
-	chained = HasMarker(content)
-	return StateOf(content, name) != StateForeign, chained
+	state := StateOf(content, name)
+	return state.Installed(), state == StateChained
 }
 
 func IsShellScript(content string) bool {
@@ -180,6 +180,10 @@ const (
 	StateDrifted   State = "drifted"
 	StateForeign   State = "foreign"
 )
+
+func (s State) Installed() bool {
+	return s == StateInstalled || s == StateChained
+}
 
 func StateOf(content, name string) State {
 	script, ok := Script(name)
