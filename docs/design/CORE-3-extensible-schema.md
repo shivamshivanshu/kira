@@ -184,6 +184,37 @@ faithfully reproduces hardcoded behavior.
 Each phase is its own ticket + spec + PR. Phases 2-6 are follow-ups, not part of
 the current delegation.
 
+## CLI field filtering & flags (Phase 4/5)
+
+Filtering by a schema field — built-in or custom — resolves to **one engine**:
+the `query` grammar (`state = TODO AND severity = HIGH`), made schema-aware
+(field names + enum values validated/completed against the schema). Everything
+else desugars into it; no parallel filter path.
+
+- **Generic `--field k=v`** on `list` (repeatable, ANDed, equality-only)
+  desugars to a query equality predicate. Works for any schema field or entity.
+  Richer operators (`<`, `IN`, `NOT`) stay in the query expression. Unknown
+  field → `errx` with a did-you-mean from schema field names; bad enum value →
+  error listing the schema's allowed values (same vocab as `entityschema`).
+  `--field <TAB>` completes field names; `--field state=<TAB>` completes values.
+- **Native flags** (`--state`, `--priority`, …) are **kept as ergonomic
+  aliases** that desugar to the same predicate — `--field state=TODO` ≡
+  `--state TODO` ≡ query `state = TODO`. Uniform *mechanism*, not uniform
+  *surface*.
+
+Which fields get a native flag: a **curated, compile-time set** of the built-in
+commonly-filtered fields (state/priority/owner/label/sprint/epic/subtype/due),
+collision-checked against reserved/global flags. Custom fields use `--field`
+only. Native flags are *not* auto-derived from the schema because cobra
+registers flags before argv is parsed, but the schema lives in the repo (opened
+only after `-C`/cwd resolves) — a chicken-and-egg — and user field names can
+collide with reserved flags. The flag's *values* still come from the schema
+(completion/validation); only its *existence* is compile-time.
+
+Escape hatch (later, opt-in): a field may declare `representation.flag` to
+request a native flag, dynamically registered after the repo resolves, guarded
+against reserved-name collisions. Not v1.
+
 ## Open items
 
 - Enum resolution precedence when a schema inline enum and a config vocab share
