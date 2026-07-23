@@ -4,13 +4,13 @@ import (
 	"io"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/termx"
+	"github.com/shivamshivanshu/kira/internal/timex"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
@@ -129,7 +129,7 @@ func renderCard(t theme.Theme, ic iconSet, cat datamodel.Category, it datamodel.
 		{prio, priorityHue(t, ic.priorityTier(priority))}, {" ", t.Text},
 		{glyph, t.CategoryStyle(cat)}, {" ", t.Text},
 	}
-	if datamodel.IsOverdue(it.Due, it.Category, time.Now()) {
+	if datamodel.IsOverdue(it.Due, it.Category, timex.Now()) {
 		segments = append(segments, rowSegment{ic.overdueGlyph(), t.Heat.Hot}, rowSegment{" ", t.Text})
 	}
 	segments = append(segments, rowSegment{it.Number, t.Dim}, rowSegment{"  ", t.Text})

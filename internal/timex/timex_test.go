@@ -30,6 +30,35 @@ func TestOverdue(t *testing.T) {
 	}
 }
 
+func TestNow(t *testing.T) {
+	t.Run("KIRA_NOW unset falls back to real time", func(t *testing.T) {
+		t.Setenv("KIRA_NOW", "")
+		if d := time.Since(Now()); d < 0 || d > time.Minute {
+			t.Fatalf("Now() = %v away from real time, want within a minute", d)
+		}
+	})
+	t.Run("KIRA_NOW as RFC3339", func(t *testing.T) {
+		t.Setenv("KIRA_NOW", "2026-07-15T09:00:00Z")
+		want := time.Date(2026, 7, 15, 9, 0, 0, 0, time.UTC)
+		if got := Now(); !got.Equal(want) {
+			t.Fatalf("Now() = %v, want %v", got, want)
+		}
+	})
+	t.Run("KIRA_NOW as date-only", func(t *testing.T) {
+		t.Setenv("KIRA_NOW", "2026-07-15")
+		want := time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC)
+		if got := Now(); !got.Equal(want) {
+			t.Fatalf("Now() = %v, want %v", got, want)
+		}
+	})
+	t.Run("malformed KIRA_NOW falls back to real time", func(t *testing.T) {
+		t.Setenv("KIRA_NOW", "not-a-date")
+		if d := time.Since(Now()); d < 0 || d > time.Minute {
+			t.Fatalf("Now() = %v away from real time, want within a minute", d)
+		}
+	})
+}
+
 func TestCompareRFC3339(t *testing.T) {
 	t.Run("same instant across offsets", func(t *testing.T) {
 		cmp, a, b := CompareRFC3339("2026-01-01T10:00:00+05:30", "2026-01-01T04:30:00Z")

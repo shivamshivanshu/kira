@@ -7,6 +7,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
 type StatsOpts struct {
@@ -22,7 +23,7 @@ func (s *Store) Stats(cfg *datamodel.Config, opts StatsOpts) (*datamodel.StatsRe
 		return nil, err
 	}
 	items, resolver := ld.items, ld.resolver
-	now := time.Now().Local()
+	now := timex.Now()
 
 	scope, set, err := s.resolveScope(cfg, opts, items, resolver)
 	if err != nil {

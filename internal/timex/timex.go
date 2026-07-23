@@ -2,8 +2,28 @@ package timex
 
 import (
 	"fmt"
+	"os"
 	"time"
 )
+
+// Now returns the current time, or the time parsed from KIRA_NOW if set —
+// a test-injectable clock for deterministic time-relative output.
+func Now() time.Time {
+	if env := os.Getenv("KIRA_NOW"); env != "" {
+		if t, err := ParseFlexible(env); err == nil {
+			return t
+		}
+	}
+	return time.Now()
+}
+
+// ParseFlexible parses an RFC3339 timestamp or a bare DateOnly date.
+func ParseFlexible(s string) (time.Time, error) {
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t, nil
+	}
+	return time.Parse(time.DateOnly, s)
+}
 
 func CompareRFC3339(a, b string) (cmp int, aOK, bOK bool) {
 	ta, ea := time.Parse(time.RFC3339, a)
