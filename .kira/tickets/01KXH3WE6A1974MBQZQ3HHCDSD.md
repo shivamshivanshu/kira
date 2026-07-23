@@ -5,7 +5,7 @@ aliases: []
 type: ticket
 subtype: feature
 title: "kira config explain: print this repo's live rules with provenance"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
