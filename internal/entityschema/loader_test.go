@@ -103,6 +103,23 @@ func TestLoadRejectsUnknownFieldType(t *testing.T) {
 	}
 }
 
+func TestValidateSchemaRejectsMalformedDefinitions(t *testing.T) {
+	cases := map[string]Schema{
+		"missing schema name": {Fields: []FieldDef{{Name: "x", Type: FieldString}}},
+		"duplicate field":     {Name: "w", Fields: []FieldDef{{Name: "x", Type: FieldString}, {Name: "x", Type: FieldInt}}},
+		"enum without enum":   {Name: "w", Fields: []FieldDef{{Name: "p", Type: FieldEnum}}},
+		"ref without target":  {Name: "w", Fields: []FieldDef{{Name: "o", Type: FieldRef}}},
+	}
+
+	for name, schema := range cases {
+		t.Run(name, func(t *testing.T) {
+			if err := validateSchema(schema); err == nil {
+				t.Fatalf("expected %s to be rejected", name)
+			}
+		})
+	}
+}
+
 func TestWriteDefaultsIsIdempotentAndPreservesEdits(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "schema")
 

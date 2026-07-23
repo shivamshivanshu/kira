@@ -157,6 +157,48 @@ func TestValidateStateNotDeclared(t *testing.T) {
 	}
 }
 
+func TestValidateAcceptsWellFormedDateAndDatetime(t *testing.T) {
+	schema := Schema{Name: "w", Fields: []FieldDef{
+		{Name: "due", Type: FieldDate},
+		{Name: "created", Type: FieldDatetime},
+	}}
+	values := map[string]any{"due": "2026-07-23", "created": "2026-07-23T15:00:00+05:30"}
+
+	violations := Validate(schema, values, nil, nil)
+
+	if len(violations) != 0 {
+		t.Fatalf("expected no violations, got %v", violations)
+	}
+}
+
+func TestValidateRejectsMalformedDateAndDatetime(t *testing.T) {
+	schema := Schema{Name: "w", Fields: []FieldDef{
+		{Name: "due", Type: FieldDate},
+		{Name: "created", Type: FieldDatetime},
+	}}
+	values := map[string]any{"due": "2026-13-99", "created": "not-a-time"}
+
+	violations := Validate(schema, values, nil, nil)
+
+	if len(violations) != 2 {
+		t.Fatalf("expected both malformed temporal fields flagged, got %v", violations)
+	}
+}
+
+func TestValidateAcceptsCapturedLabelUnderStrictConfig(t *testing.T) {
+	schema := Schema{Name: "ticket", Fields: []FieldDef{
+		{Name: "labels", Type: FieldEnum, Enum: "label", List: true},
+	}}
+	cfg := &datamodel.Config{Labels: datamodel.Vocab{Known: []string{"core"}, Strict: true}}
+	values := map[string]any{"labels": []string{"core", datamodel.CapturedLabel}}
+
+	violations := Validate(schema, values, ConfigVocab(cfg), nil)
+
+	if len(violations) != 0 {
+		t.Fatalf("system captured label must pass a strict label vocabulary, got %v", violations)
+	}
+}
+
 func TestResolveEnumsConfigVocabWinsOverInline(t *testing.T) {
 	schema := Schema{Name: "widget", Enums: []EnumDef{{Name: "priority", Values: []string{"stale"}}}}
 
