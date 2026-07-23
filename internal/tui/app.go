@@ -51,6 +51,9 @@ type screen interface {
 	focusedItem() (showfmt.Item, bool)
 	invalidate()
 	settle(m *model)
+	// activate dispatches whatever load a screen needs after becoming current
+	// (e.g. an async reload); most screens have nothing to do here.
+	activate(m *model) tea.Cmd
 }
 
 func buildScreens() map[view]screen {
@@ -131,6 +134,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for _, s := range m.screens {
 			s.invalidate()
 		}
+		return m, m.afterDrain(tea.Batch(cmd, m.activateCurrent()))
+	case statsLoadedMsg:
+		cmd := m.drain()
+		if ss, ok := m.statsScreen(); ok {
+			ss.applyLoaded(msg)
+		}
 		return m, m.afterDrain(cmd)
 	case commandResultMsg:
 		m.bar.msg = msg.text
@@ -200,22 +209,17 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.help = !m.help
 		return m, nil
 	case "1":
-		m.switchView(viewTree)
-		return m, nil
+		return m, m.switchView(viewTree)
 	case "2":
-		m.switchView(viewBoard)
-		return m, nil
+		return m, m.switchView(viewBoard)
 	case "3":
-		m.switchView(viewStats)
-		return m, nil
+		return m, m.switchView(viewStats)
 	case "r":
 		return m, m.request(refreshCmd(m.store, m.cfg, m.bar.filter))
 	case "ctrl+o":
-		m.jumpTo(m.jumps.back())
-		return m, nil
+		return m, m.jumpTo(m.jumps.back())
 	case "ctrl+]":
-		m.jumpTo(m.jumps.forward())
-		return m, nil
+		return m, m.jumpTo(m.jumps.forward())
 	default:
 		s := m.current()
 		if s == nil {
@@ -284,25 +288,39 @@ func (m model) boardScreen() (*boardScreen, bool) {
 	return bs, ok
 }
 
-func (m *model) switchView(v view) {
+func (m model) statsScreen() (*statsScreen, bool) {
+	ss, ok := m.screens[viewStats].(*statsScreen)
+	return ss, ok
+}
+
+func (m *model) activateCurrent() tea.Cmd {
+	if s := m.current(); s != nil {
+		return s.activate(m)
+	}
+	return nil
+}
+
+func (m *model) switchView(v view) tea.Cmd {
 	if v == m.view {
-		return
+		return nil
 	}
 	if s := m.current(); s != nil {
 		it, _ := s.focusedItem()
 		m.jumps.push(jumpEntry{view: m.view, itemID: it.ID})
 	}
 	m.view = v
+	return m.activateCurrent()
 }
 
-func (m *model) jumpTo(e jumpEntry, ok bool) {
+func (m *model) jumpTo(e jumpEntry, ok bool) tea.Cmd {
 	if !ok {
-		return
+		return nil
 	}
 	m.view = e.view
 	if s := m.current(); s != nil {
 		s.focusItem(m, e.itemID)
 	}
+	return m.activateCurrent()
 }
 
 func (m model) mainHeight() int { return max(1, m.height-2) }
@@ -368,4 +386,8 @@ func (m model) renderHelp(h int) string {
 
 func centered(t theme.Theme, width, height int, s string) string {
 	return t.Renderer().NewStyle().Width(width).Height(height).Align(lipgloss.Center, lipgloss.Center).Render(s)
+}
+
+func renderLoading(t theme.Theme, width, height int) string {
+	return centered(t, width, height, t.Dim.Render("loading…"))
 }

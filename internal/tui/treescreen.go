@@ -43,6 +43,8 @@ func (s *treeScreen) keys() []KeyBinding { return treeKeys }
 
 func (s *treeScreen) invalidate() {}
 
+func (s *treeScreen) activate(_ *model) tea.Cmd { return nil }
+
 func (s *treeScreen) setData(m *model, data treeData) {
 	s.tree.load(data.nodes, data.fields, data.progress)
 	s.host.resetCache()

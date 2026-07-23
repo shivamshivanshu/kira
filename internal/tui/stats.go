@@ -22,10 +22,18 @@ var statsKeys = []KeyBinding{
 	{"^d/^u", "half-page"},
 }
 
+type statsLoadState int
+
+const (
+	statsNotLoaded statsLoadState = iota
+	statsPending
+	statsReady
+)
+
 type statsScreen struct {
-	loaded bool
-	res    *datamodel.StatsResult
-	err    error
+	state statsLoadState
+	res   *datamodel.StatsResult
+	err   error
 	scroller
 	cacheRes   *datamodel.StatsResult
 	cacheLines []string
@@ -48,20 +56,29 @@ func (s *statsScreen) focusedItem() (showfmt.Item, bool) { return showfmt.Item{}
 
 func (s *statsScreen) settle(_ *model) {}
 
-func (s *statsScreen) invalidate() { s.loaded = false }
+func (s *statsScreen) invalidate() { s.state = statsNotLoaded }
 
-func (s *statsScreen) ensure(m *model) {
-	if s.loaded || m.store == nil || m.busy {
-		return
+// activate dispatches an async reload through the model's command queue at
+// most once per invalidation; the result lands later via statsLoadedMsg.
+func (s *statsScreen) activate(m *model) tea.Cmd {
+	if s.state != statsNotLoaded || m.store == nil {
+		return nil
 	}
-	s.res, s.err = loadStats(m.store, m.cfg)
-	s.loaded = true
+	s.state = statsPending
+	return m.request(statsLoadCmd(m.store, m.cfg))
+}
+
+func (s *statsScreen) applyLoaded(msg statsLoadedMsg) {
+	s.res, s.err = msg.res, msg.err
+	s.state = statsReady
 }
 
 func (s *statsScreen) view(m *model, width, height int) string {
-	s.ensure(m)
 	if s.err != nil {
 		return centered(m.theme, width, height, m.theme.Heat.Hot.Render("cannot load stats: "+firstNonEmptyLine(s.err.Error())))
+	}
+	if s.state == statsPending {
+		return renderLoading(m.theme, width, height)
 	}
 	lines := s.contentLines(m.theme, m.icons.rich())
 	if len(lines) == 0 {

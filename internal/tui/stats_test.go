@@ -27,7 +27,7 @@ func statsScreenWith(res *datamodel.StatsResult) (model, *statsScreen) {
 	m := newTestModel(100, 20, false)
 	ss := m.screens[viewStats].(*statsScreen)
 	if res != nil {
-		ss.res, ss.loaded = res, true
+		ss.res, ss.state = res, statsReady
 	}
 	return m, ss
 }
@@ -76,7 +76,7 @@ func TestStatsCacheKeyedByResultPointer(t *testing.T) {
 
 	other := sampleStats()
 	other.Scope.Sprint = "a-distinctly-different-sprint"
-	ss.res, ss.loaded = other, true
+	ss.res, ss.state = other, statsReady
 	fresh := strings.Join(ss.contentLines(m.theme, false), "\n")
 	if fresh == first {
 		t.Fatal("a fresh result pointer must invalidate the cache and rebuild, not reuse the first render")
@@ -109,14 +109,51 @@ func TestLoadStatsFallsBackOnlyOnNoActiveSprint(t *testing.T) {
 	}
 }
 
+func TestStatsActivateDispatchesAsyncLoadOnce(t *testing.T) {
+	t.Parallel()
+
+	// Given a stats screen backed by a real store, not yet loaded.
+	s, cfg, _ := initRepo(t)
+	createTicket(t, s, cfg, "counted")
+	m := newModel(s, cfg, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
+	ss, ok := m.statsScreen()
+	if !ok {
+		t.Fatal("model should hold a *statsScreen for viewStats")
+	}
+
+	// When activate is called, it dispatches a load and marks the screen
+	// pending instead of blocking on store IO.
+	cmd := ss.activate(&m)
+	if cmd == nil || ss.state != statsPending {
+		t.Fatal("activate should dispatch a load and mark pending on first call")
+	}
+	if got := ss.view(&m, 40, 5); !strings.Contains(got, "loading") {
+		t.Fatalf("view should show a loading placeholder while pending; got:\n%s", got)
+	}
+
+	// Then a second call before the load resolves is a no-op, and applying
+	// the resolved message clears pending and stores the result.
+	if again := ss.activate(&m); again != nil {
+		t.Fatal("activate should not dispatch a second time while a load is pending")
+	}
+	msg, ok := cmd().(statsLoadedMsg)
+	if !ok {
+		t.Fatalf("dispatched command should resolve to statsLoadedMsg, got %T", cmd())
+	}
+	ss.applyLoaded(msg)
+	if ss.state != statsReady || ss.res == nil {
+		t.Fatal("applyLoaded should mark ready and store the result")
+	}
+}
+
 func TestStatsInvalidateReloads(t *testing.T) {
 	t.Parallel()
 	_, ss := statsScreenWith(sampleStats())
-	if !ss.loaded {
-		t.Fatal("statsScreenWith should mark loaded")
+	if ss.state != statsReady {
+		t.Fatal("statsScreenWith should mark ready")
 	}
 	ss.invalidate()
-	if ss.loaded {
-		t.Fatal("invalidate should clear the loaded flag so the next view reloads")
+	if ss.state != statsNotLoaded {
+		t.Fatal("invalidate should reset state so the next view reloads")
 	}
 }

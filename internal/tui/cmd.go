@@ -55,6 +55,18 @@ func loadDetail(store *core.Store, cfg *datamodel.Config, id string) (*datamodel
 	return store.Show(cfg, id, "")
 }
 
+type statsLoadedMsg struct {
+	res *datamodel.StatsResult
+	err error
+}
+
+func statsLoadCmd(store *core.Store, cfg *datamodel.Config) tea.Cmd {
+	return safeCmd(func() tea.Msg {
+		res, err := loadStats(store, cfg)
+		return statsLoadedMsg{res: res, err: err}
+	})
+}
+
 type boardMovedMsg struct {
 	res    *datamodel.MoveResult
 	board  *datamodel.BoardResult

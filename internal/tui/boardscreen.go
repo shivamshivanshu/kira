@@ -57,6 +57,8 @@ func (s *boardScreen) keys() []KeyBinding {
 
 func (s *boardScreen) invalidate() { s.loaded = false }
 
+func (s *boardScreen) activate(_ *model) tea.Cmd { return nil }
+
 func (s *boardScreen) ensureLoaded(m *model) {
 	if s.loaded || m.store == nil || m.busy {
 		return
@@ -257,7 +259,7 @@ func (s *boardScreen) scopeHeader(m *model, width int) string {
 
 func (s *boardScreen) renderMain(m *model, width, height int) string {
 	if s.board.result == nil && m.busy {
-		return centered(m.theme, width, height, m.theme.Dim.Render("loading…"))
+		return renderLoading(m.theme, width, height)
 	}
 	if s.peek == peekOverlay || (s.peek == peekDocked && !splitDetail(width)) {
 		return s.host.render(m.theme, m.icons, width, height)
