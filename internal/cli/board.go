@@ -74,24 +74,6 @@ func newBoardCmd(g *globalFlags) *cobra.Command {
 	return cmd
 }
 
-func storeActionRunE[T any](g *globalFlags, action func(*core.Store, *datamodel.Config, []string) (T, error), render func(io.Writer, T)) func(*cobra.Command, []string) error {
-	return func(cmd *cobra.Command, args []string) error {
-		s, cfg, err := openStore(g)
-		if err != nil {
-			return err
-		}
-		res, err := action(s, cfg, args)
-		if err != nil {
-			return err
-		}
-		if g.json {
-			return emitJSON(cmd.OutOrStdout(), res)
-		}
-		render(cmd.OutOrStdout(), res)
-		return nil
-	}
-}
-
 func newBoardUnarchiveCmd(g *globalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "unarchive <KEY>",

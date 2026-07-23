@@ -19,24 +19,14 @@ func newStatsCmd(g *globalFlags) *cobra.Command {
 		Use:   "stats [epic-id] [--since DATE] [--weeks N] [--sprint KEY]",
 		Short: "Project and sprint metrics: completion, cycle/lead time, throughput",
 		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 1 {
-				opts.Epic = args[0]
-			}
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res, err := s.Stats(cfg, opts)
-			if err != nil {
-				return err
-			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			renderStats(cmd.OutOrStdout(), res)
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, args []string) (*datamodel.StatsResult, error) {
+				if len(args) == 1 {
+					opts.Epic = args[0]
+				}
+				return s.Stats(cfg, opts)
+			},
+			renderStats),
 	}
 	f := cmd.Flags()
 	f.StringVar(&opts.Since, "since", "", "include only items created on or after this date (YYYY-MM-DD)")

@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
@@ -14,21 +15,11 @@ func newBlameCmd(g *globalFlags) *cobra.Command {
 		Use:   "blame <id>",
 		Short: "Show, per field, its current value and the commit that last set it",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res, err := s.Blame(cfg, args[0])
-			if err != nil {
-				return err
-			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			renderBlame(cmd.OutOrStdout(), res)
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, args []string) (*datamodel.BlameResult, error) {
+				return s.Blame(cfg, args[0])
+			},
+			renderBlame),
 	}
 }
 

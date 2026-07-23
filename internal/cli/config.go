@@ -20,6 +20,9 @@ func newConfigCmd(g *globalFlags) *cobra.Command {
 		Short: "Inspect project config and manage user preferences",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if g.json {
+				return errx.User("config: --json is not supported for this command")
+			}
 			dir, ok := config.UserConfigDir(os.Getenv)
 			if !ok {
 				return errx.Env("cannot resolve user config directory: set HOME or XDG_CONFIG_HOME")
@@ -77,18 +80,11 @@ func newConfigFiltersCmd(g *globalFlags) *cobra.Command {
 		Use:   "filters",
 		Short: "List the named saved queries from config filters",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			_, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res := core.Filters(cfg)
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			renderFilterList(cmd.OutOrStdout(), res)
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(_ *core.Store, cfg *datamodel.Config, _ []string) (*datamodel.FilterListResult, error) {
+				return core.Filters(cfg), nil
+			},
+			renderFilterList),
 	}
 }
 
@@ -109,20 +105,12 @@ func newConfigSetCmd(g *globalFlags) *cobra.Command {
 		Use:   "set <key> <value>",
 		Short: "Set a scalar config key, preserving comments and formatting",
 		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res, err := s.ConfigSet(cfg, args[0], args[1])
-			if err != nil {
-				return err
-			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Set %s = %s\n", res.Key, res.Value)
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, args []string) (*datamodel.ConfigSetResult, error) {
+				return s.ConfigSet(cfg, args[0], args[1])
+			},
+			func(w io.Writer, res *datamodel.ConfigSetResult) {
+				_, _ = fmt.Fprintf(w, "Set %s = %s\n", res.Key, res.Value)
+			}),
 	}
 }

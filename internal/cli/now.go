@@ -8,7 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
@@ -17,21 +19,11 @@ func newNowCmd(g *globalFlags) *cobra.Command {
 		Use:   "now",
 		Short: "Show the currently active ticket",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res, err := s.Now(cfg)
-			if err != nil {
-				return err
-			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			renderNow(cmd.OutOrStdout(), res)
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, _ []string) (*datamodel.NowResult, error) {
+				return s.Now(cfg)
+			},
+			renderNow),
 	}
 }
 
@@ -60,6 +52,6 @@ func renderNow(w io.Writer, r *datamodel.NowResult) {
 	}
 	line("commits", fmt.Sprintf("%d since last state change", len(r.Commits)))
 	for _, c := range r.Commits {
-		_, _ = fmt.Fprintf(w, "  %s  %s\n", shortSHA(c.SHA), c.Subject)
+		_, _ = fmt.Fprintf(w, "  %s  %s\n", gitx.ShortSHA(c.SHA), c.Subject)
 	}
 }

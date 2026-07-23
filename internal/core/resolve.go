@@ -106,9 +106,14 @@ func parseOrNil(content string) *datamodel.Item {
 	return it
 }
 
+// RefMatches reports whether ref identifies it, by display number, ULID, or alias.
+func RefMatches(it *datamodel.Item, ref string) bool {
+	return ref == it.Number || ref == it.ID || slices.Contains(it.Aliases, ref)
+}
+
 func itemMatchesAny(it *datamodel.Item, refs []string) bool {
 	for _, ref := range refs {
-		if ref == it.Number || ref == it.ID || slices.Contains(it.Aliases, ref) {
+		if RefMatches(it, ref) {
 			return true
 		}
 	}

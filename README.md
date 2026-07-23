@@ -16,9 +16,9 @@ kira                                   # launch the interactive TUI (default wit
 
 ## Capabilities
 
-Every command supports `--json` for scripting, plus `--no-color`, `--quiet`, and
-`-C <path>` (run as if invoked from elsewhere). Bulk-capable commands accept
-multiple ids at once.
+Every command supports `--json` for scripting, plus `--no-color` and
+`-C <path>` (run as if invoked from elsewhere); `index` also takes `--quiet`.
+Bulk-capable commands accept multiple ids at once.
 
 **Item lifecycle** — `create` (ticket/epic, `--from-file`/stdin, `--here` to
 capture under the active ticket), `edit` (editor or `--field`, bulk), `move`

@@ -32,11 +32,8 @@ func newShowCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			emitStderrNotes(cmd.ErrOrStderr(), res.StderrNotes)
-			if res.Skew != nil {
-				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), msgPrefix, renderSkew(res.Skew))
-			}
 			if format != "" {
+				emitShowNotes(cmd, res)
 				out, err := showfmt.Format(showfmt.Form(format), showfmt.Item{ID: res.ID, Number: res.Number, Title: res.Title})
 				if err != nil {
 					return err
@@ -44,11 +41,7 @@ func newShowCmd(g *globalFlags) *cobra.Command {
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), out)
 				return nil
 			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			renderShow(cmd.OutOrStdout(), res)
-			return nil
+			return printShow(cmd, g, res)
 		},
 	}
 	cmd.Flags().StringVar(&at, "at", "", "read state at a git ref or date (YYYY-MM-DD), anchored on HEAD")
@@ -58,6 +51,26 @@ func newShowCmd(g *globalFlags) *cobra.Command {
 
 func renderSkew(sk *datamodel.Skew) string {
 	return fmt.Sprintf("%s at %s is %s; currently it is a different item (%s)", sk.Ref, sk.At, sk.AtID, sk.NowID)
+}
+
+// emitShowNotes prints a ShowResult's stderr-only side channel: cache
+// staleness notes and any ref-skew warning.
+func emitShowNotes(cmd *cobra.Command, res *datamodel.ShowResult) {
+	emitStderrNotes(cmd.ErrOrStderr(), res.StderrNotes)
+	if res.Skew != nil {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), msgPrefix, renderSkew(res.Skew))
+	}
+}
+
+// printShow emits a ShowResult as JSON or human-readable text, sharing the
+// output block between `kira show` and `kira discover --action show`.
+func printShow(cmd *cobra.Command, g *globalFlags, res *datamodel.ShowResult) error {
+	emitShowNotes(cmd, res)
+	if g.json {
+		return emitJSON(cmd.OutOrStdout(), res)
+	}
+	renderShow(cmd.OutOrStdout(), res)
+	return nil
 }
 
 func renderShow(w io.Writer, r *datamodel.ShowResult) {

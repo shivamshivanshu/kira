@@ -12,6 +12,17 @@ import (
 	"strings"
 )
 
+// shortSHALen matches git's own default abbreviation length.
+const shortSHALen = 7
+
+// ShortSHA truncates a commit SHA to git's default short form.
+func ShortSHA(sha string) string {
+	if len(sha) > shortSHALen {
+		return sha[:shortSHALen]
+	}
+	return sha
+}
+
 // Repo is a git working tree rooted at Dir.
 type Repo struct{ Dir string }
 

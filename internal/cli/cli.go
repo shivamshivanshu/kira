@@ -33,15 +33,16 @@ func Main() int {
 }
 
 func renderError(w io.Writer, err error, jsonMode bool) int {
-	var crash *tui.CrashError
-	if errors.As(err, &crash) {
-		return int(errx.ExitCrash)
-	}
 	code := errx.ExitUser
 	hint := ""
 	var ce *errx.Error
 	if errors.As(err, &ce) {
 		code, hint = ce.Code, ce.Hint
+	}
+	var crash *tui.CrashError
+	isCrash := errors.As(err, &crash)
+	if isCrash {
+		code, hint = errx.ExitCrash, crash.LogPath
 	}
 	if jsonMode {
 		enc := json.NewEncoder(w)
@@ -51,6 +52,10 @@ func renderError(w io.Writer, err error, jsonMode bool) int {
 			Hint  string `json:"hint"`
 			Code  int    `json:"code"`
 		}{err.Error(), hint, int(code)})
+		return int(code)
+	}
+	if isCrash {
+		// handleCrash already wrote the human-readable crash report to stderr.
 		return int(code)
 	}
 	_, _ = fmt.Fprintln(w, msgPrefix, err)
@@ -64,7 +69,6 @@ type globalFlags struct {
 	json           bool
 	noColor        bool
 	chdir          string
-	quiet          bool
 	nonInteractive bool
 }
 
@@ -72,7 +76,6 @@ func registerGlobalFlags(fs *pflag.FlagSet, g *globalFlags) {
 	fs.BoolVar(&g.json, "json", false, "emit machine-readable JSON on stdout")
 	fs.BoolVar(&g.noColor, "no-color", false, "disable ANSI color in human output")
 	fs.StringVarP(&g.chdir, "C", "C", "", "run as if invoked from `path`")
-	fs.BoolVar(&g.quiet, "quiet", false, "suppress non-essential human output")
 	fs.BoolVar(&g.nonInteractive, "non-interactive", false, "")
 	_ = fs.MarkHidden("non-interactive")
 }
@@ -167,4 +170,24 @@ func openStore(g *globalFlags) (*core.Store, *datamodel.Config, error) {
 		return nil, nil, err
 	}
 	return s, cfg, nil
+}
+
+// storeActionRunE adapts a store action into a cobra RunE: open the store,
+// run action, and either emit JSON or hand the result to render.
+func storeActionRunE[T any](g *globalFlags, action func(*core.Store, *datamodel.Config, []string) (T, error), render func(io.Writer, T)) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		s, cfg, err := openStore(g)
+		if err != nil {
+			return err
+		}
+		res, err := action(s, cfg, args)
+		if err != nil {
+			return err
+		}
+		if g.json {
+			return emitJSON(cmd.OutOrStdout(), res)
+		}
+		render(cmd.OutOrStdout(), res)
+		return nil
+	}
 }

@@ -58,7 +58,7 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 		"state":      completeVocab(g, workflowStates),
 		"format":     completeStatic(showfmt.Names()),
 		"category":   completeStatic(categoryValues()),
-		"type":       completeStatic([]string{datamodel.TypeTicket, datamodel.TypeEpic}),
+		"type":       completeVocab(g, workflowTypes),
 		"epic":       completeItems(g, datamodel.TypeEpic),
 		"parent":     completeItems(g, datamodel.TypeEpic),
 		"blocked-by": items,
@@ -146,7 +146,7 @@ func cachedItems(g *globalFlags) ([]*datamodel.Item, *datamodel.Config, bool) {
 
 func findCached(items []*datamodel.Item, ref string) *datamodel.Item {
 	for _, it := range items {
-		if it.Number == ref || it.ID == ref || slices.Contains(it.Aliases, ref) {
+		if core.RefMatches(it, ref) {
 			return it
 		}
 	}

@@ -60,7 +60,7 @@ func emitStderrNotes(w io.Writer, notes []datamodel.Warning) {
 
 func renderListResult(w io.Writer, res *datamodel.ListResult, columns []string) {
 	if res.Tree != nil {
-		renderTreeGroups(w, res)
+		renderTreeGroups(w, res, columns)
 		return
 	}
 	renderList(w, res, columns)

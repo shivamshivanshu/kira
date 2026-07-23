@@ -6,7 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/gitx"
 )
 
 func newCommitCmd(g *globalFlags) *cobra.Command {
@@ -14,28 +16,14 @@ func newCommitCmd(g *globalFlags) *cobra.Command {
 		Use:   "commit",
 		Short: "Commit all pending kira changes as a single commit",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res, err := s.CommitKira(cfg)
-			if err != nil {
-				return err
-			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			printCommit(cmd.OutOrStdout(), res)
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, _ []string) (*datamodel.CommitResult, error) {
+				return s.CommitKira(cfg)
+			},
+			printCommit),
 	}
 }
 
 func printCommit(out io.Writer, res *datamodel.CommitResult) {
-	sha := res.SHA
-	if len(sha) > 7 {
-		sha = sha[:7]
-	}
-	_, _ = fmt.Fprintf(out, "committed %s: %s (%d files)\n", sha, res.Subject, res.Files)
+	_, _ = fmt.Fprintf(out, "committed %s: %s (%d files)\n", gitx.ShortSHA(res.SHA), res.Subject, res.Files)
 }

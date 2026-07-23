@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
@@ -25,27 +26,20 @@ func newLabelCreateCmd(g *globalFlags) *cobra.Command {
 		Use:   "create <name>...",
 		Short: "Register one or more labels in the config vocabulary",
 		Args:  cobra.MinimumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res, err := s.LabelCreate(cfg, args)
-			if err != nil {
-				return err
-			}
-			out := cmd.OutOrStdout()
-			if g.json {
-				return emitJSON(out, res)
-			}
-			for _, n := range res.Created {
-				_, _ = fmt.Fprintf(out, "Created label %s\n", n)
-			}
-			for _, n := range res.AlreadyKnown {
-				_, _ = fmt.Fprintf(out, "Label %s already exists\n", n)
-			}
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, args []string) (*datamodel.LabelCreateResult, error) {
+				return s.LabelCreate(cfg, args)
+			},
+			renderLabelCreate),
+	}
+}
+
+func renderLabelCreate(w io.Writer, res *datamodel.LabelCreateResult) {
+	for _, n := range res.Created {
+		_, _ = fmt.Fprintf(w, "Created label %s\n", n)
+	}
+	for _, n := range res.AlreadyKnown {
+		_, _ = fmt.Fprintf(w, "Label %s already exists\n", n)
 	}
 }
 
@@ -54,21 +48,11 @@ func newLabelListCmd(g *globalFlags) *cobra.Command {
 		Use:   "list",
 		Short: "List labels with per-label item counts",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res, err := s.LabelList(cfg)
-			if err != nil {
-				return err
-			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			renderLabelList(cmd.OutOrStdout(), res)
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, _ []string) (*datamodel.LabelListResult, error) {
+				return s.LabelList(cfg)
+			},
+			renderLabelList),
 	}
 }
 

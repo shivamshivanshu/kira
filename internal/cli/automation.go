@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
@@ -43,18 +44,11 @@ func newAutomationListCmd(g *globalFlags) *cobra.Command {
 		Use:   "list",
 		Short: "List defined automation hooks and local trust status",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res := s.AutomationList(cfg)
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			printAutomationList(cmd.OutOrStdout(), res)
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, _ []string) (*datamodel.AutomationListResult, error) {
+				return s.AutomationList(cfg), nil
+			},
+			printAutomationList),
 	}
 }
 

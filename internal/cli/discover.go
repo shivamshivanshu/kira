@@ -3,7 +3,6 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -34,6 +33,9 @@ func newDiscoverCmd(g *globalFlags) *cobra.Command {
 			if sel != actionShow && sel != actionEdit {
 				return errx.User("--action: must be %s or %s, got %q", actionShow, actionEdit, act)
 			}
+			if g.json {
+				return errx.User("discover: --json is not supported").WithHint("discover is an interactive picker; script against `kira list --json` or `kira show --json` instead")
+			}
 			s, cfg, err := openStore(g)
 			if err != nil {
 				return err
@@ -51,7 +53,7 @@ func newDiscoverCmd(g *globalFlags) *cobra.Command {
 			if err != nil || ref == "" {
 				return err
 			}
-			return dispatchAction(cmd, s, cfg, sel, ref)
+			return dispatchAction(cmd, g, s, cfg, sel, ref)
 		},
 	}
 	f := cmd.Flags()
@@ -68,8 +70,7 @@ func pickCandidate(cmd *cobra.Command, cands []core.Candidate, forceFzf bool) (s
 	case forceFzf:
 		return "", errx.Env("discover: --fzf given but fzf is not on PATH")
 	default:
-		renderCandidateList(cmd.OutOrStdout(), cands)
-		return "", nil
+		return pickNumbered(cmd, cands)
 	}
 }
 
@@ -89,7 +90,7 @@ func pickFzf(cands []core.Candidate) (string, error) {
 	}
 	opts := fzfx.Options{Prompt: "kira> "}
 	if exe, err := os.Executable(); err == nil {
-		opts.PreviewCmd = exe + " show {1}"
+		opts.PreviewCmd = shellQuote(exe) + " show {1}"
 	}
 	selection, err := fzfx.Pick(rows, opts)
 	switch {
@@ -101,23 +102,47 @@ func pickFzf(cands []core.Candidate) (string, error) {
 	return refFromLine(selection), nil
 }
 
-func dispatchAction(cmd *cobra.Command, s *core.Store, cfg *datamodel.Config, act action, ref string) error {
+// shellQuote single-quotes s for the POSIX shell fzf runs its preview
+// command through, so a path with spaces or shell metacharacters (as from
+// os.Executable) survives intact instead of splitting or expanding.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// pickNumbered is the no-fzf fallback: list candidates and read a 1-based
+// index from stdin. Unlike fzf's Esc, there is no interactive cancel
+// gesture here, so an unreadable or out-of-range pick is a real error
+// rather than a silent no-op.
+func pickNumbered(cmd *cobra.Command, cands []core.Candidate) (string, error) {
+	out := cmd.OutOrStdout()
+	for i, c := range cands {
+		_, _ = fmt.Fprintf(out, "%d) %s\n", i+1, candidateLine(c))
+	}
+	_, _ = fmt.Fprint(out, "fzf not found; pick a number: ")
+	var n int
+	if _, err := fmt.Fscan(cmd.InOrStdin(), &n); err != nil {
+		return "", errx.Env("discover: fzf is not on PATH and no selection was read").WithHint("install fzf, or pipe a number 1-N on stdin")
+	}
+	if n < 1 || n > len(cands) {
+		return "", errx.User("discover: %d is out of range (1-%d)", n, len(cands))
+	}
+	return cands[n-1].Number, nil
+}
+
+func dispatchAction(cmd *cobra.Command, g *globalFlags, s *core.Store, cfg *datamodel.Config, act action, ref string) error {
 	switch act {
 	case actionEdit:
-		_, err := s.Edit(cfg, ref, core.EditOpts{})
-		return err
+		res, err := s.Edit(cfg, ref, core.EditOpts{})
+		if err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), editLine(res))
+		return nil
 	default:
 		res, err := s.Show(cfg, ref, "")
 		if err != nil {
 			return err
 		}
-		renderShow(cmd.OutOrStdout(), res)
-		return nil
-	}
-}
-
-func renderCandidateList(w io.Writer, cands []core.Candidate) {
-	for _, c := range cands {
-		_, _ = fmt.Fprintln(w, candidateLine(c))
+		return printShow(cmd, g, res)
 	}
 }

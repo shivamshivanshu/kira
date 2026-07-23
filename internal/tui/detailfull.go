@@ -9,6 +9,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
@@ -162,14 +163,7 @@ func commitLine(t theme.Theme, c datamodel.CommitLink, selected bool, width int)
 	if selected {
 		marker, style = "> ", t.Accent
 	}
-	return style.Render(fitWidth(marker+shortSHA(c.SHA)+"  "+c.Subject, width))
-}
-
-func shortSHA(sha string) string {
-	if len(sha) > 7 {
-		return sha[:7]
-	}
-	return sha
+	return style.Render(fitWidth(marker+gitx.ShortSHA(c.SHA)+"  "+c.Subject, width))
 }
 
 func historyLine(ev datamodel.HistoryEvent) string {

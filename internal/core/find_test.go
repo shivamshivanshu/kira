@@ -142,7 +142,7 @@ func TestFindFallbackEmptyPatternIsUserError(t *testing.T) {
 }
 
 func TestParseFindArgs(t *testing.T) {
-	globals := []string{"--json", "--no-color", "--quiet"}
+	globals := []string{"--json", "--no-color"}
 	cases := []struct {
 		name        string
 		args        []string

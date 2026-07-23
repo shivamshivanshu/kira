@@ -1,4 +1,5 @@
-# discover with fzf absent and no tty: degrade to a plain sorted candidate list.
+# discover with fzf absent and no tty: list candidates and read a numeric
+# pick from stdin instead of silently exiting 0 with no action taken.
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
@@ -13,10 +14,28 @@ exec kira create ticket --title beta-item --no-edit
 # strip fzf from PATH; stdout is not a tty under testscript
 env PATH=${CLEANBIN}
 
+# nothing on stdin to read a pick from: an error, not a silent no-op exit 0
+! exec kira discover
+stdout '1\) KIRA-1\talpha-item'
+stdout '2\) KIRA-2\tbeta-item'
+stderr 'no selection was read'
+
+# piping a number resolves the pick and dispatches the default show action
+stdin numeric-pick.txt
 exec kira discover
-stdout 'KIRA-1\talpha-item'
-stdout 'KIRA-2\tbeta-item'
+stdout 'KIRA-1'
+stdout 'alpha-item'
+
+# out-of-range picks are rejected
+stdin out-of-range.txt
+! exec kira discover
+stderr 'out of range'
 
 # --fzf forces the fzf backend: absent, it is an environment error (exit 3)
 ! exec kira discover --fzf
 stderr 'fzf is not on PATH'
+
+-- numeric-pick.txt --
+1
+-- out-of-range.txt --
+99

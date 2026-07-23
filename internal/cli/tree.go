@@ -61,11 +61,13 @@ func renderTreeNode(w io.Writer, n datamodel.TreeNode, depth int) {
 	}
 }
 
-func renderTreeGroups(w io.Writer, res *datamodel.ListResult) {
+func renderTreeGroups(w io.Writer, res *datamodel.ListResult, columns []string) {
 	if res.Count == 0 {
 		_, _ = fmt.Fprintln(w, msgNoItems)
 		return
 	}
+	cols := resolveColumns(columns)
+	pad := strings.Repeat("\t", len(cols)-1)
 	byID := make(map[string]datamodel.ListItem, len(res.Items))
 	for _, it := range res.Items {
 		byID[it.ID] = it
@@ -76,10 +78,10 @@ func renderTreeGroups(w io.Writer, res *datamodel.ListResult) {
 		case "":
 			_, _ = fmt.Fprintln(tw, "(no epic)")
 		default:
-			_, _ = fmt.Fprintf(tw, "%s\t\t\t\t(epic)\n", label)
+			_, _ = fmt.Fprintf(tw, "%s%s(epic)\n", label, pad)
 		}
 		for _, ulid := range grp.Items {
-			_, _ = fmt.Fprintln(tw, "  "+formatItemRow(datamodel.DefaultListColumns, byID[ulid]))
+			_, _ = fmt.Fprintln(tw, "  "+formatItemRow(cols, byID[ulid]))
 		}
 	}
 	_ = tw.Flush()

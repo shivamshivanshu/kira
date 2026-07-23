@@ -2,9 +2,11 @@ package cli
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
+	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
@@ -28,21 +30,13 @@ func newSprintCreateCmd(g *globalFlags) *cobra.Command {
 		Use:   "create --key KEY --name NAME --start DATE --end DATE",
 		Short: "Append a sprint to config sprints (committed like any config mutation)",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res, err := s.SprintCreate(cfg, sp)
-			if err != nil {
-				return err
-			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created sprint %s (%s -> %s)\n", res.Sprint.Key, res.Sprint.Start, res.Sprint.End)
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, _ []string) (*datamodel.SprintCreateResult, error) {
+				return s.SprintCreate(cfg, sp)
+			},
+			func(w io.Writer, res *datamodel.SprintCreateResult) {
+				_, _ = fmt.Fprintf(w, "Created sprint %s (%s -> %s)\n", res.Sprint.Key, res.Sprint.Start, res.Sprint.End)
+			}),
 	}
 	f := cmd.Flags()
 	f.StringVar(&sp.Key, "key", "", "sprint key, referenced by item sprint fields")
@@ -57,32 +51,26 @@ func newSprintListCmd(g *globalFlags) *cobra.Command {
 		Use:   "list",
 		Short: "List configured sprints with the active marker and item counts",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res, err := s.SprintList(cfg)
-			if err != nil {
-				return err
-			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			if len(res.Sprints) == 0 {
-				_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No sprints configured (use `kira sprint create`)")
-				return nil
-			}
-			for _, row := range res.Sprints {
-				marker := " "
-				if row.Active {
-					marker = "*"
-				}
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %s  %s  %s -> %s  %d/%d done\n",
-					marker, row.Key, row.Name, row.Start, row.End, row.Items.Done, row.Items.Total)
-			}
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, _ []string) (*datamodel.SprintListResult, error) {
+				return s.SprintList(cfg)
+			},
+			renderSprintList),
+	}
+}
+
+func renderSprintList(w io.Writer, res *datamodel.SprintListResult) {
+	if len(res.Sprints) == 0 {
+		_, _ = fmt.Fprintln(w, "No sprints configured (use `kira sprint create`)")
+		return
+	}
+	for _, row := range res.Sprints {
+		marker := " "
+		if row.Active {
+			marker = "*"
+		}
+		_, _ = fmt.Fprintf(w, "%s %s  %s  %s -> %s  %d/%d done\n",
+			marker, row.Key, row.Name, row.Start, row.End, row.Items.Done, row.Items.Total)
 	}
 }
 
@@ -91,25 +79,17 @@ func newSprintActivateCmd(g *globalFlags) *cobra.Command {
 		Use:   "activate <key>",
 		Short: "Set the local active sprint (git-ignored pointer, per clone)",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			s, cfg, err := openStore(g)
-			if err != nil {
-				return err
-			}
-			res, err := s.SprintActivate(cfg, args[0])
-			if err != nil {
-				return err
-			}
-			if g.json {
-				return emitJSON(cmd.OutOrStdout(), res)
-			}
-			if res.Previous != "" && res.Previous != res.Activated {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Activated sprint %s (was %s)\n", res.Activated, res.Previous)
-			} else {
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Activated sprint %s\n", res.Activated)
-			}
-			return nil
-		},
+		RunE: storeActionRunE(g,
+			func(s *core.Store, cfg *datamodel.Config, args []string) (*datamodel.SprintActivateResult, error) {
+				return s.SprintActivate(cfg, args[0])
+			},
+			func(w io.Writer, res *datamodel.SprintActivateResult) {
+				if res.Previous != "" && res.Previous != res.Activated {
+					_, _ = fmt.Fprintf(w, "Activated sprint %s (was %s)\n", res.Activated, res.Previous)
+				} else {
+					_, _ = fmt.Fprintf(w, "Activated sprint %s\n", res.Activated)
+				}
+			}),
 	}
 }
 

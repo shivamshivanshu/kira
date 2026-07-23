@@ -7,7 +7,7 @@ import (
 )
 
 func newIndexCmd(g *globalFlags) *cobra.Command {
-	var full, closes bool
+	var full, closes, quiet bool
 	cmd := &cobra.Command{
 		Use:   "index",
 		Short: "Refresh or rebuild the derived cache index",
@@ -25,7 +25,7 @@ func newIndexCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			if !g.quiet {
+			if !quiet {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "index %s (%s): %d items\n", res.Action, res.Reason, res.Items)
 				for _, num := range res.Closed {
 					_, _ = fmt.Fprintf(cmd.OutOrStdout(), "closed %s (Kira-Closes)\n", num)
@@ -36,5 +36,6 @@ func newIndexCmd(g *globalFlags) *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&full, "full", false, "force a full rebuild from scratch")
 	cmd.Flags().BoolVar(&closes, "closes", false, "apply Kira-Closes transitions for commits landed on git.landed_ref (kira sync and the post-merge hook are the usual callers)")
+	cmd.Flags().BoolVar(&quiet, "quiet", false, "suppress the summary and closed-ticket lines")
 	return cmd
 }
