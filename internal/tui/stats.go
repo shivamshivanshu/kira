@@ -56,7 +56,13 @@ func (s *statsScreen) focusedItem() (showfmt.Item, bool) { return showfmt.Item{}
 
 func (s *statsScreen) settle(_ *model) {}
 
-func (s *statsScreen) invalidate() { s.state = statsNotLoaded }
+func (s *statsScreen) invalidate() {
+	if s.state == statsPending {
+		return
+	}
+	s.state = statsNotLoaded
+	s.err = nil
+}
 
 // activate dispatches an async reload through the model's command queue at
 // most once per invalidation; the result lands later via statsLoadedMsg.
@@ -74,11 +80,11 @@ func (s *statsScreen) applyLoaded(msg statsLoadedMsg) {
 }
 
 func (s *statsScreen) view(m *model, width, height int) string {
-	if s.err != nil {
-		return centered(m.theme, width, height, m.theme.Heat.Hot.Render("cannot load stats: "+firstNonEmptyLine(s.err.Error())))
-	}
 	if s.state == statsPending {
 		return renderLoading(m.theme, width, height)
+	}
+	if s.err != nil {
+		return centered(m.theme, width, height, m.theme.Heat.Hot.Render("cannot load stats: "+firstNonEmptyLine(s.err.Error())))
 	}
 	lines := s.contentLines(m.theme, m.icons.rich())
 	if len(lines) == 0 {
