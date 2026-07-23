@@ -5,7 +5,7 @@ aliases: []
 type: ticket
 subtype: task
 title: "TUI async detail/stats loading: move synchronous store IO out of View into commands"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
