@@ -5,7 +5,7 @@ aliases: []
 type: ticket
 subtype: bug
 title: "doctor: resolutionFindings never flags a Done-category state with a nil resolution"
-state: REVIEW
+state: DONE
 priority: P3
 labels: []
 epic: null
