@@ -5,7 +5,7 @@ aliases: []
 type: ticket
 subtype: task
 title: "CLI consistency batch: --quiet, crash-vs-json ordering, tree columns, ShortSHA, discover output, storeActionRunE"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
