@@ -1,6 +1,7 @@
 package entityschema
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -86,7 +87,7 @@ func ConfigVocab(cfg *datamodel.Config) map[string][]string {
 	addIfStrict("subtype", cfg.Subtypes)
 	addIfStrict("resolution", cfg.Resolutions)
 	if cfg.Labels.Strict {
-		enums["label"] = cfg.Labels.Known
+		enums["label"] = append(slices.Clone(cfg.Labels.Known), datamodel.CapturedLabel)
 	}
 	return enums
 }

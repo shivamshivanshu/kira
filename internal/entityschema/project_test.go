@@ -1,6 +1,7 @@
 package entityschema
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -69,5 +70,17 @@ func TestConfigVocabIncludesStrictVocab(t *testing.T) {
 
 	if len(enums["priority"]) != 2 {
 		t.Fatalf("expected the strict vocab to be enforced, got %v", enums["priority"])
+	}
+}
+
+func TestConfigVocabAdmitsCapturedLabelUnderStrict(t *testing.T) {
+	cfg := &datamodel.Config{
+		Labels: datamodel.Vocab{Known: []string{"area"}, Strict: true},
+	}
+
+	enums := ConfigVocab(cfg)
+
+	if !slices.Contains(enums["label"], datamodel.CapturedLabel) {
+		t.Fatalf("strict label vocab must admit the system %q label, got %v", datamodel.CapturedLabel, enums["label"])
 	}
 }
