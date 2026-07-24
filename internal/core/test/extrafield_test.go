@@ -80,3 +80,23 @@ func TestEditFieldSetsAndClearsDeclaredExtra(t *testing.T) {
 		t.Fatalf("--field severity= must remove the extra from the file:\n%s", got)
 	}
 }
+
+func TestEditFieldNormalizesDeclaredRefExtraToULID(t *testing.T) {
+	s, cfg := newStore(t)
+	withDeclaredField(t, s, datamodel.TypeTicket,
+		entityschema.FieldDef{Name: "reviewer_of", Type: entityschema.FieldRef, Target: datamodel.TypeTicket},
+	)
+	blocker := mustCreate(t, s, cfg, "blocker")
+	res := mustCreate(t, s, cfg, "subject")
+
+	if _, err := s.Edit(cfg, res.Number, core.EditOpts{Fields: []core.FieldEdit{{Key: "reviewer_of", Value: blocker.Number}}}); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
+	got := mustReadItem(t, s, res.ID)
+	if strings.Contains(got, "reviewer_of: "+blocker.Number) {
+		t.Fatalf("declared ref extra must be normalized to a ULID, not left as the display number %s:\n%s", blocker.Number, got)
+	}
+	if !strings.Contains(got, "reviewer_of: "+blocker.ID) {
+		t.Fatalf("declared ref extra must resolve to blocker's ULID %s:\n%s", blocker.ID, got)
+	}
+}

@@ -347,6 +347,17 @@ func TestArbitratedReportsOnlyBothSidesDivergedFromBase(t *testing.T) {
 	}
 }
 
+func TestArbitratedReportsExtrasOnlyConflict(t *testing.T) {
+	t.Parallel()
+	b := base(func(it *datamodel.Item) { it.ExtraScalars = map[string]string{"severity": "LOW"} })
+	ours := base(func(it *datamodel.Item) { it.ExtraScalars = map[string]string{"severity": "HIGH"} })
+	theirs := base(func(it *datamodel.Item) { it.ExtraScalars = map[string]string{"severity": "MEDIUM"} })
+	res := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger)
+	if !contains(res.Arbitrated, "severity") {
+		t.Fatalf("arbitrated = %v, want severity (both sides changed the same extra from base)", res.Arbitrated)
+	}
+}
+
 func equalStrings(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
