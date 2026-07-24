@@ -143,10 +143,14 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 	if err != nil {
 		return nil, err
 	}
+	schemas, err := s.schemas()
+	if err != nil {
+		return nil, err
+	}
 
 	sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, wf.Initial)
 	finalItem := itemFromDraft(d, sys)
-	hard, warns := validateMutation(cfg, nil, finalItem, ld.resolver, ld.items, opts.Force)
+	hard, warns := validateMutation(cfg, nil, finalItem, ld.resolver, ld.items, schemas[finalItem.Type], opts.Force)
 	if len(hard) > 0 {
 		return nil, errx.Invalid(invalidItemPrefix, hard)
 	}
@@ -209,8 +213,12 @@ func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, boardKey,
 		if err != nil {
 			return draft{}, err
 		}
+		schemas, err := s.schemas()
+		if err != nil {
+			return draft{}, err
+		}
 		sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, initialState)
-		content, err := runEditor(cfg.UI.Editor, editorx.Stdio{}, serializeDraft(base), validateBuffer(cfg, ld.resolver, opts.Force, func(c string) (*datamodel.Item, []error) {
+		content, err := runEditor(cfg.UI.Editor, editorx.Stdio{}, serializeDraft(base), validateBuffer(cfg, ld.resolver, ld.items, schemas[opts.Type], opts.Force, func(c string) (*datamodel.Item, []error) {
 			d, perr := parseDraft(c)
 			if perr != nil {
 				return nil, []error{perr}

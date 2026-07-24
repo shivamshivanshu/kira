@@ -135,6 +135,24 @@ func TestValidateRefExistenceEnforcedWithResolver(t *testing.T) {
 	}
 }
 
+func TestValidateConfigVocabBackedRefUsesEnumMembershipNotResolver(t *testing.T) {
+	schema := Schema{
+		Name: "widget",
+		Fields: []FieldDef{
+			{Name: "owner", Type: FieldRef, Target: "person", Source: "people"},
+		},
+	}
+	values := map[string]any{"owner": "nobody"}
+	enums := map[string][]string{"person": {"shivam"}}
+	refs := stubResolver{known: map[string]bool{}}
+
+	violations := Validate(schema, values, enums, refs)
+
+	if len(violations) != 1 || violations[0].Field != "owner" || violations[0].Code != CodeEnum {
+		t.Fatalf("expected one CodeEnum violation on %q (not a resolver-based ref check), got %v", "owner", violations)
+	}
+}
+
 func TestValidateStateInDeclaredSet(t *testing.T) {
 	schema := testSchema()
 	values := map[string]any{"title": "x", "state": "DONE"}

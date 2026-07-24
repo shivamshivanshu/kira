@@ -50,6 +50,12 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		return nil, errx.Conflict("%s changed on disk during edit", orig.Number).WithHint("re-run the edit to start from the current version")
 	}
 
+	schemas, err := s.schemas()
+	if err != nil {
+		return nil, err
+	}
+	schema := schemas[orig.Type]
+
 	var updated *datamodel.Item
 	var warns []error
 	finish := func(it *datamodel.Item) error {
@@ -58,7 +64,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		if len(guardErrs) > 0 {
 			return errx.Invalid(invalidItemPrefix, guardErrs)
 		}
-		errs, w := validateMutation(cfg, orig, it, resolver, items, opts.Force)
+		errs, w := validateMutation(cfg, orig, it, resolver, items, schema, opts.Force)
 		if len(errs) > 0 {
 			return errx.Invalid(invalidItemPrefix, errs)
 		}
@@ -122,6 +128,11 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 	if err := guardWritable(orig); err != nil {
 		return "", "", err
 	}
+	schemas, err := s.schemas()
+	if err != nil {
+		return "", "", err
+	}
+	schema := schemas[orig.Type]
 	content, err := runEditor(cfg.UI.Editor, opts.Stdio, codec.Serialize(orig), func(c string) []error {
 		it, errs := parseFullItem(c)
 		if len(errs) > 0 {
@@ -131,7 +142,7 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 		if hard, _ := applyEditGuards(cfg, orig, it, opts.Force, resolver, items); len(hard) > 0 {
 			return hard
 		}
-		hard, _ := validateMutation(cfg, orig, it, resolver, items, opts.Force)
+		hard, _ := validateMutation(cfg, orig, it, resolver, items, schema, opts.Force)
 		return hard
 	})
 	return content, orig.Updated, err

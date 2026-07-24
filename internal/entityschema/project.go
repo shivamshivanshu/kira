@@ -63,21 +63,23 @@ func bodySections(body string) map[string]string {
 	return sections
 }
 
-// ConfigVocab mirrors core.validateItem's strict/open policy: a vocab is
-// membership-checked only when strict, and the system captured label is always
-// admitted under a strict label vocabulary.
+// ConfigVocab surfaces each config-driven vocabulary's known values (the system
+// captured label always admitted). label and person are always membership-
+// checked (empty Known means "nothing known yet", not "unchecked"); priority/
+// subtype/resolution are free-form when their config leaves Values empty.
+// Strictness (error vs warning) is the caller's policy, not this function's.
 func ConfigVocab(cfg *datamodel.Config) map[string][]string {
-	enums := map[string][]string{}
-	addIfStrict := func(name string, ev datamodel.EnumVocab) {
-		if ev.StrictOr(cfg.Labels.Strict) {
+	enums := map[string][]string{
+		"label":  append(slices.Clone(cfg.Labels.Known), datamodel.CapturedLabel),
+		"person": cfg.People.Names(),
+	}
+	addIfConfigured := func(name string, ev datamodel.EnumVocab) {
+		if len(ev.Values) > 0 {
 			enums[name] = ev.Values
 		}
 	}
-	addIfStrict("priority", cfg.Priorities)
-	addIfStrict("subtype", cfg.Subtypes)
-	addIfStrict("resolution", cfg.Resolutions)
-	if cfg.Labels.Strict {
-		enums["label"] = append(slices.Clone(cfg.Labels.Known), datamodel.CapturedLabel)
-	}
+	addIfConfigured("priority", cfg.Priorities)
+	addIfConfigured("subtype", cfg.Subtypes)
+	addIfConfigured("resolution", cfg.Resolutions)
 	return enums
 }

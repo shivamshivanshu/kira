@@ -128,6 +128,20 @@ func TestEditSucceedsAndPreservesExtraScalar(t *testing.T) {
 	}
 }
 
+func TestEditDedupsDuplicateLabels(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "Dup labels")
+
+	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{Fields: []core.FieldEdit{{Key: "labels", Value: "bug,bug"}}})
+	if err != nil {
+		t.Fatalf("edit with a duplicate label must succeed, got %v", err)
+	}
+	if got := mustReadItem(t, s, res.ID); !strings.Contains(got, "labels: [bug]") {
+		t.Fatalf("duplicate label was not deduped:\n%s", got)
+	}
+}
+
 func TestWriteVerbsRefuseOnCRLF(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)

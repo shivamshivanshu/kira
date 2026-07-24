@@ -7,9 +7,19 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 )
+
+func ticketSchema(t *testing.T) entityschema.Schema {
+	t.Helper()
+	schemas, err := entityschema.Load("")
+	if err != nil {
+		t.Fatalf("loading built-in schemas: %v", err)
+	}
+	return schemas[datamodel.TypeTicket]
+}
 
 func TestValidateGraph(t *testing.T) {
 	epic := &datamodel.Item{ID: "E", Number: "KIRA-1", Type: datamodel.TypeEpic}
@@ -75,7 +85,10 @@ func TestValidateGraph(t *testing.T) {
 }
 
 func TestValidateItemVocabAndFields(t *testing.T) {
-	base := datamodel.Item{ID: "X", Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "t", State: "TODO"}
+	base := datamodel.Item{
+		ID: "X", Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "t", State: "TODO",
+		Aliases: []string{}, Created: "2026-07-20T10:00:00Z", Updated: "2026-07-20T10:00:00Z",
+	}
 	cases := []struct {
 		name     string
 		tweak    func(*datamodel.Config)
@@ -117,6 +130,7 @@ func TestValidateItemVocabAndFields(t *testing.T) {
 		{"due-valid", nil, func(it *datamodel.Item) { it.Due = ptr.To("2026-07-20") }, false, false, false},
 		{"due-invalid", nil, func(it *datamodel.Item) { it.Due = ptr.To("someday") }, false, true, false},
 	}
+	schema := ticketSchema(t)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := config.Default()
@@ -125,7 +139,7 @@ func TestValidateItemVocabAndFields(t *testing.T) {
 			}
 			it := base
 			tc.mutate(&it)
-			errs, warns := validateItem(cfg, &it, tc.force)
+			errs, warns := validateItem(cfg, &it, tc.force, schema, nil)
 			if gotErr := len(errs) > 0; gotErr != tc.wantErr {
 				t.Errorf("errs = %v, wantErr = %v", errs, tc.wantErr)
 			}
@@ -134,6 +148,77 @@ func TestValidateItemVocabAndFields(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestValidateItemDeclaredExtraFields(t *testing.T) {
+	schema := ticketSchema(t)
+	schema.Enums = append(schema.Enums, entityschema.EnumDef{Name: "severity", Values: []string{"low", "high"}})
+	schema.Fields = append(schema.Fields,
+		entityschema.FieldDef{Name: "severity", Type: entityschema.FieldEnum, Enum: "severity"},
+		entityschema.FieldDef{Name: "points", Type: entityschema.FieldInt},
+	)
+	base := datamodel.Item{
+		ID: "X", Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "t", State: "TODO",
+		Aliases: []string{}, Created: "2026-07-20T10:00:00Z", Updated: "2026-07-20T10:00:00Z",
+	}
+
+	t.Run("valid declared enum extra passes", func(t *testing.T) {
+		it := base
+		it.ExtraScalars = map[string]string{"severity": "high"}
+		errs, warns := validateItem(config.Default(), &it, false, schema, nil)
+		if len(errs) != 0 || len(warns) != 0 {
+			t.Fatalf("errs = %v, warns = %v, want none", errs, warns)
+		}
+	})
+
+	t.Run("unknown declared enum extra warns when open", func(t *testing.T) {
+		it := base
+		it.ExtraScalars = map[string]string{"severity": "critical"}
+		errs, warns := validateItem(config.Default(), &it, false, schema, nil)
+		if len(errs) != 0 || len(warns) != 1 {
+			t.Fatalf("errs = %v, warns = %v, want 0 errs, 1 warn", errs, warns)
+		}
+	})
+
+	t.Run("unknown declared enum extra errors when labels strict", func(t *testing.T) {
+		cfg := config.Default()
+		cfg.Labels.Strict = true
+		it := base
+		it.ExtraScalars = map[string]string{"severity": "critical"}
+		errs, warns := validateItem(cfg, &it, false, schema, nil)
+		if len(errs) != 1 || len(warns) != 0 {
+			t.Fatalf("errs = %v, warns = %v, want 1 err, 0 warn", errs, warns)
+		}
+	})
+
+	t.Run("force downgrades a strict declared enum violation to a warning", func(t *testing.T) {
+		cfg := config.Default()
+		cfg.Labels.Strict = true
+		it := base
+		it.ExtraScalars = map[string]string{"severity": "critical"}
+		errs, warns := validateItem(cfg, &it, true, schema, nil)
+		if len(errs) != 0 || len(warns) != 1 {
+			t.Fatalf("errs = %v, warns = %v, want 0 errs, 1 warn", errs, warns)
+		}
+	})
+
+	t.Run("typed int extra rejects a non-int value", func(t *testing.T) {
+		it := base
+		it.ExtraScalars = map[string]string{"points": "abc"}
+		errs, _ := validateItem(config.Default(), &it, false, schema, nil)
+		if len(errs) != 1 {
+			t.Fatalf("errs = %v, want exactly one type violation", errs)
+		}
+	})
+
+	t.Run("typed int extra accepts an int value", func(t *testing.T) {
+		it := base
+		it.ExtraScalars = map[string]string{"points": "3"}
+		errs, warns := validateItem(config.Default(), &it, false, schema, nil)
+		if len(errs) != 0 || len(warns) != 0 {
+			t.Fatalf("errs = %v, warns = %v, want none", errs, warns)
+		}
+	})
 }
 
 func TestFieldPresentCoversMutableFields(t *testing.T) {

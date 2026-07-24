@@ -63,7 +63,9 @@ type StateValue struct {
 }
 
 // FieldDef declares one field. By Type: enum/resolution use Enum, state uses
-// States, ref uses Target. Source (config vocab) is informational in phase 1.
+// States, ref uses Target. Source names a config vocab for a config-backed ref
+// (e.g. people, sprints); its presence routes ref validation to membership
+// rather than entity existence.
 type FieldDef struct {
 	Name      string       `json:"name"`
 	Type      FieldType    `json:"type"`

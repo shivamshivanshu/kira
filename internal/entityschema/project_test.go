@@ -46,30 +46,27 @@ func TestProjectItemIncludesPresentOptionalScalars(t *testing.T) {
 	}
 }
 
-func TestConfigVocabOmitsNonStrictVocab(t *testing.T) {
-	cfg := &datamodel.Config{
-		Labels:     datamodel.Vocab{Strict: false},
-		Priorities: datamodel.EnumVocab{Values: []string{"P0", "P1"}},
-	}
+func TestConfigVocabOmitsEmptyVocab(t *testing.T) {
+	cfg := &datamodel.Config{Priorities: datamodel.EnumVocab{}}
 
 	enums := ConfigVocab(cfg)
 
 	if _, present := enums["priority"]; present {
-		t.Fatalf("non-strict vocab should be open (absent), got %v", enums["priority"])
+		t.Fatalf("a priority vocab with no configured values should be free-form (absent), got %v", enums["priority"])
 	}
 }
 
-func TestConfigVocabIncludesStrictVocab(t *testing.T) {
-	strict := true
-	cfg := &datamodel.Config{
-		Labels:     datamodel.Vocab{Strict: false},
-		Priorities: datamodel.EnumVocab{Values: []string{"P0", "P1"}, Strict: &strict},
-	}
+// Strictness is not ConfigVocab's concern: it only decides whether an
+// out-of-vocabulary value is an error or a warning, a call the caller makes
+// after Validate runs (see core.enumStrict), not whether membership is
+// checked at all.
+func TestConfigVocabIncludesConfiguredVocabRegardlessOfStrict(t *testing.T) {
+	cfg := &datamodel.Config{Priorities: datamodel.EnumVocab{Values: []string{"P0", "P1"}}}
 
 	enums := ConfigVocab(cfg)
 
 	if len(enums["priority"]) != 2 {
-		t.Fatalf("expected the strict vocab to be enforced, got %v", enums["priority"])
+		t.Fatalf("a configured vocab must be membership-checked even when non-strict, got %v", enums["priority"])
 	}
 }
 

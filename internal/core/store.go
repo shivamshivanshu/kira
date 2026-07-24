@@ -7,6 +7,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/query"
@@ -61,6 +62,14 @@ func (s *Store) Config() (*datamodel.Config, error) {
 }
 
 func (s *Store) LoadAll() ([]*datamodel.Item, []string, error) { return s.fs().LoadAll() }
+
+func (s *Store) schemas() (map[string]entityschema.Schema, error) {
+	schemas, err := entityschema.Load(s.fs().SchemaDir())
+	if err != nil {
+		return nil, errx.Env("loading %s: %v", s.fs().RelToRoot(s.fs().SchemaDir()), err)
+	}
+	return schemas, nil
+}
 
 func (s *Store) itemPath(ulid string) string { return s.fs().ItemPath(ulid) }
 
