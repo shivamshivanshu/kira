@@ -3,7 +3,6 @@ package codec
 
 import (
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -57,7 +56,7 @@ func Parse(content string) (*datamodel.Item, error) {
 	it.Labels = reqList(nodes, datamodel.KeyLabels, add)
 	it.Epic = reqNullableScalar(nodes, datamodel.KeyEpic, add)
 	it.BlockedBy = reqList(nodes, datamodel.KeyBlockedBy, add)
-	it.Links, it.UnknownLinkTypes = optLinks(nodes, datamodel.KeyLinks, add)
+	it.Links, it.ExtraLinks = optLinks(nodes, datamodel.KeyLinks, add)
 	it.Sprint = optScalar(nodes, datamodel.KeySprint, add)
 	it.Due = optScalar(nodes, datamodel.KeyDue, add)
 	it.Estimate = optFloat(nodes, datamodel.KeyEstimate, add)
@@ -285,7 +284,7 @@ func scalarSeq(n *yaml.Node, label string, add addFunc) []string {
 	return out
 }
 
-func optLinks(nodes map[string]*yaml.Node, key string, add addFunc) (map[string][]string, []string) {
+func optLinks(nodes map[string]*yaml.Node, key string, add addFunc) (links, extraLinks map[string][]string) {
 	n, ok := nodes[key]
 	if !ok || isNull(n) {
 		return nil, nil
@@ -294,14 +293,8 @@ func optLinks(nodes map[string]*yaml.Node, key string, add addFunc) (map[string]
 		add("field %q: expected a map of link type to id list", key)
 		return nil, nil
 	}
-	var links map[string][]string
-	var unknown []string
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		typ, val := n.Content[i].Value, n.Content[i+1]
-		if !datamodel.ValidLinkType(typ) {
-			unknown = append(unknown, typ)
-			continue
-		}
 		if isNull(val) {
 			continue
 		}
@@ -313,13 +306,19 @@ func optLinks(nodes map[string]*yaml.Node, key string, add addFunc) (map[string]
 		if len(targets) == 0 {
 			continue
 		}
-		if links == nil {
-			links = make(map[string][]string, len(datamodel.LinkTypes))
+		if datamodel.ValidLinkType(typ) {
+			if links == nil {
+				links = make(map[string][]string, len(datamodel.LinkTypes))
+			}
+			links[typ] = targets
+		} else {
+			if extraLinks == nil {
+				extraLinks = map[string][]string{}
+			}
+			extraLinks[typ] = targets
 		}
-		links[typ] = targets
 	}
-	slices.Sort(unknown)
-	return links, unknown
+	return links, extraLinks
 }
 
 func optFloat(nodes map[string]*yaml.Node, key string, add addFunc) *float64 {

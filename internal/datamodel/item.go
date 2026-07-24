@@ -32,11 +32,11 @@ type Item struct {
 
 	Body string
 
-	Activity         string
-	ExtraScalars     map[string]string
-	ExtraLists       map[string][]string
-	UnknownLinkTypes []string
-	CRLF             bool
+	Activity     string
+	ExtraScalars map[string]string
+	ExtraLists   map[string][]string
+	ExtraLinks   map[string][]string
+	CRLF         bool
 }
 
 func (it *Item) ExtraKeys() []string {

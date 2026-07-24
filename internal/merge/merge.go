@@ -37,6 +37,7 @@ func Merge(base, ours, theirs *datamodel.Item, remote Side, tm TextMerger) Resul
 		Epic:         threeWayPtr(base.Epic, ours.Epic, theirs.Epic, winner),
 		BlockedBy:    setMerge(base.BlockedBy, ours.BlockedBy, theirs.BlockedBy),
 		Links:        linkMerge(base.Links, ours.Links, theirs.Links),
+		ExtraLinks:   linkMerge(base.ExtraLinks, ours.ExtraLinks, theirs.ExtraLinks),
 		Sprint:       threeWayPtr(base.Sprint, ours.Sprint, theirs.Sprint, winner),
 		Due:          threeWayPtr(base.Due, ours.Due, theirs.Due, winner),
 		Estimate:     threeWayPtr(base.Estimate, ours.Estimate, theirs.Estimate, winner),
