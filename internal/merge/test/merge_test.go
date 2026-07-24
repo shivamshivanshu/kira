@@ -116,6 +116,16 @@ func TestLinksUnionByType(t *testing.T) {
 	}
 }
 
+func TestExtraLinksUnionByType(t *testing.T) {
+	t.Parallel()
+	ours := base(func(it *datamodel.Item) { it.ExtraLinks = map[string][]string{"mystery": {"K1"}} })
+	theirs := base(func(it *datamodel.Item) { it.ExtraLinks = map[string][]string{"future_rel": {"K2"}} })
+	got := merge.Merge(nil, ours, theirs, merge.Theirs, conflictMerger).Item
+	if !equalStrings(got.ExtraLinks["mystery"], []string{"K1"}) || !equalStrings(got.ExtraLinks["future_rel"], []string{"K2"}) {
+		t.Fatalf("ExtraLinks = %v, want mystery=[K1] future_rel=[K2]", got.ExtraLinks)
+	}
+}
+
 func TestExtraScalarAddedOnOneSideSurvives(t *testing.T) {
 	t.Parallel()
 	b := base(nil)

@@ -1,6 +1,7 @@
 package codec
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -29,7 +30,7 @@ func Serialize(it *datamodel.Item) string {
 	writeLine(&b, datamodel.KeyLabels, EmitList(it.Labels))
 	writeReqNullableScalar(&b, datamodel.KeyEpic, it.Epic)
 	writeLine(&b, datamodel.KeyBlockedBy, EmitList(it.BlockedBy))
-	writeLinks(&b, it.Links)
+	writeLinks(&b, it.Links, it.ExtraLinks)
 	writeOptScalar(&b, datamodel.KeySprint, it.Sprint)
 	if it.Due != nil {
 		writeLine(&b, datamodel.KeyDue, emitDate(*it.Due))
@@ -81,19 +82,30 @@ func writeExtras(b *strings.Builder, it *datamodel.Item) {
 	}
 }
 
-func writeLinks(b *strings.Builder, links map[string][]string) {
+func writeLinks(b *strings.Builder, links, extraLinks map[string][]string) {
 	first := true
-	for _, typ := range datamodel.LinkTypes {
-		targets := links[string(typ)]
-		if len(targets) == 0 {
-			continue
-		}
+	open := func() {
 		if first {
 			b.WriteString(datamodel.KeyLinks + ":\n")
 			first = false
 		}
+	}
+	for _, typ := range datamodel.LinkTypes {
+		if targets := links[string(typ)]; len(targets) > 0 {
+			open()
+			b.WriteString("  ")
+			writeLine(b, string(typ), EmitList(targets))
+		}
+	}
+	extraTypes := make([]string, 0, len(extraLinks))
+	for typ := range extraLinks {
+		extraTypes = append(extraTypes, typ)
+	}
+	slices.Sort(extraTypes)
+	for _, typ := range extraTypes {
+		open()
 		b.WriteString("  ")
-		writeLine(b, string(typ), EmitList(targets))
+		writeLine(b, typ, EmitList(extraLinks[typ]))
 	}
 }
 

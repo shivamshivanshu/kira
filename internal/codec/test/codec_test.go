@@ -198,11 +198,15 @@ func TestLinksCanonicalization(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unknown link type must parse (recorded, not rejected): %v", err)
 	}
-	if !reflect.DeepEqual(unk.UnknownLinkTypes, []string{"mystery"}) {
-		t.Fatalf("UnknownLinkTypes = %v, want [mystery]", unk.UnknownLinkTypes)
+	wantExtra := map[string][]string{"mystery": {"01J8XC4M0N1P2Q3R4S5T6U7V8W"}}
+	if !reflect.DeepEqual(unk.ExtraLinks, wantExtra) {
+		t.Fatalf("ExtraLinks = %v, want %v", unk.ExtraLinks, wantExtra)
 	}
 	if _, ok := unk.Links["mystery"]; ok {
 		t.Fatal("unknown link type must not land in Links")
+	}
+	if out := codec.Serialize(unk); !strings.Contains(out, "links:\n  mystery: [01J8XC4M0N1P2Q3R4S5T6U7V8W]\ncreated:") {
+		t.Fatalf("unknown link type must round-trip under links:\n%s", out)
 	}
 
 	it.Links = nil
@@ -333,8 +337,8 @@ func TestKnownItemHasNoUnknowns(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if it.ExtraScalars != nil || it.ExtraLists != nil || it.UnknownLinkTypes != nil {
-		t.Fatalf("clean item must carry no unknowns: scalars=%v lists=%v links=%v", it.ExtraScalars, it.ExtraLists, it.UnknownLinkTypes)
+	if it.ExtraScalars != nil || it.ExtraLists != nil || it.ExtraLinks != nil {
+		t.Fatalf("clean item must carry no unknowns: scalars=%v lists=%v links=%v", it.ExtraScalars, it.ExtraLists, it.ExtraLinks)
 	}
 }
 

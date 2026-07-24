@@ -178,10 +178,6 @@ func guardWritable(items ...*datamodel.Item) error {
 		if it == nil {
 			continue
 		}
-		if len(it.UnknownLinkTypes) > 0 {
-			return errx.Env("this item uses fields from a newer kira: %s", strings.Join(it.UnknownLinkTypes, ", ")).
-				WithHint("upgrade kira, then retry: `go install github.com/shivamshivanshu/kira/cmd/kira@latest`")
-		}
 		if it.CRLF {
 			return errx.Env("this item has CRLF line endings, which kira cannot rewrite byte-stably").
 				WithHint("renormalize to LF, e.g. `git add --renormalize .` with `.kira/** text eol=lf` in .gitattributes")

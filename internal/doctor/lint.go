@@ -2,6 +2,8 @@ package doctor
 
 import (
 	"errors"
+	"maps"
+	"slices"
 	"strconv"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
@@ -33,7 +35,7 @@ func Lint(content string, schemas map[string]entityschema.Schema) (it *datamodel
 // unknown.
 func unknownFindings(it *datamodel.Item, schema entityschema.Schema) []Finding {
 	extraKeys := it.ExtraKeys()
-	out := make([]Finding, 0, len(extraKeys)+len(it.UnknownLinkTypes))
+	out := make([]Finding, 0, len(extraKeys)+len(it.ExtraLinks))
 	add := func(field, kind string) {
 		out = append(out, Finding{
 			Class:    ClassSchema,
@@ -48,7 +50,7 @@ func unknownFindings(it *datamodel.Item, schema entityschema.Schema) []Finding {
 		}
 		add(k, "top-level field")
 	}
-	for _, t := range it.UnknownLinkTypes {
+	for _, t := range slices.Sorted(maps.Keys(it.ExtraLinks)) {
 		add(t, "link type")
 	}
 	return out
