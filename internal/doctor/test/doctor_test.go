@@ -509,6 +509,26 @@ func TestRefTypeBlockedByAccepted(t *testing.T) {
 	}
 }
 
+func TestRefTypeExtraRefFieldMismatch(t *testing.T) {
+	t.Parallel()
+	schemas := builtinSchemas(t)
+	ticketSchema := schemas[datamodel.TypeTicket]
+	ticketSchema.Fields = append(slices.Clone(ticketSchema.Fields), entityschema.FieldDef{
+		Name: "reviewer_of", Type: entityschema.FieldRef, Target: datamodel.TypeEpic,
+	})
+	schemas[datamodel.TypeTicket] = ticketSchema
+
+	child := valid(ulidA, "KIRA-1")
+	child.ExtraScalars = map[string]string{"reviewer_of": ulidB}
+	other := valid(ulidB, "KIRA-2")
+	items := []*datamodel.Item{child, other}
+
+	f := doctor.RefTypeMismatches(schemas, items, resolver(items...))
+	if len(f) != 1 || f[0].Class != doctor.ClassRefType || f[0].ItemID != ulidA || f[0].Field != "reviewer_of" {
+		t.Fatalf("expected one ref-type finding on the declared ref extra, got %+v", f)
+	}
+}
+
 func TestRefCycleDetected(t *testing.T) {
 	t.Parallel()
 	a := valid(ulidA, "KIRA-1")

@@ -66,13 +66,7 @@ func newValidationCtxWithEnums(cfg *datamodel.Config, items []*datamodel.Item, r
 }
 
 func (c *validationCtx) validateItem(it *datamodel.Item) (errs, warns []error) {
-	values := entityschema.ProjectItem(c.schema, it)
-	for k, v := range it.ExtraScalars {
-		values[k] = codec.DecodeExtraScalar(v)
-	}
-	for k, v := range it.ExtraLists {
-		values[k] = v
-	}
+	values := entityschema.ProjectItem(c.schema, it, codec.DecodeExtraScalar)
 
 	var refs entityschema.RefResolver
 	if c.resolver != nil {

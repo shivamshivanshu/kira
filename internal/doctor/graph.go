@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/id"
@@ -78,7 +79,7 @@ func RefTypeMismatches(schemas map[string]entityschema.Schema, items []*datamode
 		if !ok {
 			continue
 		}
-		values := entityschema.ProjectItem(schema, it)
+		values := entityschema.ProjectItem(schema, it, codec.DecodeExtraScalar)
 		for _, f := range schema.Fields {
 			if !f.TargetsEntity(schemas) {
 				continue
