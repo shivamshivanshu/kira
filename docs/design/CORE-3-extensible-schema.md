@@ -1,6 +1,6 @@
 # CORE-3 — Extensible entity schema
 
-Status: design approved (brainstorm 2026-07-23). Phases 1-2 done; Phase 3 next.
+Status: design approved (brainstorm 2026-07-23). Phases 1-3 done; Phase 4 next.
 
 ## Problem
 
@@ -179,19 +179,24 @@ faithfully reproduces hardcoded behavior.
   `.kira/schema` overrides for ref targets deferred to Phase 4, when custom
   item types make doctor load user schemas anyway). Completion-sourced-from-schema
   moved to Phase 4/5 (see the CLI section); write-path `Validate` wiring is Phase 3.
-- **Phase 3** — typed *extra* fields on ticket/epic. Split into two PRs:
-  - **3a (done)** — lossless, schema-agnostic round-trip of extra frontmatter.
+- **Phase 3 (done)** — typed *extra* fields on ticket/epic. Landed as 3a + 3b (3b-i/ii/iii):
+  - **3a** — lossless, schema-agnostic round-trip of extra frontmatter.
     `UnknownKeys` (names only, values dropped) replaced by `Item.ExtraScalars`/
     `ExtraLists`; codec parses+serializes them faithfully (scalar rendering
     preserves null/int/bool/quoting byte-identically); `merge.mergeExtras`
-    keeps the two maps disjoint by construction; `guardWritable` no longer
-    hard-blocks on extras (round-trip is now lossless — still blocks on
-    `UnknownLinkTypes`, which stay lossy: see TODO.md).
-  - **3b** — schema-driven validation + typed editing of declared extras:
-    `RefResolver` adapter; REPLACE `validateItem` per-field checks with
-    `entityschema.Validate` (keep graph/resolution passes); `ProjectItem`
-    surfaces frontmatter extras; body-section read+write via one shared util;
-    `edit`/`create --field` for declared extras; lint/guard schema-aware.
+    keeps the two maps disjoint; `guardWritable` no longer hard-blocks on
+    extras (still blocks on `UnknownLinkTypes`, which stay lossy — CORE-41).
+  - **3b-i** — REPLACE `validateItem`'s field-level checks (required/type/enum/
+    ref) with `entityschema.Validate` + a `RefResolver` adapter and severity
+    policy-mapping; state/sprint/rank/graph/resolution stay config-driven.
+  - **3b-ii** — `create`/`edit --field` editing of declared frontmatter extras
+    (typed-parsed, round-trip-safe); schema-aware `doctor` lint; a validationCtx
+    that builds byID once, caches schemas, resolves enums once per batch.
+  - **3b-iii** — writable `placement:body` fields via `--field` (edit a section);
+    `datamodel.BodySections`/`UpsertBodySection` single-source the `## ` rule.
+  - Follow-ups: CORE-41 (unknown link-type round-trip), CORE-42 (extras in merge
+    arbitration + ref-extra ULID normalization), CORE-43 (blocked_by target-type
+    on write).
 - **Phase 4** — user-defined *new* item entity types: generic create/edit/list/show.
   Also fold the hardcoded dangling-ref pass (`refFindings`) into the schema-driven
   ref check, so new custom ref fields get both dangling and type checks; today
