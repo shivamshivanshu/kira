@@ -8,7 +8,12 @@ import (
 
 // ProjectItem converts an Item into the values map Validate expects. Slices are
 // cloned so a caller can't mutate the source Item through the returned map.
-func ProjectItem(schema Schema, it *datamodel.Item) map[string]any {
+// decodeScalar recovers a declared scalar extra's typed value (e.g.
+// codec.DecodeExtraScalar); entityschema stays free of codec/yaml, so callers
+// inject it. A ref extra's value is a bare string either way, so it decodes to
+// a string regardless — fine for both a typed validator and doctor's
+// refStrings.
+func ProjectItem(schema Schema, it *datamodel.Item, decodeScalar func(string) any) map[string]any {
 	values := map[string]any{
 		"title":      it.Title,
 		"state":      it.State,
@@ -34,6 +39,13 @@ func ProjectItem(schema Schema, it *datamodel.Item) map[string]any {
 		if f.Placement == PlacementBody && f.Section != "" {
 			values[f.Name] = sections[f.Section]
 		}
+	}
+
+	for k, v := range it.ExtraScalars {
+		values[k] = decodeScalar(v)
+	}
+	for k, v := range it.ExtraLists {
+		values[k] = slices.Clone(v)
 	}
 	return values
 }
