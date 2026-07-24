@@ -144,7 +144,7 @@ func (c *validationCtx) validateMutation(orig, it *datamodel.Item) (hard, warns 
 	hard, warns = c.validateAssembled(it)
 	hard = append(hard, validateResolutionState(c.cfg, orig, it)...)
 	if len(hard) == 0 {
-		hard = validateGraph(it, c.byID)
+		hard = validateGraph(it, c.byID, c.schema)
 	}
 	return hard, warns
 }
@@ -174,8 +174,9 @@ func (c *validationCtx) validateBuffer(build func(string) (*datamodel.Item, []er
 }
 
 // validateGraph overlays updated onto a clone of byID so the caller's shared
-// map is never mutated, then checks epic-is-epic and cycles.
-func validateGraph(updated *datamodel.Item, byID map[string]*datamodel.Item) []error {
+// map is never mutated, then checks epic-is-epic, blocked_by target-type, and
+// cycles.
+func validateGraph(updated *datamodel.Item, byID map[string]*datamodel.Item, schema entityschema.Schema) []error {
 	graph := maps.Clone(byID)
 	graph[updated.ID] = updated
 
@@ -183,6 +184,13 @@ func validateGraph(updated *datamodel.Item, byID map[string]*datamodel.Item) []e
 	if updated.Epic != nil && *updated.Epic != "" {
 		if parent := graph[*updated.Epic]; parent != nil && parent.Type != datamodel.TypeEpic {
 			errs = append(errs, fmt.Errorf("field %q: %s is not an epic", datamodel.KeyEpic, numberOrID(parent, *updated.Epic)))
+		}
+	}
+	if bf, ok := schema.Field(datamodel.KeyBlockedBy); ok && bf.Target != "" {
+		for _, b := range updated.BlockedBy {
+			if blocker := graph[b]; blocker != nil && blocker.Type != bf.Target {
+				errs = append(errs, fmt.Errorf("field %q: %s is type %s, expected %s", datamodel.KeyBlockedBy, numberOrID(blocker, b), blocker.Type, bf.Target))
+			}
 		}
 	}
 	for _, rel := range datamodel.CycleRelations() {

@@ -30,21 +30,34 @@ func TestValidateGraph(t *testing.T) {
 
 	t.Run("epic parent allowed", func(t *testing.T) {
 		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Epic: ptr.To("E")}
-		if errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{epic, child})); len(errs) != 0 {
+		if errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{epic, child}), ticketSchema(t)); len(errs) != 0 {
 			t.Fatalf("epic parent must be allowed: %v", errs)
 		}
 	})
 	t.Run("non-epic parent rejected", func(t *testing.T) {
 		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Epic: ptr.To("T")}
-		errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{ticket, child}))
+		errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{ticket, child}), ticketSchema(t))
 		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "not an epic") {
 			t.Fatalf("non-epic parent must be rejected, got %v", errs)
+		}
+	})
+	t.Run("blocked_by cross-type rejected", func(t *testing.T) {
+		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, BlockedBy: []string{"E"}}
+		errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{epic, child}), ticketSchema(t))
+		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "expected ticket") {
+			t.Fatalf("a ticket blocked_by an epic must be rejected, got %v", errs)
+		}
+	})
+	t.Run("blocked_by same-type accepted", func(t *testing.T) {
+		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, BlockedBy: []string{"T"}}
+		if errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{ticket, child}), ticketSchema(t)); len(errs) != 0 {
+			t.Fatalf("a ticket blocked_by a ticket must be allowed: %v", errs)
 		}
 	})
 	t.Run("blocked_by cycle rejected", func(t *testing.T) {
 		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, BlockedBy: []string{"B"}}
 		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket, BlockedBy: []string{"A"}}
-		errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b}))
+		errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b}), ticketSchema(t))
 		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "cycle") {
 			t.Fatalf("blocked_by cycle must be rejected, got %v", errs)
 		}
@@ -52,14 +65,14 @@ func TestValidateGraph(t *testing.T) {
 	t.Run("blocked_by acyclic allowed", func(t *testing.T) {
 		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, BlockedBy: []string{"B"}}
 		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket}
-		if errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b})); len(errs) != 0 {
+		if errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b}), ticketSchema(t)); len(errs) != 0 {
 			t.Fatalf("acyclic blocked_by must be allowed: %v", errs)
 		}
 	})
 	t.Run("duplicate_of cycle rejected", func(t *testing.T) {
 		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, Links: dupLinks("B")}
 		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket, Links: dupLinks("A")}
-		errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b}))
+		errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b}), ticketSchema(t))
 		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "cycle") {
 			t.Fatalf("duplicate_of cycle must be rejected, got %v", errs)
 		}
@@ -70,7 +83,7 @@ func TestValidateGraph(t *testing.T) {
 		}
 		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, Links: rel("B")}
 		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket, Links: rel("A")}
-		if errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b})); len(errs) != 0 {
+		if errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b}), ticketSchema(t)); len(errs) != 0 {
 			t.Fatalf("symmetric relates must not be treated as a cycle: %v", errs)
 		}
 	})
@@ -78,7 +91,7 @@ func TestValidateGraph(t *testing.T) {
 		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, BlockedBy: []string{"B"}}
 		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket, BlockedBy: []string{"A"}}
 		other := &datamodel.Item{ID: "U", Number: "KIRA-6", Type: datamodel.TypeTicket}
-		if errs := validateGraph(other, datamodel.IndexByID([]*datamodel.Item{a, b, other})); len(errs) != 0 {
+		if errs := validateGraph(other, datamodel.IndexByID([]*datamodel.Item{a, b, other}), ticketSchema(t)); len(errs) != 0 {
 			t.Fatalf("a cycle not involving the written item must not block it: %v", errs)
 		}
 	})
