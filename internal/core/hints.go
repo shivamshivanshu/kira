@@ -2,18 +2,38 @@ package core
 
 import (
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
-func fieldHint(key string) string {
-	if n := errx.Nearest(key, datamodel.EditableFields); n != "" {
+func fieldHint(key string, schema entityschema.Schema) string {
+	candidates := editableFieldNames(schema)
+	if n := errx.Nearest(key, candidates); n != "" {
 		return "did you mean `--field " + n + "=...`?"
 	}
-	return "editable fields: " + strings.Join(datamodel.EditableFields, ", ")
+	return "editable fields: " + strings.Join(candidates, ", ")
+}
+
+// editableFieldNames is the union of native --field keys and the schema's
+// declared, settable, frontmatter-placed extra fields.
+func editableFieldNames(schema entityschema.Schema) []string {
+	out := slices.Clone(datamodel.EditableFields)
+	for _, f := range schema.Fields {
+		if !fieldEditableViaFlag(f) {
+			continue
+		}
+		if _, ok := datamodel.Field(f.Name); ok {
+			continue
+		}
+		out = append(out, f.Name)
+	}
+	slices.Sort(out)
+	return out
 }
 
 func sprintKeys(cfg *datamodel.Config) []string {

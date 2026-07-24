@@ -131,7 +131,7 @@ func listField(key string, ref func(*Item) *[]string) FieldDescriptor {
 		Changed: func(a, b *Item) bool { return !slices.Equal(*ref(a), *ref(b)) },
 		Get:     func(it *Item) string { return listString(*ref(it)) },
 		Copy:    func(dst, src *Item) { *ref(dst) = slices.Clone(*ref(src)) },
-		Set:     func(it *Item, value string) error { *ref(it) = splitCSV(value); return nil },
+		Set:     func(it *Item, value string) error { *ref(it) = SplitCSV(value); return nil },
 		Present: func(it *Item) bool { return len(*ref(it)) > 0 },
 	}
 }
@@ -187,7 +187,8 @@ func bodyField() FieldDescriptor {
 	}
 }
 
-func splitCSV(value string) []string {
+// SplitCSV splits a comma-separated value into trimmed, non-empty elements.
+func SplitCSV(value string) []string {
 	if strings.TrimSpace(value) == "" {
 		return []string{}
 	}

@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -41,20 +42,46 @@ func enumStrict(cfg *datamodel.Config, field string) bool {
 	}
 }
 
-func validateItem(cfg *datamodel.Config, it *datamodel.Item, force bool, schema entityschema.Schema, refs entityschema.RefResolver) (errs, warns []error) {
-	values := entityschema.ProjectItem(schema, it)
+// validationCtx bundles one item type's validation inputs; byID is built once
+// and shared across checks rather than rebuilt by each.
+type validationCtx struct {
+	cfg      *datamodel.Config
+	resolver *id.Resolver
+	schema   entityschema.Schema
+	enums    map[string][]string
+	byID     map[string]*datamodel.Item
+	force    bool
+}
+
+func newValidationCtx(cfg *datamodel.Config, items []*datamodel.Item, resolver *id.Resolver, schema entityschema.Schema, force bool) *validationCtx {
+	enums := entityschema.ResolveEnums(schema, entityschema.ConfigVocab(cfg))
+	return newValidationCtxWithEnums(cfg, items, resolver, schema, enums, force)
+}
+
+// newValidationCtxWithEnums takes an already-resolved enum vocab, for callers
+// (a Batch) that resolve it once per type and reuse it across many mutations
+// rather than recomputing it per item.
+func newValidationCtxWithEnums(cfg *datamodel.Config, items []*datamodel.Item, resolver *id.Resolver, schema entityschema.Schema, enums map[string][]string, force bool) *validationCtx {
+	return &validationCtx{cfg: cfg, resolver: resolver, schema: schema, enums: enums, byID: datamodel.IndexByID(items), force: force}
+}
+
+func (c *validationCtx) validateItem(it *datamodel.Item) (errs, warns []error) {
+	values := entityschema.ProjectItem(c.schema, it)
 	for k, v := range it.ExtraScalars {
 		values[k] = codec.DecodeExtraScalar(v)
 	}
 	for k, v := range it.ExtraLists {
 		values[k] = v
 	}
-	enums := entityschema.ResolveEnums(schema, entityschema.ConfigVocab(cfg))
 
-	for _, viol := range entityschema.Validate(schema, values, enums, refs) {
+	var refs entityschema.RefResolver
+	if c.resolver != nil {
+		refs = refResolver{resolver: c.resolver, byID: c.byID}
+	}
+	for _, viol := range entityschema.Validate(c.schema, values, c.enums, refs) {
 		switch viol.Code {
 		case entityschema.CodeEnum:
-			if enumStrict(cfg, viol.Field) && !force {
+			if enumStrict(c.cfg, viol.Field) && !c.force {
 				errs = append(errs, viol)
 			} else {
 				warns = append(warns, viol)
@@ -74,7 +101,7 @@ func validateItem(cfg *datamodel.Config, it *datamodel.Item, force bool, schema 
 		// below against cfg.Workflows, not the schema's static state list.
 	}
 
-	if wf, ok := cfg.Workflows[it.Type]; !ok {
+	if wf, ok := c.cfg.Workflows[it.Type]; !ok {
 		errs = append(errs, fmt.Errorf("field %q: no workflow configured for type %q", datamodel.KeyType, it.Type))
 	} else if _, defined := wf.StateByKey(it.State); !defined {
 		errs = append(errs, fmt.Errorf("field %q: %q is not a state in the %s workflow", datamodel.KeyState, it.State, it.Type))
@@ -83,16 +110,16 @@ func validateItem(cfg *datamodel.Config, it *datamodel.Item, force bool, schema 
 	if it.Rank != nil && *it.Rank == "" {
 		errs = append(errs, fmt.Errorf("field %q: must be a non-empty string when present", datamodel.KeyRank))
 	}
-	if it.Sprint != nil && !cfg.HasSprint(*it.Sprint) {
-		errs = append(errs, errx.User("field %q: %q is not a key in the configured sprints", datamodel.KeySprint, *it.Sprint).WithHint("%s", sprintHint(cfg, *it.Sprint)))
+	if it.Sprint != nil && !c.cfg.HasSprint(*it.Sprint) {
+		errs = append(errs, errx.User("field %q: %q is not a key in the configured sprints", datamodel.KeySprint, *it.Sprint).WithHint("%s", sprintHint(c.cfg, *it.Sprint)))
 	}
 	return errs, warns
 }
 
-func validateAssembled(cfg *datamodel.Config, it *datamodel.Item, resolver *id.Resolver, items []*datamodel.Item, schema entityschema.Schema, force bool) (hard, warns []error) {
+func (c *validationCtx) validateAssembled(it *datamodel.Item) (hard, warns []error) {
 	dedupSetFields(it)
-	hard = normalizeAndCheckRefs(it, resolver)
-	v, w := validateItem(cfg, it, force, schema, newRefResolver(resolver, items))
+	hard = normalizeAndCheckRefs(it, c.resolver)
+	v, w := c.validateItem(it)
 	return append(hard, v...), w
 }
 
@@ -119,11 +146,11 @@ func dedupStrings(xs []string) []string {
 	return out
 }
 
-func validateMutation(cfg *datamodel.Config, orig, it *datamodel.Item, resolver *id.Resolver, items []*datamodel.Item, schema entityschema.Schema, force bool) (hard, warns []error) {
-	hard, warns = validateAssembled(cfg, it, resolver, items, schema, force)
-	hard = append(hard, validateResolutionState(cfg, orig, it)...)
+func (c *validationCtx) validateMutation(orig, it *datamodel.Item) (hard, warns []error) {
+	hard, warns = c.validateAssembled(it)
+	hard = append(hard, validateResolutionState(c.cfg, orig, it)...)
 	if len(hard) == 0 {
-		hard = validateGraph(it, items)
+		hard = validateGraph(it, c.byID)
 	}
 	return hard, warns
 }
@@ -141,31 +168,33 @@ func validateResolutionState(cfg *datamodel.Config, orig, it *datamodel.Item) []
 	return nil
 }
 
-func validateBuffer(cfg *datamodel.Config, resolver *id.Resolver, items []*datamodel.Item, schema entityschema.Schema, force bool, build func(string) (*datamodel.Item, []error)) func(string) []error {
-	return func(c string) []error {
-		it, errs := build(c)
+func (c *validationCtx) validateBuffer(build func(string) (*datamodel.Item, []error)) func(string) []error {
+	return func(content string) []error {
+		it, errs := build(content)
 		if len(errs) > 0 {
 			return errs
 		}
-		hard, _ := validateAssembled(cfg, it, resolver, items, schema, force)
+		hard, _ := c.validateAssembled(it)
 		return hard
 	}
 }
 
-func validateGraph(updated *datamodel.Item, items []*datamodel.Item) []error {
-	byID := datamodel.IndexByID(items)
-	byID[updated.ID] = updated
+// validateGraph overlays updated onto a clone of byID so the caller's shared
+// map is never mutated, then checks epic-is-epic and cycles.
+func validateGraph(updated *datamodel.Item, byID map[string]*datamodel.Item) []error {
+	graph := maps.Clone(byID)
+	graph[updated.ID] = updated
 
 	var errs []error
 	if updated.Epic != nil && *updated.Epic != "" {
-		if parent := byID[*updated.Epic]; parent != nil && parent.Type != datamodel.TypeEpic {
+		if parent := graph[*updated.Epic]; parent != nil && parent.Type != datamodel.TypeEpic {
 			errs = append(errs, fmt.Errorf("field %q: %s is not an epic", datamodel.KeyEpic, numberOrID(parent, *updated.Epic)))
 		}
 	}
 	for _, rel := range datamodel.CycleRelations() {
-		for _, cycle := range datamodel.FindCycles(byID, rel.Edges) {
+		for _, cycle := range datamodel.FindCycles(graph, rel.Edges) {
 			if slices.Contains(cycle, updated.ID) {
-				errs = append(errs, fmt.Errorf("field %q forms a cycle: %s", rel.Field, cycleTrail(cycle, byID)))
+				errs = append(errs, fmt.Errorf("field %q forms a cycle: %s", rel.Field, cycleTrail(cycle, graph)))
 				break
 			}
 		}

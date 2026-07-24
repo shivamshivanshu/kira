@@ -42,22 +42,25 @@ func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply appl
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	return s.mutateAgainst(cfg, orig, items, resolver, schemas[orig.Type], force, apply, subjectOf, source)
+	schema := schemas[orig.Type]
+	enums := entityschema.ResolveEnums(schema, entityschema.ConfigVocab(cfg))
+	return s.mutateAgainst(cfg, orig, items, resolver, schema, enums, force, apply, subjectOf, source)
 }
 
-func (s *Store) mutateAgainst(cfg *datamodel.Config, orig *datamodel.Item, items []*datamodel.Item, resolver *id.Resolver, schema entityschema.Schema, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, []error, error) {
+func (s *Store) mutateAgainst(cfg *datamodel.Config, orig *datamodel.Item, items []*datamodel.Item, resolver *id.Resolver, schema entityschema.Schema, enums map[string][]string, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, []error, error) {
 	updated := cloneItem(orig)
 	hard, warns := apply(updated, resolver, items)
 	if len(hard) > 0 {
 		return nil, nil, nil, errx.Invalid(invalidItemPrefix, hard)
 	}
-	vhard, vwarns := validateMutation(cfg, orig, updated, resolver, items, schema, force)
+	vctx := newValidationCtxWithEnums(cfg, items, resolver, schema, enums, force)
+	vhard, vwarns := vctx.validateMutation(orig, updated)
 	if len(vhard) > 0 {
 		return nil, nil, nil, errx.Invalid(invalidItemPrefix, vhard)
 	}
 	warns = append(warns, vwarns...)
 
-	changed := datamodel.ChangedFields(orig, updated)
+	changed := append(datamodel.ChangedFields(orig, updated), changedExtraKeys(orig, updated)...)
 	finalWarns, err := s.commitMutation(cfg, orig, updated, changed, warns, subjectOf(orig), source)
 	if err != nil {
 		return nil, nil, nil, err
@@ -72,6 +75,7 @@ type Batch struct {
 	items    []*datamodel.Item
 	resolver *id.Resolver
 	schemas  map[string]entityschema.Schema
+	enums    map[string]map[string][]string
 }
 
 func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
@@ -89,7 +93,12 @@ func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
 		release()
 		return nil, err
 	}
-	return &Batch{cfg: cfg, store: s, release: release, items: ld.items, resolver: ld.resolver, schemas: schemas}, nil
+	vocab := entityschema.ConfigVocab(cfg)
+	enums := make(map[string]map[string][]string, len(schemas))
+	for typ, schema := range schemas {
+		enums[typ] = entityschema.ResolveEnums(schema, vocab)
+	}
+	return &Batch{cfg: cfg, store: s, release: release, items: ld.items, resolver: ld.resolver, schemas: schemas, enums: enums}, nil
 }
 
 func (b *Batch) Close() { b.release() }
@@ -111,7 +120,7 @@ func (b *Batch) Mutate(ref string, force bool, apply applyFn, subjectOf func(ori
 	if err := guardWritable(orig); err != nil {
 		return nil, nil, nil, err
 	}
-	updated, changed, warns, err := b.store.mutateAgainst(b.cfg, orig, b.items, b.resolver, b.schemas[orig.Type], force, apply, subjectOf, source)
+	updated, changed, warns, err := b.store.mutateAgainst(b.cfg, orig, b.items, b.resolver, b.schemas[orig.Type], b.enums[orig.Type], force, apply, subjectOf, source)
 	if err != nil {
 		return nil, nil, nil, err
 	}

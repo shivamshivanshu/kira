@@ -19,6 +19,7 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 		estimate      float64
 		printTemplate bool
 		aliasType     string
+		fields        []string
 	)
 	cmd := &cobra.Command{
 		Use:   "create <type> [<title>]",
@@ -27,6 +28,13 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Type = args[0]
 			opts.NoEdit = opts.NoEdit || g.nonInteractive
+			for _, f := range fields {
+				k, v, ok := strings.Cut(f, "=")
+				if !ok {
+					return errx.User("--field %q: expected key=value", f).WithHint("example: --field severity=high")
+				}
+				opts.Fields = append(opts.Fields, core.FieldEdit{Key: k, Value: v})
+			}
 			if err := g.rejectStdinSource(opts.FromFile); err != nil {
 				return err
 			}
@@ -96,6 +104,7 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 	f.StringVar(&opts.Due, "due", "", "target completion date (RFC3339 date)")
 	f.Float64Var(&estimate, "estimate", 0, "estimate, in the configured unit")
 	f.BoolVar(&opts.NoEdit, "no-edit", false, "create from flags only, no $EDITOR")
+	f.StringArrayVar(&fields, "field", nil, "key=value for a schema-declared extra field (repeatable)")
 	f.StringVar(&opts.FromFile, "from-file", "", "read a complete item from a file (or - for stdin)")
 	f.BoolVar(&opts.Force, "force", false, "accept field values outside the configured vocabulary")
 	f.StringVar(&opts.Board, "board", "", "board key to create the item under")

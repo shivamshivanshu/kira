@@ -30,19 +30,19 @@ type parsedFile struct {
 
 func (s parsedFile) identified() bool { return s.item != nil && s.item.ID != "" }
 
-func scan(files []File) []parsedFile {
+func scan(files []File, schemas map[string]entityschema.Schema) []parsedFile {
 	out := make([]parsedFile, len(files))
 	for i, f := range files {
-		it, parsed, lf := Lint(f.Content)
+		it, parsed, lf := Lint(f.Content, schemas)
 		out[i] = parsedFile{path: f.Path, item: it, parsed: parsed, lint: lf}
 	}
 	return out
 }
 
-func Run(cfg *datamodel.Config, files []File, strays []string, env Env) *Report {
+func Run(cfg *datamodel.Config, files []File, strays []string, env Env, schemas map[string]entityschema.Schema) *Report {
 	files = slices.Clone(files)
 	slices.SortFunc(files, func(a, b File) int { return strings.Compare(a.Path, b.Path) })
-	scanned := scan(files)
+	scanned := scan(files, schemas)
 
 	var items []*datamodel.Item
 	pathByID := map[string]string{}
@@ -60,7 +60,6 @@ func Run(cfg *datamodel.Config, files []File, strays []string, env Env) *Report 
 	}
 	findings = append(findings, stampByID(Collisions(items), pathByID)...)
 	findings = append(findings, stampByID(SequentialOutliers(items), pathByID)...)
-	schemas, _ := entityschema.Load("")
 	findings = append(findings, stampByID(EpicCycles(items, resolver), pathByID)...)
 	findings = append(findings, stampByID(RefTypeMismatches(schemas, items, resolver), pathByID)...)
 	findings = append(findings, stampByID(RefCycles(items, resolver), pathByID)...)
@@ -84,9 +83,9 @@ func strayFindings(strays []string) []Finding {
 	return out
 }
 
-func Validate(cfg *datamodel.Config, storeFiles, targets []File) *Report {
-	targetScan := scan(targets)
-	resolver := resolverFor(cfg, dedupItems(scan(storeFiles), targetScan))
+func Validate(cfg *datamodel.Config, storeFiles, targets []File, schemas map[string]entityschema.Schema) *Report {
+	targetScan := scan(targets, schemas)
+	resolver := resolverFor(cfg, dedupItems(scan(storeFiles, schemas), targetScan))
 
 	var findings []Finding
 	for _, s := range targetScan {

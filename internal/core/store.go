@@ -15,9 +15,10 @@ import (
 )
 
 type Store struct {
-	root     string
-	store    *storage.FS
-	prompter Prompter
+	root         string
+	store        *storage.FS
+	prompter     Prompter
+	schemasCache map[string]entityschema.Schema
 }
 
 func newStore(root string) *Store {
@@ -63,11 +64,18 @@ func (s *Store) Config() (*datamodel.Config, error) {
 
 func (s *Store) LoadAll() ([]*datamodel.Item, []string, error) { return s.fs().LoadAll() }
 
+// schemas caches its result on s for the lifetime of the command: interactive
+// create/edit resolve it once up front and again after locking, and a Store
+// is never shared across concurrent commands.
 func (s *Store) schemas() (map[string]entityschema.Schema, error) {
+	if s.schemasCache != nil {
+		return s.schemasCache, nil
+	}
 	schemas, err := entityschema.Load(s.fs().SchemaDir())
 	if err != nil {
 		return nil, errx.Env("loading %s: %v", s.fs().RelToRoot(s.fs().SchemaDir()), err)
 	}
+	s.schemasCache = schemas
 	return schemas, nil
 }
 

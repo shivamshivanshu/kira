@@ -289,6 +289,19 @@ func TestExtraScalarTypesRoundTripFaithfully(t *testing.T) {
 	}
 }
 
+func TestEncodeExtraScalarRoundTrips(t *testing.T) {
+	cases := []any{"high", 5, true, 3.14, "2026-07-24", "5", "true"}
+	for _, v := range cases {
+		rendered, err := codec.EncodeExtraScalar(v)
+		if err != nil {
+			t.Fatalf("EncodeExtraScalar(%#v): %v", v, err)
+		}
+		if got := codec.DecodeExtraScalar(rendered); got != v {
+			t.Errorf("EncodeExtraScalar(%#v) = %q, DecodeExtraScalar back = %#v, want %#v", v, rendered, got, v)
+		}
+	}
+}
+
 func TestExtraMappingFieldRejected(t *testing.T) {
 	src := "---\n" +
 		"id: 01J8X8Q7RZTN5Y3VXW2A9K4E7F\n" +

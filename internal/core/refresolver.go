@@ -13,10 +13,6 @@ type refResolver struct {
 	byID     map[string]*datamodel.Item
 }
 
-func newRefResolver(resolver *id.Resolver, items []*datamodel.Item) refResolver {
-	return refResolver{resolver: resolver, byID: byULID(items)}
-}
-
 func (r refResolver) Exists(target, ref string) bool {
 	ulid, err := r.resolver.Resolve(ref)
 	if err != nil {
