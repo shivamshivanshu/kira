@@ -40,19 +40,12 @@ type Item struct {
 }
 
 func (it *Item) ExtraKeys() []string {
-	seen := make(map[string]bool, len(it.ExtraScalars)+len(it.ExtraLists))
 	out := make([]string, 0, len(it.ExtraScalars)+len(it.ExtraLists))
-	add := func(k string) {
-		if !seen[k] {
-			seen[k] = true
-			out = append(out, k)
-		}
-	}
 	for k := range it.ExtraScalars {
-		add(k)
+		out = append(out, k)
 	}
 	for k := range it.ExtraLists {
-		add(k)
+		out = append(out, k)
 	}
 	slices.Sort(out)
 	return out
@@ -87,13 +80,13 @@ var LinkTypes = []LinkType{LinkRelates, LinkDuplicateOf}
 
 func ValidLinkType(t string) bool { return slices.Contains(LinkTypes, LinkType(t)) }
 
-func CloneLinks(links map[string][]string) map[string][]string {
-	if links == nil {
+func CloneStringListMap(m map[string][]string) map[string][]string {
+	if m == nil {
 		return nil
 	}
-	out := make(map[string][]string, len(links))
-	for typ, targets := range links {
-		out[typ] = slices.Clone(targets)
+	out := make(map[string][]string, len(m))
+	for k, v := range m {
+		out[k] = slices.Clone(v)
 	}
 	return out
 }
