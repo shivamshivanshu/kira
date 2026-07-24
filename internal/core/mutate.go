@@ -58,7 +58,7 @@ func (s *Store) mutateAgainst(vctx *validationCtx, orig *datamodel.Item, items [
 	}
 	warns = append(warns, vwarns...)
 
-	changed := append(datamodel.ChangedFields(orig, updated), changedExtraKeys(orig, updated)...)
+	changed := append(datamodel.ChangedFields(orig, updated), datamodel.ChangedExtraKeys(orig, updated)...)
 	finalWarns, err := s.commitMutation(vctx.cfg, orig, updated, changed, warns, subjectOf(orig), source)
 	if err != nil {
 		return nil, nil, nil, err

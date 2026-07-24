@@ -124,7 +124,10 @@ func fieldString(it *datamodel.Item, field string) string {
 	if d, ok := datamodel.Field(field); ok {
 		return d.Get(it)
 	}
-	return ""
+	if v, ok := it.ExtraScalars[field]; ok {
+		return v
+	}
+	return strings.Join(it.ExtraLists[field], ", ")
 }
 
 func (s *Store) pickFields(target, ours, theirs *datamodel.Item, fields []string) {
@@ -132,13 +135,35 @@ func (s *Store) pickFields(target, ours, theirs *datamodel.Item, fields []string
 		prompt := f + ": [o]urs=" + fieldString(ours, f) + " [t]heirs=" + fieldString(theirs, f) + " (default: auto) "
 		switch strings.ToLower(s.prompter.ReadLine(prompt, "")) {
 		case "o":
-			if d, ok := datamodel.Field(f); ok {
-				d.Copy(target, ours)
-			}
+			applyPick(target, ours, f)
 		case "t":
-			if d, ok := datamodel.Field(f); ok {
-				d.Copy(target, theirs)
-			}
+			applyPick(target, theirs, f)
 		}
+	}
+}
+
+func applyPick(target, src *datamodel.Item, field string) {
+	if d, ok := datamodel.Field(field); ok {
+		d.Copy(target, src)
+		return
+	}
+	copyExtra(target, src, field)
+}
+
+func copyExtra(target, src *datamodel.Item, key string) {
+	delete(target.ExtraScalars, key)
+	delete(target.ExtraLists, key)
+	if v, ok := src.ExtraScalars[key]; ok {
+		if target.ExtraScalars == nil {
+			target.ExtraScalars = map[string]string{}
+		}
+		target.ExtraScalars[key] = v
+		return
+	}
+	if v, ok := src.ExtraLists[key]; ok {
+		if target.ExtraLists == nil {
+			target.ExtraLists = map[string][]string{}
+		}
+		target.ExtraLists[key] = slices.Clone(v)
 	}
 }
