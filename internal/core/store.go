@@ -3,7 +3,6 @@ package core
 import (
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/config"
@@ -162,9 +161,8 @@ func guardWritable(items ...*datamodel.Item) error {
 		if it == nil {
 			continue
 		}
-		if it.HasUnknown() {
-			names := slices.Concat(it.UnknownKeys, it.UnknownLinkTypes)
-			return errx.Env("this item uses fields from a newer kira: %s", strings.Join(names, ", ")).
+		if len(it.UnknownLinkTypes) > 0 {
+			return errx.Env("this item uses fields from a newer kira: %s", strings.Join(it.UnknownLinkTypes, ", ")).
 				WithHint("upgrade kira, then retry: `go install github.com/shivamshivanshu/kira/cmd/kira@latest`")
 		}
 		if it.CRLF {

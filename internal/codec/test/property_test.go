@@ -70,6 +70,44 @@ func randDate(r *rand.Rand) *string {
 	}
 }
 
+var extraScalarKeys = []string{"custom_a", "custom_b", "custom_c"}
+
+var extraListKeys = []string{"custom_x", "custom_y"}
+
+var typedBareTokens = []string{"true", "false", "null", "123", "3.14", "2020-01-01T00:00:00Z"}
+
+func randExtraScalars(r *rand.Rand) map[string]string {
+	var out map[string]string
+	for _, k := range extraScalarKeys {
+		if r.Intn(2) == 0 {
+			continue
+		}
+		if out == nil {
+			out = map[string]string{}
+		}
+		if r.Intn(3) == 0 {
+			out[k] = typedBareTokens[r.Intn(len(typedBareTokens))]
+		} else {
+			out[k] = codec.EmitScalar(pick(r))
+		}
+	}
+	return out
+}
+
+func randExtraLists(r *rand.Rand) map[string][]string {
+	var out map[string][]string
+	for _, k := range extraListKeys {
+		if r.Intn(2) == 0 {
+			continue
+		}
+		if out == nil {
+			out = map[string][]string{}
+		}
+		out[k] = randList(r)
+	}
+	return out
+}
+
 func randLinks(r *rand.Rand) map[string][]string {
 	var links map[string][]string
 	for _, typ := range datamodel.LinkTypes {
@@ -90,27 +128,29 @@ func randLinks(r *rand.Rand) map[string][]string {
 
 func randItem(r *rand.Rand) *datamodel.Item {
 	it := &datamodel.Item{
-		ID:         pickNonEmpty(r),
-		Number:     fmt.Sprintf("KIRA-%d", r.Intn(1000)),
-		Aliases:    randList(r),
-		Type:       []string{"ticket", "epic"}[r.Intn(2)],
-		Subtype:    maybe(r),
-		Title:      pickNonEmpty(r),
-		State:      pickNonEmpty(r),
-		Resolution: maybe(r),
-		Priority:   maybe(r),
-		Rank:       maybe(r),
-		Owner:      maybe(r),
-		Reporter:   maybe(r),
-		Labels:     randList(r),
-		Epic:       maybe(r),
-		BlockedBy:  randList(r),
-		Links:      randLinks(r),
-		Sprint:     maybe(r),
-		Due:        randDate(r),
-		Created:    randTimestamp(r),
-		Updated:    randTimestamp(r),
-		Body:       "\n## Description\n" + pick(r) + "\n---\nmid-body rule\n",
+		ID:           pickNonEmpty(r),
+		Number:       fmt.Sprintf("KIRA-%d", r.Intn(1000)),
+		Aliases:      randList(r),
+		Type:         []string{"ticket", "epic"}[r.Intn(2)],
+		Subtype:      maybe(r),
+		Title:        pickNonEmpty(r),
+		State:        pickNonEmpty(r),
+		Resolution:   maybe(r),
+		Priority:     maybe(r),
+		Rank:         maybe(r),
+		Owner:        maybe(r),
+		Reporter:     maybe(r),
+		Labels:       randList(r),
+		Epic:         maybe(r),
+		BlockedBy:    randList(r),
+		Links:        randLinks(r),
+		Sprint:       maybe(r),
+		Due:          randDate(r),
+		Created:      randTimestamp(r),
+		Updated:      randTimestamp(r),
+		Body:         "\n## Description\n" + pick(r) + "\n---\nmid-body rule\n",
+		ExtraScalars: randExtraScalars(r),
+		ExtraLists:   randExtraLists(r),
 	}
 	if r.Intn(2) == 0 {
 		e := float64(r.Intn(100)) + float64(r.Intn(4))*0.25

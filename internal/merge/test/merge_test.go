@@ -116,6 +116,72 @@ func TestLinksUnionByType(t *testing.T) {
 	}
 }
 
+func TestExtraScalarAddedOnOneSideSurvives(t *testing.T) {
+	t.Parallel()
+	b := base(nil)
+	ours := base(nil)
+	theirs := base(func(it *datamodel.Item) { it.ExtraScalars = map[string]string{"severity": "HIGH"} })
+	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
+	if got.ExtraScalars["severity"] != "HIGH" {
+		t.Fatalf("ExtraScalars = %v, want severity=HIGH (added on theirs, must survive)", got.ExtraScalars)
+	}
+}
+
+func TestExtraScalarBothChangedLaterUpdatedWins(t *testing.T) {
+	t.Parallel()
+	b := base(func(it *datamodel.Item) { it.ExtraScalars = map[string]string{"severity": "LOW"} })
+	ours := base(func(it *datamodel.Item) {
+		it.ExtraScalars = map[string]string{"severity": "HIGH"}
+		it.Updated = "2026-02-02T00:00:00Z"
+	})
+	theirs := base(func(it *datamodel.Item) {
+		it.ExtraScalars = map[string]string{"severity": "MEDIUM"}
+		it.Updated = "2026-02-01T00:00:00Z"
+	})
+	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
+	if got.ExtraScalars["severity"] != "HIGH" {
+		t.Fatalf("ExtraScalars[severity] = %q, want HIGH (ours updated later)", got.ExtraScalars["severity"])
+	}
+}
+
+func TestExtraListUnion(t *testing.T) {
+	t.Parallel()
+	b := base(func(it *datamodel.Item) { it.ExtraLists = map[string][]string{"watchers": {"a", "b"}} })
+	ours := base(func(it *datamodel.Item) { it.ExtraLists = map[string][]string{"watchers": {"a", "b", "c"}} })
+	theirs := base(func(it *datamodel.Item) { it.ExtraLists = map[string][]string{"watchers": {"b"}} })
+	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
+	want := []string{"b", "c"}
+	if !equalStrings(got.ExtraLists["watchers"], want) {
+		t.Fatalf("ExtraLists[watchers] = %v, want %v (b survives both, c added, a removed by theirs)", got.ExtraLists["watchers"], want)
+	}
+}
+
+func TestExtraShapeCollisionWinnerWinsWholesale(t *testing.T) {
+	t.Parallel()
+	b := base(nil)
+	ours := base(func(it *datamodel.Item) {
+		it.ExtraScalars = map[string]string{"custom": "scalar-value"}
+		it.Updated = "2026-02-02T00:00:00Z"
+	})
+	theirs := base(func(it *datamodel.Item) {
+		it.ExtraLists = map[string][]string{"custom": {"a", "b"}}
+		it.Updated = "2026-02-01T00:00:00Z"
+	})
+	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
+
+	if _, isList := got.ExtraLists["custom"]; isList {
+		t.Fatalf("custom must not survive in both maps: scalars=%v lists=%v", got.ExtraScalars, got.ExtraLists)
+	}
+	if got.ExtraScalars["custom"] != "scalar-value" {
+		t.Fatalf("ExtraScalars[custom] = %q, want scalar-value (ours updated later, wins wholesale)", got.ExtraScalars["custom"])
+	}
+
+	out := codec.Serialize(got)
+	if _, err := codec.Parse(out); err != nil {
+		t.Fatalf("shape-collision merge output must re-parse: %v\n%s", err, out)
+	}
+}
+
 func TestCommentsUnionSortedByTs(t *testing.T) {
 	t.Parallel()
 	c1 := datamodel.Comment{ID: "c1", Author: "a", Ts: "2026-03-01T00:00:00Z", Body: "first"}

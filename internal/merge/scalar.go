@@ -52,3 +52,10 @@ func threeWayPtr[T comparable](base, ours, theirs *T, winner Side) *T {
 		return theirs
 	}
 }
+
+func mapEntry(m map[string]string, k string) *string {
+	if v, ok := m[k]; ok {
+		return &v
+	}
+	return nil
+}

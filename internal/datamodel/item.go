@@ -33,13 +33,29 @@ type Item struct {
 	Body string
 
 	Activity         string
-	UnknownKeys      []string
+	ExtraScalars     map[string]string
+	ExtraLists       map[string][]string
 	UnknownLinkTypes []string
 	CRLF             bool
 }
 
-func (it *Item) HasUnknown() bool {
-	return len(it.UnknownKeys) > 0 || len(it.UnknownLinkTypes) > 0
+func (it *Item) ExtraKeys() []string {
+	seen := make(map[string]bool, len(it.ExtraScalars)+len(it.ExtraLists))
+	out := make([]string, 0, len(it.ExtraScalars)+len(it.ExtraLists))
+	add := func(k string) {
+		if !seen[k] {
+			seen[k] = true
+			out = append(out, k)
+		}
+	}
+	for k := range it.ExtraScalars {
+		add(k)
+	}
+	for k := range it.ExtraLists {
+		add(k)
+	}
+	slices.Sort(out)
+	return out
 }
 
 // IndexByID maps items by ID, skipping any with an empty ID.

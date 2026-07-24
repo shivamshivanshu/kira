@@ -24,7 +24,7 @@ func readFixture(tb testing.TB, name string) string {
 func readExample(tb testing.TB) string { return readFixture(tb, "example.md") }
 
 func TestGoldenRoundTrip(t *testing.T) {
-	for _, name := range []string{"example.md", "legacy.md"} {
+	for _, name := range []string{"example.md", "legacy.md", "extras.md"} {
 		t.Run(name, func(t *testing.T) {
 			orig := readFixture(t, name)
 			it, err := codec.Parse(orig)
@@ -211,7 +211,7 @@ func TestLinksCanonicalization(t *testing.T) {
 	}
 }
 
-func TestUnknownKeysRecordedNotRejected(t *testing.T) {
+func TestExtraFieldsRoundTripLosslessly(t *testing.T) {
 	src := "---\n" +
 		"id: 01J8X8Q7RZTN5Y3VXW2A9K4E7F\n" +
 		"number: KIRA-1\n" +
@@ -232,14 +232,86 @@ func TestUnknownKeysRecordedNotRejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unknown top-level keys must parse, not reject: %v", err)
 	}
-	if !reflect.DeepEqual(it.UnknownKeys, []string{"another_future", "future_field"}) {
-		t.Fatalf("UnknownKeys = %v, want sorted [another_future future_field]", it.UnknownKeys)
+	want := map[string]string{"another_future": "42", "future_field": "whatever"}
+	if !reflect.DeepEqual(it.ExtraScalars, want) {
+		t.Fatalf("ExtraScalars = %v, want %v", it.ExtraScalars, want)
 	}
-	if !it.HasUnknown() {
-		t.Fatal("HasUnknown must be true when unknown keys are present")
+	if len(it.ExtraScalars) == 0 {
+		t.Fatal("ExtraScalars must be non-empty when extra fields are present")
 	}
-	if out := codec.Serialize(it); strings.Contains(out, "future_field") {
-		t.Fatalf("canonical serializer must not re-emit unknown keys (preservation deferred):\n%s", out)
+	out := codec.Serialize(it)
+	if !strings.Contains(out, "future_field: whatever") {
+		t.Fatalf("serializer must re-emit extra scalar fields losslessly:\n%s", out)
+	}
+	reparsed, err := codec.Parse(out)
+	if err != nil {
+		t.Fatalf("re-parse of serialized extras: %v", err)
+	}
+	if !reflect.DeepEqual(reparsed.ExtraScalars, want) {
+		t.Fatalf("round-tripped ExtraScalars = %v, want %v", reparsed.ExtraScalars, want)
+	}
+}
+
+func TestExtraScalarTypesRoundTripFaithfully(t *testing.T) {
+	src := "---\n" +
+		"id: 01J8X8Q7RZTN5Y3VXW2A9K4E7F\n" +
+		"number: KIRA-1\n" +
+		"aliases: []\n" +
+		"type: ticket\n" +
+		"title: \"t\"\n" +
+		"state: TODO\n" +
+		"labels: []\n" +
+		"epic: null\n" +
+		"blocked_by: []\n" +
+		"created: 2026-07-10T09:14:00+05:30\n" +
+		"updated: 2026-07-12T11:02:00+05:30\n" +
+		"future_bool: true\n" +
+		"future_int: 7\n" +
+		"future_null: null\n" +
+		"future_quoted_null: \"null\"\n" +
+		"---\nbody\n"
+
+	it, err := codec.Parse(src)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	want := map[string]string{
+		"future_bool":        "true",
+		"future_int":         "7",
+		"future_null":        "null",
+		"future_quoted_null": `"null"`,
+	}
+	if !reflect.DeepEqual(it.ExtraScalars, want) {
+		t.Fatalf("ExtraScalars = %v, want %v", it.ExtraScalars, want)
+	}
+	if out := codec.Serialize(it); out != src {
+		t.Fatalf("typed extras must round-trip byte-identical\n--- got ---\n%s\n--- want ---\n%s", out, src)
+	}
+}
+
+func TestExtraMappingFieldRejected(t *testing.T) {
+	src := "---\n" +
+		"id: 01J8X8Q7RZTN5Y3VXW2A9K4E7F\n" +
+		"number: KIRA-1\n" +
+		"aliases: []\n" +
+		"type: ticket\n" +
+		"title: \"t\"\n" +
+		"state: TODO\n" +
+		"labels: []\n" +
+		"epic: null\n" +
+		"blocked_by: []\n" +
+		"nested_extra:\n  a: 1\n" +
+		"created: 2026-07-10T09:14:00+05:30\n" +
+		"updated: 2026-07-12T11:02:00+05:30\n" +
+		"---\nbody\n"
+
+	_, err := codec.Parse(src)
+	var pe *datamodel.ParseError
+	if !errors.As(err, &pe) {
+		t.Fatalf("nested mapping extras must be a loud parse error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "nested_extra") {
+		t.Fatalf("error must name the offending field: %v", err)
 	}
 }
 
@@ -248,8 +320,8 @@ func TestKnownItemHasNoUnknowns(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if it.HasUnknown() || it.UnknownKeys != nil || it.UnknownLinkTypes != nil {
-		t.Fatalf("clean item must carry no unknowns: keys=%v links=%v", it.UnknownKeys, it.UnknownLinkTypes)
+	if it.ExtraScalars != nil || it.ExtraLists != nil || it.UnknownLinkTypes != nil {
+		t.Fatalf("clean item must carry no unknowns: scalars=%v lists=%v links=%v", it.ExtraScalars, it.ExtraLists, it.UnknownLinkTypes)
 	}
 }
 
