@@ -1,6 +1,10 @@
 package merge
 
-import "github.com/shivamshivanshu/kira/internal/datamodel"
+import (
+	"slices"
+
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+)
 
 // mergeExtras merges the schema-agnostic extra frontmatter fields, keeping
 // ExtraScalars and ExtraLists disjoint: each key lands in exactly one of the
@@ -53,4 +57,34 @@ func mergeExtras(base, ours, theirs *datamodel.Item, winner Side) (map[string]st
 		lists = nil
 	}
 	return scalars, lists
+}
+
+// changedExtraKeys reports which extra scalar/list keys differ between a and
+// b, mirroring datamodel.ChangedFields for the schema-agnostic extras maps so
+// arbitrated() can detect an extras-only three-way conflict.
+func changedExtraKeys(a, b *datamodel.Item) []string {
+	var out []string
+	for k := range extraKeyUnion(a, b) {
+		if extraChanged(a, b, k) {
+			out = append(out, k)
+		}
+	}
+	return out
+}
+
+func extraKeyUnion(a, b *datamodel.Item) map[string]bool {
+	keys := keyUnion(a.ExtraScalars, b.ExtraScalars)
+	for k := range keyUnion(a.ExtraLists, b.ExtraLists) {
+		keys[k] = true
+	}
+	return keys
+}
+
+func extraChanged(a, b *datamodel.Item, key string) bool {
+	as, aIsScalar := a.ExtraScalars[key]
+	bs, bIsScalar := b.ExtraScalars[key]
+	if aIsScalar || bIsScalar {
+		return aIsScalar != bIsScalar || as != bs
+	}
+	return !slices.Equal(a.ExtraLists[key], b.ExtraLists[key])
 }

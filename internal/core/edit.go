@@ -63,7 +63,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 	var warns []error
 	finish := func(it *datamodel.Item) error {
 		restoreImmutable(it, orig)
-		guardErrs, guardWarns := applyEditGuards(cfg, orig, it, opts.Force, resolver, items)
+		guardErrs, guardWarns := applyEditGuards(cfg, orig, it, opts.Force, resolver, items, schema)
 		if len(guardErrs) > 0 {
 			return errx.Invalid(invalidItemPrefix, guardErrs)
 		}
@@ -131,7 +131,7 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 			return errs
 		}
 		restoreImmutable(it, orig)
-		if hard, _ := applyEditGuards(cfg, orig, it, opts.Force, resolver, items); len(hard) > 0 {
+		if hard, _ := applyEditGuards(cfg, orig, it, opts.Force, resolver, items, schema); len(hard) > 0 {
 			return hard
 		}
 		hard, _ := vctx.validateMutation(orig, it)
@@ -140,8 +140,8 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 	return content, orig.Updated, err
 }
 
-func applyEditGuards(cfg *datamodel.Config, orig, it *datamodel.Item, force bool, resolver *id.Resolver, items []*datamodel.Item) (hard, warns []error) {
-	if hard := normalizeAndCheckRefs(it, resolver); len(hard) > 0 {
+func applyEditGuards(cfg *datamodel.Config, orig, it *datamodel.Item, force bool, resolver *id.Resolver, items []*datamodel.Item, schema entityschema.Schema) (hard, warns []error) {
+	if hard := normalizeAndCheckRefs(it, resolver, schema); len(hard) > 0 {
 		return hard, nil
 	}
 	if it.State == orig.State {

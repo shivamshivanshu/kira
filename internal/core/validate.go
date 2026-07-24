@@ -112,7 +112,7 @@ func (c *validationCtx) validateItem(it *datamodel.Item) (errs, warns []error) {
 
 func (c *validationCtx) validateAssembled(it *datamodel.Item) (hard, warns []error) {
 	dedupSetFields(it)
-	hard = normalizeAndCheckRefs(it, c.resolver)
+	hard = normalizeAndCheckRefs(it, c.resolver, c.schema)
 	v, w := c.validateItem(it)
 	return append(hard, v...), w
 }
@@ -222,7 +222,7 @@ func numberOrID(it *datamodel.Item, ulid string) string {
 	return ulid
 }
 
-func normalizeAndCheckRefs(it *datamodel.Item, resolver *id.Resolver) []error {
+func normalizeAndCheckRefs(it *datamodel.Item, resolver *id.Resolver, schema entityschema.Schema) []error {
 	var errs []error
 	resolve := func(label, ref string) (string, bool) {
 		ulid, err := resolver.Resolve(ref)
@@ -254,5 +254,37 @@ func normalizeAndCheckRefs(it *datamodel.Item, resolver *id.Resolver) []error {
 			}
 		}
 	}
+	normalizeRefExtras(it, resolve, schema)
 	return errs
+}
+
+// normalizeRefExtras binds a schema-declared entity-target ref extra (Source
+// == "" distinguishes it from a config-backed ref like owner/reporter, which
+// normalizeAndCheckRefs's config-driven fields already handle elsewhere) to
+// its immutable ULID on write, the same as the built-in epic/blocked_by
+// fields above, so it survives a renumber instead of going stale.
+func normalizeRefExtras(it *datamodel.Item, resolve func(label, ref string) (string, bool), schema entityschema.Schema) {
+	for _, f := range schema.Fields {
+		if f.Type != entityschema.FieldRef || f.Source != "" {
+			continue
+		}
+		label := fmt.Sprintf("field %q", f.Name)
+		if f.List {
+			targets, ok := it.ExtraLists[f.Name]
+			if !ok {
+				continue
+			}
+			for i, ref := range targets {
+				if ulid, ok := resolve(label, ref); ok {
+					targets[i] = ulid
+				}
+			}
+			continue
+		}
+		if ref, ok := it.ExtraScalars[f.Name]; ok {
+			if ulid, ok := resolve(label, ref); ok {
+				it.ExtraScalars[f.Name] = ulid
+			}
+		}
+	}
 }

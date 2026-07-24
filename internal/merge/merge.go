@@ -50,10 +50,11 @@ func Merge(base, ours, theirs *datamodel.Item, remote Side, tm TextMerger) Resul
 }
 
 func arbitrated(base, ours, theirs *datamodel.Item) []string {
-	fromBaseOurs := setx.ToSet(datamodel.ChangedFields(base, ours))
-	fromBaseTheirs := setx.ToSet(datamodel.ChangedFields(base, theirs))
+	fromBaseOurs := setx.ToSet(append(datamodel.ChangedFields(base, ours), changedExtraKeys(base, ours)...))
+	fromBaseTheirs := setx.ToSet(append(datamodel.ChangedFields(base, theirs), changedExtraKeys(base, theirs)...))
+
 	var out []string
-	for _, f := range datamodel.ChangedFields(ours, theirs) {
+	for _, f := range append(datamodel.ChangedFields(ours, theirs), changedExtraKeys(ours, theirs)...) {
 		if fromBaseOurs[f] && fromBaseTheirs[f] {
 			out = append(out, f)
 		}
