@@ -8,8 +8,18 @@ import (
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/doctor"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/id"
 )
+
+func builtinSchemas(t *testing.T) map[string]entityschema.Schema {
+	t.Helper()
+	s, err := entityschema.Load("")
+	if err != nil {
+		t.Fatalf("loading built-in schemas: %v", err)
+	}
+	return s
+}
 
 const (
 	ulidA = "01HAAAAAAAAAAAAAAAAAAAAAAA"
@@ -344,13 +354,13 @@ func TestCheckEmptyRankIsSchemaError(t *testing.T) {
 	t.Fatalf("expected a schema error for an empty rank, got %+v", findings)
 }
 
-func TestNonEpicParentSkipsMissingParent(t *testing.T) {
+func TestRefTypeSkipsMissingParent(t *testing.T) {
 	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
 	child.Epic = strp(ulidC)
 	items := []*datamodel.Item{child}
-	if f := doctor.NonEpicParents(items, resolver(items...)); len(f) != 0 {
-		t.Fatalf("a missing/unresolved parent must not raise an epic-kind finding, got %+v", f)
+	if f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...)); len(f) != 0 {
+		t.Fatalf("a missing/unresolved parent must not raise a ref-type finding, got %+v", f)
 	}
 }
 
@@ -417,27 +427,51 @@ func TestEpicChainAcyclic(t *testing.T) {
 	}
 }
 
-func TestNonEpicParentDetected(t *testing.T) {
+func TestRefTypeEpicParentDetected(t *testing.T) {
 	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
 	parent := valid(ulidB, "KIRA-2")
 	child.Epic = strp(ulidB)
 	items := []*datamodel.Item{child, parent}
-	f := doctor.NonEpicParents(items, resolver(items...))
-	if len(f) != 1 || f[0].Class != doctor.ClassEpicKind || f[0].ItemID != ulidA {
-		t.Fatalf("expected one epic-kind finding on the child, got %+v", f)
+	f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...))
+	if len(f) != 1 || f[0].Class != doctor.ClassRefType || f[0].ItemID != ulidA || f[0].Field != datamodel.KeyEpic {
+		t.Fatalf("expected one ref-type finding on the child's epic, got %+v", f)
 	}
 }
 
-func TestEpicParentAccepted(t *testing.T) {
+func TestRefTypeEpicParentAccepted(t *testing.T) {
 	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
 	parent := valid(ulidB, "KIRA-2")
 	parent.Type = datamodel.TypeEpic
 	child.Epic = strp(ulidB)
 	items := []*datamodel.Item{child, parent}
-	if f := doctor.NonEpicParents(items, resolver(items...)); len(f) != 0 {
+	if f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...)); len(f) != 0 {
 		t.Fatalf("an epic parent must be accepted, got %+v", f)
+	}
+}
+
+func TestRefTypeBlockedByMismatch(t *testing.T) {
+	t.Parallel()
+	child := valid(ulidA, "KIRA-1")
+	blocker := valid(ulidB, "KIRA-2")
+	blocker.Type = datamodel.TypeEpic
+	child.BlockedBy = []string{ulidB}
+	items := []*datamodel.Item{child, blocker}
+	f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...))
+	if len(f) != 1 || f[0].Class != doctor.ClassRefType || f[0].Field != datamodel.KeyBlockedBy {
+		t.Fatalf("expected one ref-type finding on blocked_by, got %+v", f)
+	}
+}
+
+func TestRefTypeBlockedByAccepted(t *testing.T) {
+	t.Parallel()
+	child := valid(ulidA, "KIRA-1")
+	blocker := valid(ulidB, "KIRA-2")
+	child.BlockedBy = []string{ulidB}
+	items := []*datamodel.Item{child, blocker}
+	if f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...)); len(f) != 0 {
+		t.Fatalf("a ticket blocked by a ticket must be accepted, got %+v", f)
 	}
 }
 

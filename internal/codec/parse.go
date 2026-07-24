@@ -64,12 +64,25 @@ func Parse(content string) (*datamodel.Item, error) {
 	it.Created = reqTimestamp(nodes, datamodel.KeyCreated, add)
 	it.Updated = reqTimestamp(nodes, datamodel.KeyUpdated, add)
 
-	for k := range nodes {
-		if !datamodel.IsFrontmatterKey(k) {
-			it.UnknownKeys = append(it.UnknownKeys, k)
+	for k, n := range nodes {
+		if datamodel.IsFrontmatterKey(k) {
+			continue
+		}
+		switch n.Kind {
+		case yaml.ScalarNode:
+			if it.ExtraScalars == nil {
+				it.ExtraScalars = map[string]string{}
+			}
+			it.ExtraScalars[k] = renderExtraScalar(n)
+		case yaml.SequenceNode:
+			if it.ExtraLists == nil {
+				it.ExtraLists = map[string][]string{}
+			}
+			it.ExtraLists[k] = scalarSeq(n, fmt.Sprintf("field %q", k), add)
+		default:
+			add("field %q: unsupported extra field shape, expected a scalar or list", k)
 		}
 	}
-	slices.Sort(it.UnknownKeys)
 
 	if len(errs) > 0 {
 		return it, &datamodel.ParseError{Errs: errs}
@@ -144,6 +157,29 @@ func frontmatterNodes(doc *yaml.Node) (nodes map[string]*yaml.Node, duplicates [
 }
 
 func isNull(n *yaml.Node) bool { return n.Kind == yaml.ScalarNode && n.Tag == "!!null" }
+
+// renderExtraScalar computes the faithful single-line YAML rendering of an
+// extra scalar node, to be emitted verbatim (never re-decoded through
+// EmitScalar, which would treat every value as a string and quote it).
+func renderExtraScalar(n *yaml.Node) string {
+	var s string
+	switch n.Tag {
+	case "!!null":
+		if n.Value == "" {
+			s = "null"
+		} else {
+			s = n.Value
+		}
+	case "!!bool", "!!int", "!!float", "!!timestamp":
+		s = n.Value
+	default:
+		s = EmitScalar(n.Value)
+	}
+	if strings.ContainsRune(s, '\n') {
+		s = EmitScalar(n.Value)
+	}
+	return s
+}
 
 type addFunc func(format string, args ...any)
 

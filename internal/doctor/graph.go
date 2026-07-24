@@ -1,9 +1,11 @@
 package doctor
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
@@ -65,28 +67,48 @@ func RefCycles(items []*datamodel.Item, resolver *id.Resolver) []Finding {
 	return out
 }
 
-func NonEpicParents(items []*datamodel.Item, resolver *id.Resolver) []Finding {
+func RefTypeMismatches(schemas map[string]entityschema.Schema, items []*datamodel.Item, resolver *id.Resolver) []Finding {
 	byID := itemsByID(items)
 	var out []Finding
 	for _, it := range items {
-		if it.ID == "" || it.Epic == nil || *it.Epic == "" {
+		if it.ID == "" {
 			continue
 		}
-		target := resolveRef(*it.Epic, resolver)
-		parent := byID[target]
-		if parent == nil || parent.Type == datamodel.TypeEpic {
+		schema, ok := schemas[it.Type]
+		if !ok {
 			continue
 		}
-		out = append(out, Finding{
-			Class:    ClassEpicKind,
-			Severity: SeverityError,
-			ItemID:   it.ID,
-			Number:   it.Number,
-			Field:    datamodel.KeyEpic,
-			Message:  "epic points at " + numberOf(target, byID) + ", which is not an epic",
-		})
+		values := entityschema.ProjectItem(schema, it)
+		for _, f := range schema.Fields {
+			if !f.TargetsEntity(schemas) {
+				continue
+			}
+			for _, ref := range refStrings(values[f.Name]) {
+				target := resolveRef(ref, resolver)
+				if parent := byID[target]; parent != nil && parent.Type != f.Target {
+					out = append(out, Finding{
+						Class:    ClassRefType,
+						Severity: SeverityError,
+						ItemID:   it.ID,
+						Number:   it.Number,
+						Field:    f.Name,
+						Message:  fmt.Sprintf("%s points at %s of type %s, expected %s", f.Name, numberOf(target, byID), parent.Type, f.Target),
+					})
+				}
+			}
+		}
 	}
 	return out
+}
+
+func refStrings(v any) []string {
+	switch t := v.(type) {
+	case string:
+		return []string{t}
+	case []string:
+		return t
+	}
+	return nil
 }
 
 func itemsByID(items []*datamodel.Item) map[string]*datamodel.Item {

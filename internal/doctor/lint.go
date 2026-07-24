@@ -28,7 +28,8 @@ func Lint(content string) (it *datamodel.Item, parsed bool, findings []Finding) 
 }
 
 func unknownFindings(it *datamodel.Item) []Finding {
-	out := make([]Finding, 0, len(it.UnknownKeys)+len(it.UnknownLinkTypes))
+	extraKeys := it.ExtraKeys()
+	out := make([]Finding, 0, len(extraKeys)+len(it.UnknownLinkTypes))
 	add := func(field, kind string) {
 		out = append(out, Finding{
 			Class:    ClassSchema,
@@ -37,7 +38,7 @@ func unknownFindings(it *datamodel.Item) []Finding {
 			Message:  "unknown " + kind + " " + strconv.Quote(field),
 		})
 	}
-	for _, k := range it.UnknownKeys {
+	for _, k := range extraKeys {
 		add(k, "top-level field")
 	}
 	for _, t := range it.UnknownLinkTypes {

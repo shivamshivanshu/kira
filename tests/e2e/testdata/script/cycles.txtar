@@ -28,7 +28,7 @@ cp cyca.md .kira/tickets/01HAAAAAAAAAAAAAAAAAAAAAAA.md
 cp cycb.md .kira/tickets/01HBBBBBBBBBBBBBBBBBBBBBBB.md
 ! exec kira doctor
 stdout 'ref-cycle'
-stdout 'epic-kind'
+stdout 'ref-type'
 
 -- cyca.md --
 ---

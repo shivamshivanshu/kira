@@ -37,6 +37,7 @@ func Serialize(it *datamodel.Item) string {
 	writeOptFloat(&b, datamodel.KeyEstimate, it.Estimate)
 	writeLine(&b, datamodel.KeyCreated, emitTimestamp(it.Created))
 	writeLine(&b, datamodel.KeyUpdated, emitTimestamp(it.Updated))
+	writeExtras(&b, it)
 
 	b.WriteString(FenceLine)
 	b.WriteString(it.Body)
@@ -67,6 +68,16 @@ func writeReqNullableScalar(b *strings.Builder, key string, v *string) {
 func writeOptFloat(b *strings.Builder, key string, v *float64) {
 	if v != nil {
 		writeLine(b, key, EmitFloat(*v))
+	}
+}
+
+func writeExtras(b *strings.Builder, it *datamodel.Item) {
+	for _, k := range it.ExtraKeys() {
+		if v, ok := it.ExtraScalars[k]; ok {
+			writeLine(b, k, v)
+			continue
+		}
+		writeLine(b, k, EmitList(it.ExtraLists[k]))
 	}
 }
 

@@ -12,15 +12,17 @@ import (
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
-const unknownKeyLine = "future_field: fromNewerKira\n"
+const (
+	unknownKeyLine  = "future_field: fromNewerKira\n"
+	unknownLinkFrag = "links:\n  future_rel: [01J8XB3K9P0Q2R4S6T8V0W1X2Y]\n"
+)
 
 func withUnknownKey(content string) string {
 	return strings.Replace(content, "---\n", "---\n"+unknownKeyLine, 1)
 }
 
 func withUnknownLink(content string) string {
-	return strings.Replace(content, "blocked_by: []\n",
-		"blocked_by: []\nlinks:\n  future_rel: [01J8XB3K9P0Q2R4S6T8V0W1X2Y]\n", 1)
+	return strings.Replace(content, "blocked_by: []\n", "blocked_by: []\n"+unknownLinkFrag, 1)
 }
 
 func overwriteItem(t *testing.T, s *core.Store, ulid, content string) {
@@ -68,11 +70,11 @@ func TestReadsSucceedWithUnknowns(t *testing.T) {
 	}
 }
 
-func TestWriteVerbsRefuseOnUnknown(t *testing.T) {
+func TestWriteVerbsRefuseOnUnknownLink(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "Has future fields")
-	overwriteItem(t, s, res.ID, withUnknownKey(mustReadItem(t, s, res.ID)))
+	res := mustCreate(t, s, cfg, "Has a future link type")
+	overwriteItem(t, s, res.ID, withUnknownLink(mustReadItem(t, s, res.ID)))
 
 	verbs := map[string]func() error{
 		"edit-field": func() error {
@@ -102,8 +104,27 @@ func TestWriteVerbsRefuseOnUnknown(t *testing.T) {
 		})
 	}
 
-	if got := mustReadItem(t, s, res.ID); !strings.Contains(got, unknownKeyLine) {
+	if got := mustReadItem(t, s, res.ID); !strings.Contains(got, unknownLinkFrag) {
 		t.Fatalf("a refused write mutated the file:\n%s", got)
+	}
+}
+
+func TestEditSucceedsAndPreservesExtraScalar(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "Has an extra field")
+	overwriteItem(t, s, res.ID, withUnknownKey(mustReadItem(t, s, res.ID)))
+
+	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{Fields: []core.FieldEdit{{Key: "state", Value: "IN_PROGRESS"}}})
+	if err != nil {
+		t.Fatalf("edit on an item with an extra frontmatter field must succeed: %v", err)
+	}
+	got := mustReadItem(t, s, res.ID)
+	if !strings.Contains(got, "future_field: fromNewerKira") {
+		t.Fatalf("edit dropped the extra frontmatter field:\n%s", got)
+	}
+	if !strings.Contains(got, "state: IN_PROGRESS") {
+		t.Fatalf("edit did not apply:\n%s", got)
 	}
 }
 
@@ -140,24 +161,24 @@ func TestWriteVerbsRefuseOnCRLF(t *testing.T) {
 func TestEditorModeRefusesBeforeReserializingOriginal(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "Has future fields")
-	overwriteItem(t, s, res.ID, withUnknownKey(mustReadItem(t, s, res.ID)))
+	res := mustCreate(t, s, cfg, "Has a future link type")
+	overwriteItem(t, s, res.ID, withUnknownLink(mustReadItem(t, s, res.ID)))
 
 	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{})
 	assertUpgradeRefusal(t, err)
 
-	if got := mustReadItem(t, s, res.ID); !strings.Contains(got, unknownKeyLine) {
-		t.Fatalf("editor-mode edit reserialized and dropped the unknown key:\n%s", got)
+	if got := mustReadItem(t, s, res.ID); !strings.Contains(got, unknownLinkFrag) {
+		t.Fatalf("editor-mode edit reserialized and dropped the unknown link type:\n%s", got)
 	}
 }
 
 func TestEditFullEditorRefusesBeforeDroppingUnknowns(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "Has future fields")
-	overwriteItem(t, s, res.ID, withUnknownKey(mustReadItem(t, s, res.ID)))
+	res := mustCreate(t, s, cfg, "Has a future link type")
+	overwriteItem(t, s, res.ID, withUnknownLink(mustReadItem(t, s, res.ID)))
 
-	clean := strings.Replace(mustReadItem(t, s, res.ID), unknownKeyLine, "", 1)
+	clean := strings.Replace(mustReadItem(t, s, res.ID), unknownLinkFrag, "", 1)
 	src := writeTempItem(t, strings.Replace(clean, "state: TODO", "state: IN_PROGRESS", 1))
 	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{FromFile: src})
 	assertUpgradeRefusal(t, err)
@@ -193,8 +214,8 @@ func TestReconcileRefusesOnUnknown(t *testing.T) {
 	two := mustCreate(t, s, cfg, "two")
 
 	collide := strings.Replace(mustReadItem(t, s, two.ID), "number: KIRA-2", "number: KIRA-1", 1)
-	overwriteItem(t, s, two.ID, withUnknownKey(collide))
-	overwriteItem(t, s, one.ID, withUnknownKey(mustReadItem(t, s, one.ID)))
+	overwriteItem(t, s, two.ID, withUnknownLink(collide))
+	overwriteItem(t, s, one.ID, withUnknownLink(mustReadItem(t, s, one.ID)))
 
 	_, err := s.Reconcile(cfg)
 	assertUpgradeRefusal(t, err)
@@ -207,13 +228,13 @@ func TestMergeFileRefusesOnUnknown(t *testing.T) {
 	clean := mustReadItem(t, s, res.ID)
 
 	base := writeTempItem(t, clean)
-	ours := writeTempItem(t, withUnknownKey(clean))
+	ours := writeTempItem(t, withUnknownLink(clean))
 	theirs := writeTempItem(t, clean)
 
 	_, err := core.MergeFile(gitx.Repo{Dir: s.Root()}, base, ours, theirs)
 	assertUpgradeRefusal(t, err)
 
-	if got, _ := os.ReadFile(ours); !strings.Contains(string(got), "future_field") {
+	if got, _ := os.ReadFile(ours); !strings.Contains(string(got), "future_rel") {
 		t.Fatalf("refused merge overwrote ours, dropping unknown:\n%s", got)
 	}
 }
@@ -231,7 +252,7 @@ func TestResolveRefusesOnUnknown(t *testing.T) {
 	}
 	base := mustReadItem(t, s, res.ID)
 	variant := func(priority string) string {
-		return withUnknownKey(strings.Replace(base, "blocked_by: []\n", "blocked_by: []\npriority: "+priority+"\n", 1))
+		return withUnknownLink(strings.Replace(base, "blocked_by: []\n", "blocked_by: []\npriority: "+priority+"\n", 1))
 	}
 
 	git("checkout", "-b", "other")

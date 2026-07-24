@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/storage"
@@ -59,8 +60,9 @@ func Run(cfg *datamodel.Config, files []File, strays []string, env Env) *Report 
 	}
 	findings = append(findings, stampByID(Collisions(items), pathByID)...)
 	findings = append(findings, stampByID(SequentialOutliers(items), pathByID)...)
+	schemas, _ := entityschema.Load("")
 	findings = append(findings, stampByID(EpicCycles(items, resolver), pathByID)...)
-	findings = append(findings, stampByID(NonEpicParents(items, resolver), pathByID)...)
+	findings = append(findings, stampByID(RefTypeMismatches(schemas, items, resolver), pathByID)...)
 	findings = append(findings, stampByID(RefCycles(items, resolver), pathByID)...)
 	findings = append(findings, strayFindings(strays)...)
 	findings = append(findings, envFindings(env)...)

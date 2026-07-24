@@ -1,6 +1,6 @@
 # CORE-3 — Extensible entity schema
 
-Status: design approved (brainstorm 2026-07-23). Phase 1 in progress.
+Status: design approved (brainstorm 2026-07-23). Phases 1-2 done; Phase 3 next.
 
 ## Problem
 
@@ -170,12 +170,22 @@ faithfully reproduces hardcoded behavior.
   no change to existing init output otherwise). **No changes to `Item`, codec,
   core mutations, cli commands other than init wiring, or tui.** De-risks the
   type system; nothing in the hot path.
-- **Phase 2** — strong `ref` integrity (ULID-bound) + `doctor` dangling/wrong-type
-  check + completion sourced from schema.
+- **Phase 2 (done) — schema-driven ref-type integrity.** `doctor` now checks a
+  ref field's *target type* against the schema (`RefTypeMismatches`, class
+  `ref-type`), generalizing the hardcoded epic-parent check (`NonEpicParents`,
+  removed) to every item-target ref field — catching e.g. `blocked_by` pointing
+  at the wrong kind. Dangling/self-ref/cycle checks already existed and are
+  unchanged. Read-only; drives off the embedded built-in schemas (user
+  `.kira/schema` overrides for ref targets deferred to Phase 4, when custom
+  item types make doctor load user schemas anyway). Completion-sourced-from-schema
+  moved to Phase 4/5 (see the CLI section); write-path `Validate` wiring is Phase 3.
 - **Phase 3** — typed *extra* fields on ticket/epic: codec round-trips typed
   frontmatter (replacing untyped `UnknownKeys` for schema-declared keys);
   create/edit/validate honor them.
 - **Phase 4** — user-defined *new* item entity types: generic create/edit/list/show.
+  Also fold the hardcoded dangling-ref pass (`refFindings`) into the schema-driven
+  ref check, so new custom ref fields get both dangling and type checks; today
+  `refFindings` only knows `epic`/`blocked_by`/`links`.
 - **Phase 5** — representation-driven rendering (list columns, show layout, icons)
   from schema.
 - **Phase 6 (maybe never)** — replace `Item` struct with a schema-driven value.
