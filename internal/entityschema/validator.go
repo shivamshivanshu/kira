@@ -115,11 +115,9 @@ func checkType(f FieldDef, v any, add addFunc) bool {
 	case FieldBool:
 		_, ok = v.(bool)
 	case FieldDate:
-		s, isStr := v.(string)
-		ok = isStr && datamodel.ValidDate(s)
+		ok = isValidDate(v)
 	case FieldDatetime:
-		s, isStr := v.(string)
-		ok = isStr && validDatetime(s)
+		ok = isValidDatetime(v)
 	}
 	if !ok {
 		add(f.Name, CodeType, "expected type %s, got %T", f.Type, v)
@@ -190,4 +188,24 @@ func isWholeNumber(v any) bool {
 func validDatetime(s string) bool {
 	_, err := time.Parse(time.RFC3339, s)
 	return err == nil
+}
+
+func isValidDate(v any) bool {
+	switch t := v.(type) {
+	case string:
+		return datamodel.ValidDate(t)
+	case time.Time:
+		return true
+	}
+	return false
+}
+
+func isValidDatetime(v any) bool {
+	switch t := v.(type) {
+	case string:
+		return validDatetime(t)
+	case time.Time:
+		return true
+	}
+	return false
 }

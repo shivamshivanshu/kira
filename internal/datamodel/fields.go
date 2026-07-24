@@ -147,7 +147,7 @@ func linksField() FieldDescriptor {
 			}
 			return strings.Join(parts, " ")
 		},
-		Copy: func(dst, src *Item) { dst.Links = CloneLinks(src.Links) },
+		Copy: func(dst, src *Item) { dst.Links = CloneStringListMap(src.Links) },
 	}
 }
 

@@ -232,8 +232,8 @@ func cloneItem(src *datamodel.Item) *datamodel.Item {
 	dst.Aliases = slices.Clone(src.Aliases)
 	dst.Labels = slices.Clone(src.Labels)
 	dst.BlockedBy = slices.Clone(src.BlockedBy)
-	dst.Links = datamodel.CloneLinks(src.Links)
+	dst.Links = datamodel.CloneStringListMap(src.Links)
 	dst.ExtraScalars = maps.Clone(src.ExtraScalars)
-	dst.ExtraLists = datamodel.CloneLinks(src.ExtraLists)
+	dst.ExtraLists = datamodel.CloneStringListMap(src.ExtraLists)
 	return &dst
 }
