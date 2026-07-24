@@ -39,7 +39,7 @@ func changedExtraKeys(a, b *datamodel.Item) []string {
 }
 
 func fieldEditableViaFlag(f entityschema.FieldDef) bool {
-	return !f.System && !f.Immutable && !f.Guarded && f.Placement != entityschema.PlacementBody
+	return !f.System && !f.Immutable && !f.Guarded
 }
 
 func setSchemaExtra(it *datamodel.Item, f entityschema.FieldDef, value string) error {

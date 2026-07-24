@@ -214,11 +214,15 @@ func applyFieldEdit(it *datamodel.Item, key, value string, schema entityschema.S
 		return d.Set(it, value)
 	}
 	f, ok := schema.Field(key)
-	if ok && f.Placement == entityschema.PlacementBody {
-		return errx.User("--field: %q is a body-section field, not yet editable via --field", key)
-	}
 	if !ok || !fieldEditableViaFlag(f) {
 		return errx.User("--field: unknown or immutable field %q", key).WithHint("%s", fieldHint(key, schema))
+	}
+	if f.Placement == entityschema.PlacementBody {
+		if datamodel.ContainsSectionHeading(value) {
+			return errx.User("--field %q: a body-section value cannot contain a \"## \" heading line", key)
+		}
+		it.Body = datamodel.UpsertBodySection(it.Body, f.Section, value)
+		return nil
 	}
 	return setSchemaExtra(it, f, value)
 }

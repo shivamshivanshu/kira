@@ -126,3 +126,28 @@ func TestCreateHereBlockingHalfFailure(t *testing.T) {
 		t.Errorf("created ticket %s must exist despite the link failure", res.Number)
 	}
 }
+
+func TestCreateFieldSetsBodySection(t *testing.T) {
+	dir := testutil.InitGitRepo(t)
+	s := newStore(dir)
+	if err := os.MkdirAll(filepath.Join(dir, ".kira", "tickets"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Default()
+
+	res, err := s.Create(cfg, CreateOpts{
+		Type: datamodel.TypeTicket, Title: "T", NoEdit: true,
+		Fields: []FieldEdit{{Key: "description", Value: "created via --field"}},
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	it, _, _, err := s.resolveRef(cfg, res.ID)
+	if err != nil {
+		t.Fatalf("resolveRef: %v", err)
+	}
+	if got := datamodel.BodySections(it.Body)["Description"]; got != "created via --field" {
+		t.Errorf("Description section = %q, want %q", got, "created via --field")
+	}
+}

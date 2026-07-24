@@ -2,7 +2,6 @@ package entityschema
 
 import (
 	"slices"
-	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
@@ -30,7 +29,7 @@ func ProjectItem(schema Schema, it *datamodel.Item) map[string]any {
 	setIfPresent(values, "due", it.Due)
 	setIfPresent(values, "estimate", it.Estimate)
 
-	sections := bodySections(it.Body)
+	sections := datamodel.BodySections(it.Body)
 	for _, f := range schema.Fields {
 		if f.Placement == PlacementBody && f.Section != "" {
 			values[f.Name] = sections[f.Section]
@@ -43,24 +42,6 @@ func setIfPresent[T any](values map[string]any, name string, v *T) {
 	if v != nil {
 		values[name] = *v
 	}
-}
-
-func bodySections(body string) map[string]string {
-	sections := make(map[string]string)
-	current := ""
-	for _, line := range strings.Split(body, "\n") {
-		if title, ok := strings.CutPrefix(line, "## "); ok {
-			current = title
-			continue
-		}
-		if current != "" {
-			sections[current] += line + "\n"
-		}
-	}
-	for title, content := range sections {
-		sections[title] = strings.TrimSpace(content)
-	}
-	return sections
 }
 
 // ConfigVocab surfaces each config-driven vocabulary's known values (the system

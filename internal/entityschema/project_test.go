@@ -26,6 +26,26 @@ func TestProjectItemReadsMarkdownFromItsDeclaredSection(t *testing.T) {
 	}
 }
 
+func TestRequiredBodyFieldValidatesPresentAndErrorsAbsent(t *testing.T) {
+	schema := Schema{
+		Name: "ticket",
+		Fields: []FieldDef{
+			{Name: "notes", Type: FieldMarkdown, Required: true, Placement: PlacementBody, Section: "Notes"},
+		},
+	}
+
+	present := &datamodel.Item{Body: "## Notes\nsome prose\n"}
+	if violations := Validate(schema, ProjectItem(schema, present), nil, nil); len(violations) != 0 {
+		t.Fatalf("a present required body field must validate, got %v", violations)
+	}
+
+	absent := &datamodel.Item{Body: ""}
+	violations := Validate(schema, ProjectItem(schema, absent), nil, nil)
+	if len(violations) != 1 || violations[0].Field != "notes" || violations[0].Code != CodeRequired {
+		t.Fatalf("an absent required body field must error required, got %v", violations)
+	}
+}
+
 func TestProjectItemOmitsUnsetOptionalScalars(t *testing.T) {
 	it := &datamodel.Item{Title: "x"}
 
