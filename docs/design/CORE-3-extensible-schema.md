@@ -179,9 +179,19 @@ faithfully reproduces hardcoded behavior.
   `.kira/schema` overrides for ref targets deferred to Phase 4, when custom
   item types make doctor load user schemas anyway). Completion-sourced-from-schema
   moved to Phase 4/5 (see the CLI section); write-path `Validate` wiring is Phase 3.
-- **Phase 3** — typed *extra* fields on ticket/epic: codec round-trips typed
-  frontmatter (replacing untyped `UnknownKeys` for schema-declared keys);
-  create/edit/validate honor them.
+- **Phase 3** — typed *extra* fields on ticket/epic. Split into two PRs:
+  - **3a (done)** — lossless, schema-agnostic round-trip of extra frontmatter.
+    `UnknownKeys` (names only, values dropped) replaced by `Item.ExtraScalars`/
+    `ExtraLists`; codec parses+serializes them faithfully (scalar rendering
+    preserves null/int/bool/quoting byte-identically); `merge.mergeExtras`
+    keeps the two maps disjoint by construction; `guardWritable` no longer
+    hard-blocks on extras (round-trip is now lossless — still blocks on
+    `UnknownLinkTypes`, which stay lossy: see TODO.md).
+  - **3b** — schema-driven validation + typed editing of declared extras:
+    `RefResolver` adapter; REPLACE `validateItem` per-field checks with
+    `entityschema.Validate` (keep graph/resolution passes); `ProjectItem`
+    surfaces frontmatter extras; body-section read+write via one shared util;
+    `edit`/`create --field` for declared extras; lint/guard schema-aware.
 - **Phase 4** — user-defined *new* item entity types: generic create/edit/list/show.
   Also fold the hardcoded dangling-ref pass (`refFindings`) into the schema-driven
   ref check, so new custom ref fields get both dangling and type checks; today
