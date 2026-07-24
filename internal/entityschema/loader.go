@@ -144,6 +144,9 @@ func checkSchemaShape(s Schema) error {
 		if f.List && !stringRepresented(f.Type) {
 			return fmt.Errorf("schema %q: field %q: list is only supported for string-valued types, not %q", s.Name, f.Name, f.Type)
 		}
+		if f.Placement == PlacementBody && f.Section == "" {
+			return fmt.Errorf("schema %q: field %q: body placement requires \"section\"", s.Name, f.Name)
+		}
 		switch f.Type {
 		case FieldEnum, FieldResolution:
 			if f.Enum == "" {

@@ -64,7 +64,7 @@ func hasClass(findings []doctor.Finding, class doctor.Class) bool {
 
 func TestLintMalformedFrontmatter(t *testing.T) {
 	t.Parallel()
-	it, parsed, findings := doctor.Lint("no fence here\n")
+	it, parsed, findings := doctor.Lint("no fence here\n", builtinSchemas(t))
 	if parsed {
 		t.Fatal("expected parsed=false for content without a frontmatter fence")
 	}
@@ -81,7 +81,7 @@ func TestLintUnknownFieldWarns(t *testing.T) {
 	content := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
 		"state: TODO\nlabels: []\nblocked_by: []\nepic: null\nbogus_key: 1\n" +
 		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n## Description\n"
-	_, parsed, findings := doctor.Lint(content)
+	_, parsed, findings := doctor.Lint(content, builtinSchemas(t))
 	if !parsed {
 		t.Fatalf("expected a well-formed item to parse, got findings %+v", findings)
 	}
@@ -93,12 +93,46 @@ func TestLintUnknownFieldWarns(t *testing.T) {
 	t.Fatalf("expected an unknown-field warning for bogus_key, got %+v", findings)
 }
 
+func TestLintDeclaredExtraDoesNotWarn(t *testing.T) {
+	t.Parallel()
+	schemas := builtinSchemas(t)
+	ticket := schemas[datamodel.TypeTicket]
+	ticket.Fields = append(ticket.Fields, entityschema.FieldDef{Name: "severity", Type: entityschema.FieldString})
+	schemas[datamodel.TypeTicket] = ticket
+
+	content := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
+		"state: TODO\nlabels: []\nblocked_by: []\nepic: null\nseverity: high\nbogus_key: 1\n" +
+		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n## Description\n"
+	_, parsed, findings := doctor.Lint(content, schemas)
+	if !parsed {
+		t.Fatalf("expected a well-formed item to parse, got findings %+v", findings)
+	}
+	var sawSeverity, sawBogus bool
+	for _, f := range findings {
+		if f.Class != doctor.ClassSchema {
+			continue
+		}
+		switch f.Field {
+		case "severity":
+			sawSeverity = true
+		case "bogus_key":
+			sawBogus = true
+		}
+	}
+	if sawSeverity {
+		t.Errorf("a schema-declared extra must not warn, got %+v", findings)
+	}
+	if !sawBogus {
+		t.Errorf("a truly undeclared extra must still warn, got %+v", findings)
+	}
+}
+
 func TestLintSurfacesDuplicateKeys(t *testing.T) {
 	t.Parallel()
 	content := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
 		"state: TODO\nstate: DONE\nlabels: []\nblocked_by: []\nepic: null\n" +
 		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n## Description\n"
-	_, parsed, findings := doctor.Lint(content)
+	_, parsed, findings := doctor.Lint(content, builtinSchemas(t))
 	if parsed {
 		t.Fatal("duplicate keys must fail parsing")
 	}
@@ -113,9 +147,9 @@ func TestLintSurfacesDuplicateKeys(t *testing.T) {
 func TestLintMalformedComment(t *testing.T) {
 	t.Parallel()
 	body := "## Comments\n<!-- kira:comment id=X author=y ts=bogus -->\nunterminated body\n"
-	_, _, findings := doctor.Lint("---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\n" +
-		"title: t\nstate: TODO\nlabels: []\nblocked_by: []\nepic: null\n" +
-		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n" + body)
+	_, _, findings := doctor.Lint("---\nid: "+ulidA+"\nnumber: KIRA-1\naliases: []\ntype: ticket\n"+
+		"title: t\nstate: TODO\nlabels: []\nblocked_by: []\nepic: null\n"+
+		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n"+body, builtinSchemas(t))
 	var commentFindings int
 	for _, f := range findings {
 		if f.Class == doctor.ClassComment {
@@ -373,7 +407,7 @@ func TestEnvOptionalBinsAndHookFindings(t *testing.T) {
 		TrackedHooks:        []string{"post-merge", "pre-commit"},
 		InstalledHooks:      []string{"post-merge"},
 	}
-	report := doctor.Run(config.Default(), nil, nil, env)
+	report := doctor.Run(config.Default(), nil, nil, env, builtinSchemas(t))
 	var optionalBin, missingHook, mergeDriver, ticketAttr bool
 	for _, f := range report.Findings {
 		switch {
@@ -519,7 +553,7 @@ func TestRunAggregatesAndFlagsIdentity(t *testing.T) {
 		{Path: ulidB + ".md", Content: mismatch},
 		{Path: ulidC + ".md", Content: "garbage without a fence\n"},
 	}
-	report := doctor.Run(config.Default(), files, nil, doctor.Env{GitInstalled: true})
+	report := doctor.Run(config.Default(), files, nil, doctor.Env{GitInstalled: true}, builtinSchemas(t))
 	if report.OK {
 		t.Fatal("expected OK=false with a malformed file and an id mismatch present")
 	}
@@ -545,7 +579,7 @@ func TestRunAggregatesAndFlagsIdentity(t *testing.T) {
 
 func TestRunReportsStrayFiles(t *testing.T) {
 	t.Parallel()
-	report := doctor.Run(config.Default(), nil, []string{"README.md"}, doctor.Env{GitInstalled: true})
+	report := doctor.Run(config.Default(), nil, []string{"README.md"}, doctor.Env{GitInstalled: true}, builtinSchemas(t))
 	if report.OK {
 		t.Fatal("expected OK=false with a stray file present")
 	}
@@ -563,7 +597,7 @@ func TestRunReportsStrayFiles(t *testing.T) {
 func TestRunFreshnessSeam(t *testing.T) {
 	t.Parallel()
 	env := doctor.Env{GitInstalled: true, InsideWorkTree: true}
-	report := doctor.Run(config.Default(), nil, nil, env)
+	report := doctor.Run(config.Default(), nil, nil, env, builtinSchemas(t))
 	if !report.OK {
 		t.Fatalf("empty repo should be OK, got %+v", report)
 	}
@@ -573,7 +607,7 @@ func TestRunFreshnessSeam(t *testing.T) {
 
 	fresh := env
 	fresh.Freshness = &doctor.Freshness{Built: true, Fresh: false, Reason: "head-advanced"}
-	stale := doctor.Run(config.Default(), nil, nil, fresh)
+	stale := doctor.Run(config.Default(), nil, nil, fresh, builtinSchemas(t))
 	for _, f := range stale.Findings {
 		if f.Class == doctor.ClassFreshness && f.Severity == doctor.SeverityWarning {
 			return
@@ -618,7 +652,7 @@ func TestValidateScopesToTargets(t *testing.T) {
 		"\nnumber: KIRA-2\naliases: []\ntype: ticket\ntitle: t\nstate: WAT\nlabels: []\n" +
 		"blocked_by: []\nepic: null\ncreated: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n"}
 
-	report := doctor.Validate(config.Default(), []doctor.File{store}, []doctor.File{badTarget})
+	report := doctor.Validate(config.Default(), []doctor.File{store}, []doctor.File{badTarget}, builtinSchemas(t))
 	if report.OK {
 		t.Fatal("expected the bad target state to fail validation")
 	}

@@ -36,10 +36,6 @@ func (pl People) Names() []string {
 	return out
 }
 
-func (pl People) Vocab() Vocab {
-	return Vocab{Known: pl.Names(), Strict: pl.Strict}
-}
-
 func (pl People) Canonical(identities ...string) (string, bool) {
 	for _, id := range identities {
 		if id == "" {

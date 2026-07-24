@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/query"
@@ -143,7 +144,9 @@ func applyTransitionEffects(cfg *datamodel.Config, it *datamodel.Item, tr *datam
 		if edited[f] || (f == datamodel.KeyResolution && opts.Resolution != "") {
 			continue
 		}
-		if err := applyFieldEdit(it, f, tr.Set[f]); err != nil {
+		// config validation restricts transition Set keys to datamodel.MutableFields,
+		// so the schema-extras fallback in applyFieldEdit is unreachable here.
+		if err := applyFieldEdit(it, f, tr.Set[f], entityschema.Schema{}); err != nil {
 			return []error{err}, nil
 		}
 	}

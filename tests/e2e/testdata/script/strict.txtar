@@ -14,7 +14,7 @@ exec git commit -m 'strict config'
 
 # an unknown label is rejected under labels.strict
 ! exec kira create ticket --title 'X' --label nope --no-edit
-stderr 'not in the known label'
+stderr 'not in the "label" vocabulary'
 
 # --force bypasses the strict rejection; the write still happens and commits
 exec kira create ticket --title 'X' --label nope --no-edit --force

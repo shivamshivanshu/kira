@@ -181,6 +181,28 @@ func renderExtraScalar(n *yaml.Node) string {
 	return s
 }
 
+// DecodeExtraScalar recovers the Go value (int/bool/float64/string/nil) a
+// faithfully-rendered extra scalar represents, for callers that need it typed
+// rather than as its raw on-disk text.
+func DecodeExtraScalar(s string) any {
+	var v any
+	if err := yaml.Unmarshal([]byte(s), &v); err != nil {
+		return s
+	}
+	return v
+}
+
+// EncodeExtraScalar renders a typed Go value to on-disk scalar form, quoting a
+// string only where needed so it isn't read back as another type (a date-shaped
+// string, or "5").
+func EncodeExtraScalar(v any) (string, error) {
+	var n yaml.Node
+	if err := n.Encode(v); err != nil {
+		return "", err
+	}
+	return renderExtraScalar(&n), nil
+}
+
 type addFunc func(format string, args ...any)
 
 const (

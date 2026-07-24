@@ -84,6 +84,10 @@ func (s *Store) ValidateStaged(cfg *datamodel.Config) error {
 	if err != nil {
 		return errx.User("%v", err)
 	}
+	schemas, err := s.schemas()
+	if err != nil {
+		return err
+	}
 	var problems []error
 	for _, p := range paths {
 		if storage.UnderTicketsDir(p) && !storage.IsItemPath(p) {
@@ -102,7 +106,7 @@ func (s *Store) ValidateStaged(cfg *datamodel.Config) error {
 			problems = append(problems, fmt.Errorf("%s: %v", p, err))
 			continue
 		}
-		errs, _ := validateItem(cfg, it, false)
+		errs, _ := newValidationCtx(cfg, nil, nil, schemas[it.Type], false).validateItem(it)
 		for _, e := range errs {
 			problems = append(problems, fmt.Errorf("%s: %v", p, e))
 		}

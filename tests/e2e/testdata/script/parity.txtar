@@ -30,7 +30,7 @@ stdout '"subtype": "story"'
 ! exec kira edit KIRA-1 --sprint 2099-S1
 stderr 'not a key in the configured sprints'
 exec kira edit KIRA-1 --subtype saga
-stderr 'not in the known subtype vocabulary'
+stderr 'not in the "subtype" vocabulary'
 
 # typed links: stored one-sided on the source, removed back to canonical form
 exec kira link KIRA-1 --relates KIRA-2

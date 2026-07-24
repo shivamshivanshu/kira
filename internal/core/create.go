@@ -31,6 +31,7 @@ type CreateOpts struct {
 	Sprint   string
 	Due      string
 	Estimate *float64
+	Fields   []FieldEdit
 	NoEdit   bool
 	FromFile string
 	Force    bool
@@ -143,10 +144,17 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 	if err != nil {
 		return nil, err
 	}
+	schemas, err := s.schemas()
+	if err != nil {
+		return nil, err
+	}
 
 	sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, wf.Initial)
 	finalItem := itemFromDraft(d, sys)
-	hard, warns := validateMutation(cfg, nil, finalItem, ld.resolver, ld.items, opts.Force)
+	if err := s.applyFieldEdits(cfg, finalItem, opts.Fields, schemas[finalItem.Type]); err != nil {
+		return nil, err
+	}
+	hard, warns := newValidationCtx(cfg, ld.items, ld.resolver, schemas[finalItem.Type], opts.Force).validateMutation(nil, finalItem)
 	if len(hard) > 0 {
 		return nil, errx.Invalid(invalidItemPrefix, hard)
 	}
@@ -209,8 +217,13 @@ func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, boardKey,
 		if err != nil {
 			return draft{}, err
 		}
+		schemas, err := s.schemas()
+		if err != nil {
+			return draft{}, err
+		}
 		sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, initialState)
-		content, err := runEditor(cfg.UI.Editor, editorx.Stdio{}, serializeDraft(base), validateBuffer(cfg, ld.resolver, opts.Force, func(c string) (*datamodel.Item, []error) {
+		vctx := newValidationCtx(cfg, ld.items, ld.resolver, schemas[opts.Type], opts.Force)
+		content, err := runEditor(cfg.UI.Editor, editorx.Stdio{}, serializeDraft(base), vctx.validateBuffer(func(c string) (*datamodel.Item, []error) {
 			d, perr := parseDraft(c)
 			if perr != nil {
 				return nil, []error{perr}

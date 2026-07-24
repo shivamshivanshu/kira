@@ -2,7 +2,6 @@ package entityschema
 
 import (
 	"slices"
-	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
@@ -30,7 +29,7 @@ func ProjectItem(schema Schema, it *datamodel.Item) map[string]any {
 	setIfPresent(values, "due", it.Due)
 	setIfPresent(values, "estimate", it.Estimate)
 
-	sections := bodySections(it.Body)
+	sections := datamodel.BodySections(it.Body)
 	for _, f := range schema.Fields {
 		if f.Placement == PlacementBody && f.Section != "" {
 			values[f.Name] = sections[f.Section]
@@ -45,39 +44,23 @@ func setIfPresent[T any](values map[string]any, name string, v *T) {
 	}
 }
 
-func bodySections(body string) map[string]string {
-	sections := make(map[string]string)
-	current := ""
-	for _, line := range strings.Split(body, "\n") {
-		if title, ok := strings.CutPrefix(line, "## "); ok {
-			current = title
-			continue
-		}
-		if current != "" {
-			sections[current] += line + "\n"
-		}
-	}
-	for title, content := range sections {
-		sections[title] = strings.TrimSpace(content)
-	}
-	return sections
-}
-
-// ConfigVocab mirrors core.validateItem's strict/open policy: a vocab is
-// membership-checked only when strict, and the system captured label is always
-// admitted under a strict label vocabulary.
+// ConfigVocab surfaces each config-driven vocabulary's known values (the system
+// captured label always admitted). label and person are always membership-
+// checked (empty Known means "nothing known yet", not "unchecked"); priority/
+// subtype/resolution are free-form when their config leaves Values empty.
+// Strictness (error vs warning) is the caller's policy, not this function's.
 func ConfigVocab(cfg *datamodel.Config) map[string][]string {
-	enums := map[string][]string{}
-	addIfStrict := func(name string, ev datamodel.EnumVocab) {
-		if ev.StrictOr(cfg.Labels.Strict) {
+	enums := map[string][]string{
+		"label":  append(slices.Clone(cfg.Labels.Known), datamodel.CapturedLabel),
+		"person": cfg.People.Names(),
+	}
+	addIfConfigured := func(name string, ev datamodel.EnumVocab) {
+		if len(ev.Values) > 0 {
 			enums[name] = ev.Values
 		}
 	}
-	addIfStrict("priority", cfg.Priorities)
-	addIfStrict("subtype", cfg.Subtypes)
-	addIfStrict("resolution", cfg.Resolutions)
-	if cfg.Labels.Strict {
-		enums["label"] = append(slices.Clone(cfg.Labels.Known), datamodel.CapturedLabel)
-	}
+	addIfConfigured("priority", cfg.Priorities)
+	addIfConfigured("subtype", cfg.Subtypes)
+	addIfConfigured("resolution", cfg.Resolutions)
 	return enums
 }

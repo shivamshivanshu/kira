@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 )
@@ -37,22 +38,29 @@ func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply appl
 		return nil, nil, nil, err
 	}
 	defer release()
-	return s.mutateAgainst(cfg, orig, items, resolver, force, apply, subjectOf, source)
+	schemas, err := s.schemas()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	schema := schemas[orig.Type]
+	enums := entityschema.ResolveEnums(schema, entityschema.ConfigVocab(cfg))
+	return s.mutateAgainst(cfg, orig, items, resolver, schema, enums, force, apply, subjectOf, source)
 }
 
-func (s *Store) mutateAgainst(cfg *datamodel.Config, orig *datamodel.Item, items []*datamodel.Item, resolver *id.Resolver, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, []error, error) {
+func (s *Store) mutateAgainst(cfg *datamodel.Config, orig *datamodel.Item, items []*datamodel.Item, resolver *id.Resolver, schema entityschema.Schema, enums map[string][]string, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, []error, error) {
 	updated := cloneItem(orig)
 	hard, warns := apply(updated, resolver, items)
 	if len(hard) > 0 {
 		return nil, nil, nil, errx.Invalid(invalidItemPrefix, hard)
 	}
-	vhard, vwarns := validateMutation(cfg, orig, updated, resolver, items, force)
+	vctx := newValidationCtxWithEnums(cfg, items, resolver, schema, enums, force)
+	vhard, vwarns := vctx.validateMutation(orig, updated)
 	if len(vhard) > 0 {
 		return nil, nil, nil, errx.Invalid(invalidItemPrefix, vhard)
 	}
 	warns = append(warns, vwarns...)
 
-	changed := datamodel.ChangedFields(orig, updated)
+	changed := append(datamodel.ChangedFields(orig, updated), changedExtraKeys(orig, updated)...)
 	finalWarns, err := s.commitMutation(cfg, orig, updated, changed, warns, subjectOf(orig), source)
 	if err != nil {
 		return nil, nil, nil, err
@@ -66,6 +74,8 @@ type Batch struct {
 	release  func()
 	items    []*datamodel.Item
 	resolver *id.Resolver
+	schemas  map[string]entityschema.Schema
+	enums    map[string]map[string][]string
 }
 
 func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
@@ -78,7 +88,17 @@ func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
 		release()
 		return nil, err
 	}
-	return &Batch{cfg: cfg, store: s, release: release, items: ld.items, resolver: ld.resolver}, nil
+	schemas, err := s.schemas()
+	if err != nil {
+		release()
+		return nil, err
+	}
+	vocab := entityschema.ConfigVocab(cfg)
+	enums := make(map[string]map[string][]string, len(schemas))
+	for typ, schema := range schemas {
+		enums[typ] = entityschema.ResolveEnums(schema, vocab)
+	}
+	return &Batch{cfg: cfg, store: s, release: release, items: ld.items, resolver: ld.resolver, schemas: schemas, enums: enums}, nil
 }
 
 func (b *Batch) Close() { b.release() }
@@ -100,7 +120,7 @@ func (b *Batch) Mutate(ref string, force bool, apply applyFn, subjectOf func(ori
 	if err := guardWritable(orig); err != nil {
 		return nil, nil, nil, err
 	}
-	updated, changed, warns, err := b.store.mutateAgainst(b.cfg, orig, b.items, b.resolver, force, apply, subjectOf, source)
+	updated, changed, warns, err := b.store.mutateAgainst(b.cfg, orig, b.items, b.resolver, b.schemas[orig.Type], b.enums[orig.Type], force, apply, subjectOf, source)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -138,8 +158,8 @@ func (s *Store) commitMutation(cfg *datamodel.Config, before, updated *datamodel
 func scopeVocabWarnings(warns []error, changed []string) []error {
 	out := warns[:0:0]
 	for _, w := range warns {
-		var vw *vocabWarning
-		if errors.As(w, &vw) && !slices.Contains(changed, vw.field) {
+		var v entityschema.Violation
+		if errors.As(w, &v) && !slices.Contains(changed, v.Field) {
 			continue
 		}
 		out = append(out, w)

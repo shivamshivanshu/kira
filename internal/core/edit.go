@@ -2,12 +2,14 @@ package core
 
 import (
 	"errors"
+	"maps"
 	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/editorx"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 )
@@ -50,6 +52,13 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		return nil, errx.Conflict("%s changed on disk during edit", orig.Number).WithHint("re-run the edit to start from the current version")
 	}
 
+	schemas, err := s.schemas()
+	if err != nil {
+		return nil, err
+	}
+	schema := schemas[orig.Type]
+	vctx := newValidationCtx(cfg, items, resolver, schema, opts.Force)
+
 	var updated *datamodel.Item
 	var warns []error
 	finish := func(it *datamodel.Item) error {
@@ -58,7 +67,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		if len(guardErrs) > 0 {
 			return errx.Invalid(invalidItemPrefix, guardErrs)
 		}
-		errs, w := validateMutation(cfg, orig, it, resolver, items, opts.Force)
+		errs, w := vctx.validateMutation(orig, it)
 		if len(errs) > 0 {
 			return errx.Invalid(invalidItemPrefix, errs)
 		}
@@ -69,20 +78,8 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 	switch {
 	case len(opts.Fields) > 0:
 		it := cloneItem(orig)
-		var errs []error
-		for _, fe := range opts.Fields {
-			value := fe.Value
-			if fe.Key == datamodel.KeyOwner || fe.Key == datamodel.KeyReporter {
-				if value, err = s.resolveMe(cfg, fe.Value); err != nil {
-					return nil, err
-				}
-			}
-			if err := applyFieldEdit(it, fe.Key, value); err != nil {
-				errs = append(errs, err)
-			}
-		}
-		if len(errs) > 0 {
-			return nil, errx.Invalid(invalidItemPrefix, errs)
+		if err := s.applyFieldEdits(cfg, it, opts.Fields, schema); err != nil {
+			return nil, err
 		}
 		if err := finish(it); err != nil {
 			return nil, err
@@ -105,7 +102,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		}
 	}
 
-	changed := datamodel.ChangedFields(orig, updated)
+	changed := append(datamodel.ChangedFields(orig, updated), changedExtraKeys(orig, updated)...)
 	subject := cfg.Commit.SubjectPrefix + updated.Number + " edit " + strings.Join(changed, ",")
 	finalWarns, err := s.commitMutation(cfg, orig, updated, changed, warns, subject, datamodel.SourceCLI)
 	if err != nil {
@@ -122,6 +119,12 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 	if err := guardWritable(orig); err != nil {
 		return "", "", err
 	}
+	schemas, err := s.schemas()
+	if err != nil {
+		return "", "", err
+	}
+	schema := schemas[orig.Type]
+	vctx := newValidationCtx(cfg, items, resolver, schema, opts.Force)
 	content, err := runEditor(cfg.UI.Editor, opts.Stdio, codec.Serialize(orig), func(c string) []error {
 		it, errs := parseFullItem(c)
 		if len(errs) > 0 {
@@ -131,7 +134,7 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 		if hard, _ := applyEditGuards(cfg, orig, it, opts.Force, resolver, items); len(hard) > 0 {
 			return hard
 		}
-		hard, _ := validateMutation(cfg, orig, it, resolver, items, opts.Force)
+		hard, _ := vctx.validateMutation(orig, it)
 		return hard
 	})
 	return content, orig.Updated, err
@@ -182,12 +185,46 @@ func restoreImmutable(it, orig *datamodel.Item) {
 	it.Aliases = orig.Aliases
 }
 
-func applyFieldEdit(it *datamodel.Item, key, value string) error {
-	d, ok := datamodel.Field(key)
-	if !ok || d.Set == nil {
-		return errx.User("--field: unknown or immutable field %q", key).WithHint("%s", fieldHint(key))
+func (s *Store) applyFieldEdits(cfg *datamodel.Config, it *datamodel.Item, fields []FieldEdit, schema entityschema.Schema) error {
+	var errs []error
+	for _, fe := range fields {
+		value := fe.Value
+		if fe.Key == datamodel.KeyOwner || fe.Key == datamodel.KeyReporter {
+			resolved, err := s.resolveMe(cfg, fe.Value)
+			if err != nil {
+				return err
+			}
+			value = resolved
+		}
+		if err := applyFieldEdit(it, fe.Key, value, schema); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return d.Set(it, value)
+	if len(errs) > 0 {
+		return errx.Invalid(invalidItemPrefix, errs)
+	}
+	return nil
+}
+
+func applyFieldEdit(it *datamodel.Item, key, value string, schema entityschema.Schema) error {
+	if d, ok := datamodel.Field(key); ok {
+		if d.Set == nil {
+			return errx.User("--field: unknown or immutable field %q", key).WithHint("%s", fieldHint(key, schema))
+		}
+		return d.Set(it, value)
+	}
+	f, ok := schema.Field(key)
+	if !ok || !fieldEditableViaFlag(f) {
+		return errx.User("--field: unknown or immutable field %q", key).WithHint("%s", fieldHint(key, schema))
+	}
+	if f.Placement == entityschema.PlacementBody {
+		if datamodel.ContainsSectionHeading(value) {
+			return errx.User("--field %q: a body-section value cannot contain a \"## \" heading line", key)
+		}
+		it.Body = datamodel.UpsertBodySection(it.Body, f.Section, value)
+		return nil
+	}
+	return setSchemaExtra(it, f, value)
 }
 
 func cloneItem(src *datamodel.Item) *datamodel.Item {
@@ -196,5 +233,7 @@ func cloneItem(src *datamodel.Item) *datamodel.Item {
 	dst.Labels = slices.Clone(src.Labels)
 	dst.BlockedBy = slices.Clone(src.BlockedBy)
 	dst.Links = datamodel.CloneLinks(src.Links)
+	dst.ExtraScalars = maps.Clone(src.ExtraScalars)
+	dst.ExtraLists = datamodel.CloneLinks(src.ExtraLists)
 	return &dst
 }
