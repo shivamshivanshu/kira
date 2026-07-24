@@ -81,6 +81,14 @@ type FieldDef struct {
 	Section   string       `json:"section,omitempty"`
 }
 
+func (f FieldDef) TargetsEntity(schemas map[string]Schema) bool {
+	if f.Type != FieldRef {
+		return false
+	}
+	_, ok := schemas[f.Target]
+	return ok
+}
+
 type Schema struct {
 	Name           string         `json:"name"`
 	Workflow       string         `json:"workflow,omitempty"`

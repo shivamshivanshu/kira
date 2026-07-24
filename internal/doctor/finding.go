@@ -20,7 +20,7 @@ const (
 	ClassCollision     Class = "id-collision"
 	ClassCycle         Class = "epic-cycle"
 	ClassRefCycle      Class = "ref-cycle"
-	ClassEpicKind      Class = "epic-kind"
+	ClassRefType       Class = "ref-type"
 	ClassComment       Class = "comment"
 	ClassFreshness     Class = "index-freshness"
 	ClassHooks         Class = "hooks"
