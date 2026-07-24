@@ -83,10 +83,9 @@ func (c *validationCtx) validateItem(it *datamodel.Item) (errs, warns []error) {
 		case entityschema.CodeRequired, entityschema.CodeType:
 			errs = append(errs, viol)
 		case entityschema.CodeRef:
-			// epic/blocked_by existence is covered by normalizeAndCheckRefs and
-			// epic type-correctness by validateGraph, both with clearer messages.
-			// blocked_by target-type is not enforced on write (kira doctor reports
-			// it — CORE-43). Only declared ref extras need this generic check.
+			// epic/blocked_by existence and target-type are checked by
+			// normalizeAndCheckRefs and validateGraph with clearer messages;
+			// only declared ref extras need this generic check.
 			if viol.Field != datamodel.KeyEpic && viol.Field != datamodel.KeyBlockedBy {
 				errs = append(errs, viol)
 			}

@@ -195,3 +195,25 @@ func TestPickFieldsHonoursSideChoices(t *testing.T) {
 		t.Errorf("owner = %v, want untouched (nil) on empty/auto answer", target.Owner)
 	}
 }
+
+func TestPickFieldsHonoursExtraFieldChoices(t *testing.T) {
+	s := &Store{prompter: &scriptedPrompter{answers: []string{"t", "o"}}}
+
+	target := eventTicket()
+	target.ExtraScalars = map[string]string{"reviewer": "auto"}
+	ours := eventTicket()
+	ours.ExtraScalars = map[string]string{"reviewer": "ours-reviewer"}
+	ours.ExtraLists = map[string][]string{"tags": {"ours"}}
+	theirs := eventTicket()
+	theirs.ExtraScalars = map[string]string{"reviewer": "theirs-reviewer"}
+	theirs.ExtraLists = map[string][]string{"tags": {"theirs"}}
+
+	s.pickFields(target, ours, theirs, []string{"reviewer", "tags"})
+
+	if target.ExtraScalars["reviewer"] != "theirs-reviewer" {
+		t.Errorf("reviewer = %q, want theirs pick", target.ExtraScalars["reviewer"])
+	}
+	if !slices.Equal(target.ExtraLists["tags"], []string{"ours"}) {
+		t.Errorf("tags = %v, want ours pick", target.ExtraLists["tags"])
+	}
+}

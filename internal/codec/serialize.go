@@ -1,6 +1,7 @@
 package codec
 
 import (
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -83,29 +84,26 @@ func writeExtras(b *strings.Builder, it *datamodel.Item) {
 }
 
 func writeLinks(b *strings.Builder, links, extraLinks map[string][]string) {
-	first := true
-	open := func() {
-		if first {
-			b.WriteString(datamodel.KeyLinks + ":\n")
-			first = false
-		}
+	type link struct {
+		typ     string
+		targets []string
 	}
+	var ordered []link
 	for _, typ := range datamodel.LinkTypes {
 		if targets := links[string(typ)]; len(targets) > 0 {
-			open()
-			b.WriteString("  ")
-			writeLine(b, string(typ), EmitList(targets))
+			ordered = append(ordered, link{string(typ), targets})
 		}
 	}
-	extraTypes := make([]string, 0, len(extraLinks))
-	for typ := range extraLinks {
-		extraTypes = append(extraTypes, typ)
+	for _, typ := range slices.Sorted(maps.Keys(extraLinks)) {
+		ordered = append(ordered, link{typ, extraLinks[typ]})
 	}
-	slices.Sort(extraTypes)
-	for _, typ := range extraTypes {
-		open()
+	if len(ordered) == 0 {
+		return
+	}
+	b.WriteString(datamodel.KeyLinks + ":\n")
+	for _, l := range ordered {
 		b.WriteString("  ")
-		writeLine(b, typ, EmitList(extraLinks[typ]))
+		writeLine(b, l.typ, EmitList(l.targets))
 	}
 }
 

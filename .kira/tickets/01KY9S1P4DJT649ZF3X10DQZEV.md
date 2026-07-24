@@ -4,12 +4,12 @@ number: CORE-43
 aliases: []
 type: ticket
 title: "Enforce blocked_by target-type on write (align with doctor)"
-state: TODO
+state: DONE
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-24T15:29:31+05:30
-updated: 2026-07-24T15:35:27+05:30
+updated: 2026-07-24T19:09:32+05:30
 ---
 
 ## Description

@@ -4,12 +4,12 @@ number: CORE-42
 aliases: []
 type: ticket
 title: "Surface extras-only merge conflicts in arbitrated() reporting"
-state: TODO
+state: DONE
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-24T14:26:23+05:30
-updated: 2026-07-24T14:27:03+05:30
+updated: 2026-07-24T19:09:32+05:30
 ---
 
 ## Description

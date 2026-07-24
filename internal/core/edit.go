@@ -102,7 +102,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		}
 	}
 
-	changed := append(datamodel.ChangedFields(orig, updated), changedExtraKeys(orig, updated)...)
+	changed := append(datamodel.ChangedFields(orig, updated), datamodel.ChangedExtraKeys(orig, updated)...)
 	subject := cfg.Commit.SubjectPrefix + updated.Number + " edit " + strings.Join(changed, ",")
 	finalWarns, err := s.commitMutation(cfg, orig, updated, changed, warns, subject, datamodel.SourceCLI)
 	if err != nil {
