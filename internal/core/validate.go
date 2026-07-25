@@ -253,7 +253,7 @@ func normalizeAndCheckRefs(it *datamodel.Item, resolver *id.Resolver, schema ent
 			}
 		}
 	}
-	normalizeRefExtras(it, resolve, schema)
+	errs = append(errs, normalizeRefExtras(it, resolver, schema)...)
 	return errs
 }
 
@@ -261,29 +261,42 @@ func normalizeAndCheckRefs(it *datamodel.Item, resolver *id.Resolver, schema ent
 // == "" distinguishes it from a config-backed ref like owner/reporter, which
 // normalizeAndCheckRefs's config-driven fields already handle elsewhere) to
 // its immutable ULID on write, the same as the built-in epic/blocked_by
-// fields above, so it survives a renumber instead of going stale.
-func normalizeRefExtras(it *datamodel.Item, resolve func(label, ref string) (string, bool), schema entityschema.Schema) {
+// fields above, so it survives a renumber instead of going stale. A ref that
+// does not resolve is left as-is for validateItem's CodeRef check to report,
+// so a bad extra is not flagged twice; only the self-reference case, which
+// CodeRef cannot see, is reported here.
+func normalizeRefExtras(it *datamodel.Item, resolver *id.Resolver, schema entityschema.Schema) []error {
+	var errs []error
+	normalize := func(label, ref string) (string, bool) {
+		ulid, err := resolver.Resolve(ref)
+		if err != nil {
+			return "", false
+		}
+		if ulid == it.ID {
+			errs = append(errs, fmt.Errorf("%s: an item cannot link to itself", label))
+			return "", false
+		}
+		return ulid, true
+	}
 	for _, f := range schema.Fields {
 		if f.Type != entityschema.FieldRef || f.Source != "" {
 			continue
 		}
 		label := fmt.Sprintf("field %q", f.Name)
 		if f.List {
-			targets, ok := it.ExtraLists[f.Name]
-			if !ok {
-				continue
-			}
+			targets := it.ExtraLists[f.Name]
 			for i, ref := range targets {
-				if ulid, ok := resolve(label, ref); ok {
+				if ulid, ok := normalize(label, ref); ok {
 					targets[i] = ulid
 				}
 			}
 			continue
 		}
 		if ref, ok := it.ExtraScalars[f.Name]; ok {
-			if ulid, ok := resolve(label, ref); ok {
+			if ulid, ok := normalize(label, ref); ok {
 				it.ExtraScalars[f.Name] = ulid
 			}
 		}
 	}
+	return errs
 }
