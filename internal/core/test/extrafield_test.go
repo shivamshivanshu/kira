@@ -100,3 +100,21 @@ func TestEditFieldNormalizesDeclaredRefExtraToULID(t *testing.T) {
 		t.Fatalf("declared ref extra must resolve to blocker's ULID %s:\n%s", blocker.ID, got)
 	}
 }
+
+func TestCreateUnresolvableRefExtraReportedOnce(t *testing.T) {
+	s, cfg := newStore(t)
+	withDeclaredField(t, s, datamodel.TypeTicket,
+		entityschema.FieldDef{Name: "reviewer_of", Type: entityschema.FieldRef, Target: datamodel.TypeTicket},
+	)
+
+	_, err := s.Create(cfg, core.CreateOpts{
+		Type: datamodel.TypeTicket, Title: "t", NoEdit: true,
+		Fields: []core.FieldEdit{{Key: "reviewer_of", Value: "KIRA-999"}},
+	})
+	if err == nil {
+		t.Fatal("an unresolvable ref extra must be rejected")
+	}
+	if n := strings.Count(err.Error(), "reviewer_of"); n != 1 {
+		t.Fatalf("a missing ref extra must be reported once, got %d:\n%s", n, err.Error())
+	}
+}
