@@ -138,16 +138,25 @@ func listField(key string, ref func(*Item) *[]string) FieldDescriptor {
 
 func linksField() FieldDescriptor {
 	return FieldDescriptor{
-		Key:     KeyLinks,
-		Changed: func(a, b *Item) bool { return !maps.EqualFunc(a.Links, b.Links, slices.Equal[[]string]) },
+		Key: KeyLinks,
+		Changed: func(a, b *Item) bool {
+			return !maps.EqualFunc(a.Links, b.Links, slices.Equal[[]string]) ||
+				!maps.EqualFunc(a.ExtraLinks, b.ExtraLinks, slices.Equal[[]string])
+		},
 		Get: func(it *Item) string {
-			parts := make([]string, 0, len(it.Links))
+			parts := make([]string, 0, len(it.Links)+len(it.ExtraLinks))
 			for _, typ := range slices.Sorted(maps.Keys(it.Links)) {
 				parts = append(parts, typ+":"+listString(it.Links[typ]))
 			}
+			for _, typ := range slices.Sorted(maps.Keys(it.ExtraLinks)) {
+				parts = append(parts, typ+":"+listString(it.ExtraLinks[typ]))
+			}
 			return strings.Join(parts, " ")
 		},
-		Copy: func(dst, src *Item) { dst.Links = CloneStringListMap(src.Links) },
+		Copy: func(dst, src *Item) {
+			dst.Links = CloneStringListMap(src.Links)
+			dst.ExtraLinks = CloneStringListMap(src.ExtraLinks)
+		},
 	}
 }
 

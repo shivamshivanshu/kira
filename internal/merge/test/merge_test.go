@@ -358,6 +358,23 @@ func TestArbitratedReportsExtrasOnlyConflict(t *testing.T) {
 	}
 }
 
+func TestArbitratedReportsExtraLinkConflict(t *testing.T) {
+	t.Parallel()
+	b := base(func(it *datamodel.Item) {
+		it.ExtraLinks = map[string][]string{"mirrors": {"01HAAAA000000000000000000A"}}
+	})
+	ours := base(func(it *datamodel.Item) {
+		it.ExtraLinks = map[string][]string{"mirrors": {"01HAAAA000000000000000000B"}}
+	})
+	theirs := base(func(it *datamodel.Item) {
+		it.ExtraLinks = map[string][]string{"mirrors": {"01HAAAA000000000000000000C"}}
+	})
+	res := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger)
+	if !contains(res.Arbitrated, datamodel.KeyLinks) {
+		t.Fatalf("arbitrated = %v, want %q (both sides diverged the same unknown link type)", res.Arbitrated, datamodel.KeyLinks)
+	}
+}
+
 func equalStrings(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
