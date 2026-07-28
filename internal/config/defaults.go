@@ -2,7 +2,6 @@ package config
 
 import "github.com/shivamshivanshu/kira/internal/datamodel"
 
-// Default returns the default kira configuration.
 func Default() *datamodel.Config {
 	return &datamodel.Config{
 		Version: datamodel.InitialSchemaVersion,

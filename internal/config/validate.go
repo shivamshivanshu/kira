@@ -18,12 +18,10 @@ const BoardKeyPattern = `^[A-Z][A-Z0-9]{1,9}$`
 
 var boardKeyRe = regexp.MustCompile(BoardKeyPattern)
 
-// ValidBoardKey reports whether a board key string is valid.
 func ValidBoardKey(key string) bool {
 	return boardKeyRe.MatchString(key)
 }
 
-// Validate validates the entire config structure and returns an error if invalid.
 func Validate(c *datamodel.Config) error {
 	if c.Version < 1 || c.Version > datamodel.SchemaVersion {
 		return errx.User("config: version: unsupported version %d (this kira understands 1..%d)", c.Version, datamodel.SchemaVersion)
@@ -179,7 +177,6 @@ func validateWorkonSection(w datamodel.Workon) error {
 	return nil
 }
 
-// UIWarnings returns validation warnings for the UI configuration.
 func UIWarnings(ui datamodel.UI) []string {
 	var out []string
 	for _, c := range ui.List.Columns {

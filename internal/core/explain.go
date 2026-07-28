@@ -33,13 +33,11 @@ func Explain(cfg *datamodel.Config) *datamodel.ExplainResult {
 // changed reports whether a is not deeply equal to its default counterpart b.
 func changed[T any](a, b T) bool { return !reflect.DeepEqual(a, b) }
 
-// tierOf tags a section default when it matches the baked default, user when
-// it differs and belongs to a user-config-tier key (ui, workon), else repo.
-func tierOf(differs, userTier bool) datamodel.Provenance {
+func tierOf(differsFromDefault, isUserTierKey bool) datamodel.Provenance {
 	switch {
-	case !differs:
+	case !differsFromDefault:
 		return datamodel.ProvenanceDefault
-	case userTier:
+	case isUserTierKey:
 		return datamodel.ProvenanceUser
 	default:
 		return datamodel.ProvenanceRepo
