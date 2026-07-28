@@ -13,7 +13,7 @@ workflows:
       - { key: TODO,        category: todo }
       - { key: IN_PROGRESS, category: doing, wip: 3 }   # advisory column cap (0/absent = unlimited)
       - { key: REVIEW,      category: doing, wip: 2 }
-      - { key: DONE,        category: done }
+      - { key: DONE,        category: done, resolution: done }
       - { key: WONT_DO,     category: done, resolution: dropped }
     initial: TODO
     transitions:
@@ -29,7 +29,7 @@ workflows:
     states:
       - { key: PLANNED, category: todo }
       - { key: ACTIVE,  category: doing }
-      - { key: DONE,    category: done }
+      - { key: DONE,    category: done, resolution: done }
     initial: PLANNED
     transitions:
       PLANNED: [ACTIVE]
@@ -37,11 +37,11 @@ workflows:
       DONE:    []
 
 labels:
-  known: [captured]           # area labels retired in favor of boards; strict rejects unknown ones (--force overrides)
+  known: [captured, core, tui, cli, data, infra, dx]   # 'captured' is system; the rest are retired area labels still on older items
   strict: false
 
 people:
-  known: []                   # add known people; strict rejects unknown assignees
+  known: [{ name: shivam }]   # add known people; strict rejects unknown assignees
   strict: false
 
 priorities: [P0, P1, P2, P3]  # ordered high→low: validates priority, defines ranked sort

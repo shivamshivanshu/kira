@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "Allow .kira/schema overrides for ref targets"
 state: DONE
+resolution: done
 priority: P3
 labels: []
 epic: 01KYKDNPSZEGK032FRCJCVNKE1
 blocked_by: []
 created: 2026-07-28T09:24:38+05:30
-updated: 2026-07-28T12:08:11+05:30
+updated: 2026-07-28T14:28:05+05:30
 ---
 
 Deferred from CORE-3 phase 1: a schema override in `.kira/schema/*.json`

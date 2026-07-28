@@ -6,12 +6,13 @@ type: ticket
 subtype: bug
 title: "find/rgx: flag ordering, -e pattern capture, scanner.Err, NUL-separated parsing"
 state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:47+05:30
-updated: 2026-07-16T18:45:01+05:30
+updated: 2026-07-28T14:28:00+05:30
 ---
 
 ## Description

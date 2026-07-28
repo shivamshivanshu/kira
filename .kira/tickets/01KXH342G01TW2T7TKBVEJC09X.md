@@ -6,12 +6,13 @@ type: ticket
 subtype: bug
 title: "--at: one malformed historical ticket permanently breaks every spanning query"
 state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:34+05:30
-updated: 2026-07-16T13:38:53+05:30
+updated: 2026-07-28T14:27:56+05:30
 ---
 
 ## Description

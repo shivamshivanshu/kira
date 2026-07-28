@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "Make the query grammar schema-aware so custom fields are filterable"
 state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: 01KYKDNPSZEGK032FRCJCVNKE1
 blocked_by: []
 created: 2026-07-28T09:23:40+05:30
-updated: 2026-07-28T11:13:53+05:30
+updated: 2026-07-28T14:28:05+05:30
 ---
 
 `kira list --query` rejects any schema-declared field outright, so a custom

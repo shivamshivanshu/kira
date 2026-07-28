@@ -6,12 +6,13 @@ type: ticket
 subtype: task
 title: "Contract test harness quality: checkStable, scrubbing, repoEnv, shared fixture"
 state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:51+05:30
-updated: 2026-07-16T18:45:00+05:30
+updated: 2026-07-28T14:28:01+05:30
 ---
 
 ## Description

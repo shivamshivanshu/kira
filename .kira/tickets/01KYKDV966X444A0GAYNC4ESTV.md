@@ -5,11 +5,12 @@ aliases: []
 type: ticket
 title: "create --from-file silently discards every draft flag"
 state: DONE
+resolution: done
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-28T09:26:11+05:30
-updated: 2026-07-28T11:33:38+05:30
+updated: 2026-07-28T14:28:06+05:30
 ---
 
 `kira create --from-file` returns the parsed file as the draft and throws

@@ -5,11 +5,12 @@ aliases: []
 type: ticket
 title: "Enforce blocked_by target-type on write (align with doctor)"
 state: DONE
+resolution: done
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-24T15:29:31+05:30
-updated: 2026-07-24T19:09:32+05:30
+updated: 2026-07-28T14:28:04+05:30
 ---
 
 ## Description
