@@ -1,0 +1,82 @@
+# Schema-declared fields beyond the built-in shape are readable, not just
+# writable: show prints them and --json carries them with their declared type.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+cp ticket.json .kira/schema/ticket.json
+exec git add -A
+exec git commit -m 'declare custom ticket fields'
+
+exec kira create ticket --title 'Sev' --no-edit --field severity=high --field points=8 --field signoff=true --field components=api,web
+
+# human show lists them after the built-in header block
+exec kira show KIRA-1
+stdout 'severity:  high'
+stdout 'points:    8'
+stdout 'signoff:   true'
+stdout 'components: api, web'
+
+# --json keeps each declared type rather than stringifying everything
+exec kira show KIRA-1 --json
+stdout '"severity": "high"'
+stdout '"points": 8'
+stdout '"signoff": true'
+stdout '"api",'
+
+# a body-placed field stays in the body and is not repeated as a field
+exec kira edit KIRA-1 --field notes='a note'
+exec kira show KIRA-1 --json
+stdout '## Notes'
+! stdout '"notes"'
+
+# clearing a field drops it from the output entirely
+exec kira edit KIRA-1 --field severity=
+exec kira show KIRA-1 --json
+! stdout '"severity"'
+
+-- ticket.json --
+{
+  "name": "ticket",
+  "workflow": "ticket",
+  "identity": { "style": "sequential", "prefix": "KIRA" },
+  "fields": [
+    { "name": "title", "type": "string", "required": true },
+    { "name": "state", "type": "state", "required": true, "system": true, "guarded": true,
+      "states": [
+        { "key": "TODO", "category": "todo" },
+        { "key": "IN_PROGRESS", "category": "doing" },
+        { "key": "REVIEW", "category": "doing" },
+        { "key": "DONE", "category": "done" },
+        { "key": "WONT_DO", "category": "done" }
+      ] },
+    { "name": "subtype", "type": "enum", "enum": "subtype", "source": "subtypes" },
+    { "name": "priority", "type": "enum", "enum": "priority", "source": "priorities" },
+    { "name": "resolution", "type": "resolution", "enum": "resolution", "source": "resolutions" },
+    { "name": "rank", "type": "string" },
+    { "name": "owner", "type": "ref", "target": "person", "source": "people" },
+    { "name": "reporter", "type": "ref", "target": "person", "source": "people" },
+    { "name": "labels", "type": "enum", "enum": "label", "source": "labels", "list": true, "unique": true },
+    { "name": "epic", "type": "ref", "target": "epic" },
+    { "name": "blocked_by", "type": "ref", "target": "ticket", "list": true, "unique": true },
+    { "name": "sprint", "type": "ref", "target": "sprint", "source": "sprints" },
+    { "name": "due", "type": "date" },
+    { "name": "estimate", "type": "number" },
+    { "name": "aliases", "type": "string", "list": true, "unique": true, "required": true, "system": true },
+    { "name": "created", "type": "datetime", "required": true, "system": true, "immutable": true },
+    { "name": "updated", "type": "datetime", "required": true, "system": true },
+    { "name": "description", "type": "markdown", "placement": "body", "section": "Description" },
+    { "name": "acceptance", "type": "markdown", "placement": "body", "section": "Acceptance criteria" },
+    { "name": "notes", "type": "markdown", "placement": "body", "section": "Notes" },
+    { "name": "severity", "type": "enum", "enum": "severity" },
+    { "name": "points", "type": "int" },
+    { "name": "signoff", "type": "bool" },
+    { "name": "components", "type": "string", "list": true }
+  ],
+  "enums": [
+    { "name": "severity", "values": ["low", "high"] }
+  ]
+}

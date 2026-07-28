@@ -1825,6 +1825,10 @@
             "null"
           ]
         },
+        "fields": {
+          "additionalProperties": {},
+          "type": "object"
+        },
         "history_tail": {
           "items": {
             "$ref": "#/$defs/HistoryEvent"

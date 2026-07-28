@@ -5,6 +5,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/index"
 	"github.com/shivamshivanshu/kira/internal/ptr"
@@ -22,6 +23,10 @@ func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResu
 	if err != nil {
 		return nil, err
 	}
+	schemas, err := s.schemas()
+	if err != nil {
+		return nil, err
+	}
 	if at != "" {
 		it := findByULID(ld.items, ulid)
 		if it == nil {
@@ -29,6 +34,7 @@ func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResu
 		}
 		res := showResultOf(ld.cfg, it)
 		res.Blocks = blocksOf(ld.items, ulid)
+		res.Fields = entityschema.CustomFields(schemas[it.Type], it, codec.DecodeExtraScalar)
 		res.Skew = s.skew(cfg, ref, ulid, at)
 		return &res, nil
 	}
@@ -39,6 +45,7 @@ func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResu
 	}
 	res := showResultOf(cfg, it)
 	res.Blocks = blocksOf(ld.items, ulid)
+	res.Fields = entityschema.CustomFields(schemas[it.Type], it, codec.DecodeExtraScalar)
 	res.StderrNotes = ld.notes
 
 	events, links, err := s.logEntries(ulid)

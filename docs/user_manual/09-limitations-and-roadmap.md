@@ -7,26 +7,35 @@ entry here is drawn from kira's own open tickets — kira tracks its own
 development in kira, so the tickets behind this page live in `.kira/tickets/`
 in the kira repository alongside the code.
 
-## Custom fields are stored, but not displayed or searchable
+## Custom fields are readable, but not yet searchable
 
 You can add a field to the built-in `ticket` or `epic` schema, set it with
 `kira create --field severity=high`, and change it later with `kira edit
 --field severity=low`. The value is validated against the schema and written
 into the item's Markdown file, where it round-trips through edits and merges
-intact.
+intact. `kira show` prints it after the built-in header block, and `kira show
+--json` carries it under a `fields` object with its declared type preserved —
+an `int` field comes back as a number, a `list` as an array:
 
-What does not happen yet: nothing else surfaces it. `kira show` prints the
-built-in fields only and skips your custom one. `kira show --json` omits it.
-`kira list --query 'severity = high'` fails with *unknown field "severity"* —
-the query grammar only knows the built-in field names. To read a custom field
-today you open the item file, or grep for it.
+```console
+$ kira show KIRA-1 --json | jq .fields
+{
+  "components": [ "api", "web" ],
+  "points": 8,
+  "severity": "high"
+}
+```
 
-So custom fields are useful right now as durable, validated metadata — for
-external tooling that parses the files, or for humans reading them — but not
-yet as something you can filter and report on from the CLI.
+What does not work yet is filtering. `kira list --query 'severity = high'`
+fails with *unknown field "severity"* — the query grammar still knows only the
+built-in field names, so custom fields cannot be filtered or reported on from
+`list`.
 
-**Roadmap:** active. Making schema fields visible to `kira show`, `kira list`,
-and the query grammar is planned work on the schema ticket (CORE-3).
+Body-placed fields (`placement: body`) are not part of the `fields` object;
+their text is already in the item body, which `show` prints in full.
+
+**Roadmap:** active. Making the query grammar schema-aware is CORE-52, under
+the CORE-50 epic.
 
 ## Defining your own item type works, but dangling custom refs on it can go unchecked
 
