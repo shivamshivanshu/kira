@@ -323,7 +323,16 @@ func (p *parser) parsePrimary() (Expr, error) {
 				return &boolExpr{field: t.text, want: true}, nil
 			}
 		} else if p.startsFieldPredicate() {
-			return nil, unknownFieldErr(t.pos, t.text)
+			// A schema may declare this field; only the compiler knows, so
+			// parse the shape and let it resolve the name and the value's type.
+			switch {
+			case p.peek2().isCmp():
+				return p.parsePredicate()
+			case isKeyword(p.peek2(), "IN"):
+				return p.parseIn()
+			default:
+				return p.parseIsEmpty()
+			}
 		}
 		p.next()
 		return &termExpr{t.text}, nil
@@ -338,7 +347,8 @@ func (p *parser) parsePrimary() (Expr, error) {
 func (p *parser) parsePredicate() (Expr, error) {
 	field := p.next()
 	op := p.next()
-	if !allowsOrderedCmp(field.text) && op.kind != tokEq && op.kind != tokNe {
+	builtin := fields[field.text]
+	if builtin && !allowsOrderedCmp(field.text) && op.kind != tokEq && op.kind != tokNe {
 		return nil, &Error{Pos: op.pos, Msg: "operator " + op.cmpText() + " is only valid on " +
 			"created/updated/due/activity, estimate, and priority"}
 	}
@@ -348,8 +358,10 @@ func (p *parser) parsePredicate() (Expr, error) {
 	}
 	p.next()
 	pred := &predExpr{field: field.text, op: op, value: val.text, valuePos: val.pos}
-	if err := typeCheckValue(field.text, val, &pred.date, &pred.num); err != nil {
-		return nil, err
+	if builtin {
+		if err := typeCheckValue(field.text, val, &pred.date, &pred.num); err != nil {
+			return nil, err
+		}
 	}
 	return pred, nil
 }

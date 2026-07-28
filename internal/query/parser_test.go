@@ -1,6 +1,9 @@
 package query
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestParseCanonical(t *testing.T) {
 	tests := []struct {
@@ -96,7 +99,6 @@ func TestParseErrors(t *testing.T) {
 		{"state is never empty", "state IS EMPTY", 6},
 		{"created is never empty", "created IS EMPTY", 8},
 		{"activity is never empty", "activity IS EMPTY", 9},
-		{"unknown field before comparison", "onwer=shivam", 0},
 		{"no expression before ORDER BY", "ORDER BY rank", 0},
 		{"ORDER BY in operand position", "NOT ORDER BY rank", 4},
 		{"ORDER BY missing field", "a ORDER BY", 10},
@@ -114,6 +116,22 @@ func TestParseErrors(t *testing.T) {
 		if qe.Pos != tc.pos {
 			t.Errorf("%s: Parse(%q) pos = %d, want %d (%s)", tc.name, tc.in, qe.Pos, tc.pos, qe.Msg)
 		}
+	}
+}
+
+// A misspelled field parses: only the compiler knows which names a schema
+// declares, so it owns the rejection.
+func TestCompileRejectsUnknownField(t *testing.T) {
+	if _, err := Parse("onwer=shivam"); err != nil {
+		t.Fatalf("Parse should defer an unknown field to compile, got %v", err)
+	}
+	_, err := Compile("onwer=shivam", Options{})
+	qe, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("Compile err = %v, want *Error", err)
+	}
+	if !strings.Contains(qe.Msg, `unknown field "onwer"`) {
+		t.Errorf("Compile msg = %q, want it to name the unknown field", qe.Msg)
 	}
 }
 

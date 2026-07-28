@@ -33,10 +33,42 @@ exec kira show KIRA-1 --json
 stdout '## Notes'
 ! stdout '"notes"'
 
+# the query grammar filters on them, comparing by the declared type
+exec kira create ticket --title 'Low sev' --no-edit --field severity=low --field points=2
+exec kira list --query 'severity = high' --json
+stdout '"number": "KIRA-1"'
+! stdout '"number": "KIRA-2"'
+exec kira list --query 'points > 5' --json
+stdout '"count": 1'
+stdout '"number": "KIRA-1"'
+exec kira list --query 'signoff = true' --json
+stdout '"number": "KIRA-1"'
+exec kira list --query 'components = web' --json
+stdout '"number": "KIRA-1"'
+exec kira list --query 'severity IN (low, high)' --json
+stdout '"count": 2'
+exec kira list --query 'severity IS EMPTY' --json
+stdout '"count": 0'
+
+# an ordered comparison is refused on a type that has no order
+! exec kira list --query 'severity > low'
+stderr 'not valid on severity, declared enum'
+
+# a body-placed field is not filterable, and says so
+! exec kira list --query 'description = x'
+stderr 'body section and cannot be filtered'
+
+# a genuinely unknown field still errors, and the hint now lists schema fields
+! exec kira list --query 'nosuchfield = x'
+stderr 'unknown field "nosuchfield"'
+stderr 'severity'
+
 # clearing a field drops it from the output entirely
 exec kira edit KIRA-1 --field severity=
 exec kira show KIRA-1 --json
 ! stdout '"severity"'
+exec kira list --query 'severity IS EMPTY' --json
+stdout '"count": 1'
 
 -- ticket.json --
 {

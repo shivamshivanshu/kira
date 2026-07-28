@@ -44,6 +44,13 @@ type Identity struct {
 	Prefix string `json:"prefix,omitempty"`
 }
 
+const IdentityStyleConfig = "config"
+
+// ConfigBacked reports whether instances of this entity live as config.yaml
+// entries (board, sprint) rather than as item files, which is what makes them
+// absent from anything that reads, filters, or renders the item set.
+func (s Schema) ConfigBacked() bool { return s.Identity.Style == IdentityStyleConfig }
+
 type EnumDef struct {
 	Name   string   `json:"name"`
 	Values []string `json:"values"`

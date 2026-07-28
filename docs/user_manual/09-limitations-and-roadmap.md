@@ -26,16 +26,25 @@ $ kira show KIRA-1 --json | jq .fields
 }
 ```
 
-What does not work yet is filtering. `kira list --query 'severity = high'`
-fails with *unknown field "severity"* — the query grammar still knows only the
-built-in field names, so custom fields cannot be filtered or reported on from
-`list`.
+They are also filterable. `--query` resolves a schema-declared name and
+compares by its declared type, so `points > 5` is a numeric comparison rather
+than a string one:
 
-Body-placed fields (`placement: body`) are not part of the `fields` object;
+```console
+$ kira list --query 'severity = high'
+$ kira list --query 'points > 5'
+$ kira list --query 'severity IN (low, high)'
+$ kira list --query 'severity IS EMPTY'
+```
+
+An ordered comparison is refused on a type that has no order (`severity > low`
+errors rather than comparing text). A query spans item types, so a field only
+one type declares simply does not match items of the others.
+
+Two gaps remain. A custom field cannot be a `kira list` **column** — the table
+is driven by `ui.list.columns`, not the schema (CORE-54). And body-placed
+fields (`placement: body`) are neither in the `fields` object nor filterable;
 their text is already in the item body, which `show` prints in full.
-
-**Roadmap:** active. Making the query grammar schema-aware is CORE-52, under
-the CORE-50 epic.
 
 ## Defining your own item type works, but dangling custom refs on it can go unchecked
 

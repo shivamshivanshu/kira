@@ -56,7 +56,7 @@ func CustomFields(schema Schema, it *datamodel.Item, decodeScalar func(string) a
 	var customValues map[string]any
 	allValues := ProjectItem(schema, it, decodeScalar)
 	for _, f := range schema.Fields {
-		if !f.isCustomFrontmatterField() {
+		if !f.IsCustomFrontmatter() {
 			continue
 		}
 		value, present := allValues[f.Name]
@@ -71,7 +71,10 @@ func CustomFields(schema Schema, it *datamodel.Item, decodeScalar func(string) a
 	return customValues
 }
 
-func (f FieldDef) isCustomFrontmatterField() bool {
+// IsCustomFrontmatter reports whether a schema declares this field beyond the
+// built-in item shape, so its value lives in the item's extras rather than a
+// dedicated Item field or the body.
+func (f FieldDef) IsCustomFrontmatter() bool {
 	if f.System || f.Placement == PlacementBody {
 		return false
 	}

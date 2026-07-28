@@ -42,7 +42,7 @@ func (i *Index) Items() ([]*datamodel.Item, error) {
 
 func (i *Index) scanItems() ([]*datamodel.Item, map[string]*datamodel.Item, error) {
 	rows, err := i.db.Query(`SELECT id, number, type, subtype, title, state, resolution,
-		priority, rank, owner, reporter, epic, sprint, due, estimate, created, updated, activity
+		priority, rank, owner, reporter, epic, sprint, due, estimate, created, updated, activity, extras
 		FROM items ORDER BY id`)
 	if err != nil {
 		return nil, nil, errx.Env("querying index items: %v", err)
@@ -52,12 +52,15 @@ func (i *Index) scanItems() ([]*datamodel.Item, map[string]*datamodel.Item, erro
 	var items []*datamodel.Item
 	for rows.Next() {
 		var it datamodel.Item
-		var subtype, resolution, priority, rank, owner, reporter, epic, sprint, due sql.NullString
+		var subtype, resolution, priority, rank, owner, reporter, epic, sprint, due, extras sql.NullString
 		var estimate sql.NullFloat64
 		if err := rows.Scan(&it.ID, &it.Number, &it.Type, &subtype, &it.Title, &it.State,
 			&resolution, &priority, &rank, &owner, &reporter, &epic, &sprint, &due,
-			&estimate, &it.Created, &it.Updated, &it.Activity); err != nil {
+			&estimate, &it.Created, &it.Updated, &it.Activity, &extras); err != nil {
 			return nil, nil, errx.Env("scanning index item: %v", err)
+		}
+		if err := decodeExtras(extras.String, &it); err != nil {
+			return nil, nil, err
 		}
 		it.Subtype = strPtr(subtype)
 		it.Resolution = strPtr(resolution)
