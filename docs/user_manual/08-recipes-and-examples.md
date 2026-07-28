@@ -106,6 +106,16 @@ NUMBER  STATE  TYPE    PRIORITY  TITLE
 CORE-4  TODO   ticket  P2        Replace legacy session cache
 ```
 
+`kira show <blocker> --json` answers the same question in its `blocks` array,
+derived the same way (the human-readable `kira show` does not print it):
+
+```console
+$ kira show CORE-5 --json | jq .blocks
+[
+  "01KYKD7DK3A2VGB40VAF3715BZ"
+]
+```
+
 `blocked` is computed, not a field: an item is blocked while any of its
 blockers is still open. Closing the blocker is what unblocks it — no bookkeeping
 step. To retract the dependency itself, use

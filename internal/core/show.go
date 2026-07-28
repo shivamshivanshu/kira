@@ -1,6 +1,8 @@
 package core
 
 import (
+	"slices"
+
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
@@ -26,6 +28,7 @@ func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResu
 			return nil, errx.User("%s resolved to %s, which is absent at %s", ref, ulid, at)
 		}
 		res := showResultOf(ld.cfg, it)
+		res.Blocks = blocksOf(ld.items, ulid)
 		res.Skew = s.skew(cfg, ref, ulid, at)
 		return &res, nil
 	}
@@ -35,6 +38,7 @@ func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResu
 			WithHint("the file is malformed; repair it in a text editor, then verify with `kira doctor`")
 	}
 	res := showResultOf(cfg, it)
+	res.Blocks = blocksOf(ld.items, ulid)
 	res.StderrNotes = ld.notes
 
 	events, links, err := s.logEntries(ulid)
@@ -45,6 +49,20 @@ func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResu
 	res.ReferencedBy = commitLinksView(links, index.LinkReferenced)
 	res.HistoryTail = historyTailView(events)
 	return &res, nil
+}
+
+// blocksOf derives the reverse of blocked_by: the items that name ulid as a
+// blocker. It is not stored on the item itself, so it is recomputed from the
+// loaded set rather than read from the file.
+func blocksOf(items []*datamodel.Item, ulid string) []string {
+	out := []string{}
+	for _, it := range items {
+		if slices.Contains(it.BlockedBy, ulid) {
+			out = append(out, it.ID)
+		}
+	}
+	slices.Sort(out)
+	return out
 }
 
 func commitLinksView(links []index.CommitLink, kind index.LinkKind) []datamodel.CommitLink {
