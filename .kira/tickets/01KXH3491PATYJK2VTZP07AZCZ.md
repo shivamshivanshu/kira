@@ -6,12 +6,13 @@ type: ticket
 subtype: bug
 title: "chdirArg misparses -Cpath and '--'; bulk outcome contract untested"
 state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:41+05:30
-updated: 2026-07-16T13:38:53+05:30
+updated: 2026-07-28T14:27:57+05:30
 ---
 
 ## Description

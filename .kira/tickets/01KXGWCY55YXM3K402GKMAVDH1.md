@@ -6,11 +6,12 @@ type: ticket
 subtype: feature
 title: "Configurable ticket schema: custom sections + typed custom fields per type"
 state: DONE
+resolution: done
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-14T23:27:04+05:30
-updated: 2026-07-28T12:12:19+05:30
+updated: 2026-07-28T14:27:55+05:30
 ---
 
 ## Description

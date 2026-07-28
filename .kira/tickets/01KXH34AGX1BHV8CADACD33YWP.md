@@ -6,12 +6,13 @@ type: ticket
 subtype: bug
 title: "storage: require valid ULID filenames and direct-child ticket paths"
 state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:42+05:30
-updated: 2026-07-16T18:45:00+05:30
+updated: 2026-07-28T14:27:58+05:30
 ---
 
 ## Description

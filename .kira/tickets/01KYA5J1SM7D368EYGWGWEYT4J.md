@@ -5,11 +5,12 @@ aliases: []
 type: ticket
 title: "Surface ExtraLinks conflicts in merge arbitration"
 state: DONE
+resolution: done
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-24T19:08:10+05:30
-updated: 2026-07-26T00:20:00+05:30
+updated: 2026-07-28T14:28:04+05:30
 ---
 
 Unknown link types round-trip via `Item.ExtraLinks` (CORE-41) and are

@@ -5,11 +5,12 @@ aliases: []
 type: ticket
 title: "Round-trip unknown link types losslessly"
 state: DONE
+resolution: done
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-24T14:25:55+05:30
-updated: 2026-07-24T19:09:31+05:30
+updated: 2026-07-28T14:28:03+05:30
 ---
 
 ## Description

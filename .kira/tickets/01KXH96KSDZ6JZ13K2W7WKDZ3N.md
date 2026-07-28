@@ -6,12 +6,13 @@ type: ticket
 subtype: bug
 title: "yamlsplice latent edge cases: split-line empty flow list and rune-vs-byte column index"
 state: DONE
+resolution: done
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T03:10:49+05:30
-updated: 2026-07-16T19:51:53+05:30
+updated: 2026-07-28T14:28:02+05:30
 ---
 
 ## Description

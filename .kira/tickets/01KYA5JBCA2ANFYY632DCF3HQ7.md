@@ -5,11 +5,12 @@ aliases: []
 type: ticket
 title: "Deduplicate error on unresolvable ref extra in create path"
 state: DONE
+resolution: done
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-24T19:08:20+05:30
-updated: 2026-07-26T00:20:01+05:30
+updated: 2026-07-28T14:28:04+05:30
 ---
 
 In the create/`validateAssembled` path, an unresolvable schema-declared

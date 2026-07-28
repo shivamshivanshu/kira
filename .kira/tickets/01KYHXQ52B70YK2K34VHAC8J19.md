@@ -5,11 +5,12 @@ aliases: []
 type: ticket
 title: "create --owner/--reporter @me is not resolved (unlike assign/edit/list)"
 state: DONE
+resolution: done
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-27T19:25:04+05:30
-updated: 2026-07-28T09:20:32+05:30
+updated: 2026-07-28T14:28:04+05:30
 ---
 
 `kira create ... --owner @me` (and presumably `--reporter @me`) stores the

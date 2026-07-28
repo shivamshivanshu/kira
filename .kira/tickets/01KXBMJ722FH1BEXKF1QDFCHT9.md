@@ -5,11 +5,12 @@ aliases: []
 type: epic
 title: "JIRA parity: gap tiers 1-3"
 state: DONE
+resolution: done
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-12T22:33:56+05:30
-updated: 2026-07-13T03:00:36+05:30
+updated: 2026-07-28T14:27:10+05:30
 ---
 
 ## Description
