@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 )
@@ -23,6 +24,7 @@ type Options struct {
 	ActiveSprint string
 	Me           string
 	Items        []*datamodel.Item
+	Schemas      map[string]entityschema.Schema
 }
 
 type Compiled struct {
@@ -59,7 +61,7 @@ func Compile(input string, opts Options) (*Compiled, error) {
 
 func Match(field, value string, opts Options) (Predicate, []datamodel.WarnCode, error) {
 	if !fields[field] {
-		return nil, nil, unknownFieldErr(0, field)
+		return nil, nil, (&compiler{opts: opts}).unknownFieldErr(0, field)
 	}
 	if isDateField(field) {
 		return nil, nil, &Error{Pos: 0, Msg: "field " + field + " is not an equality filter"}
@@ -103,7 +105,7 @@ func (c *compiler) compile(e Expr) (Predicate, error) {
 	case *inExpr:
 		return c.compileIn(n)
 	case *emptyExpr:
-		return compileIsEmpty(n), nil
+		return c.compileIsEmpty(n)
 	case *boolExpr:
 		return c.compileBool(n)
 	default:
@@ -178,16 +180,32 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 	case fieldDue:
 		return datePred(n, func(it *datamodel.Item) string { return ptr.Deref(it.Due) }), nil
 	}
-	return nil, unknownFieldErr(n.op.pos, n.field)
+	if cf, ok := c.lookupCustomField(n.field); ok {
+		if cf.def.Placement == entityschema.PlacementBody {
+			return nil, bodyFieldErr(n.op.pos, n.field)
+		}
+		return c.compileCustomPred(n, cf)
+	}
+	return nil, c.unknownFieldErr(n.op.pos, n.field)
 }
 
-func unknownFieldErr(pos int, field string) *Error {
-	names := make([]string, 0, len(fields))
+func bodyFieldErr(pos int, field string) *Error {
+	return &Error{Pos: pos, Msg: "field " + field + " is a body section and cannot be filtered"}
+}
+
+func (c *compiler) unknownFieldErr(pos int, field string) *Error {
+	return &Error{Pos: pos, Msg: fmt.Sprintf("unknown field %s (available: %s)",
+		quote(field), strings.Join(availableFieldNames(c.customFieldNames()), ", "))}
+}
+
+func availableFieldNames(custom []string) []string {
+	names := make([]string, 0, len(fields)+len(custom))
 	for f := range fields {
 		names = append(names, f)
 	}
+	names = append(names, custom...)
 	slices.Sort(names)
-	return &Error{Pos: pos, Msg: fmt.Sprintf("unknown field %s (available: %s)", quote(field), strings.Join(names, ", "))}
+	return names
 }
 
 func (c *compiler) compileRefPred(n *predExpr, eq bool, matches func(*datamodel.Item, string) bool) (Predicate, error) {
@@ -224,7 +242,17 @@ func (c *compiler) compileIn(n *inExpr) (Predicate, error) {
 	}, nil
 }
 
-func compileIsEmpty(n *emptyExpr) Predicate {
+func (c *compiler) compileIsEmpty(n *emptyExpr) (Predicate, error) {
+	if !fields[n.field] {
+		cf, ok := c.lookupCustomField(n.field)
+		if !ok {
+			return nil, c.unknownFieldErr(0, n.field)
+		}
+		if cf.def.Placement == entityschema.PlacementBody {
+			return nil, bodyFieldErr(0, n.field)
+		}
+		return c.compileCustomIsEmpty(n, cf), nil
+	}
 	var isEmpty func(it *datamodel.Item, cfg *datamodel.Config) bool
 	switch n.field {
 	case fieldLabel:
@@ -240,7 +268,7 @@ func compileIsEmpty(n *emptyExpr) Predicate {
 		isEmpty = func(it *datamodel.Item, cfg *datamodel.Config) bool { return get(it, cfg) == "" }
 	}
 	want := !n.notEmpty
-	return func(it *datamodel.Item, cfg *datamodel.Config) bool { return isEmpty(it, cfg) == want }
+	return func(it *datamodel.Item, cfg *datamodel.Config) bool { return isEmpty(it, cfg) == want }, nil
 }
 
 func (c *compiler) compileBool(n *boolExpr) (Predicate, error) {
