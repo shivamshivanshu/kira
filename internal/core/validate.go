@@ -279,7 +279,7 @@ func normalizeRefExtras(it *datamodel.Item, resolver *id.Resolver, schema entity
 		return ulid, true
 	}
 	for _, f := range schema.Fields {
-		if f.Type != entityschema.FieldRef || f.Source != "" {
+		if f.Type != entityschema.FieldRef || f.Source != "" || !f.IsCustomFrontmatter() {
 			continue
 		}
 		label := fmt.Sprintf("field %q", f.Name)

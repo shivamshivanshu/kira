@@ -105,22 +105,22 @@ func TestRepoEditorIgnored(t *testing.T) {
 	}
 }
 
-func TestUserBadColumnWarns(t *testing.T) {
-	_, warn, repoPath, userPath := loadWithUser(t, minimalRepo, "ui:\n  list:\n    columns: [number, bogus, title]\n")
-	wantWarn := userPath + `: ui.list.columns: unknown column "bogus"; ignored`
+func TestUserBadThemeSlotWarns(t *testing.T) {
+	_, warn, repoPath, userPath := loadWithUser(t, minimalRepo, "ui:\n  theme:\n    bogus: \"#abcdef\"\n")
+	wantWarn := userPath + `: ui.theme: unknown slot "bogus"; ignored`
 	if !strings.Contains(warn, wantWarn) {
-		t.Errorf("bad column did not warn via user path: got %q, want substring %q", warn, wantWarn)
+		t.Errorf("bad theme slot did not warn via user path: got %q, want substring %q", warn, wantWarn)
 	}
 	if strings.Contains(warn, repoPath+":") {
-		t.Errorf("user-tier bad column must not be blamed on the repo path: %q", warn)
+		t.Errorf("user-tier bad slot must not be blamed on the repo path: %q", warn)
 	}
 }
 
-func TestRepoBadColumnWarnsViaRepoPath(t *testing.T) {
-	repo := minimalRepo + "ui:\n  list:\n    columns: [number, bogus, title]\n"
+func TestRepoBadThemeSlotWarnsViaRepoPath(t *testing.T) {
+	repo := minimalRepo + "ui:\n  theme:\n    bogus: \"#abcdef\"\n"
 	_, warn, repoPath, _ := loadWithUser(t, repo, "")
-	wantWarn := repoPath + `: ui.list.columns: unknown column "bogus"; ignored`
+	wantWarn := repoPath + `: ui.theme: unknown slot "bogus"; ignored`
 	if !strings.Contains(warn, wantWarn) {
-		t.Errorf("repo-introduced bad column did not warn via repo path: got %q, want substring %q", warn, wantWarn)
+		t.Errorf("repo-introduced bad slot did not warn via repo path: got %q, want substring %q", warn, wantWarn)
 	}
 }

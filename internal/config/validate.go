@@ -179,11 +179,10 @@ func validateWorkonSection(w datamodel.Workon) error {
 
 func UIWarnings(ui datamodel.UI) []string {
 	var out []string
-	for _, c := range ui.List.Columns {
-		if !slices.Contains(datamodel.ListColumns, c) {
-			out = append(out, fmt.Sprintf("ui.list.columns: unknown column %q", c))
-		}
-	}
+	// ui.list.columns is deliberately unchecked: a schema may declare a field
+	// as a column, and config has no view of schemas, so a closed-set test
+	// here would reject legitimate names. An unrenderable one shows as an
+	// empty column instead.
 	for _, slot := range slices.Sorted(maps.Keys(ui.Theme)) {
 		switch {
 		case !slices.Contains(datamodel.ThemeSlots, slot):

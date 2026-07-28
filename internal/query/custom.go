@@ -25,7 +25,7 @@ func (c *compiler) lookupCustomField(name string) (customField, bool) {
 			continue
 		}
 		f, ok := schema.Field(name)
-		if !ok || f.System {
+		if !ok || !f.IsSchemaOnly() {
 			continue
 		}
 		if found.def.Name == "" {

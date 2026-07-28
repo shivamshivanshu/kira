@@ -115,9 +115,9 @@ func checkType(f FieldDef, v any, add addFunc) bool {
 	case FieldBool:
 		_, ok = v.(bool)
 	case FieldDate:
-		ok = isValidDate(v)
+		ok = isTemporal(v, datamodel.ValidDate)
 	case FieldDatetime:
-		ok = isValidDatetime(v)
+		ok = isTemporal(v, validDatetime)
 	}
 	if !ok {
 		add(f.Name, CodeType, "expected type %s, got %T", f.Type, v)
@@ -190,20 +190,12 @@ func validDatetime(s string) bool {
 	return err == nil
 }
 
-func isValidDate(v any) bool {
+// A hand-edited unquoted date decodes to time.Time rather than a string, so
+// both spellings have to satisfy a temporal field.
+func isTemporal(v any, validText func(string) bool) bool {
 	switch t := v.(type) {
 	case string:
-		return datamodel.ValidDate(t)
-	case time.Time:
-		return true
-	}
-	return false
-}
-
-func isValidDatetime(v any) bool {
-	switch t := v.(type) {
-	case string:
-		return validDatetime(t)
+		return validText(t)
 	case time.Time:
 		return true
 	}

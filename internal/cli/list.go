@@ -93,20 +93,13 @@ func pinnedColumns(cfg *datamodel.Config) []string {
 }
 
 // resolveColumns picks the table's columns: ui.list.columns wins, then what
-// the matched types' schemas declare, then the built-in default. A configured
-// name with no cell behind it is dropped rather than failing the listing,
-// while a schema-declared one is kept — the schema names its own fields, and
-// those render from the item's custom values.
+// the matched types' schemas declare, then the built-in default. Names are not
+// filtered against the built-in cells, since a schema-declared field is a
+// legitimate column from either source and itemCell renders it.
 func resolveColumns(configured, schemaDeclared []string) []string {
-	builtins := make([]string, 0, len(configured))
-	for _, c := range configured {
-		if _, ok := listCells[c]; ok {
-			builtins = append(builtins, c)
-		}
-	}
 	switch {
-	case len(builtins) > 0:
-		return builtins
+	case len(configured) > 0:
+		return configured
 	case len(schemaDeclared) > 0:
 		return schemaDeclared
 	default:

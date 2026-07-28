@@ -51,35 +51,51 @@ func ProjectItem(schema Schema, it *datamodel.Item, decodeScalar func(string) an
 }
 
 // CustomFields projects the fields a schema adds beyond the built-in item
-// shape, and is nil for a schema that adds none.
+// shape, and is nil for a schema that adds none. It reads the extras directly
+// rather than going through ProjectItem: this runs per row on every listing,
+// and ProjectItem parses the whole body to build a map whose built-in keys are
+// all discarded here.
 func CustomFields(schema Schema, it *datamodel.Item, decodeScalar func(string) any) map[string]any {
 	var customValues map[string]any
-	allValues := ProjectItem(schema, it, decodeScalar)
+	put := func(name string, value any) {
+		if customValues == nil {
+			customValues = map[string]any{}
+		}
+		customValues[name] = value
+	}
 	for _, f := range schema.Fields {
 		if !f.IsCustomFrontmatter() {
 			continue
 		}
-		value, present := allValues[f.Name]
-		if !present {
+		if f.List {
+			if list, ok := it.ExtraLists[f.Name]; ok {
+				put(f.Name, slices.Clone(list))
+			}
 			continue
 		}
-		if customValues == nil {
-			customValues = map[string]any{}
+		if raw, ok := it.ExtraScalars[f.Name]; ok {
+			put(f.Name, decodeScalar(raw))
 		}
-		customValues[f.Name] = value
 	}
 	return customValues
 }
 
-// IsCustomFrontmatter reports whether a schema declares this field beyond the
-// built-in item shape, so its value lives in the item's extras rather than a
-// dedicated Item field or the body.
-func (f FieldDef) IsCustomFrontmatter() bool {
-	if f.System || f.Placement == PlacementBody {
+// IsSchemaOnly reports whether a schema declares this field beyond the built-in
+// item shape: no dedicated Item field behind it and not system-managed, whether
+// it lands in frontmatter or a body section.
+func (f FieldDef) IsSchemaOnly() bool {
+	if f.System {
 		return false
 	}
 	_, hasDedicatedItemField := datamodel.Field(f.Name)
 	return !hasDedicatedItemField
+}
+
+// IsCustomFrontmatter narrows IsSchemaOnly to the fields whose value lives in
+// the item's extras, which is what can be read back and filtered; a body-placed
+// field's text reaches callers through the body instead.
+func (f FieldDef) IsCustomFrontmatter() bool {
+	return f.IsSchemaOnly() && f.Placement != PlacementBody
 }
 
 func setIfPresent[T any](values map[string]any, name string, v *T) {
