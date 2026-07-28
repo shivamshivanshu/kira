@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"os"
 	"path/filepath"
 	"strings"
@@ -77,7 +78,7 @@ func TestItemFromDraftEmptyScalarsAreAbsent(t *testing.T) {
 }
 
 func TestApplyFlagsOverridesTemplate(t *testing.T) {
-	base, err := parseDraft(defaultTemplate("ticket"))
+	base, err := parseDraft(defaultTemplate("ticket", entityschema.Schema{}))
 	if err != nil {
 		t.Fatalf("parse default template: %v", err)
 	}
