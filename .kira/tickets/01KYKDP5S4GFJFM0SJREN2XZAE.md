@@ -4,13 +4,13 @@ number: CORE-51
 aliases: []
 type: ticket
 title: "Surface schema-declared fields in show (human and --json)"
-state: IN_PROGRESS
+state: DONE
 priority: P1
 labels: []
 epic: 01KYKDNPSZEGK032FRCJCVNKE1
 blocked_by: []
 created: 2026-07-28T09:23:24+05:30
-updated: 2026-07-28T09:27:39+05:30
+updated: 2026-07-28T09:35:22+05:30
 ---
 
 A schema-declared custom field round-trips correctly in the item file but

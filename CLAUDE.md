@@ -11,6 +11,27 @@ This repo dogfoods itself: its own tickets live in `.kira/tickets/`, config in
 mutations (create/edit/move/...) auto-commit to `.kira/` immediately; `kira
 commit` only exists for `manual`/`prompt` modes.
 
+## Code style: names carry the meaning, not comments
+
+Do not write comments that a good name would make redundant. Long, explicit
+identifiers are preferred over short ones plus an explanatory comment — rename
+the thing, extract a named function, or introduce a named intermediate value
+instead of narrating it. `blockedByTargetTypeMismatch` beats `mismatch` plus a
+comment saying what kind of mismatch it is.
+
+A comment is justified only when it carries something no name can:
+
+- a non-obvious *why* (a workaround, a subtle invariant, why the obvious
+  approach fails here — see the Gotchas below for the class of thing worth
+  writing down),
+- a genuinely complex algorithm whose steps do not read off the code.
+
+Never write comments that restate the code, label sections, or repeat the
+function name as a sentence. Do not add a doc comment to an unexported
+function just because it exists. When editing existing code, do not delete
+comments that predate your change — comment cleanup is its own intentional
+task, not a side effect.
+
 ## Build, test, lint
 
 ```sh
