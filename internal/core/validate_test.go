@@ -37,7 +37,7 @@ func TestValidateGraph(t *testing.T) {
 	t.Run("non-epic parent rejected", func(t *testing.T) {
 		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Epic: ptr.To("T")}
 		errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{ticket, child}), ticketSchema(t))
-		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "not an epic") {
+		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "is type ticket, expected epic") {
 			t.Fatalf("non-epic parent must be rejected, got %v", errs)
 		}
 	})
