@@ -4,13 +4,13 @@ number: CORE-53
 aliases: []
 type: ticket
 title: "Fold the dangling-ref scan into the schema-driven ref check"
-state: IN_PROGRESS
+state: DONE
 priority: P2
 labels: []
 epic: 01KYKDNPSZEGK032FRCJCVNKE1
 blocked_by: []
 created: 2026-07-28T09:23:54+05:30
-updated: 2026-07-28T11:24:55+05:30
+updated: 2026-07-28T11:30:31+05:30
 ---
 
 `doctor`'s dangling-reference scan only walks the three built-in
