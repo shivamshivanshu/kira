@@ -46,37 +46,6 @@ is driven by `ui.list.columns`, not the schema (CORE-54). And body-placed
 fields (`placement: body`) are neither in the `fields` object nor filterable;
 their text is already in the item body, which `show` prints in full.
 
-## Defining your own item type works, but dangling custom refs on it can go unchecked
-
-kira ships two item types, `ticket` and `epic`, but a third type is not a Go
-change: give it a `workflows:` entry in `.kira/config.yaml` — the same block
-that defines `ticket`'s and `epic`'s states and transitions — and `kira
-create <type>`, `edit`, `move`, `list`, `show`, and `doctor`'s state checks
-all handle it immediately, with the same built-in field set (title, state,
-labels, owner, priority, epic, blocked_by, body sections, and the rest).
-No schema file is required for this much to work. Adding a matching
-`.kira/schema/<type>.json` on top gives the new type custom fields through
-`--field`, exactly like customizing `ticket` or `epic` — see
-[Custom Fields and Schema](06-custom-fields-and-schema.md).
-
-What is not yet finished: `kira doctor`'s dangling-reference scan only
-follows the built-in `epic`, `blocked_by`, and `links` relationships. A
-custom `ref` field — on a new type or on `ticket`/`epic` — is validated when
-you set it through `--field`, but if a bad reference reaches the file some
-other way (a hand edit, a bad merge) and points at nothing at all, `doctor`
-does not flag it. (A *wrong-typed* reference — pointing at an item of the
-wrong entity type — is caught; it's specifically the "points at nothing"
-case that the dangling-ref scan misses for custom fields.)
-
-If you need a distinct category of work without a new type, the `subtype`
-field (`kira create ticket --subtype bug`) or a label are lighter-weight
-alternatives — both configurable in `.kira/config.yaml` and both filterable.
-
-**Roadmap:** active. Folding the dangling-reference scan into the same
-schema-driven check that already covers ref *type* mismatches, so it walks
-every declared ref field generically instead of only the three built-in
-ones, is planned work on CORE-3.
-
 ## Display settings in a schema have no effect
 
 Each schema file carries a `representation` block: a display `label`, an

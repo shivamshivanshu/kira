@@ -10,6 +10,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/doctor"
 	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 func builtinSchemas(t *testing.T) map[string]entityschema.Schema {
@@ -164,14 +165,14 @@ func TestLintMalformedComment(t *testing.T) {
 func TestCheckCleanItemHasNoFindings(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
-	if f := doctor.Check(config.Default(), resolver(it), it); len(f) != 0 {
+	if f := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t)); len(f) != 0 {
 		t.Fatalf("expected no findings for a clean item, got %+v", f)
 	}
 }
 
 func TestCheckUnknownBoardPrefixWarns(t *testing.T) {
 	it := valid(ulidA, "ZZZ-9")
-	findings := doctor.Check(config.Default(), resolver(it), it)
+	findings := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	if classes(findings)[doctor.ClassBoard] != doctor.SeverityWarning {
 		t.Fatalf("expected a board warning for the unconfigured prefix ZZZ, got %+v", findings)
 	}
@@ -179,7 +180,7 @@ func TestCheckUnknownBoardPrefixWarns(t *testing.T) {
 
 func TestCheckUnknownBoardPrefixWarnsForHashNumber(t *testing.T) {
 	it := valid(ulidA, "ZZZ-a1b2c3")
-	findings := doctor.Check(config.Default(), resolver(it), it)
+	findings := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	if classes(findings)[doctor.ClassBoard] != doctor.SeverityWarning {
 		t.Fatalf("expected a board warning for the unconfigured hash-style prefix ZZZ, got %+v", findings)
 	}
@@ -191,7 +192,7 @@ func TestCheckUnknownStateAndSprintAndDue(t *testing.T) {
 	it.State = "NOPE"
 	it.Sprint = strp("2099-S1")
 	it.Due = strp("not-a-date")
-	findings := doctor.Check(config.Default(), resolver(it), it)
+	findings := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	cl := classes(findings)
 	if cl[doctor.ClassState] != doctor.SeverityError {
 		t.Errorf("expected state error, got %+v", findings)
@@ -206,14 +207,14 @@ func TestCheckVocabStrictVsWarn(t *testing.T) {
 	it := valid(ulidA, "KIRA-1")
 	it.Labels = []string{"not-a-label"}
 
-	warn := doctor.Check(config.Default(), resolver(it), it)
+	warn := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	if classes(warn)[doctor.ClassVocab] != doctor.SeverityWarning {
 		t.Errorf("expected vocab warning under non-strict labels, got %+v", warn)
 	}
 
 	strict := config.Default()
 	strict.Labels.Strict = true
-	got := doctor.Check(strict, resolver(it), it)
+	got := doctor.Check(strict, resolver(it), it, builtinSchemas(t))
 	if classes(got)[doctor.ClassVocab] != doctor.SeverityError {
 		t.Errorf("expected vocab error under strict labels, got %+v", got)
 	}
@@ -226,13 +227,13 @@ func TestCheckEnumVocabFollowsStrict(t *testing.T) {
 
 	lenient := config.Default()
 	lenient.Labels.Strict = false
-	if classes(doctor.Check(lenient, resolver(it), it))[doctor.ClassVocab] != doctor.SeverityWarning {
+	if classes(doctor.Check(lenient, resolver(it), it, builtinSchemas(t)))[doctor.ClassVocab] != doctor.SeverityWarning {
 		t.Fatalf("expected enum vocab warning under non-strict labels, matching create")
 	}
 
 	strict := config.Default()
 	strict.Labels.Strict = true
-	if classes(doctor.Check(strict, resolver(it), it))[doctor.ClassVocab] != doctor.SeverityError {
+	if classes(doctor.Check(strict, resolver(it), it, builtinSchemas(t)))[doctor.ClassVocab] != doctor.SeverityError {
 		t.Fatalf("expected enum vocab error under strict labels, matching create")
 	}
 }
@@ -242,7 +243,7 @@ func TestCheckDanglingAndSelfRef(t *testing.T) {
 	it := valid(ulidA, "KIRA-1")
 	it.Epic = strp(ulidB)
 	it.BlockedBy = []string{ulidA}
-	findings := doctor.Check(config.Default(), resolver(it), it)
+	findings := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	var dangling, selfRef bool
 	for _, f := range findings {
 		if f.Class != doctor.ClassRef {
@@ -379,7 +380,7 @@ func TestCheckEmptyRankIsSchemaError(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
 	it.Rank = strp("")
-	findings := doctor.Check(config.Default(), resolver(it), it)
+	findings := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	for _, f := range findings {
 		if f.Class == doctor.ClassSchema && f.Field == datamodel.KeyRank && f.Severity == doctor.SeverityError {
 			return
@@ -526,6 +527,35 @@ func TestRefTypeExtraRefFieldMismatch(t *testing.T) {
 	f := doctor.RefTypeMismatches(schemas, items, resolver(items...))
 	if len(f) != 1 || f[0].Class != doctor.ClassRefType || f[0].ItemID != ulidA || f[0].Field != "reviewer_of" {
 		t.Fatalf("expected one ref-type finding on the declared ref extra, got %+v", f)
+	}
+}
+
+func TestCheckDanglingExtraRefField(t *testing.T) {
+	t.Parallel()
+	schemas := builtinSchemas(t)
+	ticketSchema := schemas[datamodel.TypeTicket]
+	ticketSchema.Fields = append(slices.Clone(ticketSchema.Fields), entityschema.FieldDef{
+		Name: "reviewer_of", Type: entityschema.FieldRef, Target: datamodel.TypeTicket,
+	})
+	schemas[datamodel.TypeTicket] = ticketSchema
+
+	it := valid(ulidA, "KIRA-1")
+	it.ExtraScalars = map[string]string{"reviewer_of": ulidB}
+
+	f := doctor.Check(config.Default(), resolver(it), it, schemas)
+	if len(f) != 1 || f[0].Class != doctor.ClassRef || f[0].Field != "reviewer_of" {
+		t.Fatalf("a custom ref pointing at nothing must be flagged dangling, got %+v", f)
+	}
+}
+
+func TestCheckReportsBuiltinDanglingRefOnce(t *testing.T) {
+	t.Parallel()
+	it := valid(ulidA, "KIRA-1")
+	it.Epic = ptr.To(ulidB)
+
+	f := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
+	if len(f) != 1 || f[0].Field != datamodel.KeyEpic {
+		t.Fatalf("epic is both a built-in and schema-declared; it must be reported once, got %+v", f)
 	}
 }
 
@@ -687,12 +717,12 @@ func TestCheckStaleResolutionWarns(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
 	it.Resolution = strp("done")
-	findings := doctor.Check(config.Default(), resolver(it), it)
+	findings := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	if classes(findings)[doctor.ClassState] != doctor.SeverityWarning {
 		t.Fatalf("expected a stale-resolution warning on a non-done state, got %+v", findings)
 	}
 	it.State = "WONT_DO"
-	if f := doctor.Check(config.Default(), resolver(it), it); hasClass(f, doctor.ClassState) {
+	if f := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t)); hasClass(f, doctor.ClassState) {
 		t.Fatalf("resolution on a done state must be clean, got %+v", f)
 	}
 }
@@ -701,12 +731,12 @@ func TestCheckDoneStateWithNilResolutionWarns(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
 	it.State = "WONT_DO"
-	findings := doctor.Check(config.Default(), resolver(it), it)
+	findings := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	if classes(findings)[doctor.ClassState] != doctor.SeverityWarning {
 		t.Fatalf("expected a missing-resolution warning on a done state with nil resolution, got %+v", findings)
 	}
 	it.Resolution = strp("dropped")
-	if f := doctor.Check(config.Default(), resolver(it), it); hasClass(f, doctor.ClassState) {
+	if f := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t)); hasClass(f, doctor.ClassState) {
 		t.Fatalf("resolution set on a done state must be clean, got %+v", f)
 	}
 }

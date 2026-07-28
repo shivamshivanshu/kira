@@ -6,18 +6,20 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
-func Check(cfg *datamodel.Config, resolver *id.Resolver, it *datamodel.Item) []Finding {
+func Check(cfg *datamodel.Config, resolver *id.Resolver, it *datamodel.Item, schemas map[string]entityschema.Schema) []Finding {
 	var out []Finding
 	out = append(out, stateFindings(cfg, it)...)
 	out = append(out, resolutionFindings(cfg, it)...)
 	out = append(out, vocabFindings(cfg, it)...)
 	out = append(out, scalarFindings(cfg, it)...)
 	out = append(out, boardFindings(cfg, it)...)
-	out = append(out, refFindings(resolver, it)...)
+	out = append(out, refFindings(resolver, it, schemas)...)
 	return out
 }
 
@@ -131,12 +133,19 @@ func schemaErr(field, msg string) Finding {
 	return Finding{Class: ClassSchema, Severity: SeverityError, Field: field, Message: msg}
 }
 
-func refFindings(resolver *id.Resolver, it *datamodel.Item) []Finding {
+// refFindings walks every ref field the item's schema declares, so a custom
+// ref gets the same dangling and self-reference checks as the built-in three.
+// Target-type correctness needs the whole item set and lives in
+// RefTypeMismatches instead.
+func refFindings(resolver *id.Resolver, it *datamodel.Item, schemas map[string]entityschema.Schema) []Finding {
 	if resolver == nil {
 		return nil
 	}
 	var out []Finding
 	check := func(field, ref string) {
+		if ref == "" {
+			return
+		}
 		ulid, err := resolver.Resolve(ref)
 		if err != nil {
 			out = append(out, Finding{Class: ClassRef, Severity: SeverityError, Field: field,
@@ -148,15 +157,22 @@ func refFindings(resolver *id.Resolver, it *datamodel.Item) []Finding {
 				Message: field + " references the item itself"})
 		}
 	}
-	if it.Epic != nil && *it.Epic != "" {
-		check(datamodel.KeyEpic, *it.Epic)
-	}
-	for _, b := range it.BlockedBy {
-		check(datamodel.KeyBlockedBy, b)
-	}
 	for _, typ := range slices.Sorted(maps.Keys(it.Links)) {
 		for _, ref := range it.Links[typ] {
 			check(fmt.Sprintf("%s.%s", datamodel.KeyLinks, typ), ref)
+		}
+	}
+	schema, ok := schemas[it.Type]
+	if !ok {
+		return out
+	}
+	values := entityschema.ProjectItem(schema, it, codec.DecodeExtraScalar)
+	for _, f := range schema.Fields {
+		if !f.TargetsEntity(schemas) {
+			continue
+		}
+		for _, ref := range refStrings(values[f.Name]) {
+			check(f.Name, ref)
 		}
 	}
 	return out

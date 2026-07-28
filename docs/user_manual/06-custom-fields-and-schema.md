@@ -546,9 +546,16 @@ Be aware of what this mechanism does and does not do today.
 it has a `workflows:` entry in `.kira/config.yaml`; add one and
 `kira create <type>`, `kira move`, `kira list`, and the board all handle it.
 Pair it with a `.kira/schema/<type>.json` and its custom fields work through
-`--field` too. What you do *not* get is per-type presentation or storage: items
+`--field` too, including `ref` fields, which `kira doctor` checks for both
+dangling and wrong-typed targets exactly as it does the built-in `epic` and
+`blocked_by`. What you do *not* get is per-type presentation or storage: items
 of every type live in `.kira/tickets/`, and there is no way to give a new type
 its own rendering.
+
+If you only need a distinct category of work rather than a whole type, the
+`subtype` field (`kira create ticket --subtype bug`) or a label are
+lighter-weight alternatives — both configurable in `.kira/config.yaml`, and
+both filterable from `kira list`.
 
 **`representation` is inert.** The `label`, `icon`, and `list_columns` keys are
 accepted and validated as JSON, but nothing reads them. `kira list` columns come
