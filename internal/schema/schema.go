@@ -106,6 +106,12 @@ var stringEnums = map[reflect.Type][]string{
 	reflect.TypeFor[datamodel.SyncDirty]():       enumValues(datamodel.SyncDirties),
 	reflect.TypeFor[datamodel.WipPolicy]():       enumValues(datamodel.WipPolicies),
 	reflect.TypeFor[datamodel.Category]():        enumValues(datamodel.Categories),
+	reflect.TypeFor[datamodel.LogKind]():         enumValues(datamodel.LogKinds),
+	reflect.TypeFor[datamodel.BlameSource]():     enumValues(datamodel.BlameSources),
+	reflect.TypeFor[doctor.Severity]():           enumValues(doctor.Severities),
+	reflect.TypeFor[doctor.Class]():              enumValues(doctor.Classes),
+	reflect.TypeFor[doctor.CollisionKind]():      enumValues(doctor.CollisionKinds),
+	reflect.TypeFor[syncx.StepStatus]():          enumValues(syncx.StepStatuses),
 }
 
 // generator builds the $defs graph for one Generate() call. defs holds the

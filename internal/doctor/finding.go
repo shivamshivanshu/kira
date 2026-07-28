@@ -38,6 +38,16 @@ const (
 	CollisionAliasAlias CollisionKind = "alias-alias"
 )
 
+var Severities = []Severity{SeverityError, SeverityWarning, SeverityInfo}
+
+var Classes = []Class{
+	ClassSchema, ClassState, ClassVocab, ClassRef, ClassCollision, ClassCycle,
+	ClassRefCycle, ClassRefType, ClassComment, ClassFreshness, ClassHooks,
+	ClassEnv, ClassBoard, ClassNumberOutlier, ClassStray,
+}
+
+var CollisionKinds = []CollisionKind{CollisionLiveLive, CollisionLiveAlias, CollisionAliasAlias}
+
 type Finding struct {
 	Class     Class      `json:"class"`
 	Severity  Severity   `json:"severity"`
