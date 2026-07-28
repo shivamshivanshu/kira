@@ -50,7 +50,10 @@ func (opts CreateOpts) ValidateBlocking() error {
 	return nil
 }
 
-func (s *Store) ResolveTemplate(opts CreateOpts) (string, error) {
+func (s *Store) ResolveTemplate(cfg *datamodel.Config, opts CreateOpts) (string, error) {
+	if err := s.resolveOptsIdentities(cfg, &opts); err != nil {
+		return "", err
+	}
 	base, err := s.templateDraft(opts.Type, opts.Subtype)
 	if err != nil {
 		return "", err
@@ -58,8 +61,25 @@ func (s *Store) ResolveTemplate(opts CreateOpts) (string, error) {
 	return serializeDraft(applyFlags(base, opts)), nil
 }
 
+// resolveOptsIdentities binds the @me token in the dedicated owner/reporter
+// flags, which applyFlags copies verbatim; --field owner=@me takes the
+// separate applyFieldEdits path, which resolves it there.
+func (s *Store) resolveOptsIdentities(cfg *datamodel.Config, opts *CreateOpts) error {
+	for _, field := range []*string{&opts.Owner, &opts.Reporter} {
+		resolved, err := s.resolveMe(cfg, *field)
+		if err != nil {
+			return err
+		}
+		*field = resolved
+	}
+	return nil
+}
+
 func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.CreateResult, error) {
 	if err := opts.ValidateBlocking(); err != nil {
+		return nil, err
+	}
+	if err := s.resolveOptsIdentities(cfg, &opts); err != nil {
 		return nil, err
 	}
 	var hereActive string
