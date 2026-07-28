@@ -180,18 +180,22 @@ func validateGraph(updated *datamodel.Item, byID map[string]*datamodel.Item, sch
 	graph[updated.ID] = updated
 
 	var errs []error
-	if updated.Epic != nil && *updated.Epic != "" {
-		if parent := graph[*updated.Epic]; parent != nil && parent.Type != datamodel.TypeEpic {
-			errs = append(errs, fmt.Errorf("field %q: %s is not an epic", datamodel.KeyEpic, numberOrID(parent, *updated.Epic)))
+	checkTargetType := func(field string, refs []string) {
+		f, ok := schema.Field(field)
+		if !ok || f.Target == "" {
+			return
 		}
-	}
-	if bf, ok := schema.Field(datamodel.KeyBlockedBy); ok && bf.Target != "" {
-		for _, b := range updated.BlockedBy {
-			if blocker := graph[b]; blocker != nil && blocker.Type != bf.Target {
-				errs = append(errs, fmt.Errorf("field %q: %s is type %s, expected %s", datamodel.KeyBlockedBy, numberOrID(blocker, b), blocker.Type, bf.Target))
+		for _, ref := range refs {
+			if target := graph[ref]; target != nil && target.Type != f.Target {
+				errs = append(errs, fmt.Errorf("field %q: %s is type %s, expected %s",
+					field, numberOrID(target, ref), target.Type, f.Target))
 			}
 		}
 	}
+	if updated.Epic != nil && *updated.Epic != "" {
+		checkTargetType(datamodel.KeyEpic, []string{*updated.Epic})
+	}
+	checkTargetType(datamodel.KeyBlockedBy, updated.BlockedBy)
 	for _, rel := range datamodel.CycleRelations() {
 		for _, cycle := range datamodel.FindCycles(graph, rel.Edges) {
 			if slices.Contains(cycle, updated.ID) {
