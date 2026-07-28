@@ -12,9 +12,9 @@ exec kira init --key KIRA
 exec kira create ticket --title A --no-edit
 
 # dirty a tracked kira file; the branch has no upstream.
-cp $WORK/dirtytmpl .kira/templates/ticket.md
+cp dirtied.yaml .kira/config.yaml
 exec git status --porcelain
-stdout 'templates/ticket.md'
+stdout 'config.yaml'
 
 # the sync fails (no upstream), but the deferred pop restores the working tree.
 ! exec kira sync --stash
@@ -24,8 +24,11 @@ stderr 'prepare'
 exec git stash list
 ! stdout .
 exec git status --porcelain
-stdout 'templates/ticket.md'
+stdout 'config.yaml'
 
--- dirtytmpl --
-# locally modified template to create a dirty tracked kira file
-Title:
+-- dirtied.yaml --
+version: 1
+project:
+  key: KIRA
+  name: kira
+# locally modified to create a dirty tracked kira file

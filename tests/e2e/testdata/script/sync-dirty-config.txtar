@@ -16,7 +16,7 @@ exec git commit -m 'sync.dirty stash'
 exec kira create ticket --title A --no-edit
 
 # dirty a tracked kira file; the branch has no upstream so the sync fails.
-cp $WORK/dirtytmpl .kira/templates/ticket.md
+cp dirtied.yaml .kira/config.yaml
 ! exec kira sync
 stderr 'prepare'
 
@@ -24,7 +24,7 @@ stderr 'prepare'
 exec git stash list
 ! stdout .
 exec git status --porcelain
-stdout 'templates/ticket.md'
+stdout 'config.yaml'
 
 -- dirty.yaml --
 version: 1
@@ -34,6 +34,11 @@ project:
 sync:
   dirty: stash
 
--- dirtytmpl --
-# locally modified template to create a dirty tracked kira file
-Title:
+-- dirtied.yaml --
+version: 1
+project:
+  key: KIRA
+  name: kira
+sync:
+  dirty: stash
+# locally modified to create a dirty tracked kira file

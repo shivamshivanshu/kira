@@ -315,7 +315,11 @@ func (s *Store) templateDraft(typ, subtype string) (draft, error) {
 	data, err := os.ReadFile(s.templatePath(typ, subtype))
 	if err != nil {
 		if os.IsNotExist(err) {
-			d, _ := parseDraft(defaultTemplate(typ))
+			schemas, serr := s.schemas()
+			if serr != nil {
+				return draft{}, serr
+			}
+			d, _ := parseDraft(defaultTemplate(typ, schemas[typ]))
 			return d, nil
 		}
 		return draft{}, errx.User("reading template: %v", err)

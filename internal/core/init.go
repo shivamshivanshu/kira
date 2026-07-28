@@ -63,9 +63,7 @@ func Init(startDir, key string, force bool, prompter ...Prompter) (*datamodel.In
 
 	files := map[string]string{
 		fs.ConfigPath(): initConfigYAML(key, name),
-		filepath.Join(fs.KiraDir(), ".gitignore"):    storage.CacheDirName + "/\n",
-		filepath.Join(fs.TemplateDir(), "ticket.md"): defaultTemplate(datamodel.TypeTicket),
-		filepath.Join(fs.TemplateDir(), "epic.md"):   defaultTemplate(datamodel.TypeEpic),
+		filepath.Join(fs.KiraDir(), ".gitignore"): storage.CacheDirName + "/\n",
 	}
 	for path, content := range files {
 		if err := os.WriteFile(path, []byte(content), filePerm); err != nil {

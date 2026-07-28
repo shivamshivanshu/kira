@@ -6,6 +6,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/editorx"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 )
@@ -133,9 +134,12 @@ func runEditor(editor string, stdio editorx.Stdio, initial string, validate func
 	}
 }
 
-func defaultTemplate(typ string) string {
-	return serializeDraft(draft{
-		Type: typ,
-		Body: "\n## Description\n\n## Acceptance criteria\n",
-	})
+func defaultTemplate(typ string, schema entityschema.Schema) string {
+	var body strings.Builder
+	for _, f := range schema.Fields {
+		if f.Placement == entityschema.PlacementBody && f.Section != "" {
+			body.WriteString("\n## " + f.Section + "\n")
+		}
+	}
+	return serializeDraft(draft{Type: typ, Body: body.String()})
 }
