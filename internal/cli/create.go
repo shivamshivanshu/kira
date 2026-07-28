@@ -64,7 +64,7 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 				return errx.User("%q is not a configured type", opts.Type).WithHint("configured types: %s", strings.Join(workflowTypes(cfg), ", "))
 			}
 			if printTemplate {
-				tmpl, err := s.ResolveTemplate(opts)
+				tmpl, err := s.ResolveTemplate(cfg, opts)
 				if err != nil {
 					return err
 				}

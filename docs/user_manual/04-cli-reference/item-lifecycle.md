@@ -165,12 +165,17 @@ ends up with both `perf` and `backend`.
 > appears. Any non-interactive use of `create` wants either `--no-edit` or
 > `--from-file`.
 
-> **Known issue: `@me` on `create`.** The `@me` shorthand for your git identity
-> is not resolved by `create --owner` / `create --reporter` — it is stored as
-> the literal string `"@me"`, with a spurious vocabulary warning. Assign
-> yourself after creation with `kira assign <id> @me` (or
-> `kira assign <id> --owner @me --reporter` for the reporter), which resolves it
-> correctly. Tracked as CORE-47.
+`--owner` and `--reporter` accept `@me`, which resolves to your git identity
+the same way it does on `assign`, `edit`, and `list --owner`:
+
+```console
+$ kira create ticket "Retry budget is unbounded" --no-edit --owner @me
+Created KIRA-12 Retry budget is unbounded
+
+$ kira list --owner @me
+NUMBER   STATE  TYPE    PRIORITY  TITLE
+KIRA-12  TODO   ticket  -         Retry budget is unbounded
+```
 
 ### Creating from a file or stdin
 
