@@ -22,3 +22,28 @@ stdout '"number": "KIRA-1"'
 exec kira show KIRA-1 --json
 stdout '"title": "FF ticket"'
 stdout '"owner": "alice"'
+
+# flags still apply alongside --from-file: the file supplies the values, an
+# explicit flag overrides them
+exec kira create epic --title 'Parent' --no-edit
+exec kira create ticket --from-file draft.md --parent KIRA-2 --priority P1 --json
+exec kira show KIRA-3 --json
+stdout '"priority": "P1"'
+stdout '"epic": "[0-9A-Z]{26}"'
+stdout '"title": "FF ticket"'
+
+# a value the file sets loses to the flag, and survives when no flag competes
+cp with-priority.md p.md
+exec kira create ticket --from-file p.md --priority P0
+exec kira show KIRA-4 --json
+stdout '"priority": "P0"'
+exec kira create ticket --from-file p.md
+exec kira show KIRA-5 --json
+stdout '"priority": "P3"'
+
+-- with-priority.md --
+---
+title: Has a priority
+priority: P3
+---
+

@@ -214,6 +214,18 @@ Created KIRA-9 Timeout is too aggressive
 You do not supply an `id`, `number`, or `state` — those are assigned on
 creation.
 
+Flags still apply alongside `--from-file`. The file plays the same role as the
+template it replaces: it supplies the values, and an explicit flag overrides
+them. This lets one stored draft be filed several ways:
+
+```console
+$ kira create ticket --from-file draft.md --parent KIRA-2 --priority P1
+Created KIRA-10 Retry budget is unbounded
+```
+
+Here `--parent` and `--priority` are applied on top of the file, and would win
+over a `priority:` the file set itself.
+
 ### Quick capture with `--here`
 
 `--here` is for the interruption you want to write down without losing your
