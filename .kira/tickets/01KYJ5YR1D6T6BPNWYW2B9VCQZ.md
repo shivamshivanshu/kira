@@ -4,12 +4,12 @@ number: CORE-49
 aliases: []
 type: ticket
 title: "CORE-3 design doc status line is stale re: Phase 4 scope"
-state: TODO
+state: DONE
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-27T21:49:01+05:30
-updated: 2026-07-27T21:49:01+05:30
+updated: 2026-07-28T09:20:32+05:30
 ---
 
 `docs/design/CORE-3-extensible-schema.md`'s Status line reads "Phases 1-3

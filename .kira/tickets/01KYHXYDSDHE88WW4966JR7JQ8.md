@@ -4,12 +4,12 @@ number: CORE-48
 aliases: []
 type: ticket
 title: "show --json blocks field is always empty (never derived)"
-state: TODO
+state: DONE
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-27T19:29:02+05:30
-updated: 2026-07-27T19:29:02+05:30
+updated: 2026-07-28T09:20:32+05:30
 ---
 
 `ShowResult.Blocks` (the reverse `blocked_by` edge — "which items does this
