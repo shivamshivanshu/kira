@@ -7,7 +7,7 @@ entry here is drawn from kira's own open tickets — kira tracks its own
 development in kira, so the tickets behind this page live in `.kira/tickets/`
 in the kira repository alongside the code.
 
-## Custom fields are readable, but not yet searchable
+## Custom fields: everything works except body-placed ones
 
 You can add a field to the built-in `ticket` or `epic` schema, set it with
 `kira create --field severity=high`, and change it later with `kira edit
@@ -41,10 +41,13 @@ An ordered comparison is refused on a type that has no order (`severity > low`
 errors rather than comparing text). A query spans item types, so a field only
 one type declares simply does not match items of the others.
 
-Two gaps remain. A custom field cannot be a `kira list` **column** — the table
-is driven by `ui.list.columns`, not the schema (CORE-54). And body-placed
-fields (`placement: body`) are neither in the `fields` object nor filterable;
-their text is already in the item body, which `show` prints in full.
+A custom field can also be a `kira list` column, by naming it in the schema's
+`list_columns` — see the next section.
+
+One gap remains: body-placed fields (`placement: body`) are neither in the
+`fields` object nor filterable. Their text is already in the item body, which
+`show` prints in full, so there is nothing to surface separately — but it does
+mean you cannot query on one.
 
 ## A schema's label and icon have no effect
 
@@ -102,23 +105,6 @@ and commentary that tickets have.
 A related, deeper change — reworking kira's internal representation of items
 entirely — is recorded in the design notes as "maybe never." It is not on a
 committed roadmap, and you should not plan around it.
-
-## The generated output schema is missing some value constraints
-
-`kira schema` prints a JSON Schema describing the shape of every `--json`
-output, which you can use to validate kira's output in a script or pipeline.
-
-Most enumerated fields in it carry their allowed values. A few do not, and
-appear as a plain `"type": "string"` instead: the `severity` and `class` fields
-of `kira doctor` findings, the step status in `kira sync` reports, the `kind`
-field of `kira log` entries, and the `source_kind` field of `kira blame`
-output. Validation against the schema will still pass on correct output — it
-just will not catch a bad value in those specific fields, and code generators
-reading the schema will produce a string where an enumerated type would be
-better.
-
-**Roadmap:** active. DATA-10 tracks extending the enum constraints to cover
-these fields.
 
 ---
 
