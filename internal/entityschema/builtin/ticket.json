@@ -33,6 +33,6 @@
   "representation": {
     "label": "Ticket",
     "icon": "ticket",
-    "list_columns": ["number", "state", "subtype", "priority", "title"]
+    "list_columns": ["number", "state", "type", "priority", "title"]
   }
 }

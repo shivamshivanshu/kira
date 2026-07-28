@@ -10,7 +10,7 @@ labels: []
 epic: 01KYKDNPSZEGK032FRCJCVNKE1
 blocked_by: []
 created: 2026-07-28T09:24:25+05:30
-updated: 2026-07-28T09:25:48+05:30
+updated: 2026-07-28T11:51:22+05:30
 ---
 
 A schema's `representation.label` and `representation.icon` are parsed and
@@ -39,3 +39,21 @@ establishes it. Sequence after it rather than in parallel to avoid both
 touching the same DTOs.
 
 **Test fallout**: ~10-12 TUI goldens. Re-baseline deliberately.
+
+<!-- kira:comment id=01KYKP53F3YCWZN6QFTNX5ZESY author=Shivam-Shivanshu ts=2026-07-28T11:51:21+05:30 -->
+Investigation 2026-07-28, before building.
+
+Footprint is smaller and cost higher than the ticket assumed:
+
+- iconSet.typeGlyph is called in exactly one place, internal/tui/tree.go:214 (the type glyph beside a tree row). Board cards and every CLI surface do not use it.
+- The TUI has no access to schemas at all -- zero references to entityschema anywhere under internal/tui. Wiring icons means plumbing the schema map through the model.
+- representation.Label is read nowhere in the codebase today.
+
+Two design questions to settle first, neither of which the ticket answers:
+
+1. What is 'icon' -- a registry key or a literal glyph? A key ("icon": "epic") can only select from the glyphs kira already ships, so a custom type cannot have a genuinely new glyph; that is a small feature. A literal ("icon": "@") is flexible but bypasses the nerd/emoji/text degradation in glyph.pick, so it breaks on terminals without the font -- exactly what ui.icons exists to prevent. A third option is a per-mode object, which is the honest shape but more schema surface.
+
+2. Where does 'label' render, and does it change default output? The builtin ticket schema declares label "Ticket" while every surface prints the lowercase type name. Using label in kira show's type: line and the list TYPE column would change default output for every user, the same trap CORE-54 hit. The consistent choice with CORE-54 is to keep default output byte-identical, which means aligning builtin labels to the lowercase type names and leaving the mechanism for custom types only -- but that makes the builtin declarations look redundant.
+
+Recommendation: this is P3 with a thin payoff (one glyph in one view) and real plumbing cost. Worth deferring behind cheaper work, or reducing to just 'label', which needs no TUI plumbing. Not started; moved back to TODO.
+<!-- /kira:comment -->

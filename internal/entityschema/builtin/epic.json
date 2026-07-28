@@ -31,6 +31,6 @@
   "representation": {
     "label": "Epic",
     "icon": "epic",
-    "list_columns": ["number", "state", "priority", "title"]
+    "list_columns": ["number", "state", "type", "priority", "title"]
   }
 }

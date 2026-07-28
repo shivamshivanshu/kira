@@ -1315,6 +1315,10 @@
             "null"
           ]
         },
+        "fields": {
+          "additionalProperties": {},
+          "type": "object"
+        },
         "id": {
           "type": "string"
         },
@@ -1348,6 +1352,12 @@
         "state": {
           "type": "string"
         },
+        "subtype": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "title": {
           "type": "string"
         },
@@ -1361,6 +1371,7 @@
         "board",
         "title",
         "type",
+        "subtype",
         "state",
         "category",
         "owner",

@@ -23,7 +23,7 @@ func (u UITui) RefreshInterval() time.Duration {
 
 // ListColumns are the columns selectable for the list view, in canonical order.
 var ListColumns = []string{
-	"number", "title", "type", "state", "category",
+	"number", "title", "type", "subtype", "state", "category",
 	"priority", "owner", "labels", "epic", "epic_number",
 	"resolution", "due", "id",
 }

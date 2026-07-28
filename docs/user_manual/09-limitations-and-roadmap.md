@@ -46,23 +46,30 @@ is driven by `ui.list.columns`, not the schema (CORE-54). And body-placed
 fields (`placement: body`) are neither in the `fields` object nor filterable;
 their text is already in the item body, which `show` prints in full.
 
-## Display settings in a schema have no effect
+## A schema's label and icon have no effect
 
 Each schema file carries a `representation` block: a display `label`, an
-`icon`, and a `list_columns` array naming the columns `kira list` should show.
-These are accepted by the schema loader without complaint.
+`icon`, and a `list_columns` array.
 
-They are inert. Changing `"list_columns"` to `["number", "title"]` still
-produces the standard NUMBER / STATE / TYPE / PRIORITY / TITLE table. Changing
-`"label"` from `"Ticket"` to `"Story"` still prints `type: ticket` in
-`kira show`. The fields exist in the file format so that schemas written today
-stay valid later, but nothing reads them yet.
+`list_columns` works. It names the columns `kira list` renders, and a
+schema-declared custom field can be one of them:
 
-Column choice is therefore fixed. `kira list` renders a set layout, and the way
-to get a different shape is `--json` plus your own formatting.
+```console
+$ kira list
+NUMBER  STATE  SEVERITY  TITLE
+APP-1   TODO   high      Retry budget is unbounded
+```
 
-**Roadmap:** active, and paired with the two gaps above — rendering driven by a
-schema's `representation` block is planned as part of CORE-3.
+Precedence is `ui.list.columns` first, then the matched types' `list_columns`,
+then the built-in default. A listing spans types, so when the results contain
+more than one, the columns are the union of what those types declare.
+
+`label` and `icon` are still inert. Changing `"label"` from `"Ticket"` to
+`"Story"` still prints `type: ticket` in `kira show`, and `icon` does not
+change any glyph in the TUI — glyphs are chosen by item type in code, with no
+registry to look a declared icon name up in.
+
+**Roadmap:** active. CORE-55 tracks wiring `label` and `icon`.
 
 ## Boards and sprints are not tracked items
 
