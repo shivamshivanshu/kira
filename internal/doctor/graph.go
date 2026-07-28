@@ -68,7 +68,7 @@ func RefCycles(items []*datamodel.Item, resolver *id.Resolver) []Finding {
 	return out
 }
 
-func RefTypeMismatches(schemas map[string]entityschema.Schema, items []*datamodel.Item, resolver *id.Resolver) []Finding {
+func RefTypeMismatches(schemas map[string]entityschema.Schema, items []*datamodel.Item, resolver *id.Resolver, itemTypes map[string]bool) []Finding {
 	byID := itemsByID(items)
 	var out []Finding
 	for _, it := range items {
@@ -81,7 +81,7 @@ func RefTypeMismatches(schemas map[string]entityschema.Schema, items []*datamode
 		}
 		values := entityschema.ProjectItem(schema, it, codec.DecodeExtraScalar)
 		for _, f := range schema.Fields {
-			if !f.TargetsEntity(schemas) {
+			if !f.TargetsItemType(itemTypes) {
 				continue
 			}
 			for _, ref := range refStrings(values[f.Name]) {
