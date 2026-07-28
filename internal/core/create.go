@@ -229,7 +229,9 @@ func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, boardKey,
 		if perr != nil {
 			return draft{}, errx.User("--from-file: %v", perr)
 		}
-		return d, nil
+		// The file plays the same role as the template it replaces: it supplies
+		// the values, and an explicit flag still overrides them.
+		return applyFlags(d, opts), nil
 	case opts.NoEdit:
 		return base, nil
 	default:
