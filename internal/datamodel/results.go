@@ -48,26 +48,29 @@ type CreateResult struct {
 }
 
 type ListItem struct {
-	ID         string   `json:"id"`
-	Number     string   `json:"number"`
-	Board      string   `json:"board"`
-	Title      string   `json:"title"`
-	Type       string   `json:"type"`
-	State      string   `json:"state"`
-	Category   string   `json:"category"`
-	Owner      *string  `json:"owner"`
-	Labels     []string `json:"labels"`
-	Epic       *string  `json:"epic"`
-	EpicNumber *string  `json:"epic_number"`
-	Priority   *string  `json:"priority"`
-	Resolution *string  `json:"resolution"`
-	Due        *string  `json:"due"`
+	ID         string         `json:"id"`
+	Number     string         `json:"number"`
+	Board      string         `json:"board"`
+	Title      string         `json:"title"`
+	Type       string         `json:"type"`
+	Subtype    *string        `json:"subtype"`
+	State      string         `json:"state"`
+	Category   string         `json:"category"`
+	Owner      *string        `json:"owner"`
+	Labels     []string       `json:"labels"`
+	Epic       *string        `json:"epic"`
+	EpicNumber *string        `json:"epic_number"`
+	Priority   *string        `json:"priority"`
+	Resolution *string        `json:"resolution"`
+	Due        *string        `json:"due"`
+	Fields     map[string]any `json:"fields,omitempty"`
 }
 
 type ListResult struct {
-	Items []ListItem  `json:"items"`
-	Count int         `json:"count"`
-	Tree  []TreeGroup `json:"tree,omitempty"`
+	Items   []ListItem  `json:"items"`
+	Count   int         `json:"count"`
+	Tree    []TreeGroup `json:"tree,omitempty"`
+	Columns []string    `json:"-"`
 
 	StderrNotes []Warning `json:"-"`
 }

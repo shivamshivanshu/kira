@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -31,7 +32,7 @@ func newListCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			renderListResult(cmd.OutOrStdout(), res, cfg.UI.List.Columns)
+			renderListResult(cmd.OutOrStdout(), res, pinnedColumns(cfg))
 			return nil
 		},
 	}
@@ -71,7 +72,7 @@ func renderList(w io.Writer, res *datamodel.ListResult, columns []string) {
 		_, _ = fmt.Fprintln(w, msgNoItems)
 		return
 	}
-	cols := resolveColumns(columns)
+	cols := resolveColumns(columns, res.Columns)
 	tw := newTabWriter(w)
 	_, _ = fmt.Fprintln(tw, columnHeader(cols))
 	for _, it := range res.Items {
@@ -80,17 +81,37 @@ func renderList(w io.Writer, res *datamodel.ListResult, columns []string) {
 	_ = tw.Flush()
 }
 
-func resolveColumns(columns []string) []string {
-	out := make([]string, 0, len(columns))
-	for _, c := range columns {
+// pinnedColumns reports the columns the repo actually pins. The default config
+// fills ui.list.columns in, so a value equal to the built-in default means "not
+// customized" -- the same test `kira config explain` uses to tag a section
+// default rather than repo.
+func pinnedColumns(cfg *datamodel.Config) []string {
+	if slices.Equal(cfg.UI.List.Columns, datamodel.DefaultListColumns) {
+		return nil
+	}
+	return cfg.UI.List.Columns
+}
+
+// resolveColumns picks the table's columns: ui.list.columns wins, then what
+// the matched types' schemas declare, then the built-in default. A configured
+// name with no cell behind it is dropped rather than failing the listing,
+// while a schema-declared one is kept — the schema names its own fields, and
+// those render from the item's custom values.
+func resolveColumns(configured, schemaDeclared []string) []string {
+	builtins := make([]string, 0, len(configured))
+	for _, c := range configured {
 		if _, ok := listCells[c]; ok {
-			out = append(out, c)
+			builtins = append(builtins, c)
 		}
 	}
-	if len(out) == 0 {
+	switch {
+	case len(builtins) > 0:
+		return builtins
+	case len(schemaDeclared) > 0:
+		return schemaDeclared
+	default:
 		return datamodel.DefaultListColumns
 	}
-	return out
 }
 
 func columnHeader(cols []string) string {
@@ -104,15 +125,26 @@ func columnHeader(cols []string) string {
 func formatItemRow(cols []string, it datamodel.ListItem) string {
 	cells := make([]string, len(cols))
 	for i, c := range cols {
-		cells[i] = listCells[c](it)
+		cells[i] = itemCell(c, it)
 	}
 	return strings.Join(cells, "\t")
+}
+
+func itemCell(column string, it datamodel.ListItem) string {
+	if cell, ok := listCells[column]; ok {
+		return cell(it)
+	}
+	if v, ok := it.Fields[column]; ok {
+		return typedFieldValueAsText(v)
+	}
+	return "-"
 }
 
 var listCells = map[string]func(datamodel.ListItem) string{
 	"number":      func(it datamodel.ListItem) string { return it.Number },
 	"title":       func(it datamodel.ListItem) string { return it.Title },
 	"type":        func(it datamodel.ListItem) string { return it.Type },
+	"subtype":     func(it datamodel.ListItem) string { return ptr.DerefOr(it.Subtype, "-") },
 	"state":       func(it datamodel.ListItem) string { return it.State },
 	"category":    func(it datamodel.ListItem) string { return it.Category },
 	"priority":    func(it datamodel.ListItem) string { return ptr.DerefOr(it.Priority, "-") },

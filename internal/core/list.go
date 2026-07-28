@@ -1,7 +1,11 @@
 package core
 
 import (
+	"slices"
+
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/query"
@@ -45,9 +49,14 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 	epicNumbers := epicNumberMap(items)
 	rows := make([]datamodel.ListItem, len(matched))
 	for i, it := range matched {
-		rows[i] = listItemOf(cfg, it, epicNumbers)
+		rows[i] = listItemOf(cfg, it, epicNumbers, qopts.Schemas)
 	}
-	res := &datamodel.ListResult{Items: rows, Count: len(rows), StderrNotes: append(idxNotes, notes...)}
+	res := &datamodel.ListResult{
+		Items:       rows,
+		Count:       len(rows),
+		Columns:     declaredColumns(matched, qopts.Schemas),
+		StderrNotes: append(idxNotes, notes...),
+	}
 	if opts.Tree {
 		res.Tree = groupByEpic(rows, epicNumbers)
 	}
@@ -64,6 +73,28 @@ func (s *Store) matchSorted(cfg *datamodel.Config, ld *loaded, opts ListOpts) ([
 		return nil, queryError(err)
 	}
 	return filterSort(cfg, ld.items, pred, order), nil
+}
+
+// declaredColumns is the column set the matched items' own schemas ask for.
+// A listing spans types, so the result is their union in first-declared order;
+// types that agree (as the built-ins do) yield exactly their shared set, and
+// only a schema that declares something extra widens the table. Empty when no
+// matched type declares any, which leaves the choice to the caller.
+func declaredColumns(items []*datamodel.Item, schemas map[string]entityschema.Schema) []string {
+	var out []string
+	seenType := map[string]bool{}
+	for _, it := range items {
+		if seenType[it.Type] {
+			continue
+		}
+		seenType[it.Type] = true
+		for _, c := range schemas[it.Type].Representation.ListColumns {
+			if !slices.Contains(out, c) {
+				out = append(out, c)
+			}
+		}
+	}
+	return out
 }
 
 func filterSort(cfg *datamodel.Config, items []*datamodel.Item, pred query.Predicate, order *query.Order) []*datamodel.Item {
@@ -111,7 +142,7 @@ func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel
 	rows := make([]datamodel.ListItem, len(ld.items))
 	matched := make(map[string]bool, len(ld.items))
 	for i, it := range ld.items {
-		rows[i] = listItemOf(cfg, it, epicNumbers)
+		rows[i] = listItemOf(cfg, it, epicNumbers, qopts.Schemas)
 		if pred == nil || pred(it, cfg) {
 			matched[it.ID] = true
 		}
@@ -277,13 +308,14 @@ func epicNumberMap(items []*datamodel.Item) map[string]string {
 	return m
 }
 
-func listItemOf(cfg *datamodel.Config, it *datamodel.Item, epicNumbers map[string]string) datamodel.ListItem {
+func listItemOf(cfg *datamodel.Config, it *datamodel.Item, epicNumbers map[string]string, schemas map[string]entityschema.Schema) datamodel.ListItem {
 	li := datamodel.ListItem{
 		ID:         it.ID,
 		Number:     it.Number,
 		Board:      boardKeyOf(it.Number),
 		Title:      it.Title,
 		Type:       it.Type,
+		Subtype:    it.Subtype,
 		State:      it.State,
 		Category:   categoryString(cfg, it.Type, it.State),
 		Owner:      it.Owner,
@@ -292,6 +324,7 @@ func listItemOf(cfg *datamodel.Config, it *datamodel.Item, epicNumbers map[strin
 		Priority:   it.Priority,
 		Resolution: it.Resolution,
 		Due:        it.Due,
+		Fields:     entityschema.CustomFields(schemas[it.Type], it, codec.DecodeExtraScalar),
 	}
 	if it.Epic != nil {
 		if num, ok := epicNumbers[*it.Epic]; ok {

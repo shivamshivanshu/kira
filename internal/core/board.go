@@ -68,10 +68,14 @@ func (s *Store) Board(cfg *datamodel.Config, opts BoardOpts) (*datamodel.BoardRe
 	for _, it := range global {
 		counts[it.State]++
 	}
+	schemas, err := s.schemas()
+	if err != nil {
+		return nil, err
+	}
 	epicNumbers := epicNumberMap(ld.items)
 	byState := map[string][]datamodel.ListItem{}
 	for _, it := range shown {
-		byState[it.State] = append(byState[it.State], listItemOf(cfg, it, epicNumbers))
+		byState[it.State] = append(byState[it.State], listItemOf(cfg, it, epicNumbers, schemas))
 	}
 
 	cols := make([]datamodel.BoardColumn, len(wf.States))

@@ -30,8 +30,9 @@ A schema file is a single JSON object describing one entity type:
 }
 ```
 
-Only `name` and `fields` carry weight today. `identity` and `representation`
-are parsed and accepted but nothing reads them yet — see
+`name` and `fields` carry the weight, and `representation.list_columns`
+chooses what `kira list` renders. `identity`, and `representation`'s `label`
+and `icon`, are parsed and accepted but nothing reads them yet — see
 [Current limits](#current-limits).
 
 Here is a real, working schema: the built-in `ticket` schema with a `severity`
@@ -557,10 +558,11 @@ If you only need a distinct category of work rather than a whole type, the
 lighter-weight alternatives — both configurable in `.kira/config.yaml`, and
 both filterable from `kira list`.
 
-**`representation` is inert.** The `label`, `icon`, and `list_columns` keys are
-accepted and validated as JSON, but nothing reads them. `kira list` columns come
-from the `ui.list.columns` config key, and `kira show` and the TUI use fixed
-built-in rendering. Changing `representation` in a schema file changes nothing
+**`representation.label` and `.icon` are inert.** `list_columns` is wired up:
+it names the columns `kira list` renders, custom fields included, with
+`ui.list.columns` taking precedence over it. `label` and `icon` are accepted
+and validated as JSON but nothing reads them yet -- `kira show` and the TUI use
+fixed built-in rendering. Changing those two in a schema file changes nothing
 on screen. The same is true of `identity` (`style`/`prefix`) — id generation is
 driven by config, not by the schema.
 

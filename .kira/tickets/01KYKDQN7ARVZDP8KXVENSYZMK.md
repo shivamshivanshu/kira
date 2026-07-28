@@ -4,13 +4,13 @@ number: CORE-54
 aliases: []
 type: ticket
 title: "Representation-driven list columns from schema"
-state: IN_PROGRESS
+state: DONE
 priority: P2
 labels: []
 epic: 01KYKDNPSZEGK032FRCJCVNKE1
 blocked_by: []
 created: 2026-07-28T09:24:12+05:30
-updated: 2026-07-28T11:33:47+05:30
+updated: 2026-07-28T11:50:06+05:30
 ---
 
 A schema's `representation.list_columns` is parsed, accepted, and then
