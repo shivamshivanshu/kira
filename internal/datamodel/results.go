@@ -136,6 +136,7 @@ type ShowResult struct {
 	BlockedBy     []string            `json:"blocked_by"`
 	Links         map[string][]string `json:"links"`
 	Blocks        []string            `json:"blocks"`
+	Fields        map[string]any      `json:"fields,omitempty"`
 	Estimate      *float64            `json:"estimate"`
 	Created       string              `json:"created"`
 	Updated       string              `json:"updated"`

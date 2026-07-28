@@ -557,10 +557,10 @@ built-in rendering. Changing `representation` in a schema file changes nothing
 on screen. The same is true of `identity` (`style`/`prefix`) — id generation is
 driven by config, not by the schema.
 
-**Declared extra fields are stored, not surfaced.** A custom field round-trips
-through the item file and is validated on every write, but it is not shown by
-`kira show`, not a `kira list` column, not present in `--json` output, and not
-addressable in the `kira list` query grammar:
+**Declared extra fields are readable, but not filterable.** A custom field
+round-trips through the item file, is validated on every write, and is shown by
+`kira show` and carried in `--json` under a `fields` object. It is still not a
+`kira list` column, and it is not addressable in the query grammar:
 
 ```console
 $ kira list --query 'severity = high'
@@ -569,7 +569,7 @@ kira: query: unknown field "severity" (available: activity, blocked, blocked_by,
   resolution, sprint, state, subtype, type, updated) at position 0
 ```
 
-The practical workaround is `kira find`, which greps the item files directly:
+Until the grammar learns them, `kira find` greps the item files directly:
 
 ```console
 $ kira find severity

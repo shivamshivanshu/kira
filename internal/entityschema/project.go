@@ -50,6 +50,35 @@ func ProjectItem(schema Schema, it *datamodel.Item, decodeScalar func(string) an
 	return values
 }
 
+// CustomFields projects the fields a schema adds beyond the built-in item
+// shape, and is nil for a schema that adds none.
+func CustomFields(schema Schema, it *datamodel.Item, decodeScalar func(string) any) map[string]any {
+	var customValues map[string]any
+	allValues := ProjectItem(schema, it, decodeScalar)
+	for _, f := range schema.Fields {
+		if !f.isCustomFrontmatterField() {
+			continue
+		}
+		value, present := allValues[f.Name]
+		if !present {
+			continue
+		}
+		if customValues == nil {
+			customValues = map[string]any{}
+		}
+		customValues[f.Name] = value
+	}
+	return customValues
+}
+
+func (f FieldDef) isCustomFrontmatterField() bool {
+	if f.System || f.Placement == PlacementBody {
+		return false
+	}
+	_, hasDedicatedItemField := datamodel.Field(f.Name)
+	return !hasDedicatedItemField
+}
+
 func setIfPresent[T any](values map[string]any, name string, v *T) {
 	if v != nil {
 		values[name] = *v
