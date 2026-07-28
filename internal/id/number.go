@@ -31,7 +31,6 @@ func KeyOf(number string) string {
 	return key
 }
 
-// ParseNumber parses a display number string into a Number struct.
 func ParseNumber(s string) (Number, error) {
 	key, suffix, ok := splitLastDash(s)
 	if !ok || suffix == "" {

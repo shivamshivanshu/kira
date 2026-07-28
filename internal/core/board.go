@@ -182,7 +182,6 @@ func (s *Store) BoardCreate(_ *datamodel.Config, key, name, description string) 
 	return &datamodel.BoardCreateResult{Created: true, Board: boardView(board)}, nil
 }
 
-// BoardRename changes the display name of the board keyed by key.
 func (s *Store) BoardRename(cfg *datamodel.Config, key, name string) (*datamodel.BoardUpdateResult, error) {
 	if strings.TrimSpace(name) == "" {
 		return nil, errx.User("board name must not be empty")
@@ -202,7 +201,6 @@ func (s *Store) BoardArchive(cfg *datamodel.Config, key string) (*datamodel.Boar
 	})
 }
 
-// BoardUnarchive un-archives the board keyed by key.
 func (s *Store) BoardUnarchive(cfg *datamodel.Config, key string) (*datamodel.BoardUpdateResult, error) {
 	return s.updateBoard(cfg, key, "unarchive", false, func(b datamodel.Board) datamodel.Board {
 		b.Archived = false
