@@ -1,6 +1,12 @@
 # CORE-3 — Extensible entity schema
 
-Status: design approved (brainstorm 2026-07-23). Phases 1-3 done; Phase 4 next.
+Status: design approved (brainstorm 2026-07-23). Phases 1-3 done. Phase 4's
+headline goal — user-defined new item types — turned out to already work
+generically: a `workflows:` entry in `.kira/config.yaml` is enough for
+`create`/`edit`/`move`/`list`/`show` and doctor's state checks to handle a new
+type, with no schema file and no code change (verified 2026-07-28). What
+remains of Phase 4 is narrower than this line used to imply; see the phase list
+below.
 
 ## Problem
 
@@ -197,10 +203,19 @@ faithfully reproduces hardcoded behavior.
   - Follow-ups: CORE-41 (unknown link-type round-trip), CORE-42 (extras in merge
     arbitration + ref-extra ULID normalization), CORE-43 (blocked_by target-type
     on write).
-- **Phase 4** — user-defined *new* item entity types: generic create/edit/list/show.
-  Also fold the hardcoded dangling-ref pass (`refFindings`) into the schema-driven
-  ref check, so new custom ref fields get both dangling and type checks; today
-  `refFindings` only knows `epic`/`blocked_by`/`links`.
+- **Phase 4** — what actually remains for user-defined types and custom fields.
+  Generic create/edit/move/list/show for a new type already works off a
+  `workflows:` config entry alone (no schema file, no code change), so the open
+  work is the parts that are still blind to schema-declared fields:
+  - Fold the hardcoded dangling-ref pass (`refFindings`) into the schema-driven
+    ref check, so custom ref fields get both dangling and type checks; today
+    `refFindings` only knows `epic`/`blocked_by`/`links` (a wrong-*typed* custom
+    ref is already caught; a *dangling* one is not).
+  - Surface schema-declared fields in `show` (human + `--json`) and make them
+    filterable in the `query` grammar; today a custom field round-trips in the
+    file but `show` skips it and `list --query 'severity = high'` errors with
+    unknown field.
+  - `.kira/schema` overrides for ref targets (deferred here from Phase 1).
 - **Phase 5** — representation-driven rendering (list columns, show layout, icons)
   from schema.
 - **Phase 6 (maybe never)** — replace `Item` struct with a schema-driven value.
