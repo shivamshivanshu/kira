@@ -90,12 +90,12 @@ type FieldDef struct {
 	Section   string       `json:"section,omitempty"`
 }
 
-func (f FieldDef) TargetsEntity(schemas map[string]Schema) bool {
-	if f.Type != FieldRef {
-		return false
-	}
-	_, ok := schemas[f.Target]
-	return ok
+// TargetsItemType reports whether this field references another item. A type
+// exists because config declares a workflow for it, not because it has a
+// schema file, so the caller supplies the type set rather than this testing
+// the schema map -- a ref to a config-only type is still a ref.
+func (f FieldDef) TargetsItemType(itemTypes map[string]bool) bool {
+	return f.Type == FieldRef && itemTypes[f.Target]
 }
 
 type Schema struct {

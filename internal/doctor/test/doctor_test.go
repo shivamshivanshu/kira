@@ -13,6 +13,12 @@ import (
 	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
+// builtinTypes mirrors the workflows a default config declares, which is what
+// makes a type exist.
+func builtinTypes() map[string]bool {
+	return map[string]bool{datamodel.TypeTicket: true, datamodel.TypeEpic: true}
+}
+
 func builtinSchemas(t *testing.T) map[string]entityschema.Schema {
 	t.Helper()
 	s, err := entityschema.Load("")
@@ -394,7 +400,7 @@ func TestRefTypeSkipsMissingParent(t *testing.T) {
 	child := valid(ulidA, "KIRA-1")
 	child.Epic = strp(ulidC)
 	items := []*datamodel.Item{child}
-	if f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...)); len(f) != 0 {
+	if f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...), builtinTypes()); len(f) != 0 {
 		t.Fatalf("a missing/unresolved parent must not raise a ref-type finding, got %+v", f)
 	}
 }
@@ -468,7 +474,7 @@ func TestRefTypeEpicParentDetected(t *testing.T) {
 	parent := valid(ulidB, "KIRA-2")
 	child.Epic = strp(ulidB)
 	items := []*datamodel.Item{child, parent}
-	f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...))
+	f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...), builtinTypes())
 	if len(f) != 1 || f[0].Class != doctor.ClassRefType || f[0].ItemID != ulidA || f[0].Field != datamodel.KeyEpic {
 		t.Fatalf("expected one ref-type finding on the child's epic, got %+v", f)
 	}
@@ -481,7 +487,7 @@ func TestRefTypeEpicParentAccepted(t *testing.T) {
 	parent.Type = datamodel.TypeEpic
 	child.Epic = strp(ulidB)
 	items := []*datamodel.Item{child, parent}
-	if f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...)); len(f) != 0 {
+	if f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...), builtinTypes()); len(f) != 0 {
 		t.Fatalf("an epic parent must be accepted, got %+v", f)
 	}
 }
@@ -493,7 +499,7 @@ func TestRefTypeBlockedByMismatch(t *testing.T) {
 	blocker.Type = datamodel.TypeEpic
 	child.BlockedBy = []string{ulidB}
 	items := []*datamodel.Item{child, blocker}
-	f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...))
+	f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...), builtinTypes())
 	if len(f) != 1 || f[0].Class != doctor.ClassRefType || f[0].Field != datamodel.KeyBlockedBy {
 		t.Fatalf("expected one ref-type finding on blocked_by, got %+v", f)
 	}
@@ -505,7 +511,7 @@ func TestRefTypeBlockedByAccepted(t *testing.T) {
 	blocker := valid(ulidB, "KIRA-2")
 	child.BlockedBy = []string{ulidB}
 	items := []*datamodel.Item{child, blocker}
-	if f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...)); len(f) != 0 {
+	if f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...), builtinTypes()); len(f) != 0 {
 		t.Fatalf("a ticket blocked by a ticket must be accepted, got %+v", f)
 	}
 }
@@ -524,7 +530,7 @@ func TestRefTypeExtraRefFieldMismatch(t *testing.T) {
 	other := valid(ulidB, "KIRA-2")
 	items := []*datamodel.Item{child, other}
 
-	f := doctor.RefTypeMismatches(schemas, items, resolver(items...))
+	f := doctor.RefTypeMismatches(schemas, items, resolver(items...), builtinTypes())
 	if len(f) != 1 || f[0].Class != doctor.ClassRefType || f[0].ItemID != ulidA || f[0].Field != "reviewer_of" {
 		t.Fatalf("expected one ref-type finding on the declared ref extra, got %+v", f)
 	}
@@ -556,6 +562,37 @@ func TestCheckReportsBuiltinDanglingRefOnce(t *testing.T) {
 	f := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	if len(f) != 1 || f[0].Field != datamodel.KeyEpic {
 		t.Fatalf("epic is both a built-in and schema-declared; it must be reported once, got %+v", f)
+	}
+}
+
+// A type exists because config declares a workflow for it, with or without a
+// schema file, so a ref targeting one must still be checked.
+func TestRefChecksReachConfigOnlyTargetType(t *testing.T) {
+	t.Parallel()
+	schemas := builtinSchemas(t)
+	ticketSchema := schemas[datamodel.TypeTicket]
+	ticketSchema.Fields = append(slices.Clone(ticketSchema.Fields), entityschema.FieldDef{
+		Name: "saga_ref", Type: entityschema.FieldRef, Target: "saga",
+	})
+	schemas[datamodel.TypeTicket] = ticketSchema
+	types := map[string]bool{datamodel.TypeTicket: true, datamodel.TypeEpic: true, "saga": true}
+
+	dangling := valid(ulidA, "KIRA-1")
+	dangling.ExtraScalars = map[string]string{"saga_ref": ulidC}
+	cfg := config.Default()
+	cfg.Workflows["saga"] = cfg.Workflows[datamodel.TypeTicket]
+
+	f := doctor.Check(cfg, resolver(dangling), dangling, schemas)
+	if len(f) != 1 || f[0].Class != doctor.ClassRef || f[0].Field != "saga_ref" {
+		t.Fatalf("a ref to a config-only type must be dangling-checked, got %+v", f)
+	}
+
+	wrongType := valid(ulidA, "KIRA-1")
+	wrongType.ExtraScalars = map[string]string{"saga_ref": ulidB}
+	items := []*datamodel.Item{wrongType, valid(ulidB, "KIRA-2")}
+	m := doctor.RefTypeMismatches(schemas, items, resolver(items...), types)
+	if len(m) != 1 || m[0].Field != "saga_ref" {
+		t.Fatalf("a ref to a config-only type must be type-checked, got %+v", m)
 	}
 }
 

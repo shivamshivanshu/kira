@@ -19,7 +19,7 @@ func Check(cfg *datamodel.Config, resolver *id.Resolver, it *datamodel.Item, sch
 	out = append(out, vocabFindings(cfg, it)...)
 	out = append(out, scalarFindings(cfg, it)...)
 	out = append(out, boardFindings(cfg, it)...)
-	out = append(out, refFindings(resolver, it, schemas)...)
+	out = append(out, refFindings(resolver, it, schemas, itemTypes(cfg))...)
 	return out
 }
 
@@ -137,7 +137,7 @@ func schemaErr(field, msg string) Finding {
 // ref gets the same dangling and self-reference checks as the built-in three.
 // Target-type correctness needs the whole item set and lives in
 // RefTypeMismatches instead.
-func refFindings(resolver *id.Resolver, it *datamodel.Item, schemas map[string]entityschema.Schema) []Finding {
+func refFindings(resolver *id.Resolver, it *datamodel.Item, schemas map[string]entityschema.Schema, itemTypes map[string]bool) []Finding {
 	if resolver == nil {
 		return nil
 	}
@@ -168,7 +168,7 @@ func refFindings(resolver *id.Resolver, it *datamodel.Item, schemas map[string]e
 	}
 	values := entityschema.ProjectItem(schema, it, codec.DecodeExtraScalar)
 	for _, f := range schema.Fields {
-		if !f.TargetsEntity(schemas) {
+		if !f.TargetsItemType(itemTypes) {
 			continue
 		}
 		for _, ref := range refStrings(values[f.Name]) {
@@ -183,4 +183,14 @@ func vocabSeverity(strict bool) Severity {
 		return SeverityError
 	}
 	return SeverityWarning
+}
+
+// itemTypes is the set of types config declares a workflow for, which is what
+// makes a type exist at all.
+func itemTypes(cfg *datamodel.Config) map[string]bool {
+	out := make(map[string]bool, len(cfg.Workflows))
+	for typ := range cfg.Workflows {
+		out[typ] = true
+	}
+	return out
 }
