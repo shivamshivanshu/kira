@@ -37,6 +37,10 @@
           "type": "string"
         },
         "source": {
+          "enum": [
+            "",
+            "user"
+          ],
           "type": "string"
         }
       },
@@ -99,6 +103,11 @@
           "type": "string"
         },
         "source_kind": {
+          "enum": [
+            "commit",
+            "created",
+            "synthetic"
+          ],
           "type": "string"
         },
         "value": {
@@ -412,6 +421,11 @@
           "type": "string"
         },
         "kind": {
+          "enum": [
+            "live-live",
+            "live-alias",
+            "alias-alias"
+          ],
           "type": "string"
         },
         "live_ids": {
@@ -834,6 +848,11 @@
           "type": "string"
         },
         "provenance": {
+          "enum": [
+            "default",
+            "repo",
+            "user"
+          ],
           "type": "string"
         }
       },
@@ -914,6 +933,23 @@
       "additionalProperties": false,
       "properties": {
         "class": {
+          "enum": [
+            "schema",
+            "state",
+            "vocab",
+            "dangling-ref",
+            "id-collision",
+            "epic-cycle",
+            "ref-cycle",
+            "epic-kind",
+            "comment",
+            "index-freshness",
+            "hooks",
+            "environment",
+            "board",
+            "number-outlier",
+            "stray-file"
+          ],
           "type": "string"
         },
         "collision": {
@@ -942,6 +978,11 @@
           "type": "string"
         },
         "severity": {
+          "enum": [
+            "error",
+            "warning",
+            "info"
+          ],
           "type": "string"
         }
       },
@@ -1028,6 +1069,11 @@
           "type": "string"
         },
         "source": {
+          "enum": [
+            "cli",
+            "trailer",
+            "sync"
+          ],
           "type": "string"
         },
         "sync": {
@@ -1408,6 +1454,10 @@
           "type": "string"
         },
         "kind": {
+          "enum": [
+            "event",
+            "commit"
+          ],
           "type": "string"
         },
         "new": {
@@ -1611,6 +1661,10 @@
           "type": "boolean"
         },
         "source": {
+          "enum": [
+            "pointer",
+            "branch"
+          ],
           "type": "string"
         },
         "state": {
@@ -2226,6 +2280,10 @@
           "type": "string"
         },
         "status": {
+          "enum": [
+            "done",
+            "failed"
+          ],
           "type": "string"
         }
       },

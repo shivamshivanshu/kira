@@ -139,6 +139,8 @@ const (
 	LogKindCommit LogKind = "commit"
 )
 
+var LogKinds = []LogKind{LogKindEvent, LogKindCommit}
+
 type BlameSource string
 
 const (
@@ -146,3 +148,5 @@ const (
 	BlameSourceCreated   BlameSource = "created"
 	BlameSourceSynthetic BlameSource = "synthetic"
 )
+
+var BlameSources = []BlameSource{BlameSourceCommit, BlameSourceCreated, BlameSourceSynthetic}

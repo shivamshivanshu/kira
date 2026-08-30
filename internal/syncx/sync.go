@@ -10,6 +10,8 @@ const (
 	StepFailed StepStatus = "failed"
 )
 
+var StepStatuses = []StepStatus{StepDone, StepFailed}
+
 type Step struct {
 	Name   string     `json:"name"`
 	Status StepStatus `json:"status"`
