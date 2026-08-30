@@ -4,7 +4,7 @@ number: CORE-40
 aliases: []
 type: ticket
 title: "DRY: extract generic dedup/index-by-id/set-from-slice helpers found by generics survey"
-state: REVIEW
+state: DONE
 priority: P3
 labels: []
 epic: null
