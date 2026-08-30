@@ -16,6 +16,8 @@ const (
 	SourceSync    ChangeSource = "sync"
 )
 
+var ChangeSources = []ChangeSource{SourceCLI, SourceTrailer, SourceSync}
+
 type ChangeSet struct {
 	Kind    ChangeKind
 	Before  *Item

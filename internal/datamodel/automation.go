@@ -56,6 +56,8 @@ const (
 	AutomationSourceUser AutomationSource = "user"
 )
 
+var AutomationSources = []AutomationSource{AutomationSourceRepo, AutomationSourceUser}
+
 type AutomationHookView struct {
 	Name    string           `json:"name"`
 	On      EventName        `json:"on"`
