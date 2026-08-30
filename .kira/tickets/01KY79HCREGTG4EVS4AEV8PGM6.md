@@ -28,3 +28,7 @@ From the Go generics survey (2026-07-23). Repo generics usage is already discipl
 
 Explicitly NOT worth it (surface-similar but not true dupes): merge/scalar.go threeWayScalar vs threeWayPtr (differ by ==vs ptr.Equal), datamodel/fields.go builders (per-kind formatting). Prefer stdlib slices/maps throughout.
 <!-- /kira:comment -->
+
+<!-- kira:comment id=01M1A555Q40JSE2N30SD83HK0J author=Shivam-Shivanshu ts=2026-08-30T22:18:13+02:00 -->
+Implemented in 3663db6. Verified 2026-08-30: setx.Deduper covers all 8 seen-map sites (cli/complete.go, id/resolve.go, doctor/doctor.go, gitx/gitx.go, index/trailers.go, merge/set.go x2, datamodel/graph.go); setx.ToSet covers the set-from-slice builders; datamodel.IndexByID covers the 5 []*Item sites (core/store.go, core/validate.go, doctor/graph.go, index/read.go, query/eval.go). The two remaining sites from the survey are deliberately left alone: cli/tree.go indexes datamodel.ListItem (a value type, not *Item) and merge/body.go:unionComments is a first-wins union+sort over Comment, not an index. A generic IndexBy[T,K] for one true remaining call site would be bloat, not DRY. Full suite green (build, vet, go test -race excluding e2e).
+<!-- /kira:comment -->
