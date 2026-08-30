@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/shivamshivanshu/kira/internal/automation"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/doctor"
 	"github.com/shivamshivanshu/kira/internal/syncx"
@@ -81,6 +82,119 @@ func TestOtherReportTypesRegistered(t *testing.T) {
 	for _, rt := range want {
 		if !registered[rt] {
 			t.Errorf("%s is not registered in topLevelTypes()", rt)
+		}
+	}
+}
+
+// TestReachableStringEnumsRegistered guards against an enum-shaped named
+// string type shipping as a bare "type": "string" — the gap DATA-10 fixed.
+// It AST-scans the packages topLevelTypes() spans for named string types
+// backed by a const block, and requires every such type reachable from
+// topLevelTypes() to be present in stringEnums.
+func TestReachableStringEnumsRegistered(t *testing.T) {
+	pkgDirs := map[string]string{
+		reflect.TypeFor[datamodel.CreateResult]().PkgPath(): "../datamodel",
+		reflect.TypeFor[doctor.Report]().PkgPath():          "../doctor",
+		reflect.TypeFor[syncx.Report]().PkgPath():           "../syncx",
+		reflect.TypeFor[automation.HookPayload]().PkgPath(): "../automation",
+	}
+
+	constBacked := map[string]bool{}
+	for pkgPath, dir := range pkgDirs {
+		files, err := filepath.Glob(dir + "/*.go")
+		if err != nil {
+			t.Fatalf("glob %s: %v", dir, err)
+		}
+		fset := token.NewFileSet()
+		stringTypes := map[string]bool{}
+		constTyped := map[string]bool{}
+		for _, path := range files {
+			if strings.HasSuffix(path, "_test.go") {
+				continue
+			}
+			file, err := parser.ParseFile(fset, path, nil, 0)
+			if err != nil {
+				t.Fatalf("parse %s: %v", path, err)
+			}
+			for _, decl := range file.Decls {
+				gd, ok := decl.(*ast.GenDecl)
+				if !ok {
+					continue
+				}
+				switch gd.Tok {
+				case token.TYPE:
+					for _, spec := range gd.Specs {
+						ts, ok := spec.(*ast.TypeSpec)
+						if !ok {
+							continue
+						}
+						if ident, ok := ts.Type.(*ast.Ident); ok && ident.Name == "string" {
+							stringTypes[ts.Name.Name] = true
+						}
+					}
+				case token.CONST:
+					for _, spec := range gd.Specs {
+						vs, ok := spec.(*ast.ValueSpec)
+						if !ok {
+							continue
+						}
+						if ident, ok := vs.Type.(*ast.Ident); ok {
+							constTyped[ident.Name] = true
+						}
+					}
+				}
+			}
+		}
+		for name := range stringTypes {
+			if constTyped[name] {
+				constBacked[pkgPath+"."+name] = true
+			}
+		}
+	}
+
+	reachable := map[reflect.Type]bool{}
+	seen := map[reflect.Type]bool{}
+	for _, rt := range topLevelTypes() {
+		collectNamedStringTypes(rt, seen, reachable)
+	}
+
+	for rt := range reachable {
+		if _, ok := pkgDirs[rt.PkgPath()]; !ok {
+			t.Errorf("%s is reachable from topLevelTypes() but its package is not scanned by this test; add it to pkgDirs", rt)
+			continue
+		}
+		if !constBacked[rt.PkgPath()+"."+rt.Name()] {
+			continue
+		}
+		if _, ok := stringEnums[rt]; !ok {
+			t.Errorf("%s is const-backed and reachable from topLevelTypes() but missing from stringEnums", rt)
+		}
+	}
+}
+
+func collectNamedStringTypes(t reflect.Type, seen, out map[reflect.Type]bool) {
+	if seen[t] {
+		return
+	}
+	seen[t] = true
+	switch t.Kind() {
+	case reflect.String:
+		if t.PkgPath() != "" {
+			out[t] = true
+		}
+	case reflect.Pointer, reflect.Slice, reflect.Array:
+		collectNamedStringTypes(t.Elem(), seen, out)
+	case reflect.Map:
+		collectNamedStringTypes(t.Key(), seen, out)
+		collectNamedStringTypes(t.Elem(), seen, out)
+	case reflect.Struct:
+		for i := range t.NumField() {
+			f := t.Field(i)
+			name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
+			if !f.IsExported() || name == "-" {
+				continue
+			}
+			collectNamedStringTypes(f.Type, seen, out)
 		}
 	}
 }
