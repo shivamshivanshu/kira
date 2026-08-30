@@ -10,6 +10,8 @@ const (
 	SeverityInfo    Severity = "info"
 )
 
+var Severities = []Severity{SeverityError, SeverityWarning, SeverityInfo}
+
 type Class string
 
 const (
@@ -30,6 +32,12 @@ const (
 	ClassStray         Class = "stray-file"
 )
 
+var Classes = []Class{
+	ClassSchema, ClassState, ClassVocab, ClassRef, ClassCollision,
+	ClassCycle, ClassRefCycle, ClassEpicKind, ClassComment, ClassFreshness,
+	ClassHooks, ClassEnv, ClassBoard, ClassNumberOutlier, ClassStray,
+}
+
 type CollisionKind string
 
 const (
@@ -37,6 +45,8 @@ const (
 	CollisionLiveAlias  CollisionKind = "live-alias"
 	CollisionAliasAlias CollisionKind = "alias-alias"
 )
+
+var CollisionKinds = []CollisionKind{CollisionLiveLive, CollisionLiveAlias, CollisionAliasAlias}
 
 type Finding struct {
 	Class     Class      `json:"class"`

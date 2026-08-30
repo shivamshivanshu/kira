@@ -540,6 +540,8 @@ const (
 	NowSourceBranch  NowSource = "branch"
 )
 
+var NowSources = []NowSource{NowSourcePointer, NowSourceBranch}
+
 type NowBlocker struct {
 	Number string `json:"number"`
 	State  string `json:"state"`
@@ -590,6 +592,8 @@ const (
 	ProvenanceRepo    Provenance = "repo"
 	ProvenanceUser    Provenance = "user"
 )
+
+var Provenances = []Provenance{ProvenanceDefault, ProvenanceRepo, ProvenanceUser}
 
 type ExplainSection struct {
 	Name       string     `json:"name"`
