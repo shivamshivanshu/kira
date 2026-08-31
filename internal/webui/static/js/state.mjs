@@ -71,3 +71,15 @@ export function nextActionIndex(index, direction, count) {
 export function matchesAction(text, query) {
   return text.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
 }
+
+export function pickerChoices(items, query, limit = 50) {
+  const needle = query.trim().toLocaleLowerCase();
+  const choices = [];
+  let total = 0;
+  for (const item of items) {
+    if (!item.search.includes(needle)) continue;
+    total++;
+    if (choices.length < limit) choices.push(item);
+  }
+  return {choices, total};
+}

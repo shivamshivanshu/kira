@@ -17,18 +17,22 @@ func LogEntries(store *storage.FS, itemID, fileHead string, derive func() ([]dat
 		return nil, nil, err
 	}
 	defer func() { _ = idx.Close() }()
+	return idx.LogEntries(itemID, fileHead, derive)
+}
+
+func (i *Index) LogEntries(itemID, fileHead string, derive func() ([]datamodel.Event, error)) ([]datamodel.Event, []CommitLink, error) {
 	if fileHead == "" {
 		events, derr := derive()
 		if derr != nil {
 			return nil, nil, derr
 		}
-		links, err := idx.CommitLinks(itemID)
+		links, err := i.CommitLinks(itemID)
 		if err != nil {
 			return nil, nil, err
 		}
 		return events, links, nil
 	}
-	head, err := idx.eventHead(itemID)
+	head, err := i.eventHead(itemID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -38,16 +42,16 @@ func LogEntries(store *storage.FS, itemID, fileHead string, derive func() ([]dat
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := idx.replaceEvents(itemID, fileHead, events); err != nil {
+		if err := i.replaceEvents(itemID, fileHead, events); err != nil {
 			return nil, nil, err
 		}
 	} else {
-		events, err = idx.events(itemID)
+		events, err = i.events(itemID)
 		if err != nil {
 			return nil, nil, err
 		}
 	}
-	links, err := idx.CommitLinks(itemID)
+	links, err := i.CommitLinks(itemID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -67,24 +71,48 @@ func (i *Index) eventHead(itemID string) (string, error) {
 }
 
 func (i *Index) replaceEvents(itemID, head string, events []datamodel.Event) error {
+	return i.replaceEventBatch(map[string]string{itemID: head}, map[string][]datamodel.Event{itemID: events})
+}
+
+func (i *Index) replaceEventBatch(heads map[string]string, events map[string][]datamodel.Event) error {
 	tx, err := i.db.Begin()
 	if err != nil {
 		return errx.Env("beginning events tx: %v", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.Exec("DELETE FROM events WHERE item_id = ?", itemID); err != nil {
-		return errx.Env("clearing events: %v", err)
+	queries := []string{
+		"DELETE FROM events WHERE item_id = ?",
+		`INSERT INTO events (item_id, seq, ts, field, old_value, new_value, commit_sha) VALUES (?,?,?,?,?,?,?)`,
+		`INSERT INTO event_heads (item_id, head_sha) VALUES (?,?) ON CONFLICT(item_id) DO UPDATE SET head_sha = excluded.head_sha`,
 	}
-	for seq, e := range events {
-		if _, err := tx.Exec(`INSERT INTO events
-			(item_id, seq, ts, field, old_value, new_value, commit_sha) VALUES (?,?,?,?,?,?,?)`,
-			itemID, seq, e.Ts, e.Field, e.Old, e.New, e.CommitSHA); err != nil {
-			return errx.Env("inserting event: %v", err)
+	stmts := make([]*sql.Stmt, 0, len(queries))
+	defer func() {
+		for _, stmt := range stmts {
+			_ = stmt.Close()
 		}
+	}()
+	for _, q := range queries {
+		stmt, err := tx.Prepare(q)
+		if err != nil {
+			return errx.Env("preparing events: %v", err)
+		}
+		stmts = append(stmts, stmt)
 	}
-	if _, err := tx.Exec(`INSERT INTO event_heads (item_id, head_sha) VALUES (?,?)
-		ON CONFLICT(item_id) DO UPDATE SET head_sha = excluded.head_sha`, itemID, head); err != nil {
-		return errx.Env("updating event head: %v", err)
+	for itemID, head := range heads {
+		if head == "" {
+			continue
+		} // An uncommitted file has no reusable history.
+		if _, err := stmts[0].Exec(itemID); err != nil {
+			return errx.Env("clearing events: %v", err)
+		}
+		for seq, e := range events[itemID] {
+			if _, err := stmts[1].Exec(itemID, seq, e.Ts, e.Field, e.Old, e.New, e.CommitSHA); err != nil {
+				return errx.Env("inserting event: %v", err)
+			}
+		}
+		if _, err := stmts[2].Exec(itemID, head); err != nil {
+			return errx.Env("updating event head: %v", err)
+		}
 	}
 	return commit(tx)
 }

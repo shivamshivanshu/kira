@@ -29,7 +29,12 @@ func (s *server) bulk(cfg *datamodel.Config, f url.Values) ([]bulkOutcome, error
 	if value == "" && operation != "assign" && operation != "sprint" {
 		return nil, errx.User("a value is required for %s", operation)
 	}
-	outcomes, err := s.resolveBulk(cfg, refs)
+	batch, err := s.store.BeginBatch(cfg)
+	if err != nil {
+		return nil, err
+	}
+	defer batch.Close()
+	outcomes, err := resolveBulk(batch, refs)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +46,7 @@ func (s *server) bulk(cfg *datamodel.Config, f url.Values) ([]bulkOutcome, error
 		if row.Error != "" {
 			continue
 		}
-		message, number, err := s.bulkItem(cfg, operation, row.Ref, value, f.Get("resolution"))
+		message, number, err := bulkItem(batch, operation, row.Ref, value, f.Get("resolution"))
 		if number != "" {
 			row.Number = number
 		}
@@ -54,12 +59,7 @@ func (s *server) bulk(cfg *datamodel.Config, f url.Values) ([]bulkOutcome, error
 	return outcomes, nil
 }
 
-func (s *server) resolveBulk(cfg *datamodel.Config, refs []string) ([]bulkOutcome, error) {
-	batch, err := s.store.BeginBatch(cfg)
-	if err != nil {
-		return nil, err
-	}
-	defer batch.Close()
+func resolveBulk(batch *core.Batch, refs []string) ([]bulkOutcome, error) {
 	seen := setx.NewDeduper[string]()
 	outcomes := make([]bulkOutcome, 0, len(refs))
 	for _, ref := range refs {
@@ -80,28 +80,28 @@ func (s *server) resolveBulk(cfg *datamodel.Config, refs []string) ([]bulkOutcom
 	return outcomes, nil
 }
 
-func (s *server) bulkItem(cfg *datamodel.Config, operation, ref, value, resolution string) (string, string, error) {
+func bulkItem(batch *core.Batch, operation, ref, value, resolution string) (string, string, error) {
 	switch operation {
 	case "move":
-		res, err := s.store.Move(cfg, ref, value, core.MoveOpts{Resolution: resolution})
+		res, err := batch.Move(ref, value, core.MoveOpts{Resolution: resolution})
 		if err != nil {
 			return "", "", err
 		}
 		return joinMessages("Moved to "+res.To, strings.Join(res.Warnings, "\n")), res.Number, nil
 	case "assign":
-		res, err := s.store.Assign(cfg, ref, value, core.AssignOpts{})
+		res, err := batch.Assign(ref, value, core.AssignOpts{})
 		return mutationMessage(res, err, "Assigned", "")
 	case "label-add", "label-rm":
-		res, err := s.store.LabelSet(cfg, ref, value, operation == "label-add", false)
+		res, err := batch.LabelSet(ref, value, operation == "label-add", false)
 		return mutationMessage(res, err, "Updated labels for", "")
 	case "board-move":
-		res, err := s.store.BoardMove(cfg, ref, value)
+		res, err := batch.BoardMove(ref, value)
 		if err != nil {
 			return "", "", err
 		}
 		return "Moved " + res.From + " to " + res.To, res.To, nil
 	case "sprint":
-		res, err := s.store.Edit(cfg, ref, core.EditOpts{Fields: []core.FieldEdit{{Key: "sprint", Value: value}}})
+		res, err := batch.EditFields(ref, []core.FieldEdit{{Key: "sprint", Value: value}}, false)
 		return mutationMessage(res, err, "Updated sprint for", "")
 	default:
 		return "", "", errx.User("unknown bulk operation %q", operation)

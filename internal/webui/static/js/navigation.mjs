@@ -197,7 +197,7 @@ export function setupNavigation({restored, writeState, dialogs, toggleSelection}
       event.preventDefault();
       toggleSelection(selected);
     } else if (event.key === "y") {
-      const value = source()?.querySelector(".item-copy")?.content.querySelector('[data-copy-format="id"]')?.dataset.copy;
+      const value = source()?.dataset.item;
       if (value) void dialogs.copy(value);
     } else if (event.key === "Y") dialogs.openCopy();
     else if (event.key === "e") editSelected();

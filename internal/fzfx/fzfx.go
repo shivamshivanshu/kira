@@ -39,8 +39,8 @@ func Pick(rows []string, opts Options) (string, error) {
 }
 
 func classify(err error) error {
-	var ee *exec.ExitError
-	if !errors.As(err, &ee) {
+	ee, ok := errors.AsType[*exec.ExitError](err)
+	if !ok {
 		return fmt.Errorf("running fzf: %w", err)
 	}
 	switch ee.ExitCode() {

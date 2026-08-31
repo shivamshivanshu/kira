@@ -43,7 +43,11 @@ Rendering and response writes run outside the store/notice mutex.
 
 Command bars share `internal/commandline` tokenization, while the web bridge keeps
 its own execution restrictions. Warning messages come from `internal/warningfmt`.
-Use the shared copy-picker and commit-card partials when adding item views.
+Item views supply `data-copy-values` through `pageData.CopyValues`; one shared
+copy-picker template supplies the buttons and labels. The item picker searches a
+compact JSON item list and creates at most 50 result links when opened or filtered.
+Use the shared commit-card partial for commit views. Page rendering prepares its
+query parameters, item-name lookup and bulk-selection set once.
 
 ## Verification
 
