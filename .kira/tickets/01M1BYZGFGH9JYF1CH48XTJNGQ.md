@@ -4,7 +4,7 @@ number: KIRA-126
 aliases: []
 type: ticket
 title: "doctor flags the system captured label that kira create --here writes"
-state: IN_PROGRESS
+state: REVIEW
 priority: P2
 labels: []
 epic: null
