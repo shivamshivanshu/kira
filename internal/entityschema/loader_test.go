@@ -1,8 +1,10 @@
 package entityschema
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -156,5 +158,41 @@ func TestBuiltinNames(t *testing.T) {
 		if names[i] != n {
 			t.Fatalf("got %v, want %v", names, want)
 		}
+	}
+}
+
+func TestLoadRejectsCrossSchemaExtrasConflict(t *testing.T) {
+	dir := t.TempDir()
+	bug := `{"name": "bug", "fields": [{"name": "severity", "type": "enum", "enum": "sev", "placement": "frontmatter"}]}`
+	task := `{"name": "task", "fields": [{"name": "severity", "type": "enum", "enum": "sev", "list": true, "placement": "frontmatter"}]}`
+	for name, content := range map[string]string{"bug.json": bug, "task.json": task} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	_, err := Load(dir)
+
+	if err == nil {
+		t.Fatal("expected conflicting cross-schema declarations of the same field to be rejected")
+	}
+	for _, want := range []string{`"bug"`, `"task"`, `"severity"`, "list"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error should name both schemas and the disagreement, missing %s: %v", want, err)
+		}
+	}
+}
+
+func TestLoadAllowsAgreeingExtrasAcrossSchemas(t *testing.T) {
+	dir := t.TempDir()
+	decl := `{"name": %q, "fields": [{"name": "severity", "type": "enum", "enum": "sev", "placement": "frontmatter"}]}`
+	for _, name := range []string{"bug", "task"} {
+		if err := os.WriteFile(filepath.Join(dir, name+".json"), fmt.Appendf(nil, decl, name), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if _, err := Load(dir); err != nil {
+		t.Fatalf("identical declarations across schemas must keep loading: %v", err)
 	}
 }
