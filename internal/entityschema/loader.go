@@ -144,6 +144,9 @@ func checkSchemaShape(s Schema) error {
 		if f.List && !stringRepresented(f.Type) {
 			return fmt.Errorf("schema %q: field %q: list is only supported for string-valued types, not %q", s.Name, f.Name, f.Type)
 		}
+		if f.Placement == PlacementFrontmatter && datamodel.IsFrontmatterKey(f.Name) {
+			return fmt.Errorf("schema %q: field %q: placement \"frontmatter\" shadows a builtin frontmatter key", s.Name, f.Name)
+		}
 		switch f.Type {
 		case FieldEnum, FieldResolution:
 			if f.Enum == "" {

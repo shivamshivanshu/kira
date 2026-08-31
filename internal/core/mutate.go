@@ -24,7 +24,7 @@ func (s *Store) lockAndResolve(cfg *datamodel.Config, ref string) (func(), *data
 		release()
 		return nil, nil, nil, nil, err
 	}
-	if err := guardWritable(orig); err != nil {
+	if err := s.guardWritable(orig); err != nil {
 		release()
 		return nil, nil, nil, nil, err
 	}
@@ -46,7 +46,7 @@ func (s *Store) mutateAgainst(cfg *datamodel.Config, orig *datamodel.Item, items
 	if len(hard) > 0 {
 		return nil, nil, nil, errx.Invalid(invalidItemPrefix, hard)
 	}
-	vhard, vwarns := validateMutation(cfg, orig, updated, resolver, items, force)
+	vhard, vwarns := s.validateMutation(cfg, orig, updated, resolver, items, force)
 	if len(vhard) > 0 {
 		return nil, nil, nil, errx.Invalid(invalidItemPrefix, vhard)
 	}
@@ -97,7 +97,7 @@ func (b *Batch) Mutate(ref string, force bool, apply applyFn, subjectOf func(ori
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if err := guardWritable(orig); err != nil {
+	if err := b.store.guardWritable(orig); err != nil {
 		return nil, nil, nil, err
 	}
 	updated, changed, warns, err := b.store.mutateAgainst(b.cfg, orig, b.items, b.resolver, force, apply, subjectOf, source)

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
@@ -123,6 +124,16 @@ func scalarFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 	}
 	if it.Due != nil && *it.Due != "" && !datamodel.ValidDate(*it.Due) {
 		out = append(out, schemaErr(datamodel.KeyDue, fmt.Sprintf("invalid date %q, want YYYY-MM-DD", *it.Due)))
+	}
+	return out
+}
+
+// extrasFindings reports schema violations on declared frontmatter extras;
+// builtin fields stay with the config-driven checks above.
+func extrasFindings(cfg *datamodel.Config, schemas map[string]entityschema.Schema, it *datamodel.Item) []Finding {
+	var out []Finding
+	for _, v := range entityschema.ValidateExtras(schemas, cfg, it) {
+		out = append(out, schemaErr(v.Field, v.Message))
 	}
 	return out
 }

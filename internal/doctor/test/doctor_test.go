@@ -76,21 +76,69 @@ func TestLintMalformedFrontmatter(t *testing.T) {
 	}
 }
 
-func TestLintUnknownFieldWarns(t *testing.T) {
+func TestUnknownFieldWarns(t *testing.T) {
 	t.Parallel()
 	content := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
 		"state: TODO\nlabels: []\nblocked_by: []\nepic: null\nbogus_key: 1\n" +
 		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n## Description\n"
-	_, parsed, findings := doctor.Lint(content)
-	if !parsed {
-		t.Fatalf("expected a well-formed item to parse, got findings %+v", findings)
-	}
-	for _, f := range findings {
-		if f.Class == doctor.ClassSchema && f.Field == "bogus_key" && f.Severity == doctor.SeverityWarning {
-			return
+	files := []doctor.File{{Path: ulidA + ".md", Content: content}}
+	unknownWarning := func(report *doctor.Report) bool {
+		for _, f := range report.Findings {
+			if f.Class == doctor.ClassSchema && f.Field == "bogus_key" && f.Severity == doctor.SeverityWarning {
+				return true
+			}
 		}
+		return false
 	}
-	t.Fatalf("expected an unknown-field warning for bogus_key, got %+v", findings)
+
+	undeclared := doctor.Run(config.Default(), files, nil, doctor.Env{GitInstalled: true}, builtinSchemas(t))
+	if !unknownWarning(undeclared) {
+		t.Fatalf("expected an unknown-field warning for undeclared bogus_key, got %+v", undeclared.Findings)
+	}
+
+	schemas := builtinSchemas(t)
+	ticket := schemas["ticket"]
+	ticket.Fields = append(ticket.Fields, entityschema.FieldDef{
+		Name: "bogus_key", Type: entityschema.FieldInt, Placement: entityschema.PlacementFrontmatter,
+	})
+	schemas["ticket"] = ticket
+	declared := doctor.Run(config.Default(), files, nil, doctor.Env{GitInstalled: true}, schemas)
+	if unknownWarning(declared) {
+		t.Fatalf("a schema-declared extra must not warn, got %+v", declared.Findings)
+	}
+}
+
+func TestDoctorFlagsInvalidDeclaredExtra(t *testing.T) {
+	t.Parallel()
+	schemas := builtinSchemas(t)
+	ticket := schemas["ticket"]
+	ticket.Fields = append(ticket.Fields, entityschema.FieldDef{
+		Name: "story_points", Type: entityschema.FieldInt, Placement: entityschema.PlacementFrontmatter,
+	})
+	schemas["ticket"] = ticket
+	itemWith := func(pointsLine string) []doctor.File {
+		content := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
+			"state: TODO\nlabels: []\nblocked_by: []\nepic: null\n" + pointsLine +
+			"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n## Description\n"
+		return []doctor.File{{Path: ulidA + ".md", Content: content}}
+	}
+	violation := func(report *doctor.Report) bool {
+		for _, f := range report.Findings {
+			if f.Class == doctor.ClassSchema && f.Severity == doctor.SeverityError && f.Field == "story_points" {
+				return true
+			}
+		}
+		return false
+	}
+
+	bad := doctor.Run(config.Default(), itemWith("story_points: abc\n"), nil, doctor.Env{GitInstalled: true}, schemas)
+	if !violation(bad) {
+		t.Fatalf("expected a schema error for the mistyped declared extra, got %+v", bad.Findings)
+	}
+	good := doctor.Run(config.Default(), itemWith("story_points: 3\n"), nil, doctor.Env{GitInstalled: true}, schemas)
+	if violation(good) || !good.OK {
+		t.Fatalf("a conforming declared extra must not be flagged, got %+v", good.Findings)
+	}
 }
 
 func TestLintSurfacesDuplicateKeys(t *testing.T) {
@@ -642,7 +690,7 @@ func TestValidateScopesToTargets(t *testing.T) {
 		"\nnumber: KIRA-2\naliases: []\ntype: ticket\ntitle: t\nstate: WAT\nlabels: []\n" +
 		"blocked_by: []\nepic: null\ncreated: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n"}
 
-	report := doctor.Validate(config.Default(), []doctor.File{store}, []doctor.File{badTarget})
+	report := doctor.Validate(config.Default(), []doctor.File{store}, []doctor.File{badTarget}, nil)
 	if report.OK {
 		t.Fatal("expected the bad target state to fail validation")
 	}

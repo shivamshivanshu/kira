@@ -8,6 +8,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/editorx"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/setx"
@@ -59,7 +60,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		if len(guardErrs) > 0 {
 			return errx.Invalid(invalidItemPrefix, guardErrs)
 		}
-		errs, w := validateMutation(cfg, orig, it, resolver, items, opts.Force)
+		errs, w := s.validateMutation(cfg, orig, it, resolver, items, opts.Force)
 		if len(errs) > 0 {
 			return errx.Invalid(invalidItemPrefix, errs)
 		}
@@ -78,7 +79,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 					return nil, err
 				}
 			}
-			if err := applyFieldEdit(it, fe.Key, value); err != nil {
+			if err := s.editField(it, fe.Key, value); err != nil {
 				errs = append(errs, err)
 			}
 		}
@@ -120,7 +121,7 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 	if err != nil {
 		return "", "", err
 	}
-	if err := guardWritable(orig); err != nil {
+	if err := s.guardWritable(orig); err != nil {
 		return "", "", err
 	}
 	content, err := runEditor(cfg.UI.Editor, opts.Stdio, codec.Serialize(orig), func(c string) []error {
@@ -132,7 +133,7 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 		if hard, _ := applyEditGuards(cfg, orig, it, opts.Force, resolver, items); len(hard) > 0 {
 			return hard
 		}
-		hard, _ := validateMutation(cfg, orig, it, resolver, items, opts.Force)
+		hard, _ := s.validateMutation(cfg, orig, it, resolver, items, opts.Force)
 		return hard
 	})
 	return content, orig.Updated, err
@@ -183,9 +184,67 @@ func restoreImmutable(it, orig *datamodel.Item) {
 func applyFieldEdit(it *datamodel.Item, key, value string) error {
 	d, ok := datamodel.Field(key)
 	if !ok || d.Set == nil {
-		return errx.User("--field: unknown or immutable field %q", key).WithHint("%s", fieldHint(key))
+		return fieldEditError(key)
 	}
 	return d.Set(it, value)
+}
+
+func fieldEditError(key string) error {
+	return errx.User("--field: unknown or immutable field %q", key).WithHint("%s", fieldHint(key))
+}
+
+func (s *Store) editField(it *datamodel.Item, key, value string) error {
+	if _, ok := datamodel.Field(key); ok {
+		return applyFieldEdit(it, key, value)
+	}
+	return s.editExtraField(it, key, value)
+}
+
+func (s *Store) editExtraField(it *datamodel.Item, key, value string) error {
+	schemas, err := s.schemas()
+	if err != nil {
+		return err
+	}
+	f, ok := entityschema.DeclaredExtra(schemas, it.Type, key)
+	if !ok || f.Immutable {
+		return fieldEditError(key)
+	}
+	stored, err := storedExtraValue(f, value)
+	if err != nil {
+		return err
+	}
+	return datamodel.ExtraField(key, f.List).Set(it, stored)
+}
+
+// storedExtraValue renders raw --field input into the canonical YAML text form
+// parsing captures, so a set-then-serialize emits exactly what a re-parse
+// stores.
+func storedExtraValue(f entityschema.FieldDef, value string) (string, error) {
+	if f.List {
+		elems := datamodel.SplitCSV(value)
+		rendered := make([]string, len(elems))
+		for i, e := range elems {
+			r, ok := codec.RenderFlowElem(e)
+			if !ok {
+				return "", extraValueError(f.Name, e)
+			}
+			rendered[i] = r
+		}
+		return strings.Join(rendered, ","), nil
+	}
+	if value == "" {
+		return "", nil
+	}
+	r, ok := codec.RenderScalar(value)
+	if !ok {
+		return "", extraValueError(f.Name, value)
+	}
+	return r, nil
+}
+
+func extraValueError(name, value string) error {
+	return errx.User("--field %s: value %q cannot be stored in frontmatter", name, value).
+		WithHint("values must fit one line; clear with `--field %s=`", name)
 }
 
 func cloneItem(src *datamodel.Item) *datamodel.Item {

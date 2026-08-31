@@ -68,7 +68,7 @@ func (s *Store) Resolve(cfg *datamodel.Config, refs []string, interactive bool) 
 			result.Skipped = append(result.Skipped, path)
 			continue
 		}
-		if err := guardWritable(oursItem, theirsItem); err != nil {
+		if err := s.guardWritable(oursItem, theirsItem); err != nil {
 			return nil, err
 		}
 		res := merge.Merge(parseOrNil(base.Content), oursItem, theirsItem, remote, gitTextMerge)

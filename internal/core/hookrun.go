@@ -103,6 +103,7 @@ func (s *Store) ValidateStaged(cfg *datamodel.Config) error {
 			continue
 		}
 		errs, _ := validateItem(cfg, it, false)
+		errs = append(errs, s.extrasErrors(cfg, it)...)
 		for _, e := range errs {
 			problems = append(problems, fmt.Errorf("%s: %v", p, e))
 		}
