@@ -50,6 +50,9 @@ func (s *Store) BoardMove(cfg *datamodel.Config, ref, targetKey string) (*datamo
 	if !slices.ContainsFunc(it.Aliases, func(a string) bool { return strings.EqualFold(a, from) }) {
 		it.Aliases = append(it.Aliases, from)
 	}
+	// Deliberately bypasses the mutation pipeline: a renumber is identity
+	// bookkeeping, not activity, so Updated must not move (close-reopen
+	// detection compares against it) and no automation event fires.
 	path, err := s.fs().WriteItem(it)
 	if err != nil {
 		return nil, err
