@@ -90,7 +90,7 @@ func vocabFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 		}
 	}
 	for _, l := range it.Labels {
-		if !slices.Contains(cfg.Labels.Known, l) {
+		if l != datamodel.CapturedLabel && !slices.Contains(cfg.Labels.Known, l) {
 			out = append(out, vocabFinding(datamodel.KeyLabels, l, vocabSeverity(cfg.Labels.Strict)))
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 
 	"gopkg.in/yaml.v3"
 
@@ -37,10 +38,13 @@ func LoadWithUser(root string, env func(string) string, warn io.Writer) (*datamo
 	if tier.workon != nil {
 		cfg.Workon = *tier.workon
 	}
+	uiBeforeRepo, workonBeforeRepo := cfg.UI, cfg.Workon
 	ignore := ignorer(warn, filepath.Join(root, storage.ConfigRelPath))
 	if err := parseInto(cfg, data, ignore); err != nil {
 		return nil, err
 	}
+	cfg.UIProvenance = tierFor(!reflect.DeepEqual(cfg.UI, uiBeforeRepo), tier.ui != nil)
+	cfg.WorkonProvenance = tierFor(!reflect.DeepEqual(cfg.Workon, workonBeforeRepo), tier.workon != nil)
 	alreadyWarned := setx.ToSet(tier.uiWarnings)
 	for _, w := range UIWarnings(cfg.UI) {
 		if !alreadyWarned[w] {
@@ -52,6 +56,19 @@ func LoadWithUser(root string, env func(string) string, warn io.Writer) (*datamo
 		cfg.UserCommitSubject = tier.commit.Subject
 	}
 	return cfg, nil
+}
+
+// tierFor reports which tier supplied a section's effective value: repo when
+// the repo overlay changed it, else user when the user tier set it.
+func tierFor(repoChanged, userSet bool) datamodel.Provenance {
+	switch {
+	case repoChanged:
+		return datamodel.ProvenanceRepo
+	case userSet:
+		return datamodel.ProvenanceUser
+	default:
+		return datamodel.ProvenanceDefault
+	}
 }
 
 func readRepoConfig(root string) ([]byte, error) {

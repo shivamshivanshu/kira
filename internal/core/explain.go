@@ -33,14 +33,15 @@ func Explain(cfg *datamodel.Config) *datamodel.ExplainResult {
 // changed reports whether a is not deeply equal to its default counterpart b.
 func changed[T any](a, b T) bool { return !reflect.DeepEqual(a, b) }
 
-// tierOf tags a section default when it matches the baked default, user when
-// it differs and belongs to a user-config-tier key (ui, workon), else repo.
-func tierOf(differs, userTier bool) datamodel.Provenance {
+// tierOf tags a section default when it matches the baked default, else with
+// the loader-recorded tier that supplied it (repo when none was recorded,
+// e.g. a config parsed without the user tier).
+func tierOf(differs bool, tier datamodel.Provenance) datamodel.Provenance {
 	switch {
 	case !differs:
 		return datamodel.ProvenanceDefault
-	case userTier:
-		return datamodel.ProvenanceUser
+	case tier != "":
+		return tier
 	default:
 		return datamodel.ProvenanceRepo
 	}
@@ -56,7 +57,7 @@ func explainIdentity(cfg, def *datamodel.Config) datamodel.ExplainSection {
 		lines = append(lines, "board: "+describeBoard(b))
 	}
 	differs := changed(cfg.Project, def.Project) || changed(cfg.ID, def.ID) || changed(boards, def.EffectiveBoards())
-	return datamodel.ExplainSection{Name: "identity", Provenance: tierOf(differs, false), Lines: lines}
+	return datamodel.ExplainSection{Name: "identity", Provenance: tierOf(differs, datamodel.ProvenanceRepo), Lines: lines}
 }
 
 func describeBoard(b datamodel.Board) string {
@@ -93,7 +94,7 @@ func explainWorkflow(cfg, def *datamodel.Config, typ string) datamodel.ExplainSe
 	defWF, isDefaultType := def.Workflows[typ]
 	return datamodel.ExplainSection{
 		Name:       "workflow: " + typ,
-		Provenance: tierOf(!isDefaultType || changed(wf, defWF), false),
+		Provenance: tierOf(!isDefaultType || changed(wf, defWF), datamodel.ProvenanceRepo),
 		Lines:      lines,
 	}
 }
@@ -153,7 +154,11 @@ func explainCommit(cfg, def *datamodel.Config) datamodel.ExplainSection {
 		lines = append(lines, "reference marker: "+describeReferenceMarker(m))
 	}
 	userSubject := cfg.UserCommitSubject != ""
-	return datamodel.ExplainSection{Name: "commit", Provenance: tierOf(changed(c, def.Commit) || userSubject, userSubject), Lines: lines}
+	tier := datamodel.ProvenanceRepo
+	if userSubject {
+		tier = datamodel.ProvenanceUser
+	}
+	return datamodel.ExplainSection{Name: "commit", Provenance: tierOf(changed(c, def.Commit) || userSubject, tier), Lines: lines}
 }
 
 // describeLinkMarker documents a marker that associates a commit with a
@@ -200,7 +205,7 @@ func explainVocab(cfg, def *datamodel.Config) datamodel.ExplainSection {
 	differs := vocabChanged(cfg.Labels, def.Labels) || peopleChanged(cfg.People, def.People) ||
 		changed(cfg.Priorities, def.Priorities) || changed(cfg.Subtypes, def.Subtypes) ||
 		changed(cfg.Resolutions, def.Resolutions) || changed(cfg.ResolutionsDropped, def.ResolutionsDropped)
-	return datamodel.ExplainSection{Name: "vocab", Provenance: tierOf(differs, false), Lines: lines}
+	return datamodel.ExplainSection{Name: "vocab", Provenance: tierOf(differs, datamodel.ProvenanceRepo), Lines: lines}
 }
 
 // vocabChanged and peopleChanged treat a scaffolded `known: []` the same as
@@ -240,7 +245,7 @@ func explainUI(cfg, def *datamodel.Config) datamodel.ExplainSection {
 		"color: " + string(cfg.UI.Color),
 		"background: " + string(cfg.UI.Background),
 	}
-	return datamodel.ExplainSection{Name: "ui", Provenance: tierOf(changed(cfg.UI, def.UI), true), Lines: lines}
+	return datamodel.ExplainSection{Name: "ui", Provenance: tierOf(changed(cfg.UI, def.UI), cfg.UIProvenance), Lines: lines}
 }
 
 func explainWorkon(cfg, def *datamodel.Config) datamodel.ExplainSection {
@@ -249,12 +254,12 @@ func explainWorkon(cfg, def *datamodel.Config) datamodel.ExplainSection {
 		"casing: " + string(cfg.Workon.Casing),
 		fmt.Sprintf("worktree: %t (dir %s)", cfg.Workon.Worktree, cfg.Workon.WorktreeDir),
 	}
-	return datamodel.ExplainSection{Name: "workon", Provenance: tierOf(changed(cfg.Workon, def.Workon), true), Lines: lines}
+	return datamodel.ExplainSection{Name: "workon", Provenance: tierOf(changed(cfg.Workon, def.Workon), cfg.WorkonProvenance), Lines: lines}
 }
 
 func explainMerge(cfg, def *datamodel.Config) datamodel.ExplainSection {
 	lines := []string{"policy: " + string(cfg.Merge.Policy)}
-	return datamodel.ExplainSection{Name: "merge", Provenance: tierOf(changed(cfg.Merge, def.Merge), false), Lines: lines}
+	return datamodel.ExplainSection{Name: "merge", Provenance: tierOf(changed(cfg.Merge, def.Merge), datamodel.ProvenanceRepo), Lines: lines}
 }
 
 func explainSync(cfg, def *datamodel.Config) datamodel.ExplainSection {
@@ -262,5 +267,5 @@ func explainSync(cfg, def *datamodel.Config) datamodel.ExplainSection {
 		fmt.Sprintf("push: %t", cfg.Sync.Push),
 		"dirty: " + string(cfg.Sync.Dirty),
 	}
-	return datamodel.ExplainSection{Name: "sync", Provenance: tierOf(changed(cfg.Sync, def.Sync), false), Lines: lines}
+	return datamodel.ExplainSection{Name: "sync", Provenance: tierOf(changed(cfg.Sync, def.Sync), datamodel.ProvenanceRepo), Lines: lines}
 }
