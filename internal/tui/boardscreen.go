@@ -63,14 +63,8 @@ func (s *boardScreen) invalidate() {
 	s.state = loadNeeded
 }
 
-// activate dispatches an async reload through the model's command queue at
-// most once per invalidation; the result lands later via boardLoadedMsg.
 func (s *boardScreen) activate(m *model) tea.Cmd {
-	if s.state != loadNeeded || m.store == nil {
-		return nil
-	}
-	s.state = loadPending
-	return m.request(boardLoadCmd(m.store, m.cfg))
+	return activateLoad(&s.state, m, boardLoadCmd(m.store, m.cfg))
 }
 
 func (s *boardScreen) applyLoaded(msg boardLoadedMsg) {
