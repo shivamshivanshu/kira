@@ -13,6 +13,11 @@ type skipEntry struct {
 	ConflictID string `json:"conflict_id,omitempty"`
 }
 
+// meta is the previous run's watermark set, and the only reason a reindex can
+// decide to do nothing. LastIndexedHeadSHA plus DirtyHash cover the item
+// files; TrailerWatermarks covers the commit scans separately, keyed by the
+// literal "HEAD" for the trailer scan and by ref name for each close scan,
+// because those advance independently of the item files.
 type meta struct {
 	SchemaVersion      int                  `json:"schema_version"`
 	ScanConfigHash     string               `json:"scan_config_hash,omitempty"`
