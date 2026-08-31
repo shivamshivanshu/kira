@@ -1363,6 +1363,22 @@
             "null"
           ]
         },
+        "extras": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "type": "object"
+        },
         "id": {
           "type": "string"
         },
@@ -1880,6 +1896,22 @@
             "number",
             "null"
           ]
+        },
+        "extras": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "type": "object"
         },
         "history_tail": {
           "items": {

@@ -62,7 +62,7 @@ func TestParseCanonical(t *testing.T) {
 		{"not a", "(not (term a))"},
 	}
 	for _, tc := range tests {
-		q, err := Parse(tc.in)
+		q, err := Parse(tc.in, nil)
 		if err != nil {
 			t.Fatalf("Parse(%q): %v", tc.in, err)
 		}
@@ -109,7 +109,7 @@ func TestParseErrors(t *testing.T) {
 		{"second ORDER BY clause", "a ORDER BY rank ORDER BY due", 16},
 	}
 	for _, tc := range tests {
-		_, err := Parse(tc.in)
+		_, err := Parse(tc.in, nil)
 		qe, ok := errors.AsType[*Error](err)
 		if !ok {
 			t.Fatalf("%s: Parse(%q) err = %v, want *Error", tc.name, tc.in, err)
@@ -129,7 +129,7 @@ func TestParseOrderedFieldAllOps(t *testing.T) {
 			"estimate" + op + "3",
 			"priority" + op + "P1",
 		} {
-			if _, err := Parse(in); err != nil {
+			if _, err := Parse(in, nil); err != nil {
 				t.Errorf("%s: %v", in, err)
 			}
 		}

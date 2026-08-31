@@ -793,7 +793,7 @@ func TestSchemaVersionMismatchRebuilds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec("PRAGMA user_version=3"); err != nil {
+	if _, err := db.Exec("PRAGMA user_version=6"); err != nil {
 		t.Fatal(err)
 	}
 	_ = db.Close()
@@ -1400,5 +1400,90 @@ func TestDirtyPathsSurviveToplevelSymlinkResolution(t *testing.T) {
 	}
 	if res.Action != "incremental" {
 		t.Fatalf("action=%q want incremental", res.Action)
+	}
+}
+
+func TestExtrasRoundTripThroughIndex(t *testing.T) {
+	t.Parallel()
+	f := newRepo(t)
+	const ulid = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	content := strings.Replace(ticket(ulid, "KIRA-1", "with extras"),
+		"state: TODO\n",
+		"state: TODO\nteam: infra\nnote: 'a: b'\nwatchers: [zebra, apple, 'b c']\nreviewers: []\npoints: 8\n", 1)
+	f.writeTicket(t, ulid, content)
+	f.commit(t, "init")
+
+	items, _, err := index.Load(f.store, f.repo, index.Options{})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	disk, _, err := f.store.LoadAll()
+	if err != nil {
+		t.Fatalf("LoadAll: %v", err)
+	}
+	if len(items) != 1 || len(disk) != 1 {
+		t.Fatalf("want 1 item, index=%d disk=%d", len(items), len(disk))
+	}
+	if len(disk[0].Extras) != 5 {
+		t.Fatalf("fixture must capture 5 extras, got %+v", disk[0].Extras)
+	}
+	if !reflect.DeepEqual(items[0].Extras, disk[0].Extras) {
+		t.Errorf("extras mismatch:\n index: %+v\n disk:  %+v", items[0].Extras, disk[0].Extras)
+	}
+	if got := items[0].Extras["reviewers"].List; got == nil || len(got) != 0 {
+		t.Errorf("empty list must round-trip non-nil and empty, got %#v", got)
+	}
+	if got := items[0].Extras["watchers"].List; !reflect.DeepEqual(got, disk[0].Extras["watchers"].List) {
+		t.Errorf("list order changed: got %v want %v", got, disk[0].Extras["watchers"].List)
+	}
+}
+
+func TestItemWithoutExtrasStaysExtrasFree(t *testing.T) {
+	t.Parallel()
+	f := newRepo(t)
+	const ulid = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	f.writeTicket(t, ulid, ticket(ulid, "KIRA-1", "plain"))
+	f.commit(t, "init")
+
+	items, _, err := index.Load(f.store, f.repo, index.Options{})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if items[0].Extras != nil {
+		t.Fatalf("item without extras must reload with a nil map, got %+v", items[0].Extras)
+	}
+}
+
+func TestIncrementalRefreshReplacesAndRemovesExtras(t *testing.T) {
+	t.Parallel()
+	f := newRepo(t)
+	const ulid = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+	withExtras := func(extras string) string {
+		return strings.Replace(ticket(ulid, "KIRA-1", "edited"), "state: TODO\n", "state: TODO\n"+extras, 1)
+	}
+	f.writeTicket(t, ulid, withExtras("watchers: [a, b]\nteam: infra\n"))
+	f.commit(t, "init")
+	idx := open(t, f)
+	ensure(t, idx, f)
+
+	f.writeTicket(t, ulid, withExtras("watchers: []\nteam: infra\n"))
+	f.commit(t, "empty the list")
+	res, items := ensure(t, idx, f)
+	if res.Action != "incremental" {
+		t.Fatalf("action=%q want incremental", res.Action)
+	}
+	if got := items[0].Extras["watchers"].List; got == nil || len(got) != 0 {
+		t.Errorf("stale element rows must be replaced by the empty-list marker, got %#v", got)
+	}
+
+	f.writeTicket(t, ulid, withExtras("team: infra\n"))
+	f.commit(t, "drop the key")
+	res, items = ensure(t, idx, f)
+	if res.Action != "incremental" {
+		t.Fatalf("action=%q want incremental", res.Action)
+	}
+	want := map[string]datamodel.ExtraValue{"team": {Scalar: new("infra")}}
+	if !reflect.DeepEqual(items[0].Extras, want) {
+		t.Errorf("removed extra must leave no rows behind, got %+v", items[0].Extras)
 	}
 }
