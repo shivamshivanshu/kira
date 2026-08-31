@@ -200,6 +200,11 @@ func bodyField() FieldDescriptor {
 	}
 }
 
+// ExtraField describes a schema-declared frontmatter extra. Set stores value
+// verbatim and Serialize splices it straight into frontmatter, so callers must
+// pass codec-rendered YAML text (codec.RenderScalar / RenderFlowElem,
+// comma-joined for a list) — datamodel sits below codec, so nothing here can
+// render or check it.
 func ExtraField(key string, list bool) FieldDescriptor {
 	d := FieldDescriptor{
 		Key:     key,
