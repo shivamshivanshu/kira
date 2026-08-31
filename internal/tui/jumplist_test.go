@@ -29,7 +29,7 @@ func TestJumplistPushCapsDroppingOldest(t *testing.T) {
 	t.Parallel()
 	const pushed = jumplistCap + 10
 	var j jumplist
-	for i := 0; i < pushed; i++ {
+	for i := range pushed {
 		j.push(jumpEntry{view: viewTree, itemID: strconv.Itoa(i)})
 	}
 	if len(j.entries) != jumplistCap {

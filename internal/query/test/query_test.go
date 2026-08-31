@@ -174,7 +174,7 @@ func TestEvalInEstimate(t *testing.T) {
 	items, opts, cfg := evalFixture()
 	zero := &datamodel.Item{
 		ID: id.Mint().String(), Number: "KIRA-0", Type: datamodel.TypeTicket, Title: "Zero estimate",
-		State: "TODO", Estimate: f64p(0), Created: "2026-07-05T00:00:00Z", Updated: "2026-07-05T00:00:00Z",
+		State: "TODO", Estimate: new(0.0), Created: "2026-07-05T00:00:00Z", Updated: "2026-07-05T00:00:00Z",
 	}
 	items = append(items, zero)
 

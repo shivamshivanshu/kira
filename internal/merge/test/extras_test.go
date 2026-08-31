@@ -6,13 +6,12 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/merge"
-	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 func scalarExtras(kv ...string) map[string]datamodel.ExtraValue {
 	out := make(map[string]datamodel.ExtraValue, len(kv)/2)
 	for i := 0; i+1 < len(kv); i += 2 {
-		out[kv[i]] = datamodel.ExtraValue{Scalar: ptr.To(kv[i+1])}
+		out[kv[i]] = datamodel.ExtraValue{Scalar: new(kv[i+1])}
 	}
 	return out
 }
@@ -26,7 +25,7 @@ func TestExtraSurvivesUnrelatedFieldMerge(t *testing.T) {
 	withExtra := func(it *datamodel.Item) { it.Extras = scalarExtras("team", "infra") }
 	b := base(withExtra)
 	ours := base(func(it *datamodel.Item) { withExtra(it); it.Title = "New title" })
-	theirs := base(func(it *datamodel.Item) { withExtra(it); it.Owner = ptr.To("bob") })
+	theirs := base(func(it *datamodel.Item) { withExtra(it); it.Owner = new("bob") })
 	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
 	if v := got.Extras["team"]; v.Scalar == nil || *v.Scalar != "infra" {
 		t.Fatalf("Extras[team] = %+v, want scalar infra to survive", v)

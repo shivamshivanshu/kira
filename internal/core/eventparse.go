@@ -22,7 +22,7 @@ func walkPatch(stream string, emit func(path string, events []datamodel.Event)) 
 		d.reset()
 		minus, plus = map[string]string{}, map[string]string{}
 	}
-	for _, line := range strings.Split(stream, "\n") {
+	for line := range strings.SplitSeq(stream, "\n") {
 		switch {
 		case strings.HasPrefix(line, "\x00"):
 			flush()

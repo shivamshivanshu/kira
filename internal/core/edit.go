@@ -164,8 +164,7 @@ func parseFullItem(content string) (*datamodel.Item, []error) {
 		return nil, []error{err}
 	}
 	if err != nil {
-		var pe *datamodel.ParseError
-		if errors.As(err, &pe) {
+		if pe, ok := errors.AsType[*datamodel.ParseError](err); ok {
 			return it, pe.Errs
 		}
 		return it, []error{err}

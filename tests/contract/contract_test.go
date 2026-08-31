@@ -128,8 +128,7 @@ func kira(t *testing.T, dir string, args ...string) (stdout, stderr string, code
 	err := cmd.Run()
 	code = 0
 	if err != nil {
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
+		if ee, ok := errors.AsType[*exec.ExitError](err); ok {
 			code = ee.ExitCode()
 		} else {
 			t.Fatalf("exec kira %v: %v", args, err)

@@ -109,8 +109,7 @@ func TestEditReportsEditorFailure(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "editor false") {
 		t.Fatalf("Edit with failing editor = %v, want editor false error", err)
 	}
-	var exitErr *exec.ExitError
-	if !errors.As(err, &exitErr) {
+	if _, ok := errors.AsType[*exec.ExitError](err); !ok {
 		t.Fatalf("Edit error = %v, want it to wrap an *exec.ExitError (errors.As)", err)
 	}
 }

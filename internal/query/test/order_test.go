@@ -10,9 +10,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/query"
 )
 
-func strp(s string) *string   { return &s }
-func f64p(f float64) *float64 { return &f }
-
 func fixture() (items []*datamodel.Item, cfg *datamodel.Config) {
 	cfg = config.Default()
 	epicID := id.Mint().String()
@@ -26,24 +23,24 @@ func fixture() (items []*datamodel.Item, cfg *datamodel.Config) {
 	}
 	it1 := &datamodel.Item{
 		ID: it1ID, Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "Fix race in snapshot",
-		State: "IN_PROGRESS", Owner: strp("shivam"), Priority: strp("P1"),
-		Labels: []string{"bug"}, Epic: strp(epicID),
-		Subtype: strp("bug"), Rank: strp("aam"), Sprint: strp("2026-S14"),
-		Due: strp("2026-07-20"), Estimate: f64p(3),
+		State: "IN_PROGRESS", Owner: new("shivam"), Priority: new("P1"),
+		Labels: []string{"bug"}, Epic: new(epicID),
+		Subtype: new("bug"), Rank: new("aam"), Sprint: new("2026-S14"),
+		Due: new("2026-07-20"), Estimate: new(3.0),
 		BlockedBy: []string{it2ID}, Links: map[string][]string{string(datamodel.LinkRelates): {it3ID}},
 		Created: "2026-07-05T00:00:00Z", Updated: "2026-07-06T00:00:00Z",
 	}
 	it2 := &datamodel.Item{
 		ID: it2ID, Number: "KIRA-2", Type: datamodel.TypeTicket, Title: "Perf tuning",
-		State: "TODO", Owner: strp("alice"), Labels: []string{"perf"},
-		Priority: strp("P0"), Due: strp("2026-07-01"), Estimate: f64p(5),
-		Reporter: strp("shivam"),
+		State: "TODO", Owner: new("alice"), Labels: []string{"perf"},
+		Priority: new("P0"), Due: new("2026-07-01"), Estimate: new(5.0),
+		Reporter: new("shivam"),
 		Created:  "2026-07-10T00:00:00Z", Updated: "2026-07-10T00:00:00Z",
 	}
 	it3 := &datamodel.Item{
 		ID: it3ID, Number: "KIRA-3", Type: datamodel.TypeTicket, Title: "Done thing",
-		State: "DONE", Owner: strp("shivam"), Labels: []string{"bug", "perf"},
-		Resolution: strp("done"),
+		State: "DONE", Owner: new("shivam"), Labels: []string{"bug", "perf"},
+		Resolution: new("done"),
 		Created:    "2026-06-01T00:00:00Z", Updated: "2026-06-02T00:00:00Z",
 	}
 	return []*datamodel.Item{epic, it1, it2, it3}, cfg

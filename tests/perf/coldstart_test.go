@@ -17,7 +17,7 @@ func TestColdStartSmoke(t *testing.T) {
 	dir := fixture(t, 100)
 
 	var best time.Duration
-	for i := 0; i < coldStartSamples; i++ {
+	for i := range coldStartSamples {
 		d, out, err := runKira(bin, dir, nil, "version")
 		if err != nil {
 			t.Fatalf("version: %v\n%s", err, out)

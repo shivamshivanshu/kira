@@ -16,8 +16,6 @@ func DerefOr[T comparable](p *T, fallback T) T {
 	return *p
 }
 
-func To[T any](v T) *T { return &v }
-
 func NilIfEmpty(s string) *string {
 	if s == "" {
 		return nil

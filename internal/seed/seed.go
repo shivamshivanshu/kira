@@ -99,7 +99,7 @@ func rawSink(st *storage.FS, cfg *datamodel.Config, alloc *id.Allocator, mint fu
 		ts := seedEpoch.Add(time.Duration(i) * time.Hour)
 		it := buildItem(cfg, sp, u.String(), number, ts)
 		if parent != "" {
-			it.Epic = ptr.To(parent)
+			it.Epic = new(parent)
 		}
 		var counts Summary
 		for j, body := range sp.Comments {

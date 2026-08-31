@@ -2,6 +2,7 @@ package core
 
 import (
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -102,10 +103,8 @@ func validateCommentText(text string) error {
 	if strings.TrimSpace(text) == "" {
 		return errx.User("empty comment")
 	}
-	for _, line := range strings.Split(text, "\n") {
-		if codec.IsCommentMarker(line) {
-			return errx.User("comment text cannot contain kira comment markers")
-		}
+	if slices.ContainsFunc(strings.Split(text, "\n"), codec.IsCommentMarker) {
+		return errx.User("comment text cannot contain kira comment markers")
 	}
 	return nil
 }

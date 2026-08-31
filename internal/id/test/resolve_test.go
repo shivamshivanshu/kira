@@ -134,8 +134,7 @@ func TestResolveNotFound(t *testing.T) {
 		"garbage-token",
 	} {
 		_, err := r.Resolve(token)
-		var nf *id.NotFoundError
-		if !errors.As(err, &nf) {
+		if _, ok := errors.AsType[*id.NotFoundError](err); !ok {
 			t.Errorf("Resolve(%q) err = %v, want *NotFoundError", token, err)
 		}
 	}

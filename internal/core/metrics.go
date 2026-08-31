@@ -66,10 +66,7 @@ func computeThroughput(items []metricItem, weeks int, today time.Time) []int {
 		if !it.hasDone || it.dropped {
 			continue
 		}
-		daysAgo := int(today.Sub(it.doneAt).Hours() / 24)
-		if daysAgo < 0 {
-			daysAgo = 0
-		}
+		daysAgo := max(int(today.Sub(it.doneAt).Hours()/24), 0)
 		w := daysAgo / 7
 		if w >= weeks {
 			continue

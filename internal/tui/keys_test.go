@@ -170,7 +170,7 @@ func TestDetailHalfPageMovesAndClampsBothEnds(t *testing.T) {
 		t.Fatalf("ctrl+d should scroll half a page, scroll=%d want %d", d.scroll, half)
 	}
 
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		d.update(&m, res, "ctrl+d")
 	}
 	d.render(asciiTheme(), iconSet{mode: datamodel.IconText}, res, 100, 8)
@@ -179,7 +179,7 @@ func TestDetailHalfPageMovesAndClampsBothEnds(t *testing.T) {
 		t.Fatalf("ctrl+d should clamp at the bottom, scroll=%d want %d", d.scroll, want)
 	}
 
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		d.update(&m, res, "ctrl+u")
 	}
 	d.render(asciiTheme(), iconSet{mode: datamodel.IconText}, res, 100, 8)
