@@ -358,6 +358,23 @@ func TestCollisionsLiveAlias(t *testing.T) {
 	}
 }
 
+func TestCollisionsCaseInsensitive(t *testing.T) {
+	t.Parallel()
+	a := valid(ulidA, "KIRA-5")
+	b := valid(ulidB, "kira-5")
+	findings := doctor.Collisions([]*datamodel.Item{a, b})
+	if len(findings) != 1 || findings[0].Collision.Kind != doctor.CollisionLiveLive {
+		t.Fatalf("expected one live-live collision across case variants, got %+v", findings)
+	}
+	c := findings[0].Collision
+	if c.Value != "KIRA-5" || findings[0].Number != "KIRA-5" {
+		t.Errorf("report should carry the first-seen original form KIRA-5, got value=%q number=%q", c.Value, findings[0].Number)
+	}
+	if !slices.Equal(c.LiveIDs, []string{ulidA, ulidB}) {
+		t.Errorf("expected both live holders, got %v", c.LiveIDs)
+	}
+}
+
 func TestCollisionsNoneWhenAliasIsOwnRetiredNumber(t *testing.T) {
 	t.Parallel()
 	a := valid(ulidA, "KIRA-2")
