@@ -1,6 +1,7 @@
 package query_test
 
 import (
+	"errors"
 	"sort"
 	"strings"
 	"testing"
@@ -212,7 +213,7 @@ func TestCompileErrors(t *testing.T) {
 	}
 	for _, tc := range tests {
 		_, err := query.Compile(tc.expr, tc.opts)
-		qe, ok := err.(*query.Error)
+		qe, ok := errors.AsType[*query.Error](err)
 		if !ok {
 			t.Fatalf("%s: Compile(%q) err = %v, want *Error", tc.name, tc.expr, err)
 		}

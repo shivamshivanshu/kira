@@ -77,7 +77,7 @@ func KiraBinary(test testing.TB) string {
 		cmd.Dir = moduleDirectory
 		cmd.Env = append(os.Environ(), HermeticEnvironment()...)
 		if output, err := cmd.CombinedOutput(); err != nil {
-			binaryError = fmt.Errorf("build kira: %v\n%s", err, output)
+			binaryError = fmt.Errorf("build kira: %w\n%s", err, output)
 		}
 	})
 	if binaryError != nil {

@@ -6,6 +6,12 @@ linters:
     - staticcheck
     - errcheck
     - revive
+    - errorlint
+    - copyloopvar
+    - intrange
+    - usestdlibvars
+    - nilnesserr
+    - fatcontext
   settings:
     revive:
       enable-default-rules: true
