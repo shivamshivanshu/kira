@@ -4,7 +4,7 @@ number: KIRA-149
 aliases: []
 type: ticket
 title: "webui: a hung network git operation wedges the whole dashboard"
-state: REVIEW
+state: DONE
 priority: P3
 labels: []
 epic: null
