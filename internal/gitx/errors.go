@@ -12,8 +12,8 @@ type CmdError struct{ msg string }
 func (e *CmdError) Error() string { return e.msg }
 
 func IsCmdError(err error) bool {
-	var ce *CmdError
-	return errors.As(err, &ce)
+	_, ok := errors.AsType[*CmdError](err)
+	return ok
 }
 
 func cmdError(prefix string, stderr *bytes.Buffer, err error) *CmdError {

@@ -137,14 +137,12 @@ func TestCopyPickerUsesSharedFormats(t *testing.T) {
 				t.Fatal(err)
 			}
 			body := out.String()
-			if strings.Count(body, `<template class="item-copy">`) != 1 {
-				t.Fatal("expected one item copy picker")
+			wantValues := `data-copy-values="` + template.HTMLEscapeString(p.CopyValues(it.ID, it.Number, it.Title)) + `"`
+			if !strings.Contains(body, wantValues) {
+				t.Fatalf("missing escaped copy values: %s", wantValues)
 			}
-			for _, option := range options {
-				want := `data-copy="` + template.HTMLEscapeString(option.Value) + `" data-copy-format="` + option.Name + `"`
-				if !strings.Contains(body, want) {
-					t.Errorf("missing escaped copy format %q", want)
-				}
+			if strings.Contains(body, `<template`) {
+				t.Fatal("per-item copy buttons must use the shared template")
 			}
 			if strings.Contains(body, "A <script>") {
 				t.Fatal("item text was rendered as executable HTML")

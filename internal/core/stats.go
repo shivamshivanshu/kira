@@ -22,6 +22,11 @@ func (s *Store) Stats(cfg *datamodel.Config, opts StatsOpts) (*datamodel.StatsRe
 	if err != nil {
 		return nil, err
 	}
+	return s.stats(ld, opts)
+}
+
+func (s *Store) stats(ld *loaded, opts StatsOpts) (*datamodel.StatsResult, error) {
+	cfg := ld.cfg
 	items, resolver := ld.items, ld.resolver
 	now := timex.Now()
 
@@ -30,7 +35,7 @@ func (s *Store) Stats(cfg *datamodel.Config, opts StatsOpts) (*datamodel.StatsRe
 		return nil, err
 	}
 
-	mis, err := s.itemsMetrics(cfg, set, s.fileHeads())
+	mis, err := s.itemsMetrics(cfg, set)
 	if err != nil {
 		return nil, err
 	}

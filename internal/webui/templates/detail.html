@@ -1,5 +1,5 @@
 {{define "detail"}}{{$p := .}}{{$item := .Detail}}
-<aside class="detail-pane" aria-labelledby="detail-title" data-detail-item data-item="{{$item.ID}}" data-number="{{$item.Number}}" {{if $item.Epic}}data-parent-url="{{.Link "item" (str $item.Epic)}}"{{end}}>
+<aside class="detail-pane" aria-labelledby="detail-title" data-detail-item data-item="{{$item.ID}}" data-number="{{$item.Number}}" data-copy-values="{{$.CopyValues $item.ID $item.Number $item.Title}}" {{if $item.Epic}}data-parent-url="{{.Link "item" (str $item.Epic)}}"{{end}}>
   <header class="detail-top">
     <div>
       <span class="item-kind kind-{{$item.Type}}">{{if eq $item.Type "epic"}}◇{{else}}○{{end}}</span><code>{{$item.Number}}</code><span class="card-type">{{$item.Type}}</span>
@@ -133,6 +133,6 @@
       <span>Created {{date $item.Created}}</span><span>Updated {{date $item.Updated}}</span><button class="text-button" type="button" data-copy="{{$item.ID}}" title="{{$item.ID}}">Copy immutable ID</button>
     </div>
   </div>
-  {{template "item-copy" ($.CopyForms $item.ID $item.Number $item.Title)}}
+
 </aside>
 {{end}}

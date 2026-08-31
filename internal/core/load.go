@@ -23,6 +23,7 @@ type loaded struct {
 	resolver *id.Resolver
 	cfg      *datamodel.Config
 	notes    []datamodel.Warning
+	matches  map[ListOpts][]*datamodel.Item
 }
 
 func (s *Store) read(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {

@@ -216,12 +216,3 @@ func findByULID(items []*datamodel.Item, ulid string) *datamodel.Item {
 	}
 	return nil
 }
-
-func replaceByULID(items []*datamodel.Item, updated *datamodel.Item) {
-	for i, it := range items {
-		if it.ID == updated.ID {
-			items[i] = updated
-			return
-		}
-	}
-}

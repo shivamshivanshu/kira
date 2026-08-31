@@ -58,7 +58,7 @@ func (s *server) loadPage(ctx context.Context, u *url.URL) (pageData, error) {
 		p.AllItems = all.Items
 		p.Message = warningText(all.StderrNotes)
 		p.Sprints = snapshot.SprintList().Sprints
-		p.Active, _ = snapshot.Now()
+		p.Active = snapshot.ActiveSummary()
 	}
 	if p.View == "manage" {
 		return p, nil
@@ -77,7 +77,7 @@ func (s *server) loadPage(ctx context.Context, u *url.URL) (pageData, error) {
 				return p, errx.User("weeks must be between 1 and 260")
 			}
 		}
-		p.Stats, err = s.store.Stats(cfg, core.StatsOpts{Sprint: p.Sprint, Epic: p.Epic, Since: p.Since, Weeks: p.Weeks})
+		p.Stats, err = snapshot.Stats(core.StatsOpts{Sprint: p.Sprint, Epic: p.Epic, Since: p.Since, Weeks: p.Weeks})
 		if err == nil && p.Stats.Scope != nil {
 			p.Weeks = p.Stats.Scope.Weeks
 		}
@@ -157,20 +157,31 @@ func treeRows(snapshot *core.Snapshot, matched, all []datamodel.ListItem) ([]tre
 	for _, it := range matched {
 		wanted[it.ID] = true
 	}
-	var rows []treeRow
-	var walk func(datamodel.TreeNode, int) []treeRow
-	walk = func(node datamodel.TreeNode, depth int) []treeRow {
-		var children []treeRow
+	var mark func(datamodel.TreeNode) bool
+	mark = func(node datamodel.TreeNode) bool {
+		keep := wanted[node.ID]
 		for _, child := range node.Children {
-			children = append(children, walk(child, depth+1)...)
+			if mark(child) {
+				keep = true
+			}
 		}
-		if !wanted[node.ID] && len(children) == 0 {
-			return nil
+		wanted[node.ID] = keep
+		return keep
+	}
+	rows := make([]treeRow, 0, len(all))
+	var walk func(datamodel.TreeNode, int)
+	walk = func(node datamodel.TreeNode, depth int) {
+		if !wanted[node.ID] {
+			return
 		}
-		return append([]treeRow{{Item: items[node.ID], Depth: depth}}, children...)
+		rows = append(rows, treeRow{Item: items[node.ID], Depth: depth})
+		for _, child := range node.Children {
+			walk(child, depth+1)
+		}
 	}
 	for _, node := range tree.Nodes {
-		rows = append(rows, walk(node, 0)...)
+		mark(node)
+		walk(node, 0)
 	}
 	return rows, nil
 }

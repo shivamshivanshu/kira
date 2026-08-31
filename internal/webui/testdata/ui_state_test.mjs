@@ -1,6 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {initialSelection, formSnapshot, failedFormMatches, createUnloadGuard} from "../static/js/state.mjs";
+import {initialSelection, formSnapshot, failedFormMatches, createUnloadGuard, pickerChoices} from "../static/js/state.mjs";
+
+test("picker limits rendered choices while searching the entire repository", () => {
+  const items = Array.from({length: 1000}, (_, i) => ({id: i, search: `web-${i} title`}));
+  const all = pickerChoices(items, "");
+  assert.equal(all.choices.length, 50);
+  assert.equal(all.total, 1000);
+  assert.deepEqual(pickerChoices(items, " WEB-999 ").choices, [items[999]]);
+  assert.equal(pickerChoices(items, "missing").total, 0);
+  assert.deepEqual(pickerChoices([], ""), {choices: [], total: 0});
+});
 
 test("an explicitly opened item outside the filter does not select another item", () => {
   const rows = [{id: "visible", number: "WEB-1", hidden: false}];

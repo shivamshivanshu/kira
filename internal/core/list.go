@@ -3,6 +3,7 @@ package core
 import (
 	"maps"
 	"slices"
+	"sync"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -50,7 +51,7 @@ func listResult(ld *loaded, opts ListOpts, qopts query.Options) (*datamodel.List
 		return nil, queryError(err)
 	}
 
-	matched := filterSort(cfg, items, pred, order)
+	matched := ld.match(opts, pred, order)
 
 	epicNumbers := epicNumberMap(items)
 	rows := make([]datamodel.ListItem, len(matched))
@@ -69,7 +70,18 @@ func matchSorted(ld *loaded, opts ListOpts, qopts query.Options) ([]*datamodel.I
 	if err != nil {
 		return nil, queryError(err)
 	}
-	return filterSort(ld.cfg, ld.items, pred, order), nil
+	return ld.match(opts, pred, order), nil
+}
+
+func (ld *loaded) match(opts ListOpts, pred query.Predicate, order *query.Order) []*datamodel.Item {
+	if matched, ok := ld.matches[opts]; ok {
+		return matched
+	}
+	matched := filterSort(ld.cfg, ld.items, pred, order)
+	if ld.matches != nil {
+		ld.matches[opts] = matched
+	}
+	return matched
 }
 
 func filterSort(cfg *datamodel.Config, items []*datamodel.Item, pred query.Predicate, order *query.Order) []*datamodel.Item {
@@ -89,10 +101,7 @@ func (s *Store) queryOptions(cfg *datamodel.Config, resolver *id.Resolver, items
 	if err != nil {
 		return query.Options{}, err
 	}
-	me := func() string {
-		id, _ := s.identity(cfg)
-		return id
-	}
+	me := sync.OnceValue(func() string { value, _ := s.identity(cfg); return value })
 	return query.Options{Resolver: resolver, Priorities: cfg.Priorities.Values, ActiveSprint: s.ActiveSprintKey(), Me: me, Items: items, Extras: extras}, nil
 }
 
@@ -127,14 +136,18 @@ func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel
 	if err != nil {
 		return nil, nil, err
 	}
+	return listWithMatches(cfg, ld.items, expr, qopts)
+}
+
+func listWithMatches(cfg *datamodel.Config, items []*datamodel.Item, expr string, qopts query.Options) ([]datamodel.ListItem, map[string]bool, error) {
 	pred, _, _, err := ListOpts{Query: expr}.compile(cfg, qopts)
 	if err != nil {
 		return nil, nil, queryError(err)
 	}
-	epicNumbers := epicNumberMap(ld.items)
-	rows := make([]datamodel.ListItem, len(ld.items))
-	matched := make(map[string]bool, len(ld.items))
-	for i, it := range ld.items {
+	epicNumbers := epicNumberMap(items)
+	rows := make([]datamodel.ListItem, len(items))
+	matched := make(map[string]bool, len(items))
+	for i, it := range items {
 		rows[i] = listItemOf(cfg, it, epicNumbers)
 		if pred == nil || pred(it, cfg) {
 			matched[it.ID] = true
