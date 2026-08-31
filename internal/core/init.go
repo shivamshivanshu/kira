@@ -42,10 +42,6 @@ func Init(startDir, key string, force bool, prompter ...Prompter) (*datamodel.In
 	}
 
 	name := filepath.Base(abs)
-	if key != "" && !config.ValidBoardKey(key) {
-		return nil, errx.User("project key %q must match %s", key, config.BoardKeyPattern).
-			WithHint("keys are 2-10 uppercase letters/digits starting with a letter, e.g. ABC")
-	}
 	if key == "" {
 		def := deriveKey(name)
 		if s.prompter.Interactive() {
@@ -53,6 +49,10 @@ func Init(startDir, key string, force bool, prompter ...Prompter) (*datamodel.In
 		} else {
 			key = def
 		}
+	}
+	if !config.ValidBoardKey(key) {
+		return nil, errx.User("project key %q must match %s", key, config.BoardKeyPattern).
+			WithHint("keys are 2-10 uppercase letters/digits starting with a letter, e.g. ABC")
 	}
 
 	for _, dir := range []string{fs.ItemsDir(), fs.TemplateDir()} {
@@ -105,11 +105,14 @@ func ensureGitattributes(path string) error {
 func deriveKey(name string) string {
 	var b strings.Builder
 	for _, r := range strings.ToUpper(name) {
-		if (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+		if b.Len() == config.MaxBoardKeyLen {
+			break
+		}
+		if (r >= 'A' && r <= 'Z') || (b.Len() > 0 && r >= '0' && r <= '9') {
 			b.WriteRune(r)
 		}
 	}
-	if b.Len() == 0 {
+	if !config.ValidBoardKey(b.String()) {
 		return "KIRA"
 	}
 	return b.String()
