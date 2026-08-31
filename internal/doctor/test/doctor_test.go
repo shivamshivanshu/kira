@@ -231,6 +231,18 @@ func TestCheckVocabStrictVsWarn(t *testing.T) {
 	}
 }
 
+func TestCheckExemptsSystemCapturedLabel(t *testing.T) {
+	t.Parallel()
+	it := valid(ulidA, "KIRA-1")
+	it.Labels = []string{datamodel.CapturedLabel}
+
+	strict := config.Default()
+	strict.Labels.Strict = true
+	if got := doctor.Check(strict, resolver(it), it); hasClass(got, doctor.ClassVocab) {
+		t.Errorf("system %q label must be exempt from vocab checks, got %+v", datamodel.CapturedLabel, got)
+	}
+}
+
 func TestCheckEnumVocabFollowsStrict(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
