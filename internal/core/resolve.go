@@ -71,6 +71,10 @@ func (s *Store) Resolve(cfg *datamodel.Config, refs []string, interactive bool) 
 		if err := s.guardWritable(oursItem, theirsItem); err != nil {
 			return nil, err
 		}
+		if s.fs().RelToRoot(s.fs().ItemPath(oursItem.ID)) != path {
+			result.Skipped = append(result.Skipped, path)
+			continue
+		}
 		res := merge.Merge(parseOrNil(base.Content), oursItem, theirsItem, remote, gitTextMerge)
 		if interactive {
 			s.pickFields(res.Item, oursItem, theirsItem, res.Arbitrated)
@@ -79,10 +83,6 @@ func (s *Store) Resolve(cfg *datamodel.Config, refs []string, interactive bool) 
 		rel, err := s.fs().WriteItemRaw(res.Item.ID, codec.Serialize(res.Item))
 		if err != nil {
 			return nil, err
-		}
-		if rel != path {
-			result.Skipped = append(result.Skipped, path)
-			continue
 		}
 		staged = append(staged, rel)
 		result.Resolved = append(result.Resolved, mergeResultOf(res))
