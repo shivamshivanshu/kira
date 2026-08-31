@@ -140,9 +140,6 @@ func (i *Index) attachExtras(byID map[string]*datamodel.Item) error {
 	})
 }
 
-// extendExtra folds one extras row into the value accumulated so far: a
-// scalar row carries the whole value, a NULL list row marks an empty list,
-// and each non-NULL list row appends one element in ord order.
 func extendExtra(cur datamodel.ExtraValue, kind string, value sql.NullString) datamodel.ExtraValue {
 	if kind == extraKindScalar {
 		return datamodel.ExtraValue{Scalar: &value.String}

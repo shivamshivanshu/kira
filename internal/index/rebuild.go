@@ -281,9 +281,8 @@ func (s itemStmts) insert(it *datamodel.Item) error {
 	return nil
 }
 
-// insertExtra mirrors writeExtras' arm precedence: a non-nil list wins over a
-// set scalar, and a zero value writes nothing. An empty list writes a single
-// NULL-valued row so the key survives the round trip distinct from absence.
+// insertExtra mirrors codec.WriteExtras' arm precedence: a non-nil list wins
+// over a set scalar, and a zero value writes nothing.
 func (s itemStmts) insertExtra(id, name string, v datamodel.ExtraValue) error {
 	wrap := func(err error) error {
 		if err != nil {

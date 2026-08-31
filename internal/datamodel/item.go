@@ -58,13 +58,17 @@ func (v ExtraValue) Equal(o ExtraValue) bool {
 	return ptr.Equal(v.Scalar, o.Scalar) && slices.Equal(v.List, o.List)
 }
 
+func (v ExtraValue) clone() ExtraValue {
+	return ExtraValue{Scalar: v.Scalar, List: slices.Clone(v.List)}
+}
+
 func CloneExtras(extras map[string]ExtraValue) map[string]ExtraValue {
 	if extras == nil {
 		return nil
 	}
 	out := make(map[string]ExtraValue, len(extras))
 	for k, v := range extras {
-		out[k] = ExtraValue{Scalar: v.Scalar, List: slices.Clone(v.List)}
+		out[k] = v.clone()
 	}
 	return out
 }
