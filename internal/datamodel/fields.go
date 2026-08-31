@@ -95,6 +95,19 @@ func ChangedFields(a, b *Item) []string {
 			out = append(out, d.Key)
 		}
 	}
+	return append(out, changedExtras(a, b)...)
+}
+
+func changedExtras(a, b *Item) []string {
+	union := make(map[string]ExtraValue, len(a.Extras)+len(b.Extras))
+	maps.Copy(union, a.Extras)
+	maps.Copy(union, b.Extras)
+	var out []string
+	for _, k := range slices.Sorted(maps.Keys(union)) {
+		if !a.Extras[k].Equal(b.Extras[k]) {
+			out = append(out, k)
+		}
+	}
 	return out
 }
 

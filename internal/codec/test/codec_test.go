@@ -238,8 +238,9 @@ func TestUnknownKeysRecordedNotRejected(t *testing.T) {
 	if !it.HasUnknown() {
 		t.Fatal("HasUnknown must be true when unknown keys are present")
 	}
-	if out := codec.Serialize(it); strings.Contains(out, "future_field") {
-		t.Fatalf("canonical serializer must not re-emit unknown keys (preservation deferred):\n%s", out)
+	out := codec.Serialize(it)
+	if !strings.Contains(out, "future_field: whatever\n") || !strings.Contains(out, "another_future: 42\n") {
+		t.Fatalf("serializer must re-emit captured unknown values with their YAML type intact:\n%s", out)
 	}
 }
 
@@ -248,8 +249,8 @@ func TestKnownItemHasNoUnknowns(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if it.HasUnknown() || it.UnknownKeys != nil || it.UnknownLinkTypes != nil {
-		t.Fatalf("clean item must carry no unknowns: keys=%v links=%v", it.UnknownKeys, it.UnknownLinkTypes)
+	if it.HasUnknown() || it.UnknownKeys != nil || it.UnknownLinkTypes != nil || it.Extras != nil {
+		t.Fatalf("clean item must carry no unknowns: keys=%v links=%v extras=%v", it.UnknownKeys, it.UnknownLinkTypes, it.Extras)
 	}
 }
 

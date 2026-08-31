@@ -1,6 +1,8 @@
 package codec
 
 import (
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -37,6 +39,7 @@ func Serialize(it *datamodel.Item) string {
 	writeOptFloat(&b, datamodel.KeyEstimate, it.Estimate)
 	writeLine(&b, datamodel.KeyCreated, emitTimestamp(it.Created))
 	writeLine(&b, datamodel.KeyUpdated, emitTimestamp(it.Updated))
+	writeExtras(&b, it.Extras)
 
 	b.WriteString(FenceLine)
 	b.WriteString(it.Body)
@@ -67,6 +70,20 @@ func writeReqNullableScalar(b *strings.Builder, key string, v *string) {
 func writeOptFloat(b *strings.Builder, key string, v *float64) {
 	if v != nil {
 		writeLine(b, key, EmitFloat(*v))
+	}
+}
+
+func writeExtras(b *strings.Builder, extras map[string]datamodel.ExtraValue) {
+	for _, key := range slices.Sorted(maps.Keys(extras)) {
+		v := extras[key]
+		if v.List != nil {
+			// elements hold renderFlowElem output: already flow-safe YAML text
+			writeLine(b, EmitScalar(key), "["+strings.Join(v.List, ", ")+"]")
+			continue
+		}
+		if v.Scalar != nil {
+			writeLine(b, EmitScalar(key), *v.Scalar)
+		}
 	}
 }
 
@@ -180,6 +197,42 @@ func emitQuoted(s string) string {
 // implicit !!timestamp, so re-marshaling would double-quote it and break the
 // unquoted canonical form.
 func emitTimestamp(s string) string { return s }
+
+// RenderScalarNode returns a scalar node's canonical YAML text, preserving the
+// implicit tag its style carries: an extra holds rendered text rather than a
+// decoded value so that `points: 42` survives a rewrite as an int instead of
+// being requoted to "42". Readers decode with DecodeScalar. Comments and
+// anchors are stripped -- Serialize drops them from builtin fields too, and a
+// head comment would otherwise force multi-line output. Reports false for
+// anything that will not fit one frontmatter line (literal/folded styles).
+func RenderScalarNode(n *yaml.Node) (string, bool) {
+	out, err := marshalScalar(bareValue(n))
+	if err != nil || strings.ContainsAny(out, "\n\r") {
+		return "", false
+	}
+	return out, true
+}
+
+// renderFlowElem is RenderScalarNode for a list element, rendered inside a []
+// context so the emitter quotes `,`/`]`-bearing values a bare render would
+// leave plain.
+func renderFlowElem(n *yaml.Node) (string, bool) {
+	if n.Kind != yaml.ScalarNode {
+		return "", false
+	}
+	seq := &yaml.Node{Kind: yaml.SequenceNode, Style: yaml.FlowStyle, Content: []*yaml.Node{bareValue(n)}}
+	out, err := marshalScalar(seq)
+	if err != nil || strings.ContainsAny(out, "\n\r") {
+		return "", false
+	}
+	return strings.TrimSuffix(strings.TrimPrefix(out, "["), "]"), true
+}
+
+func bareValue(n *yaml.Node) *yaml.Node {
+	clean := *n
+	clean.HeadComment, clean.LineComment, clean.FootComment, clean.Anchor = "", "", "", ""
+	return &clean
+}
 
 // valid dates go verbatim for the same !!timestamp reason as emitTimestamp;
 // invalid ones (due is parsed shape-only) still need EmitScalar's quoting to
