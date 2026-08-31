@@ -22,10 +22,24 @@ exec kira move KIRA-1 RESOLVED
 exec kira show KIRA-1 --json
 stdout '"state": "RESOLVED"'
 
+# a schema file alone does not define a type: create refuses and the hint
+# points at the missing workflows: half
+cp badger.json .kira/schema/badger.json
+! exec kira create badger --title 'Needs a workflow' --no-edit
+stderr 'not a configured type'
+stderr 'needs a workflows: entry in .kira/config.yaml'
+
 # list and board render it like any first-class type
 exec kira list --json
 stdout '"type": "blocker"'
 
+-- badger.json --
+{
+  "name": "badger",
+  "fields": [
+    { "name": "title", "type": "string", "required": true }
+  ]
+}
 -- config.yaml --
 version: 1
 project:

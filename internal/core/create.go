@@ -112,7 +112,7 @@ func (s *Store) resolveHere(_ *datamodel.Config, opts *CreateOpts) (string, erro
 func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel.CreateResult, error) {
 	wf, ok := cfg.Workflows[opts.Type]
 	if !ok {
-		return nil, errx.User("no workflow configured for type %q", opts.Type)
+		return nil, errx.User("no workflow configured for type %q", opts.Type).WithHint("a type needs a workflows: entry in .kira/config.yaml; a schema file alone does not define one")
 	}
 
 	boardKey, err := resolveBoardKey(cfg, opts.Board)

@@ -139,6 +139,19 @@ Named enums resolve, in order: inline `enum` map in a schema file, then
 `config.yaml` vocab (`priorities`, `subtypes`, `resolutions`, `labels`,
 `people`) so built-ins reuse today's config without duplication.
 
+### A type is two required halves
+
+A schema file alone does not create an entity type. A type is defined by its
+**schema** (`.kira/schema/<type>.json` — the shape) *and* a **`workflows:`
+entry** in `.kira/config.yaml` (the state set and transition policy). `kira
+create` refuses a type with no workflow (`no workflow configured for type
+"foo"`, hinting at the missing half), and existing items of a workflow-less
+type load read-only with an orphan warning. States are deliberately not
+inferred from the schema's `state` field: as long as workflows live in config,
+inference would give the state set two sources of truth that can silently
+drift. CORE-39 (config entities become file-backed) is where that duplication
+gets resolved for good.
+
 ## Engine architecture
 
 New package `internal/entityschema` (leaf-ish; depends only on `datamodel`):
