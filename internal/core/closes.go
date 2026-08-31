@@ -56,7 +56,9 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 		// only costs a rescan, while erroring here would hide closes that are
 		// already committed.
 		if wmErr := index.PersistLandedWatermark(s.fs().CacheDir(), scan.LandedRef, scan.LandedHead); wmErr != nil {
-			notes = append(notes, datamodel.Warning{Code: datamodel.WarnLiteral, Args: []string{fmt.Sprintf("recording the close-scan watermark failed (%v); the next scan will rescan from the previous one", wmErr)}})
+			notes = append(notes, literalWarnings([]string{
+				fmt.Sprintf("recording the close-scan watermark failed (%v); the next scan will rescan from the previous one", wmErr),
+			})...)
 		}
 	}
 	return closed, notes, nil
