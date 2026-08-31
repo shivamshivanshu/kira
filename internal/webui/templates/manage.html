@@ -1,0 +1,141 @@
+{{define "manage"}}
+<div class="management">
+  <nav class="section-nav" aria-label="Project settings sections">
+    <a href="#manage-boards">Boards</a>
+    <a href="#manage-sprints">Sprints</a>
+    <a href="#manage-config">Configuration</a>
+    <a href="#manage-git">Git actions</a>
+  </nav>
+
+  <section class="management-section" id="manage-boards">
+    <div class="section-heading">
+      <div><span class="eyebrow">ORGANIZE WORK</span><h2>Boards</h2></div>
+      <span class="muted">Board keys stay stable when names change.</span>
+    </div>
+    {{if .Config}}
+    <div class="management-list">
+      {{range .Config.EffectiveBoards}}
+      <article class="management-row">
+        <div>
+          <strong>{{.Key}}</strong>{{if .Default}} <span class="tag">Default</span>{{end}}{{if .Archived}} <span class="tag">Archived</span>{{end}}
+          <p class="muted">{{or .Description .Name}}</p>
+        </div>
+        <form action="/actions/board-rename" method="post" class="inline-form">
+          {{template "csrf" $}}
+          <input type="hidden" name="key" value="{{.Key}}">
+          <label><span class="sr-only">Name for {{.Key}}</span><input name="name" value="{{$.ObjectFormValue "board-rename" .Key "name" .Name}}" required></label>
+          <button class="button" type="submit">Rename</button>
+        </form>
+        <form action="/actions/board-archive" method="post">
+          {{template "csrf" $}}
+          <input type="hidden" name="key" value="{{.Key}}">
+          <input type="hidden" name="archived" value="{{if .Archived}}false{{else}}true{{end}}">
+          <button class="button" type="submit">{{if .Archived}}Restore board{{else}}Archive board{{end}}</button>
+        </form>
+      </article>
+      {{end}}
+    </div>
+    {{end}}
+    <details class="management-create" {{if eq .Action "board-create"}}open{{end}}>
+      <summary>Create board</summary>
+      <form action="/actions/board-create" method="post" class="stack-form">
+        {{template "csrf" .}}
+        <div class="field-pair">
+          <label>Key<input name="key" value="{{.FormValue "board-create" "key" ""}}" placeholder="ENG" required></label>
+          <label>Name<input name="name" value="{{.FormValue "board-create" "name" ""}}" placeholder="Engineering" required></label>
+        </div>
+        <label>Description<textarea name="description" rows="2">{{.FormValue "board-create" "description" ""}}</textarea></label>
+        <div class="form-actions"><button class="button primary" type="submit">Create board</button></div>
+      </form>
+    </details>
+  </section>
+
+  <section class="management-section" id="manage-sprints">
+    <div class="section-heading"><div><span class="eyebrow">PLAN DELIVERY</span><h2>Sprints</h2></div></div>
+    <div class="management-list">
+      {{range .Sprints}}
+      <article class="sprint-management-row">
+        <div class="section-heading">
+          <div><strong>{{.Name}}</strong> <code>{{.Key}}</code>{{if .Active}} <span class="tag">Active</span>{{end}}<p class="muted">{{.Start}} → {{.End}} · {{.Items.Done}} of {{.Items.Total}} completed</p></div>
+          {{if not .Active}}
+          <form action="/actions/sprint-activate" method="post">
+            {{template "csrf" $}}
+            <input type="hidden" name="key" value="{{.Key}}">
+            <button class="button" type="submit">Set active sprint</button>
+          </form>
+          {{end}}
+        </div>
+        <details class="inline-details" {{if and (eq $.Action "sprint-close") (eq ($.Form.Get "key") .Key)}}open{{end}}>
+          <summary>Close sprint</summary>
+          <form action="/actions/sprint-close" method="post" class="inline-form">
+            {{template "csrf" $}}
+            <input type="hidden" name="key" value="{{.Key}}">
+            <label>Unfinished items
+              <select name="move_to">
+                <option value="">Keep in this sprint</option>
+                {{$key := .Key}}{{range $.Sprints}}{{if ne .Key $key}}<option value="{{.Key}}" {{if eq ($.ObjectFormValue "sprint-close" $key "move_to" "") .Key}}selected{{end}}>Move to {{.Name}}</option>{{end}}{{end}}
+              </select>
+            </label>
+            <button class="button" type="submit">Close sprint</button>
+          </form>
+        </details>
+      </article>
+      {{else}}<p class="muted">No sprints configured. Create one to plan a timeboxed batch of work.</p>{{end}}
+    </div>
+    <details class="management-create" {{if eq .Action "sprint-create"}}open{{end}}>
+      <summary>Create sprint</summary>
+      <form action="/actions/sprint-create" method="post" class="stack-form">
+        {{template "csrf" .}}
+        <div class="field-pair">
+          <label>Key<input name="key" value="{{.FormValue "sprint-create" "key" ""}}" required></label>
+          <label>Name<input name="name" value="{{.FormValue "sprint-create" "name" ""}}" required></label>
+        </div>
+        <div class="field-pair">
+          <label>Start date<input name="start" type="date" value="{{.FormValue "sprint-create" "start" ""}}" required></label>
+          <label>End date<input name="end" type="date" value="{{.FormValue "sprint-create" "end" ""}}" required></label>
+        </div>
+        <div class="form-actions"><button class="button primary" type="submit">Create sprint</button></div>
+      </form>
+    </details>
+  </section>
+
+  <section class="management-section" id="manage-config">
+    <div class="section-heading"><div><span class="eyebrow">PROJECT BEHAVIOR</span><h2>Configuration</h2></div></div>
+    <p class="muted">Update repository configuration with the same keys and validation as <code>kira config set</code>.</p>
+    <form action="/actions/config-set" method="post" class="stack-form">
+      {{template "csrf" .}}
+      <label>Setting<select name="key" required><option value="">Choose a setting</option>{{range .Settings}}<option value="{{.}}" {{if eq . ($.FormValue "config-set" "key" "")}}selected{{end}}>{{.}}</option>{{end}}</select></label>
+      <label>Value<input name="value" value="{{.FormValue "config-set" "value" ""}}" placeholder="Value accepted by kira config set"></label>
+      <div class="form-actions"><button class="button primary" type="submit">Save configuration</button></div>
+    </form>
+    {{with .Explain}}
+    <details class="management-create">
+      <summary>Effective configuration and sources</summary>
+      {{range .Sections}}<section class="config-section"><h3>{{.Name}} <span class="tag">{{.Provenance}}</span></h3><pre>{{range .Lines}}{{.}}
+{{end}}</pre></section>{{end}}
+    </details>
+    {{end}}
+  </section>
+
+  <section class="management-section" id="manage-git">
+    <div class="section-heading"><div><span class="eyebrow">REPOSITORY ACTIONS</span><h2>Git actions</h2></div></div>
+    <div class="git-actions">
+      <article>
+        <h3>Commit Kira changes</h3>
+        <p class="muted">{{if .Config}}Current commit mode: <strong>{{.Config.Commit.Mode}}</strong>. {{end}}Commit pending Kira changes using the repository's commit policy.</p>
+        <form action="/actions/commit" method="post">{{template "csrf" .}}<button class="button" type="submit">Commit changes</button></form>
+      </article>
+      <article>
+        <h3>Synchronize repository</h3>
+        <p class="muted">Pull and rebase remote changes. Push only when selected below. This affects the current checkout.</p>
+        <form action="/actions/sync" method="post" class="stack-form">
+          {{template "csrf" .}}
+          <label>Uncommitted changes<select name="dirty"><option value="fail">Refuse dirty changes</option><option value="commit" {{if eq (.FormValue "sync" "dirty" "") "commit"}}selected{{end}}>Commit before sync</option><option value="stash" {{if eq (.FormValue "sync" "dirty" "") "stash"}}selected{{end}}>Stash and restore</option></select></label>
+          <label class="checkbox-label"><input type="checkbox" name="push" value="true" {{if or (and (ne .Action "sync") .Config .Config.Sync.Push) (eq (.FormValue "sync" "push" "") "true")}}checked{{end}}>Push changes to remote for this sync</label>
+          <div class="form-actions"><button class="button" type="submit">Synchronize now</button></div>
+        </form>
+      </article>
+    </div>
+  </section>
+</div>
+{{end}}

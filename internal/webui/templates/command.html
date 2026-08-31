@@ -1,0 +1,38 @@
+{{define "command-bar"}}
+<details class="command-panel" id="command-panel" {{if eq .Action "command"}}open{{end}}>
+  <summary>Run a Kira command <kbd>:</kbd><span>Same commands. Same workflow.</span></summary>
+  <form action="/actions/command" method="post">
+    {{template "csrf" .}}
+    <input type="hidden" name="selected" value="{{if .Detail}}{{.Detail.ID}}{{end}}">
+    <label for="command-line" class="sr-only">Kira command</label>
+    <span class="command-prefix" aria-hidden="true">:</span>
+    <input id="command-line" name="line" value="{{.FormValue "command" "line" ""}}" placeholder="show ." autocomplete="off" spellcheck="false" required>
+    <button class="button" type="submit">Run command <span aria-hidden="true">↵</span></button>
+  </form>
+  <p class="muted">Use <code>.</code> for the selected item. Try <code>show .</code>, <code>move . STATE</code>, <code>assign . NAME</code>, <code>comment . -m &quot;TEXT&quot;</code>, or <code>help</code>.</p>
+</details>
+{{end}}
+
+{{define "command-palette"}}
+<dialog id="command-palette" class="command-palette" aria-labelledby="palette-heading">
+  <div class="dialog-top">
+    <h2 id="palette-heading">Quick actions</h2>
+    <button class="icon-button" type="button" data-close aria-label="Close quick actions">×</button>
+  </div>
+  <label class="sr-only" for="palette-query">Search dashboard actions</label>
+  <input id="palette-query" type="search" placeholder="Search actions…" autocomplete="off" spellcheck="false">
+  <div class="palette-actions" aria-label="Dashboard actions">
+    <a class="palette-action" href="{{.Link "view" "tree"}}"><span>Open tree view</span><kbd>1</kbd></a>
+    <a class="palette-action" href="{{.Link "view" "board"}}"><span>Open board view</span><kbd>2</kbd></a>
+    <a class="palette-action" href="{{.Link "view" "stats"}}"><span>Open project insights</span><kbd>3</kbd></a>
+    <a class="palette-action" href="{{.Link "view" "manage" "item" ""}}"><span>Open project settings</span><kbd>4</kbd></a>
+    <button class="palette-action" type="button" data-palette-action="new-item"><span>Create a new item</span><kbd>n</kbd></button>
+    <button class="palette-action" type="button" data-palette-action="jump"><span>Jump to an item</span><kbd>p</kbd></button>
+    <button class="palette-action" type="button" data-palette-action="command"><span>Run a Kira command</span><kbd>:</kbd></button>
+    <button class="palette-action" type="button" data-palette-action="refresh"><span>Refresh dashboard</span><kbd>r</kbd></button>
+    <button class="palette-action" type="button" data-palette-action="shortcuts"><span>Show keyboard shortcuts</span><kbd>?</kbd></button>
+  </div>
+  <p id="palette-empty" class="muted" hidden>No matching actions. Try “board”, “create”, or “command”.</p>
+  <p class="muted">Use arrow keys to navigate, Enter to open, and Escape to close.</p>
+</dialog>
+{{end}}

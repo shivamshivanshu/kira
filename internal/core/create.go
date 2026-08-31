@@ -22,6 +22,7 @@ type CreateOpts struct {
 	Type     string
 	Subtype  string
 	Title    string
+	Body     *string
 	Priority string
 	Rank     string
 	Owner    string
@@ -306,6 +307,9 @@ func (s *Store) templatePath(typ, subtype string) string {
 
 func applyFlags(d draft, opts CreateOpts) draft {
 	d.Type = opts.Type
+	if opts.Body != nil {
+		d.Body = normalizeEOL(*opts.Body)
+	}
 	if opts.Title != "" {
 		d.Title = opts.Title
 	}

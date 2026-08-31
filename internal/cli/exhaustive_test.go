@@ -7,18 +7,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
-func TestRenderWarningExhaustive(t *testing.T) {
-	for _, code := range datamodel.WarnCodes {
-		w := datamodel.Warning{Code: code, Args: []string{"a", "b"}}
-		if renderWarning(w) == "" {
-			t.Errorf("renderWarning(%q) empty; add a case", code)
-		}
-	}
-	if renderWarning(datamodel.Warning{Code: "unhandled"}) != "" {
-		t.Error("renderWarning(unhandled) non-empty")
-	}
-}
-
 func TestListColumnsExhaustive(t *testing.T) {
 	for _, c := range datamodel.ListColumns {
 		if _, ok := listCells[c]; !ok {

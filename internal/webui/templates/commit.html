@@ -1,0 +1,9 @@
+{{define "commit"}}
+{{with .Commit}}
+<section class="commit-view" aria-labelledby="commit-title">
+  <header><h2 id="commit-title">Commit <code>{{short .SHA}}</code></h2><a class="button" href="{{$.Link "commit" ""}}">Close patch</a></header>
+  <pre class="commit-patch">{{range .Lines}}<span class="{{.Class}}">{{.Text}}</span>
+{{end}}</pre>
+</section>
+{{end}}
+{{end}}

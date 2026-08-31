@@ -1,0 +1,69 @@
+{{define "sidebar"}}
+<aside class="sidebar" id="workspace-sidebar" aria-label="Project navigation">
+  <a class="brand" href="/" aria-label="Kira home">
+    <span class="brand-mark" aria-hidden="true">k</span><span>kira<span class="brand-dot">.</span></span>
+  </a>
+  <div class="project-label">WORKSPACE</div>
+  <div class="project-name">{{if .Config}}{{or .Config.Project.Name .Config.Project.Key}}{{else}}Your project{{end}}</div>
+  <nav class="board-nav" aria-label="Boards">
+    <a href="{{.BoardLink ""}}" class="nav-link {{if .BoardSelected ""}}is-current{{end}}" {{if .BoardSelected ""}}aria-current="page"{{end}}>
+      <span class="nav-icon" aria-hidden="true">▦</span> All work
+    </a>
+    <div class="nav-heading">BOARDS</div>
+    {{if .Config}}{{range .Config.EffectiveBoards}}
+    <a class="nav-link {{if $.BoardSelected .Key}}is-current{{end}}" href="{{$.BoardLink .Key}}" {{if $.BoardSelected .Key}}aria-current="page"{{end}} title="{{.Description}}">
+      <span class="board-symbol" aria-hidden="true">{{.Key}}</span>
+      <span>{{or .Name .Key}}{{if .Archived}} <small>archived</small>{{end}}</span>
+    </a>
+    {{end}}{{end}}
+  </nav>
+  <a class="nav-link {{if eq .View "manage"}}is-current{{end}}" href="{{.Link "view" "manage" "item" ""}}" {{if eq .View "manage"}}aria-current="page"{{end}}>
+    <span class="nav-icon" aria-hidden="true">⚙</span> Project settings
+  </a>
+  {{if .Sprints}}
+  <section class="sprint-nav">
+    <div class="nav-heading">SPRINTS</div>
+    {{range .Sprints}}
+    <a href="{{$.SprintLink .Key}}" class="sprint-link {{if eq $.Sprint .Key}}is-current{{end}}">
+      <span>{{.Name}}{{if .Active}} <span class="live-dot" title="Active sprint"></span>{{end}}</span>
+      <small>{{.Items.Done}} / {{.Items.Total}}</small>
+      <progress max="{{if .Items.Total}}{{.Items.Total}}{{else}}1{{end}}" value="{{.Items.Done}}" aria-label="{{.Name}} completion"></progress>
+    </a>
+    {{end}}
+  </section>
+  {{end}}
+  <div class="sidebar-foot">
+    <span class="live-dot"></span> Local workspace
+    <span class="repo-path" title="{{.Root}}">{{.Root}}</span>
+    <button class="text-button" type="button" data-open="help-dialog">Keyboard shortcuts <kbd>?</kbd></button>
+  </div>
+</aside>
+{{end}}
+
+{{define "topbar"}}
+<header class="topbar">
+  <div class="topbar-start">
+    <button id="sidebar-toggle" class="icon-button sidebar-toggle" type="button" aria-controls="workspace-sidebar" aria-expanded="true" aria-label="Collapse sidebar" title="Toggle sidebar">☰</button>
+    <div class="breadcrumb">Workspace <span>/</span> <strong>{{if .Config}}{{.Config.Project.Key}}{{else}}Kira{{end}}</strong></div>
+  </div>
+  <div class="topbar-actions">
+    <button class="button palette-trigger" type="button" data-open="command-palette" aria-haspopup="dialog">Quick actions <kbd>⌘ / Ctrl K</kbd></button>
+    {{template "appearance-controls" .}}
+    <label class="refresh-toggle"><input type="checkbox" id="auto-refresh"> Auto refresh</label>
+    <a href="{{.Link}}" class="icon-button" aria-label="Refresh dashboard" title="Refresh (r)">↻</a>
+    <a href="#create-item" class="button primary" data-open="create-dialog">+ New item</a>
+  </div>
+</header>
+{{end}}
+
+{{define "view-tabs"}}
+<div class="viewbar">
+  <nav class="view-tabs" aria-label="Views">
+    <a href="{{.Link "view" "tree"}}" data-view="1" class="{{if eq .View "tree"}}is-current{{end}}" {{if eq .View "tree"}}aria-current="page"{{end}}><span aria-hidden="true">☷</span> Tree <kbd>1</kbd></a>
+    <a href="{{.Link "view" "board"}}" data-view="2" class="{{if eq .View "board"}}is-current{{end}}" {{if eq .View "board"}}aria-current="page"{{end}}><span aria-hidden="true">▥</span> Board <kbd>2</kbd></a>
+    <a href="{{.Link "view" "stats"}}" data-view="3" class="{{if eq .View "stats"}}is-current{{end}}" {{if eq .View "stats"}}aria-current="page"{{end}}><span aria-hidden="true">▤</span> Insights <kbd>3</kbd></a>
+    <a href="{{.Link "view" "manage" "item" ""}}" data-view="4" class="{{if eq .View "manage"}}is-current{{end}}" {{if eq .View "manage"}}aria-current="page"{{end}}>Settings <kbd>4</kbd></a>
+  </nav>
+  <button type="button" class="text-button command-trigger" data-focus="command-line">Command <kbd>:</kbd></button>
+</div>
+{{end}}

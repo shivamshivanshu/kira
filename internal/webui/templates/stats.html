@@ -1,0 +1,82 @@
+{{define "stats"}}
+{{if .Stats}}{{$stats := .Stats}}
+<div class="insights">
+  <div class="scope-line">
+    <span class="live-dot"></span>{{if .Sprint}}Sprint: {{.Sprint}}{{else}}Entire project{{end}}{{with $stats.Scope}} · {{.Weeks}} weeks{{if .Since}} · since {{.Since}}{{end}}{{if .EpicNumber}} · {{.EpicNumber}}{{end}}{{end}}<span>Work-item filters do not apply; use the metric scopes above.</span>
+  </div>
+  <div class="metric-grid">
+    <article class="metric-card">
+      <span class="eyebrow">COMPLETION</span>{{with $stats.Completion}}
+      <div class="metric-value">
+        {{printf "%.0f" (mul100 .Pct)}}<span>%</span>
+      </div>
+      <progress max="1" value="{{.Pct}}" aria-label="Completion"></progress><p>{{.Done}} of {{.Total}} complete{{if .Dropped}} · {{.Dropped}} dropped{{end}}</p>{{else}}
+      <div class="metric-value">
+        —
+      </div>
+      <p>No completion data</p>{{end}}
+    </article>
+    <article class="metric-card">
+      <span class="eyebrow">CYCLE TIME</span>{{with samples $stats.CycleTime}}
+      <div class="metric-value">
+        {{printf "%.1f" .P50}}<span>days</span>
+      </div>
+      <p>Median · p90 {{printf "%.1f" .P90}} days</p><small>{{.N}} samples{{if .DegradedN}} · {{.DegradedN}} incomplete histories{{end}}</small>{{else}}
+      <div class="metric-value">
+        —
+      </div>
+      <p>Complete work to measure cycle time.</p>{{end}}
+    </article>
+    <article class="metric-card">
+      <span class="eyebrow">LEAD TIME</span>{{with samples $stats.LeadTime}}
+      <div class="metric-value">
+        {{printf "%.1f" .P50}}<span>days</span>
+      </div>
+      <p>Median · p90 {{printf "%.1f" .P90}} days</p><small>{{.N}} samples{{if .DegradedN}} · {{.DegradedN}} incomplete histories{{end}}</small>{{else}}
+      <div class="metric-value">
+        —
+      </div>
+      <p>Complete work to measure lead time.</p>{{end}}
+    </article>
+  </div>
+  <div class="insight-grid">
+    <article class="chart-card">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">THROUGHPUT</span><h2>Weekly throughput</h2>
+        </div>
+        <span class="muted">Completed items</span>
+      </div>
+      {{if $stats.Throughput}}{{$peak := peak $stats.Throughput}}
+      <div class="throughput">
+        {{range $i, $n := $stats.Throughput}}
+        <div class="throughput-row">
+          <span>Week {{inc $i}}</span><meter min="0" max="{{$peak}}" value="{{$n}}" aria-label="Week {{inc $i}}: {{$n}} completed items">{{$n}}</meter><strong>{{$n}}</strong>
+        </div>
+        {{end}}
+      </div>
+      <p class="muted chart-note">Oldest week first · latest week may be partial.</p>{{else}}<p class="muted">No throughput data in this scope.</p>{{end}}
+    </article>
+    <article class="chart-card reopens-card">
+      <span class="eyebrow">REOPENED ITEMS</span><h2>Reopened work</h2>{{with $stats.Reopens}}
+      <div class="metric-value">
+        {{.Count}}
+      </div>
+      <p class="muted">Transitions from done back into active work.</p>{{if .Items}}
+      <div class="related-items">
+        {{range .Items}}<a class="tag" href="{{$.Link "item" .}}">{{$.ItemName .}} ↗</a>{{end}}
+      </div>
+      {{else}}<p class="muted">No reopened items in this scope.</p>{{end}}{{else}}
+      <div class="metric-value">
+        —
+      </div>
+      <p class="muted">No reopen data in this scope.</p>{{end}}
+    </article>
+  </div>
+</div>
+{{else}}
+<div class="empty-state">
+  <span class="empty-mark" aria-hidden="true">▤</span><h2>No metrics yet</h2><p>Project metrics will appear as work moves through your workflow.</p>
+</div>
+{{end}}
+{{end}}
