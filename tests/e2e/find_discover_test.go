@@ -41,5 +41,6 @@ func setupCleanBin(env *testscript.Env) error {
 		return err
 	}
 	env.Setenv("CLEANBIN", bin)
+	disableGitMaintenance(env)
 	return nil
 }

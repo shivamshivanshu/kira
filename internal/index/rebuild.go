@@ -131,7 +131,7 @@ func (i *Index) refresh(store *storage.FS, absPaths []string, prevSkips map[stri
 
 	skipped := map[string]skipEntry{}
 	claimed := map[string]string{}
-	for qi := 0; qi < len(queue); qi++ {
+	for qi := 0; qi < len(queue); qi++ { //nolint:intrange // queue grows via enqueuePartners during iteration
 		abs := queue[qi]
 		ulid := storage.ULIDFromPath(abs)
 		name := filepath.Base(abs)

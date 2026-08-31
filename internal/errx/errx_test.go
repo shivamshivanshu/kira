@@ -38,7 +38,7 @@ func TestWithHintDoesNotMutateReceiver(t *testing.T) {
 	if hinted.Hint != "do X" {
 		t.Errorf("hinted.Hint = %q, want %q", hinted.Hint, "do X")
 	}
-	if hinted.Code != base.Code || hinted.Err != base.Err {
+	if hinted.Code != base.Code || !errors.Is(hinted.Err, base.Err) {
 		t.Error("WithHint must copy Code/Err from the receiver")
 	}
 }

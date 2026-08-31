@@ -85,7 +85,7 @@ func (w *mdWalk) block(n ast.Node, indent int) []string {
 
 func (w *mdWalk) code(lines *text.Segments, indent int) []string {
 	out := make([]string, 0, lines.Len())
-	for i := 0; i < lines.Len(); i++ {
+	for i := range lines.Len() {
 		seg := lines.At(i)
 		out = append(out, sp(indent+2)+strings.TrimRight(string(seg.Value(w.src)), "\n"))
 	}
