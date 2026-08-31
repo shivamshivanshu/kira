@@ -11,6 +11,10 @@ func (s *Store) Tree(cfg *datamodel.Config, ref, at string) (*datamodel.TreeResu
 	if err != nil {
 		return nil, err
 	}
+	return treeResult(ld, ref)
+}
+
+func treeResult(ld *loaded, ref string) (*datamodel.TreeResult, error) {
 	items, resolver, idxNotes := ld.items, ld.resolver, ld.notes
 
 	byID, children := indexByEpic(items)

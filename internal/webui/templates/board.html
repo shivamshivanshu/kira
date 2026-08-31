@@ -1,0 +1,31 @@
+{{define "board"}}
+{{if .Board}}
+<div class="kanban">
+  {{range .Board.Columns}}
+  <section class="kanban-column" data-state="{{.State}}">
+    <header class="column-heading"><span class="state-dot category-{{.Category}}"></span><h2>{{label .State}}</h2><span class="count">{{.Count}}{{if .Wip}} / {{.Wip}}{{end}}</span></header>
+    {{if and .Wip (gt .Count .Wip)}}<p class="wip-warning">WIP limit exceeded</p>{{end}}
+    <div class="column-cards">
+      {{range .Items}}
+      <article class="work-card {{if or (eq $.Selected .ID) (eq $.Selected .Number)}}is-selected{{end}}" data-nav-item data-item="{{.ID}}" data-number="{{.Number}}" {{if .Epic}}data-parent-url="{{$.Link "item" (str .Epic)}}"{{end}} tabindex="-1">
+        <label class="item-checkbox"><input type="checkbox" name="ids" value="{{.ID}}" form="bulk-form" {{if $.BulkSelected .ID}}checked{{end}} aria-label="Select {{.Number}} for bulk action"></label>
+        <a class="card-link" data-item-link href="{{$.Link "item" .ID}}">
+          <div class="card-top"><code>{{.Number}}</code><span class="card-type">{{.Type}}</span></div>
+          <h3>{{.Title}}</h3>
+          {{if .Labels}}<div class="tags">{{range .Labels}}<span class="tag">{{.}}</span>{{end}}</div>{{end}}
+          {{if eq .Type "epic"}}{{with index $.Progress .ID}}{{if .Total}}<span class="epic-progress"><progress max="{{.Total}}" value="{{.Done}}" aria-label="Epic completion"></progress> {{.Done}} / {{.Total}}</span>{{end}}{{end}}{{end}}
+          <div class="card-bottom">
+            <span class="priority">{{if .Priority}}⚑ {{str .Priority}}{{else}}—{{end}}</span>
+            {{if .Owner}}<span class="card-owner" title="{{str .Owner}}"><span class="avatar" aria-hidden="true">{{printf "%.1s" (str .Owner)}}</span>{{str .Owner}}</span>{{else}}<span class="muted">Unassigned</span>{{end}}
+          </div>
+          {{if .Due}}<div class="card-due {{if overdue .Due .Category}}overdue{{end}}">{{if overdue .Due .Category}}Overdue{{else}}Due{{end}} {{str .Due}}</div>{{end}}
+        </a>
+        {{template "item-copy" (copyForms .ID .Number .Title)}}
+      </article>
+      {{else}}<div class="column-empty">Nothing here yet</div>{{end}}
+    </div>
+  </section>
+  {{end}}
+</div>
+{{else}}<div class="empty-state"><h2>No board to show.</h2><p>Select a configured item type to see its workflow.</p></div>{{end}}
+{{end}}

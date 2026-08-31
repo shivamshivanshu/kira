@@ -1,0 +1,26 @@
+{{define "help"}}
+<dialog id="help-dialog" aria-labelledby="help-heading">
+  <div class="dialog-top"><h2 id="help-heading">Keyboard shortcuts</h2><button class="icon-button" type="button" data-close aria-label="Close shortcuts">×</button></div>
+  <dl class="shortcuts">
+    <dt><kbd>⌘ / Ctrl</kbd> + <kbd>K</kbd></dt><dd>Search quick actions</dd>
+    <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></dt><dd>Tree / board / insights / settings</dd>
+    <dt><kbd>j</kbd> / <kbd>k</kbd> or <kbd>↓</kbd> / <kbd>↑</kbd></dt><dd>Select next / previous item</dd>
+    <dt><kbd>h</kbd> / <kbd>l</kbd> or <kbd>←</kbd> / <kbd>→</kbd></dt><dd>Tree parent / child, or board column</dd>
+    <dt><kbd>H</kbd> / <kbd>L</kbd></dt><dd>Move item to the previous / next board state</dd>
+    <dt><kbd>Enter</kbd></dt><dd>Open selected item</dd>
+    <dt><kbd>g</kbd> <kbd>g</kbd> / <kbd>G</kbd></dt><dd>First / last visible item</dd>
+    <dt><kbd>g</kbd> <kbd>p</kbd></dt><dd>Open selected item's parent</dd>
+    <dt><kbd>z</kbd> <kbd>M</kbd> / <kbd>z</kbd> <kbd>R</kbd></dt><dd>Collapse / expand all groups</dd>
+    <dt><kbd>y</kbd> / <kbd>Y</kbd></dt><dd>Copy immutable ID / choose copy format</dd>
+    <dt><kbd>Space</kbd></dt><dd>Toggle item for bulk action</dd>
+    <dt><kbd>Ctrl</kbd> + <kbd>o</kbd> / <kbd>i</kbd></dt><dd>Browser back / forward, where supported</dd>
+    <dt><kbd>/</kbd> / <kbd>:</kbd></dt><dd>Search query / command bar</dd>
+    <dt><kbd>p</kbd></dt><dd>Jump to an item</dd>
+    <dt><kbd>n</kbd> / <kbd>r</kbd></dt><dd>New item / refresh</dd>
+    <dt><kbd>e</kbd></dt><dd>Edit selected item</dd>
+    <dt><kbd>Escape</kbd></dt><dd>Close a dialog or detail pane</dd>
+    <dt><kbd>?</kbd></dt><dd>Show shortcuts</dd>
+  </dl>
+  <p class="muted">Shortcuts pause while typing. Auto refresh pauses while a form has changes.</p>
+</dialog>
+{{end}}

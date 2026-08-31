@@ -10,6 +10,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/ptr"
+	"github.com/shivamshivanshu/kira/internal/warningfmt"
 )
 
 func newListCmd(g *globalFlags) *cobra.Command {
@@ -54,7 +55,7 @@ func newListCmd(g *globalFlags) *cobra.Command {
 
 func emitStderrNotes(w io.Writer, notes []datamodel.Warning) {
 	for _, n := range notes {
-		_, _ = fmt.Fprintln(w, msgPrefix, renderWarning(n))
+		_, _ = fmt.Fprintln(w, msgPrefix, warningfmt.Message(n))
 	}
 }
 

@@ -95,6 +95,7 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 
 	root.AddCommand(
 		newTUICmd(g),
+		newServerCmd(g),
 		newVersionCmd(g),
 		newInitCmd(g),
 		newCreateCmd(g),
