@@ -4,7 +4,7 @@ number: KIRA-141
 aliases: []
 type: ticket
 title: "DECISION: per-type identity is declared in schemas but inert"
-state: REVIEW
+state: DONE
 priority: P3
 labels: []
 epic: null
