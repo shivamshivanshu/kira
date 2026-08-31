@@ -3,7 +3,9 @@ package gitx
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 )
 
 func commitFile(t *testing.T, dir, content, msg string) {
@@ -43,5 +45,31 @@ func TestRebaseContinueOverridesUserGitEditor(t *testing.T) {
 	}
 	if repo.RebaseInProgress() {
 		t.Fatal("rebase still in progress after RebaseContinue")
+	}
+}
+
+func TestPullTimesOutAgainstStalledRemote(t *testing.T) {
+	dir := t.TempDir()
+	gitRun(t, dir, "init", "-b", "main")
+	gitRun(t, dir, "config", "user.name", "t")
+	gitRun(t, dir, "config", "user.email", "t@e.c")
+	gitRun(t, dir, "config", "commit.gpgsign", "false")
+	gitRun(t, dir, "commit", "--allow-empty", "-m", "base")
+	stall := filepath.Join(dir, "stall.sh")
+	if err := os.WriteFile(stall, []byte("#!/bin/sh\nexec 2>/dev/null\nsleep 60\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, dir, "remote", "add", "slow", "ext::"+stall)
+	gitRun(t, dir, "config", "protocol.ext.allow", "always")
+
+	defer func(prev time.Duration) { remoteTimeout = prev }(remoteTimeout)
+	remoteTimeout = 200 * time.Millisecond
+	start := time.Now()
+	err := (Repo{Dir: dir}).Pull("slow")
+	if err == nil || !strings.Contains(err.Error(), "timed out") {
+		t.Fatalf("Pull against stalled remote: %v", err)
+	}
+	if elapsed := time.Since(start); elapsed > 10*time.Second {
+		t.Fatalf("Pull returned only after %s", elapsed)
 	}
 }

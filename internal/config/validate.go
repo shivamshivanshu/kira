@@ -16,6 +16,9 @@ import (
 // BoardKeyPattern is the regex pattern for valid board key identifiers.
 const BoardKeyPattern = `^[A-Z][A-Z0-9]{1,9}$`
 
+// MaxBoardKeyLen is the length cap BoardKeyPattern enforces.
+const MaxBoardKeyLen = 10
+
 var boardKeyRe = regexp.MustCompile(BoardKeyPattern)
 
 // ValidBoardKey reports whether a board key string is valid.

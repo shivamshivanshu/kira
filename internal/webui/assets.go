@@ -13,7 +13,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/ptr"
-	"github.com/shivamshivanshu/kira/internal/showfmt"
 	"github.com/shivamshivanshu/kira/internal/timex"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
@@ -44,10 +43,7 @@ func markdown(s string) (template.HTML, error) {
 }
 
 var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{
-	"asset": assetURL,
-	"copyForms": func(id, number, title string) []copyOption {
-		return copyOptions(showfmt.Item{ID: id, Number: number, Title: title})
-	},
+	"asset":    assetURL,
 	"markdown": markdown,
 	"prose":    codec.Description,
 	"mul100":   func(n float64) float64 { return n * 100 },
