@@ -389,7 +389,9 @@ func subjectMarkerPattern(opts Options, numbers map[string]string) *regexp.Regex
 
 func (i *Index) numberToULID() (map[string]string, error) {
 	numbers := map[string]string{}
-	for _, q := range []string{"SELECT number, id FROM items", "SELECT number, item_id FROM aliases"} {
+	// Aliases first so live numbers overwrite them, matching id.Resolver
+	// precedence: a live number always wins over another item's alias.
+	for _, q := range []string{"SELECT number, item_id FROM aliases", "SELECT number, id FROM items"} {
 		rows, err := i.db.Query(q)
 		if err != nil {
 			return nil, errx.Env("querying numbers: %v", err)
