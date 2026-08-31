@@ -53,18 +53,10 @@ func setIfPresent[T any](values map[string]any, name string, v *T) {
 func setExtra(values map[string]any, f FieldDef, v datamodel.ExtraValue) {
 	switch {
 	case v.List != nil:
-		values[f.Name] = decodeElems(v.List)
+		values[f.Name] = codec.DecodeList(v.List)
 	case v.Scalar != nil:
 		values[f.Name] = typedScalar(f.Type, codec.DecodeScalar(*v.Scalar))
 	}
-}
-
-func decodeElems(elems []string) []string {
-	out := make([]string, len(elems))
-	for i, e := range elems {
-		out[i] = codec.DecodeScalar(e)
-	}
-	return out
 }
 
 // typedScalar converts an extra's decoded text to the Go type checkType

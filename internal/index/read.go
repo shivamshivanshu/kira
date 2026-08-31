@@ -22,7 +22,8 @@ func ReadCached(cacheDir string) ([]*datamodel.Item, error) {
 	return (&Index{db: db, cacheDir: cacheDir}).Items()
 }
 
-// Items returns all cached items along with their aliases, labels, and links.
+// Items returns all cached items along with their aliases, labels, links,
+// and extras.
 func (i *Index) Items() ([]*datamodel.Item, error) {
 	items, byID, err := i.scanItems()
 	if err != nil {
@@ -35,6 +36,9 @@ func (i *Index) Items() ([]*datamodel.Item, error) {
 		return nil, err
 	}
 	if err := i.attachLinks(byID); err != nil {
+		return nil, err
+	}
+	if err := i.attachExtras(byID); err != nil {
 		return nil, err
 	}
 	return items, nil
@@ -111,6 +115,43 @@ func (i *Index) attachLinks(byID map[string]*datamodel.Item) error {
 		it.Links[kind] = append(it.Links[kind], target)
 	}
 	return rows.Err()
+}
+
+func (i *Index) attachExtras(byID map[string]*datamodel.Item) error {
+	rows, err := i.db.Query("SELECT item_id, name, kind, value FROM extras ORDER BY item_id, name, ord")
+	if err != nil {
+		return errx.Env("querying index extras: %v", err)
+	}
+	return eachPair(rows, func(r *sql.Rows) error {
+		var itemID, name, kind string
+		var value sql.NullString
+		if err := r.Scan(&itemID, &name, &kind, &value); err != nil {
+			return errx.Env("scanning index extra: %v", err)
+		}
+		it := byID[itemID]
+		if it == nil {
+			return nil
+		}
+		if it.Extras == nil {
+			it.Extras = map[string]datamodel.ExtraValue{}
+		}
+		it.Extras[name] = extendExtra(it.Extras[name], kind, value)
+		return nil
+	})
+}
+
+// extendExtra folds one extras row into the value accumulated so far: a
+// scalar row carries the whole value, a NULL list row marks an empty list,
+// and each non-NULL list row appends one element in ord order.
+func extendExtra(cur datamodel.ExtraValue, kind string, value sql.NullString) datamodel.ExtraValue {
+	if kind == extraKindScalar {
+		return datamodel.ExtraValue{Scalar: &value.String}
+	}
+	if !value.Valid {
+		return datamodel.ExtraValue{List: []string{}}
+	}
+	cur.List = append(cur.List, value.String)
+	return cur
 }
 
 func (i *Index) eachChild(q string, byID map[string]*datamodel.Item, add func(*datamodel.Item, string)) error {
