@@ -40,8 +40,7 @@ func (r Repo) IsAncestor(ancestor Ancestor, descendant Descendant) (bool, error)
 	if err == nil {
 		return true, nil
 	}
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 		if exit.ExitCode() == 1 {
 			return false, nil
 		}
@@ -105,7 +104,7 @@ func RevPath(rev, path string) string {
 
 func parsePorcelainPaths(out string) []string {
 	var paths []string
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if len(line) < 4 {
 			continue
 		}
@@ -128,7 +127,7 @@ func (r Repo) DiffNameStatus(from DiffFrom, to DiffTo, pathspec string) ([]strin
 		return nil, err
 	}
 	var paths []string
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		fields := strings.Split(line, "\t")
 		if len(fields) < 2 {
 			continue

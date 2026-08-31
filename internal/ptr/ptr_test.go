@@ -37,13 +37,6 @@ func TestDerefOr(t *testing.T) {
 	}
 }
 
-func TestTo(t *testing.T) {
-	p := ptr.To("a")
-	if p == nil || *p != "a" {
-		t.Errorf("To(%q) = %v, want pointer to %q", "a", p, "a")
-	}
-}
-
 func TestNilIfEmpty(t *testing.T) {
 	if got := ptr.NilIfEmpty(""); got != nil {
 		t.Errorf("NilIfEmpty(\"\") = %v, want nil", got)

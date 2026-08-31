@@ -6,6 +6,7 @@ import (
 	"embed"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -118,8 +119,8 @@ func IsShellScript(content string) bool {
 
 func EndsInExecOrExit(content string) bool {
 	lines := strings.Split(strings.TrimRight(content, "\n"), "\n")
-	for i := len(lines) - 1; i >= 0; i-- {
-		trimmed := strings.TrimSpace(lines[i])
+	for _, line := range slices.Backward(lines) {
+		trimmed := strings.TrimSpace(line)
 		if isBlankOrComment(trimmed) {
 			continue
 		}

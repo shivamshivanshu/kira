@@ -3,6 +3,7 @@ package reconcile_test
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/id"
@@ -80,7 +81,7 @@ func TestDeterministic(t *testing.T) {
 		id.Item{ULID: "D", Number: "KIRA-2"},
 	)
 	first := reconcile.Plan(s)
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		if got := reconcile.Plan(s); !reflect.DeepEqual(got, first) {
 			t.Fatalf("Plan not deterministic:\n%v\n%v", first, got)
 		}
@@ -127,7 +128,7 @@ func FuzzPlanInvariants(f *testing.F) {
 			fresh[r.To] = true
 			// Retired number is preserved as an alias.
 			it := applied[indexOf(applied, r.ULID)]
-			if !contains(it.Aliases, r.From) {
+			if !slices.Contains(it.Aliases, r.From) {
 				t.Fatalf("retired number %s not appended to aliases of %s", r.From, r.ULID)
 			}
 		}
@@ -136,7 +137,7 @@ func FuzzPlanInvariants(f *testing.F) {
 
 func genItems(seed uint16, n int) []id.Item {
 	items := make([]id.Item, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		// Deliberately collide numbers so the fuzzer exercises repair.
 		num := int((seed>>uint(i%8))%uint16(max(n, 1))) + 1
 		items[i] = id.Item{
@@ -176,13 +177,4 @@ func indexOf(items []id.Item, ulid string) int {
 		}
 	}
 	return -1
-}
-
-func contains(xs []string, x string) bool {
-	for _, v := range xs {
-		if v == x {
-			return true
-		}
-	}
-	return false
 }

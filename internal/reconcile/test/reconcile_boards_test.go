@@ -32,11 +32,11 @@ func TestPlanRenumbersOnOwnBoard(t *testing.T) {
 
 func TestPlanMultiBoardConverges(t *testing.T) {
 	keys := []string{"ABC", "XYZ", "KIRA"}
-	for seed := int64(0); seed < 300; seed++ {
+	for seed := range int64(300) {
 		rng := rand.New(rand.NewSource(seed))
 		n := rng.Intn(18) + 2
 		items := make([]id.Item, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			key := keys[rng.Intn(len(keys))]
 			num := rng.Intn(5) + 1
 			var aliases []string

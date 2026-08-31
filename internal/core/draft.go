@@ -87,8 +87,8 @@ func stripErrorBanner(content string) string {
 	if !strings.HasPrefix(content, bannerOpen) {
 		return content
 	}
-	if i := strings.Index(content, bannerClose); i >= 0 {
-		return strings.TrimLeft(content[i+len(bannerClose):], "\n")
+	if _, after, ok := strings.Cut(content, bannerClose); ok {
+		return strings.TrimLeft(after, "\n")
 	}
 	return content
 }

@@ -10,7 +10,6 @@ import (
 
 func TestBoardMoveCrossBoardNeverCollidesWithSource(t *testing.T) {
 	for _, style := range []datamodel.IDStyle{datamodel.IDStyleSequential, datamodel.IDStyleHash} {
-		style := style
 		t.Run(string(style), func(t *testing.T) {
 			t.Parallel()
 			s, cfg := newStore(t)

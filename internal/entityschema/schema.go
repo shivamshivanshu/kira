@@ -3,6 +3,7 @@
 package entityschema
 
 import (
+	"maps"
 	"slices"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -121,8 +122,6 @@ func ResolveEnums(schema Schema, configVocab map[string][]string) map[string][]s
 	for _, e := range schema.Enums {
 		out[e.Name] = slices.Clone(e.Values)
 	}
-	for name, values := range configVocab {
-		out[name] = values
-	}
+	maps.Copy(out, configVocab)
 	return out
 }

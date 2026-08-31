@@ -72,7 +72,7 @@ func (r Repo) WorktreeForBranch(branch string) (string, bool) {
 		return "", false
 	}
 	var path string
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if p, ok := strings.CutPrefix(line, "worktree "); ok {
 			path = p
 		} else if line == "branch refs/heads/"+branch {

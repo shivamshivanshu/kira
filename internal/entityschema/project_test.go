@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 func TestProjectItemReadsMarkdownFromItsDeclaredSection(t *testing.T) {
@@ -38,7 +37,7 @@ func TestProjectItemOmitsUnsetOptionalScalars(t *testing.T) {
 }
 
 func TestProjectItemIncludesPresentOptionalScalars(t *testing.T) {
-	it := &datamodel.Item{Priority: ptr.To("P1")}
+	it := &datamodel.Item{Priority: new("P1")}
 
 	values := ProjectItem(Schema{}, it)
 
@@ -56,7 +55,7 @@ func TestProjectItemTypesDeclaredExtras(t *testing.T) {
 		},
 	}
 	it := &datamodel.Item{Extras: map[string]datamodel.ExtraValue{
-		"points": {Scalar: ptr.To("42")},
+		"points": {Scalar: new("42")},
 		"tags":   {List: []string{"a", `"b c"`}},
 	}}
 
@@ -78,7 +77,7 @@ func TestValidateFlagsMistypedDeclaredExtra(t *testing.T) {
 		Name:   "ticket",
 		Fields: []FieldDef{{Name: "points", Type: FieldInt, Placement: PlacementFrontmatter}},
 	}
-	it := &datamodel.Item{Extras: map[string]datamodel.ExtraValue{"points": {Scalar: ptr.To("abc")}}}
+	it := &datamodel.Item{Extras: map[string]datamodel.ExtraValue{"points": {Scalar: new("abc")}}}
 
 	v := Validate(schema, ProjectItem(schema, it), nil, nil)
 
@@ -144,14 +143,14 @@ func TestValidateExtrasEnforcesDeclaredTypes(t *testing.T) {
 	cfg := &datamodel.Config{}
 
 	valid := &datamodel.Item{Type: "ticket", Extras: map[string]datamodel.ExtraValue{
-		"severity":     {Scalar: ptr.To("LOW")},
-		"story_points": {Scalar: ptr.To("3")},
-		"ratio":        {Scalar: ptr.To("1.5")},
-		"urgent":       {Scalar: ptr.To("true")},
-		"starts":       {Scalar: ptr.To("2026-01-02")},
-		"seen":         {Scalar: ptr.To("2026-01-02T03:04:05Z")},
+		"severity":     {Scalar: new("LOW")},
+		"story_points": {Scalar: new("3")},
+		"ratio":        {Scalar: new("1.5")},
+		"urgent":       {Scalar: new("true")},
+		"starts":       {Scalar: new("2026-01-02")},
+		"seen":         {Scalar: new("2026-01-02T03:04:05Z")},
 		"tags":         {List: []string{"a", "b"}},
-		"undeclared":   {Scalar: ptr.To("ignored")},
+		"undeclared":   {Scalar: new("ignored")},
 	}}
 	if v := ValidateExtras(schemas, cfg, valid); len(v) != 0 {
 		t.Fatalf("conforming extras must not violate (and builtin title must stay unchecked), got %v", v)
@@ -162,14 +161,14 @@ func TestValidateExtrasEnforcesDeclaredTypes(t *testing.T) {
 		value datamodel.ExtraValue
 		want  string
 	}{
-		{"severity", datamodel.ExtraValue{Scalar: ptr.To("BOGUS")}, `not in the "sev" vocabulary`},
-		{"story_points", datamodel.ExtraValue{Scalar: ptr.To("abc")}, "expected type int"},
-		{"ratio", datamodel.ExtraValue{Scalar: ptr.To("fast")}, "expected type number"},
-		{"urgent", datamodel.ExtraValue{Scalar: ptr.To("maybe")}, "expected type bool"},
-		{"starts", datamodel.ExtraValue{Scalar: ptr.To("not-a-date")}, "expected type date"},
-		{"seen", datamodel.ExtraValue{Scalar: ptr.To("2026-13-99")}, "expected type datetime"},
+		{"severity", datamodel.ExtraValue{Scalar: new("BOGUS")}, `not in the "sev" vocabulary`},
+		{"story_points", datamodel.ExtraValue{Scalar: new("abc")}, "expected type int"},
+		{"ratio", datamodel.ExtraValue{Scalar: new("fast")}, "expected type number"},
+		{"urgent", datamodel.ExtraValue{Scalar: new("maybe")}, "expected type bool"},
+		{"starts", datamodel.ExtraValue{Scalar: new("not-a-date")}, "expected type date"},
+		{"seen", datamodel.ExtraValue{Scalar: new("2026-13-99")}, "expected type datetime"},
 		{"story_points", datamodel.ExtraValue{List: []string{"3"}}, "expected type int"},
-		{"tags", datamodel.ExtraValue{Scalar: ptr.To("a")}, "expected a list"},
+		{"tags", datamodel.ExtraValue{Scalar: new("a")}, "expected a list"},
 	}
 	for _, tt := range invalid {
 		it := &datamodel.Item{Type: "ticket", Extras: map[string]datamodel.ExtraValue{tt.field: tt.value}}
@@ -179,7 +178,7 @@ func TestValidateExtrasEnforcesDeclaredTypes(t *testing.T) {
 		}
 	}
 
-	noSchema := &datamodel.Item{Type: "gadget", Extras: map[string]datamodel.ExtraValue{"x": {Scalar: ptr.To("y")}}}
+	noSchema := &datamodel.Item{Type: "gadget", Extras: map[string]datamodel.ExtraValue{"x": {Scalar: new("y")}}}
 	if v := ValidateExtras(schemas, cfg, noSchema); v != nil {
 		t.Fatalf("a type without a schema has nothing declared to validate, got %v", v)
 	}

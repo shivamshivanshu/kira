@@ -13,7 +13,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/merge"
-	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 const (
@@ -115,12 +114,12 @@ func matrixScenarios() []scenario {
 			},
 			ours: func(w *world) {
 				it := matrixItem(ulidX, "KIRA-1", "X")
-				it.Owner, it.Updated = ptr.To("alice"), tsLate
+				it.Owner, it.Updated = new("alice"), tsLate
 				w.write(it)
 			},
 			theirs: func(w *world) {
 				it := matrixItem(ulidY, "KIRA-2", "Y")
-				it.Owner, it.Updated = ptr.To("bob"), tsLate
+				it.Owner, it.Updated = new("bob"), tsLate
 				w.write(it)
 			},
 			assert: func(t *testing.T, w *world) {
@@ -138,12 +137,12 @@ func matrixScenarios() []scenario {
 			seed:      func(w *world) { w.write(matrixItem(ulidX, "KIRA-1", "X")) },
 			ours: func(w *world) {
 				it := matrixItem(ulidX, "KIRA-1", "X")
-				it.Owner, it.Updated = ptr.To("alice"), tsLate
+				it.Owner, it.Updated = new("alice"), tsLate
 				w.write(it)
 			},
 			theirs: func(w *world) {
 				it := matrixItem(ulidX, "KIRA-1", "X")
-				it.Priority, it.Updated = ptr.To("P1"), tsEarly
+				it.Priority, it.Updated = new("P1"), tsEarly
 				w.write(it)
 			},
 			assert: func(t *testing.T, w *world) {
@@ -490,7 +489,7 @@ func assertDriverMatchesEngine(t *testing.T, w *world) {
 	if err != nil {
 		t.Fatalf("ls-tree: %v", err)
 	}
-	for _, rel := range strings.Split(strings.TrimSpace(listed), "\n") {
+	for rel := range strings.SplitSeq(strings.TrimSpace(listed), "\n") {
 		if rel == "" {
 			continue
 		}

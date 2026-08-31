@@ -119,8 +119,7 @@ func cutAfterFrontmatter(doc string) (head, body string, ok bool) {
 	if b, found := strings.CutPrefix(rest, FenceLine); found {
 		return doc[:len(doc)-len(b)], b, true
 	}
-	if i := strings.Index(rest, closeFence); i >= 0 {
-		b := rest[i+len(closeFence):]
+	if _, b, ok := strings.Cut(rest, closeFence); ok {
 		return doc[:len(doc)-len(b)], b, true
 	}
 	if strings.HasSuffix(rest, "\n---") || rest == "---" {

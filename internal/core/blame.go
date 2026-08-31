@@ -74,7 +74,7 @@ func (s *Store) fileCommitMeta(ulid string) (bySHA map[string]commitMeta, newest
 	}
 	bySHA = map[string]commitMeta{}
 	newestSeen := false
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if line == "" {
 			continue
 		}
@@ -99,7 +99,7 @@ func scalarFieldValues(it *datamodel.Item) map[string]string {
 		front = front[:i]
 	}
 	v := map[string]string{}
-	for _, line := range strings.Split(front, "\n") {
+	for line := range strings.SplitSeq(front, "\n") {
 		if k, val, ok := frontmatterField(line); ok {
 			v[k] = val
 		}

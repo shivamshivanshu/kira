@@ -56,8 +56,7 @@ func resolveID(r *id.Resolver, ref string) (string, error) {
 	if err == nil {
 		return ulid, nil
 	}
-	var nf *id.NotFoundError
-	if errors.As(err, &nf) {
+	if nf, ok := errors.AsType[*id.NotFoundError](err); ok {
 		e := errx.User("%v", nf)
 		if nf.Suggestion != "" {
 			return "", e.WithHint("did you mean `%s`?", nf.Suggestion)

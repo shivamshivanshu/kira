@@ -11,7 +11,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
-	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 type scriptedPrompter struct {
@@ -127,7 +126,7 @@ func TestResolveClearsStaleResolutionAfterDivergentEdits(t *testing.T) {
 
 	gitRun(t, s, "2026-01-06T10:00:00Z", "checkout", base)
 	it.State = "REVIEW"
-	it.Resolution = ptr.To("stray")
+	it.Resolution = new("stray")
 	it.Updated = "2026-01-07T10:00:00Z"
 	if _, err := s.fs().WriteItem(it); err != nil {
 		t.Fatal(err)
@@ -176,12 +175,12 @@ func TestPickFieldsHonoursSideChoices(t *testing.T) {
 	target := eventTicket()
 	ours := eventTicket()
 	ours.Title = "ours-title"
-	ours.Priority = ptr.To("P0")
-	ours.Owner = ptr.To("ours-owner")
+	ours.Priority = new("P0")
+	ours.Owner = new("ours-owner")
 	theirs := eventTicket()
 	theirs.Title = "theirs-title"
-	theirs.Priority = ptr.To("P1")
-	theirs.Owner = ptr.To("theirs-owner")
+	theirs.Priority = new("P1")
+	theirs.Owner = new("theirs-owner")
 
 	s.pickFields(target, ours, theirs, []string{datamodel.KeyTitle, datamodel.KeyPriority, datamodel.KeyOwner})
 
