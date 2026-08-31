@@ -84,6 +84,7 @@ var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{
 }).ParseFS(templates, "templates/*.html"))
 
 func renderPage(w io.Writer, p pageData) error {
+	p.prepare()
 	return pageTemplate.ExecuteTemplate(w, "page", p)
 }
 

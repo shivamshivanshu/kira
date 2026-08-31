@@ -1,12 +1,11 @@
 package core
 
 import (
-	"slices"
 	"strings"
+	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/index"
-	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
 func (s *Store) Log(cfg *datamodel.Config, ref string) (*datamodel.LogResult, error) {
@@ -44,12 +43,22 @@ func interleave(events []datamodel.Event, links []index.CommitLink) []datamodel.
 			Kind: datamodel.LogKindCommit, Ts: l.Ts, SHA: l.SHA, Subject: l.Subject, Author: l.Author,
 		})
 	}
-	slices.SortStableFunc(entries, func(a, b datamodel.LogEntry) int {
-		c, aOK, bOK := timex.CompareRFC3339(a.Ts, b.Ts)
-		if aOK && bOK {
-			return -c
-		}
-		return strings.Compare(b.Ts, a.Ts)
+	sortByKey(entries, func(e datamodel.LogEntry) logTimeKey {
+		ts, err := time.Parse(time.RFC3339, e.Ts)
+		return logTimeKey{raw: e.Ts, ts: ts, valid: err == nil}
 	})
 	return entries
+}
+
+type logTimeKey struct {
+	raw   string
+	ts    time.Time
+	valid bool
+}
+
+func (a logTimeKey) Less(b logTimeKey) bool {
+	if a.valid && b.valid {
+		return a.ts.After(b.ts)
+	}
+	return strings.Compare(a.raw, b.raw) > 0
 }

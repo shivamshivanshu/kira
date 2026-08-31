@@ -7,6 +7,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/index"
 	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
@@ -22,6 +23,11 @@ func (s *Store) Stats(cfg *datamodel.Config, opts StatsOpts) (*datamodel.StatsRe
 	if err != nil {
 		return nil, err
 	}
+	return s.stats(ld, opts)
+}
+
+func (s *Store) stats(ld *loaded, opts StatsOpts) (*datamodel.StatsResult, error) {
+	cfg := ld.cfg
 	items, resolver := ld.items, ld.resolver
 	now := timex.Now()
 
@@ -30,14 +36,9 @@ func (s *Store) Stats(cfg *datamodel.Config, opts StatsOpts) (*datamodel.StatsRe
 		return nil, err
 	}
 
-	heads := s.fileHeads()
-	mis := make([]metricItem, 0, len(set))
-	for _, it := range set {
-		mi, err := s.itemMetrics(cfg, it, heads[it.ID])
-		if err != nil {
-			return nil, err
-		}
-		mis = append(mis, mi)
+	mis, err := s.metricItems(cfg, set)
+	if err != nil {
+		return nil, err
 	}
 
 	return &datamodel.StatsResult{
@@ -48,6 +49,32 @@ func (s *Store) Stats(cfg *datamodel.Config, opts StatsOpts) (*datamodel.StatsRe
 		Throughput: computeThroughput(mis, scope.Weeks, now),
 		Reopens:    computeReopens(mis),
 	}, nil
+}
+
+func (s *Store) metricItems(cfg *datamodel.Config, set []*datamodel.Item) ([]metricItem, error) {
+	if len(set) == 0 {
+		return nil, nil
+	}
+	heads := s.fileHeads()
+	selectedHeads := make(map[string]string, len(set))
+	for _, it := range set {
+		selectedHeads[it.ID] = heads[it.ID]
+	}
+	idx, err := index.Open(s.fs().CacheDir())
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = idx.Close() }()
+	events, err := idx.StateEvents(selectedHeads, s.deriveEventBatch)
+	if err != nil {
+		return nil, err
+	}
+	mis := make([]metricItem, 0, len(set))
+	for _, it := range set {
+		mis = append(mis, metricsFrom(cfg, it, stateEvents(events[it.ID]), heads[it.ID] != ""))
+	}
+
+	return mis, nil
 }
 
 func (s *Store) resolveScope(cfg *datamodel.Config, opts StatsOpts, items []*datamodel.Item, resolver *id.Resolver) (*datamodel.StatsScope, []*datamodel.Item, error) {

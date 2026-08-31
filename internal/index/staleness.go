@@ -4,6 +4,7 @@ import (
 	"maps"
 	"path/filepath"
 	"slices"
+	"sync"
 
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
@@ -42,10 +43,7 @@ func (i *Index) reindex(store *storage.FS, repo gitx.Repo, opts Options, force b
 	}
 	skipped := mergeSkips(prev.Skipped, p.decision, newSkips, processed)
 
-	numbers, err := i.numberToULID()
-	if err != nil {
-		return Result{}, err
-	}
+	numbers := sync.OnceValues(i.numberToULID)
 	configHash := scanConfigHash(opts)
 	configChanged := hasMeta && prev.ScanConfigHash != configHash
 	if p.decision.name == actionFull || configChanged {

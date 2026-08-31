@@ -41,6 +41,10 @@ func (s *Store) cachedStateEvents(ulid, fileHead string) (events []stateTransiti
 	if err != nil {
 		return nil, false, err
 	}
+	return stateEvents(all), committed, nil
+}
+
+func stateEvents(all []datamodel.Event) (events []stateTransition) {
 	for _, e := range all {
 		if e.Field != datamodel.KeyState {
 			continue
@@ -52,7 +56,7 @@ func (s *Store) cachedStateEvents(ulid, fileHead string) (events []stateTransiti
 		events = append(events, stateTransition{ts: ts, from: e.Old, to: e.New})
 	}
 	slices.Reverse(events)
-	return events, committed, nil
+	return events
 }
 
 type metricItem struct {

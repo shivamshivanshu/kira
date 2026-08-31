@@ -32,10 +32,13 @@ func ProjectItem(schema Schema, it *datamodel.Item) map[string]any {
 	setIfPresent(values, "due", it.Due)
 	setIfPresent(values, "estimate", it.Estimate)
 
-	sections := bodySections(it.Body)
+	var sections map[string]string
 	for _, f := range schema.Fields {
 		switch {
 		case f.Placement == PlacementBody && f.Section != "":
+			if sections == nil {
+				sections = bodySections(it.Body)
+			}
 			values[f.Name] = sections[f.Section]
 		case f.Placement == PlacementFrontmatter:
 			setExtra(values, f, it.Extras[f.Name])
@@ -81,7 +84,7 @@ func typedScalar(t FieldType, s string) any {
 }
 
 func bodySections(body string) map[string]string {
-	sections := make(map[string]string)
+	builders := make(map[string]*strings.Builder)
 	current := ""
 	for line := range strings.SplitSeq(body, "\n") {
 		if title, ok := strings.CutPrefix(line, "## "); ok {
@@ -89,11 +92,18 @@ func bodySections(body string) map[string]string {
 			continue
 		}
 		if current != "" {
-			sections[current] += line + "\n"
+			b := builders[current]
+			if b == nil {
+				b = &strings.Builder{}
+				builders[current] = b
+			}
+			b.WriteString(line)
+			b.WriteByte('\n')
 		}
 	}
-	for title, content := range sections {
-		sections[title] = strings.TrimSpace(content)
+	sections := make(map[string]string, len(builders))
+	for title, b := range builders {
+		sections[title] = strings.TrimSpace(b.String())
 	}
 	return sections
 }

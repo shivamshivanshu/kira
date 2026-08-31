@@ -7,29 +7,31 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
 func (s *Store) BoardMove(cfg *datamodel.Config, ref, targetKey string) (*datamodel.BoardMoveResult, error) {
+	b, err := s.BeginBatch(cfg)
+	if err != nil {
+		return nil, err
+	}
+	defer b.Close()
+	return b.BoardMove(ref, targetKey)
+}
+
+func (b *Batch) BoardMove(ref, targetKey string) (*datamodel.BoardMoveResult, error) {
+	s, cfg := b.store, b.cfg
 	board, ok := cfg.BoardByKey(targetKey)
 	if !ok || board.Archived {
 		return nil, errx.User("no such board %q", targetKey).
 			WithHint("boards: %s", strings.Join(activeBoardKeys(cfg.ActiveBoards()), ", "))
 	}
 
-	release, err := s.fs().Lock()
+	orig, err := b.Resolve(ref)
 	if err != nil {
 		return nil, err
 	}
-	defer release()
-
-	ld, err := s.load(cfg)
-	if err != nil {
-		return nil, err
-	}
-	it, err := findItem(ld.items, ld.resolver, ref)
-	if err != nil {
-		return nil, err
-	}
+	it := cloneItem(orig)
 	if err := s.guardWritable(it); err != nil {
 		return nil, err
 	}
@@ -43,7 +45,7 @@ func (s *Store) BoardMove(cfg *datamodel.Config, ref, targetKey string) (*datamo
 	if err != nil {
 		return nil, errx.User("item %s has an invalid ULID: %v", from, err)
 	}
-	to := allocateNumber(cfg, ld.snap, board.Key, u)
+	to := allocateNumber(cfg, storage.Snapshot(cfg.Project.Key, b.items), board.Key, u)
 
 	it.Number = to
 	it.Aliases = slices.DeleteFunc(it.Aliases, func(a string) bool { return strings.EqualFold(a, to) })
@@ -58,6 +60,8 @@ func (s *Store) BoardMove(cfg *datamodel.Config, ref, targetKey string) (*datamo
 		return nil, err
 	}
 	subject := cfg.Commit.SubjectPrefix + "board " + from + " -> " + to
+	b.replace(it)
+	b.resolver = id.NewResolver(storage.Snapshot(cfg.Project.Key, b.items))
 	if _, err := s.finalize(cfg.Commit.Mode, commitSpec{trailerKey: cfg.Commit.Trailer, subject: subject, trailerNumber: to}, path); err != nil {
 		return nil, err
 	}

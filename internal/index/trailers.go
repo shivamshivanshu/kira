@@ -67,7 +67,7 @@ type CloseScan struct {
 
 const trailerRef = "HEAD"
 
-func (i *Index) scanTrailers(root gitx.Repo, opts Options, head string, prev meta, numbers map[string]string) ([]gitx.Commit, map[string]string, error) {
+func (i *Index) scanTrailers(root gitx.Repo, opts Options, head string, prev meta, loadNumbers func() (map[string]string, error)) ([]gitx.Commit, map[string]string, error) {
 	wm := maps.Clone(prev.TrailerWatermarks)
 	if wm == nil {
 		wm = map[string]string{}
@@ -84,6 +84,10 @@ func (i *Index) scanTrailers(root gitx.Repo, opts Options, head string, prev met
 	if err != nil {
 		return nil, nil, err
 	}
+	numbers, err := loadNumbers()
+	if err != nil {
+		return nil, nil, err
+	}
 	if err := i.upsertCommitLinks(commits, numbers, opts, rewrite); err != nil {
 		return nil, nil, err
 	}
@@ -91,7 +95,7 @@ func (i *Index) scanTrailers(root gitx.Repo, opts Options, head string, prev met
 	return commits, wm, nil
 }
 
-func (i *Index) collectCloses(root gitx.Repo, opts Options, prev meta, numbers map[string]string, head string, headCommits []gitx.Commit) (CloseScan, error) {
+func (i *Index) collectCloses(root gitx.Repo, opts Options, prev meta, loadNumbers func() (map[string]string, error), head string, headCommits []gitx.Commit) (CloseScan, error) {
 	cs := CloseScan{LandedRef: opts.LandedRef}
 	landedHead, err := root.Output("rev-parse", "--verify", "--quiet", opts.LandedRef)
 	if err != nil || landedHead == "" {
@@ -115,6 +119,10 @@ func (i *Index) collectCloses(root gitx.Repo, opts Options, prev meta, numbers m
 		}
 	}
 
+	numbers, err := loadNumbers()
+	if err != nil {
+		return CloseScan{}, err
+	}
 	cs.Candidates, cs.Unknown = latestCloses(commits, numbers)
 	return cs, nil
 }
