@@ -89,7 +89,10 @@ func (s *Store) queryOptions(cfg *datamodel.Config, resolver *id.Resolver, items
 	if err != nil {
 		return query.Options{}, err
 	}
-	me, _ := s.identity(cfg)
+	me := func() string {
+		id, _ := s.identity(cfg)
+		return id
+	}
 	return query.Options{Resolver: resolver, Priorities: cfg.Priorities.Values, ActiveSprint: s.ActiveSprintKey(), Me: me, Items: items, Extras: extras}, nil
 }
 

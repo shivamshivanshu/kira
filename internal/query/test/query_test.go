@@ -121,7 +121,7 @@ func TestEval(t *testing.T) {
 
 func TestEvalMe(t *testing.T) {
 	items, opts, cfg := evalFixture()
-	opts.Me = "shivam"
+	opts.Me = func() string { return "shivam" }
 	tests := []struct {
 		expr string
 		want string
