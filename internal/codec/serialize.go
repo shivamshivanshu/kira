@@ -39,7 +39,7 @@ func Serialize(it *datamodel.Item) string {
 	writeOptFloat(&b, datamodel.KeyEstimate, it.Estimate)
 	writeLine(&b, datamodel.KeyCreated, emitTimestamp(it.Created))
 	writeLine(&b, datamodel.KeyUpdated, emitTimestamp(it.Updated))
-	writeExtras(&b, it.Extras)
+	WriteExtras(&b, it.Extras)
 
 	b.WriteString(FenceLine)
 	b.WriteString(it.Body)
@@ -73,7 +73,7 @@ func writeOptFloat(b *strings.Builder, key string, v *float64) {
 	}
 }
 
-func writeExtras(b *strings.Builder, extras map[string]datamodel.ExtraValue) {
+func WriteExtras(b *strings.Builder, extras map[string]datamodel.ExtraValue) {
 	for _, key := range slices.Sorted(maps.Keys(extras)) {
 		v := extras[key]
 		if v.List != nil {

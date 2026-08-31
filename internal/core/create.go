@@ -133,6 +133,9 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 	if err != nil {
 		return nil, err
 	}
+	if errs := s.draftExtraErrors(opts.Type, d); len(errs) > 0 {
+		return nil, errx.Invalid(invalidItemPrefix, errs)
+	}
 
 	release, err := s.fs().Lock()
 	if err != nil {
@@ -216,6 +219,9 @@ func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, boardKey,
 			if perr != nil {
 				return nil, []error{perr}
 			}
+			if errs := s.draftExtraErrors(opts.Type, d); len(errs) > 0 {
+				return nil, errs
+			}
 			return itemFromDraft(d, sys), nil
 		}))
 		if err != nil {
@@ -264,6 +270,7 @@ func itemFromDraft(d draft, sys systemFields) *datamodel.Item {
 		Sprint:    normPtr(d.Sprint),
 		Due:       normPtr(d.Due),
 		Estimate:  d.Estimate,
+		Extras:    d.Extras,
 		Created:   sys.created,
 		Updated:   sys.created,
 		Body:      d.Body,
