@@ -4,7 +4,7 @@ number: KIRA-115
 aliases: []
 type: ticket
 title: "Three-way merge deletes an untouched empty-list extra"
-state: IN_PROGRESS
+state: REVIEW
 priority: P2
 labels: []
 epic: null
