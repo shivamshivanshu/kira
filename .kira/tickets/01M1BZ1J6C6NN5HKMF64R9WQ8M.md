@@ -4,13 +4,13 @@ number: KIRA-137
 aliases: []
 type: ticket
 title: "Small correctness and clarity nits across core, cli and tui"
-state: IN_PROGRESS
+state: REVIEW
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:09:52+02:00
-updated: 2026-08-31T23:51:28+02:00
+updated: 2026-08-31T23:51:29+02:00
 ---
 
 ## Description
