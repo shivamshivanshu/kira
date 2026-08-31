@@ -801,3 +801,47 @@ func TestStateDriftQuietWhenAligned(t *testing.T) {
 		t.Fatalf("builtin schemas must agree with the default workflows, got %+v", f)
 	}
 }
+
+func TestWipOverrunsReportsOverLimitState(t *testing.T) {
+	t.Parallel()
+	cfg := config.Default()
+	wf := cfg.Workflows["ticket"]
+	for i, st := range wf.States {
+		if st.Key == "IN_PROGRESS" {
+			wf.States[i].Wip = 1
+		}
+	}
+	cfg.Workflows["ticket"] = wf
+	items := []*datamodel.Item{
+		{ID: ulidA, Type: "ticket", State: "IN_PROGRESS"},
+		{ID: ulidB, Type: "ticket", State: "IN_PROGRESS"},
+		{ID: ulidC, Type: "epic", State: "IN_PROGRESS"},
+	}
+
+	f := doctor.WipOverruns(cfg, items)
+
+	if len(f) != 1 || f[0].Class != doctor.ClassWipLimit || f[0].Severity != doctor.SeverityWarning {
+		t.Fatalf("expected one wip-limit warning, got %+v", f)
+	}
+	if !strings.Contains(f[0].Message, "(2 > 1)") || !strings.Contains(f[0].Message, "IN_PROGRESS") {
+		t.Fatalf("message should show state and counts, got %q", f[0].Message)
+	}
+}
+
+func TestWipOverrunsQuietAtOrUnderLimit(t *testing.T) {
+	t.Parallel()
+	cfg := config.Default()
+	wf := cfg.Workflows["ticket"]
+	for i := range wf.States {
+		wf.States[i].Wip = 1
+	}
+	cfg.Workflows["ticket"] = wf
+	items := []*datamodel.Item{
+		{ID: ulidA, Type: "ticket", State: "IN_PROGRESS"},
+		{ID: ulidB, Type: "ticket", State: "TODO"},
+	}
+
+	if f := doctor.WipOverruns(cfg, items); len(f) != 0 {
+		t.Fatalf("expected no findings at the limit, got %+v", f)
+	}
+}

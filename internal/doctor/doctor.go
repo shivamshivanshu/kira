@@ -64,6 +64,7 @@ func Run(cfg *datamodel.Config, files []File, strays []string, env Env, schemas 
 	findings = append(findings, stampByID(WrongTypeRefs(items, resolver, schemas), pathByID)...)
 	findings = append(findings, stampByID(RefCycles(items, resolver), pathByID)...)
 	findings = append(findings, StateDrift(cfg, schemas)...)
+	findings = append(findings, WipOverruns(cfg, items)...)
 	findings = append(findings, strayFindings(strays)...)
 	findings = append(findings, envFindings(env)...)
 

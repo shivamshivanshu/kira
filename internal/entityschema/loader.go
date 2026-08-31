@@ -144,6 +144,15 @@ func checkSchemaShape(s Schema) error {
 		if f.List && !stringRepresented(f.Type) {
 			return fmt.Errorf("schema %q: field %q: list is only supported for string-valued types, not %q", s.Name, f.Name, f.Type)
 		}
+		switch f.Placement {
+		case "", PlacementFrontmatter:
+		case PlacementBody:
+			if f.Section == "" {
+				return fmt.Errorf("schema %q: field %q: placement %q requires \"section\"", s.Name, f.Name, f.Placement)
+			}
+		default:
+			return fmt.Errorf("schema %q: field %q: unknown placement %q (valid: %q, %q)", s.Name, f.Name, f.Placement, PlacementFrontmatter, PlacementBody)
+		}
 		if f.Placement == PlacementFrontmatter && datamodel.IsFrontmatterKey(f.Name) {
 			return fmt.Errorf("schema %q: field %q: placement \"frontmatter\" shadows a builtin frontmatter key", s.Name, f.Name)
 		}

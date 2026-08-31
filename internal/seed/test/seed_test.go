@@ -2,7 +2,10 @@ package seed_test
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/core"
@@ -148,5 +151,39 @@ func TestSeedHashStyleSurvivesSuffixCollisions(t *testing.T) {
 			t.Fatalf("duplicate live number %q allocated within one seed run", it.Number)
 		}
 		seen[it.Number] = true
+	}
+}
+
+func TestSeedCommitLeavesPreStagedChangesAlone(t *testing.T) {
+	root := testutil.InitGitRepo(t)
+	if _, err := core.Init(root, "KIRA", false); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	s, err := core.Discover(root)
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	cfg, err := s.Config()
+	if err != nil {
+		t.Fatalf("Config: %v", err)
+	}
+	repo := gitx.Repo{Dir: root}
+	if err := os.WriteFile(filepath.Join(root, "unrelated.txt"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.Stage("unrelated.txt"); err != nil {
+		t.Fatalf("stage: %v", err)
+	}
+
+	if _, err := seed.Run(root, cfg, seed.Opts{Size: 6, Seed: 1}); err != nil {
+		t.Fatalf("Seed: %v", err)
+	}
+
+	staged, err := repo.StagedPaths()
+	if err != nil {
+		t.Fatalf("StagedPaths: %v", err)
+	}
+	if !slices.Contains(staged, "unrelated.txt") {
+		t.Fatal("pre-staged unrelated file was swept into the seed commit")
 	}
 }
