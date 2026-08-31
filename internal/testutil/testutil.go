@@ -35,12 +35,25 @@ var (
 )
 
 func HermeticEnvironment() []string {
-	return []string{
+	return append([]string{
 		"GIT_CONFIG_GLOBAL=" + os.DevNull,
 		"GIT_CONFIG_SYSTEM=" + os.DevNull,
 		"VISUAL=",
 		"EDITOR=true",
 		"XDG_CONFIG_HOME=" + filepath.Join(os.TempDir(), fmt.Sprintf("kira-testutil-xdg-%d", os.Getpid())),
+	}, GitMaintenanceDisabled()...)
+}
+
+// git 2.47+ detaches `maintenance run --auto` past the foreground command's
+// exit, so it keeps touching .git/objects after the test body returns and
+// races t.TempDir's RemoveAll (KIRA-106).
+func GitMaintenanceDisabled() []string {
+	return []string{
+		"GIT_CONFIG_COUNT=2",
+		"GIT_CONFIG_KEY_0=maintenance.auto",
+		"GIT_CONFIG_VALUE_0=false",
+		"GIT_CONFIG_KEY_1=gc.auto",
+		"GIT_CONFIG_VALUE_1=0",
 	}
 }
 
