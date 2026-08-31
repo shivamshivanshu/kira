@@ -242,10 +242,13 @@ func (g *generator) schemaForType(t reflect.Type) map[string]any {
 	// values are always a string or an array of strings; reflection alone
 	// would degrade it to an unconstrained {}.
 	if t == reflect.TypeFor[datamodel.ExtraJSON]() {
-		return map[string]any{"anyOf": []any{
-			map[string]any{"type": "string"},
-			map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-		}}
+		return map[string]any{
+			"description": "Schema-declared extra field; always a string or array of strings on the wire, even for fields typed int/number/bool/date — interpret via the field's declared type in .kira/schema/*.json.",
+			"anyOf": []any{
+				map[string]any{"type": "string"},
+				map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+			},
+		}
 	}
 	switch t.Kind() {
 	case reflect.String:

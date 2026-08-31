@@ -1376,7 +1376,8 @@
                 },
                 "type": "array"
               }
-            ]
+            ],
+            "description": "Schema-declared extra field; always a string or array of strings on the wire, even for fields typed int/number/bool/date — interpret via the field's declared type in .kira/schema/*.json."
           },
           "type": "object"
         },
@@ -1910,7 +1911,8 @@
                 },
                 "type": "array"
               }
-            ]
+            ],
+            "description": "Schema-declared extra field; always a string or array of strings on the wire, even for fields typed int/number/bool/date — interpret via the field's declared type in .kira/schema/*.json."
           },
           "type": "object"
         },
