@@ -4,7 +4,7 @@ number: KIRA-113
 aliases: []
 type: ticket
 title: "Sync rebase loop cannot skip an empty commit and aborts with 'did not converge'"
-state: REVIEW
+state: DONE
 priority: P1
 labels: []
 epic: null
