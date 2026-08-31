@@ -4,7 +4,7 @@ number: KIRA-125
 aliases: []
 type: ticket
 title: "kira config explain reports user-tier provenance for repo-set ui and workon values"
-state: IN_PROGRESS
+state: REVIEW
 priority: P2
 labels: []
 epic: null
