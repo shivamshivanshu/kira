@@ -133,7 +133,7 @@ func TestCopyPickerUsesSharedFormats(t *testing.T) {
 		t.Run(view, func(t *testing.T) {
 			p.View, p.URL = view, "/?q=inside&item=WEB-7"
 			var out bytes.Buffer
-			if err := pageTemplate.ExecuteTemplate(&out, view, p); err != nil {
+			if err := pageTemplate().ExecuteTemplate(&out, view, p); err != nil {
 				t.Fatal(err)
 			}
 			body := out.String()
@@ -170,7 +170,7 @@ func TestDetailCommitCardsPreserveLinksAndEscapeMetadata(t *testing.T) {
 		},
 	}
 	var out bytes.Buffer
-	if err := pageTemplate.ExecuteTemplate(&out, "detail", p); err != nil {
+	if err := pageTemplate().ExecuteTemplate(&out, "detail", p); err != nil {
 		t.Fatal(err)
 	}
 	body := out.String()
