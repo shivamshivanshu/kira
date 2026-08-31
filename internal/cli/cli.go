@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"slices"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -134,27 +133,45 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 	return root, g
 }
 
-func chdirArgFrom(args []string) string {
-	g := &globalFlags{}
-	fs := pflag.NewFlagSet("chdirArg", pflag.ContinueOnError)
+func globalFlagSet(g *globalFlags) *pflag.FlagSet {
+	fs := pflag.NewFlagSet("global", pflag.ContinueOnError)
 	fs.ParseErrorsWhitelist.UnknownFlags = true
 	fs.Usage = func() {}
 	fs.SetOutput(io.Discard)
 	registerGlobalFlags(fs, g)
-	_ = fs.Parse(args)
+	return fs
+}
+
+func chdirArgFrom(args []string) string {
+	g := &globalFlags{}
+	_ = globalFlagSet(g).Parse(args)
 	return g.chdir
+}
+
+// globalPrefixLen reports how many leading argv entries the global flags
+// consume. Parsing rather than searching for the subcommand name is what stops
+// `-C find find pat` from taking the flag's value for the command, and
+// non-interspersed parsing stops at the subcommand so its own flags (ripgrep's
+// `-C 3`, say) never reach the global set.
+func globalPrefixLen(argv []string) int {
+	fs := globalFlagSet(&globalFlags{})
+	fs.SetInterspersed(false)
+	if err := fs.Parse(argv); err != nil {
+		return len(argv)
+	}
+	return len(argv) - len(fs.Args())
 }
 
 // DisableFlagParsing hands a subcommand its full argv, global flags and all,
 // with only cmdName itself removed. This splits that argv back into the
-// global-flag prefix and the subcommand's own args, locating cmdName in argv
-// (the real os.Args) to find the boundary — which is why a bridged
+// global-flag prefix and the subcommand's own args, parsing argv (the real
+// os.Args) for where the global flags stop — which is why a bridged
 // (SetArgs-based) Execute() call, where cmdName never appears in os.Args,
 // passes rest through unsplit.
 func stripGlobalPrefix(argv, args []string, cmdName string) (chdir string, rest []string) {
-	i := slices.Index(argv, cmdName)
-	if i >= 0 && i <= len(args) {
-		return chdirArgFrom(args[:i]), args[i:]
+	i := globalPrefixLen(argv)
+	if i < len(argv) && argv[i] == cmdName && i <= len(args) {
+		return chdirArgFrom(argv[:i]), args[i:]
 	}
 	return "", args
 }

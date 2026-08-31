@@ -411,3 +411,154 @@ func TestEditorModeRejectsUndeclaredKey(t *testing.T) {
 		t.Fatalf("a refused edit must not mutate the file:\n%s", got)
 	}
 }
+
+const immutableExtraDecl = `{"name": "external_id", "type": "string", "immutable": true, "placement": "frontmatter"}`
+
+func commitKira(t *testing.T, s *core.Store, subject string) {
+	t.Helper()
+	repo := gitx.Repo{Dir: s.Root()}
+	if err := repo.Stage(storage.DirName); err != nil {
+		t.Fatalf("staging %s: %v", storage.DirName, err)
+	}
+	if err := repo.CommitScoped([]string{storage.DirName}, subject); err != nil {
+		t.Fatalf("committing %s: %v", storage.DirName, err)
+	}
+}
+
+func headSHA(t *testing.T, s *core.Store) string {
+	t.Helper()
+	sha, err := gitx.Repo{Dir: s.Root()}.Output("rev-parse", "HEAD")
+	if err != nil {
+		t.Fatalf("rev-parse: %v", err)
+	}
+	return sha
+}
+
+func TestExtraEditsSurfaceInLogAndBlame(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	mustCreate(t, s, cfg, "History of an extra")
+	s = declareTicketSchema(t, s, typedTicketSchema)
+
+	for _, value := range []string{"LOW", "HIGH"} {
+		if _, err := s.Edit(cfg, "KIRA-1", core.EditOpts{Fields: []core.FieldEdit{{Key: "severity", Value: value}}}); err != nil {
+			t.Fatalf("Edit severity=%s: %v", value, err)
+		}
+	}
+
+	logRes, err := s.Log(cfg, "KIRA-1")
+	if err != nil {
+		t.Fatalf("Log: %v", err)
+	}
+	transitions := map[string]bool{}
+	for _, e := range logRes.Entries {
+		if e.Kind == datamodel.LogKindEvent && e.Field == "severity" {
+			transitions[e.Old+"->"+e.New] = true
+		}
+	}
+	if !transitions["->LOW"] || !transitions["LOW->HIGH"] {
+		t.Fatalf("log must carry both severity events, got %+v", logRes.Entries)
+	}
+
+	blame, err := s.Blame(cfg, "KIRA-1")
+	if err != nil {
+		t.Fatalf("Blame: %v", err)
+	}
+	var got *datamodel.BlameField
+	for i := range blame.Fields {
+		if blame.Fields[i].Field == "severity" {
+			got = &blame.Fields[i]
+		}
+	}
+	if got == nil {
+		t.Fatalf("blame must attribute a declared extra, got %+v", blame.Fields)
+	}
+	if got.Value != "HIGH" || got.SourceKind != datamodel.BlameSourceCommit {
+		t.Fatalf("blame severity = %+v, want HIGH sourced from its commit", *got)
+	}
+}
+
+func TestAtCompilesQueriesAgainstTheSnapshotSchema(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	mustCreate(t, s, cfg, "tagged")
+	s = declareQueryableExtras(t, s)
+	commitKira(t, s, "declare the extras")
+	setExtras(t, s, cfg, "KIRA-1")
+	declared := headSHA(t, s)
+
+	s = declareTicketExtras(t, s, futureFieldDecl)
+	commitKira(t, s, "undeclare the extras")
+
+	if _, err := s.List(cfg, core.ListOpts{Query: "team = infra"}); err == nil {
+		t.Fatal("the fixture must undeclare team in the working tree, else --at proves nothing")
+	}
+
+	res, err := s.List(cfg, core.ListOpts{Query: "team = infra", At: declared})
+	if err != nil {
+		t.Fatalf("--at must compile the query against the schema of that tree: %v", err)
+	}
+	if got := listNumbers(res); got != "KIRA-1" {
+		t.Fatalf("--at matched %q, want KIRA-1", got)
+	}
+}
+
+func TestImmutableExtraSurvivesFullDocumentEdits(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "Immutable extra")
+	overwriteItem(t, s, res.ID, strings.Replace(mustReadItem(t, s, res.ID), "---\n", "---\nexternal_id: abc\n", 1))
+	s = declareTicketExtras(t, s, immutableExtraDecl)
+
+	for name, edit := range map[string]func(string) string{
+		"rewritten": func(c string) string { return strings.Replace(c, "external_id: abc", "external_id: zzz", 1) },
+		"deleted":   func(c string) string { return strings.Replace(c, "external_id: abc\n", "", 1) },
+	} {
+		src := writeTempItem(t, edit(strings.Replace(mustReadItem(t, s, res.ID), "title:", "title: "+name+" #", 1)))
+		if _, err := s.Edit(cfg, "KIRA-1", core.EditOpts{FromFile: src}); err != nil {
+			t.Fatalf("%s: Edit --from-file: %v", name, err)
+		}
+		got := mustReadItem(t, s, res.ID)
+		if !strings.Contains(got, "external_id: abc\n") {
+			t.Fatalf("%s: --from-file changed an immutable extra:\n%s", name, got)
+		}
+		if !strings.Contains(got, name) {
+			t.Fatalf("%s: the rest of the edit did not land:\n%s", name, got)
+		}
+	}
+}
+
+func TestImmutableExtraSurvivesEditorEdits(t *testing.T) {
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "Immutable extra in the editor")
+	overwriteItem(t, s, res.ID, strings.Replace(mustReadItem(t, s, res.ID), "---\n", "---\nexternal_id: abc\n", 1))
+	s = declareTicketExtras(t, s, immutableExtraDecl)
+	writeEditorScript(t, "sed -e 's/external_id: abc/external_id: zzz/' -e 's/^title: \"/title: \"edited /' \"$1\" > \"$1.tmp\" && mv \"$1.tmp\" \"$1\"\n")
+
+	if _, err := s.Edit(cfg, "KIRA-1", core.EditOpts{}); err != nil {
+		t.Fatalf("Edit: %v", err)
+	}
+	got := mustReadItem(t, s, res.ID)
+	if !strings.Contains(got, "external_id: abc\n") {
+		t.Fatalf("the editor changed an immutable extra:\n%s", got)
+	}
+	if !strings.Contains(got, `title: "edited `) {
+		t.Fatalf("the rest of the edit did not land:\n%s", got)
+	}
+}
+
+func TestFieldHintSuggestsDeclaredExtras(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	mustCreate(t, s, cfg, "Typo'd extra")
+	s = declareQueryableExtras(t, s)
+
+	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{Fields: []core.FieldEdit{{Key: "tem", Value: "infra"}}})
+	var e *errx.Error
+	if !errors.As(err, &e) {
+		t.Fatalf("want *errx.Error, got %v (%T)", err, err)
+	}
+	if !strings.Contains(e.Hint, "did you mean `--field team=...`") {
+		t.Fatalf("hint must suggest the declared extra, got %q", e.Hint)
+	}
+}

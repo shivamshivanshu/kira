@@ -81,6 +81,9 @@ func (s *Store) LabelSet(cfg *datamodel.Config, ref, label string, add, force bo
 }
 
 func (b *Batch) LabelSet(ref, label string, add, force bool) (*datamodel.MutationResult, error) {
+	if strings.TrimSpace(label) == "" {
+		return nil, errx.User("label name cannot be empty")
+	}
 	cfg := b.cfg
 	apply := func(it *datamodel.Item, _ *id.Resolver, _ []*datamodel.Item) (hard, warns []error) {
 		if add {

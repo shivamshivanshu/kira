@@ -19,6 +19,7 @@ const (
 	itemExt          = ".md"
 
 	TicketsPrefix = DirName + "/" + itemsDirName
+	SchemaPrefix  = DirName + "/" + schemaDirName
 	ConfigRelPath = DirName + "/" + configFileName
 )
 

@@ -250,3 +250,26 @@ against reserved-name collisions. Not v1.
 - Whether `board`/`sprint` schemas are validated in Phase 1 (config-backed) or
   deferred — Phase 1 includes their *schema definitions* and validates existing
   config entries, but adds no new storage.
+
+## Extras in item history (`log`, `blame`, `changes`)
+
+The frontmatter diff walker reports schema-declared **scalar** extras next to
+the builtin scalar fields, so `kira log`/`blame`/`changes` explain an
+`edit severity` commit rather than showing it as an empty change. Two limits
+are deliberate:
+
+- **List extras get no events**, matching the builtin list fields (`labels`,
+  `blocked_by`, `aliases`, `links`), which the walker has always skipped.
+- **Declared extras are unioned across schemas**, not scoped to the item's
+  type: the walker keys off a file path, and a file's history spans commits
+  whose type or schema may differ from the working tree's.
+
+Derivation now depends on the schema, so the cached events carry the index
+schema version and are dropped when it changes. Declaring a *new* extra does
+not retroactively re-derive events for items whose file has not changed since
+the last derivation; `kira index --full` does.
+
+Time-travel reads (`--at`) resolve extras against the schemas of the tree-ish
+they read, loaded in the same batched `cat-file` pass as its items and config —
+never the working tree's, which may declare a field the snapshot did not (or
+type it differently).
