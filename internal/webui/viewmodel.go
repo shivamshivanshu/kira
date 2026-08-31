@@ -223,10 +223,14 @@ func (p pageData) CommitCard(itemID string, commit datamodel.CommitLink) commitC
 	return commitCard{CommitLink: commit, URL: p.Link("item", itemID, "commit", commit.SHA)}
 }
 
-func copyOptions(item showfmt.Item) []copyOption {
+func (p pageData) CopyForms(id, number, title string) []copyOption {
+	var w datamodel.Workon
+	if p.Config != nil {
+		w = p.Config.Workon
+	}
 	options := make([]copyOption, 0, len(showfmt.Forms))
 	for _, form := range showfmt.Forms {
-		value, err := showfmt.Format(form, item)
+		value, err := showfmt.Format(form, showfmt.Item{ID: id, Number: number, Title: title}, w)
 		if err == nil {
 			options = append(options, copyOption{Name: string(form), Label: form.Label(), Value: value})
 		}

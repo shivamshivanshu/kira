@@ -30,7 +30,7 @@
     <div role="cell"><span class="state category-{{$item.Category}}">{{label $item.State}}</span></div>
     <div role="cell" class="priority">{{if $item.Priority}}<span aria-hidden="true">⚑</span> {{str $item.Priority}}{{else}}<span class="muted">—</span>{{end}}</div>
     <div role="cell" class="owner">{{if $item.Owner}}<span class="avatar" aria-hidden="true">{{printf "%.1s" (str $item.Owner)}}</span><span>{{str $item.Owner}}</span>{{else}}<span class="muted">Unassigned</span>{{end}}</div>
-    {{template "item-copy" (copyForms $item.ID $item.Number $item.Title)}}
+    {{template "item-copy" ($.CopyForms $item.ID $item.Number $item.Title)}}
   </div>
   {{else}}
   <div class="empty-state"><span class="empty-mark" aria-hidden="true">◇</span><h2>No matching items</h2><p>No items match this view. Adjust your filters or create something new.</p><a class="button primary" href="#create-item" data-open="create-dialog">+ Create an item</a></div>

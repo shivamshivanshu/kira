@@ -5,6 +5,10 @@ package showfmt
 import (
 	"fmt"
 	"strings"
+
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/workon"
 )
 
 type Form string
@@ -43,7 +47,7 @@ type Item struct {
 	Title  string
 }
 
-func Format(form Form, it Item) (string, error) {
+func Format(form Form, it Item, w datamodel.Workon) (string, error) {
 	switch form {
 	case FormID:
 		return it.ID, nil
@@ -54,7 +58,7 @@ func Format(form Form, it Item) (string, error) {
 	case FormMarkdown:
 		return "[" + numberTitle(it) + "](" + it.Number + ")", nil
 	case FormBranch:
-		return branch(it), nil
+		return branch(it, w), nil
 	}
 	return "", fmt.Errorf("unknown format %q, want one of %s", form, strings.Join(Names(), ", "))
 }
@@ -63,28 +67,8 @@ func numberTitle(it Item) string {
 	return strings.TrimSpace(it.Number + " " + it.Title)
 }
 
-func branch(it Item) string {
-	parts := make([]string, 0, 2)
-	for _, s := range []string{it.Number, it.Title} {
-		if slug := slugify(s); slug != "" {
-			parts = append(parts, slug)
-		}
-	}
-	return strings.Join(parts, "-")
-}
-
-func slugify(s string) string {
-	var b strings.Builder
-	prevDash := true
-	for _, r := range strings.ToLower(s) {
-		switch {
-		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
-			b.WriteRune(r)
-			prevDash = false
-		case !prevDash:
-			b.WriteByte('-')
-			prevDash = true
-		}
-	}
-	return strings.Trim(b.String(), "-")
+// branch renders through workon so the yanked name is exactly the branch
+// `kira workon` would create for this item.
+func branch(it Item, w datamodel.Workon) string {
+	return workon.RenderBranch(w.BranchPattern, id.KeyOf(it.Number), it.Number, it.Title, w.Casing.Separator())
 }

@@ -46,7 +46,7 @@ func loadedTree() treeModel {
 }
 
 func newTestModel(w, h int, withData bool) model {
-	cfg := &datamodel.Config{UI: datamodel.UI{Tui: datamodel.UITui{Split: datamodel.DefaultSplit}}}
+	cfg := &datamodel.Config{UI: datamodel.UI{Tui: datamodel.UITui{Split: datamodel.DefaultSplit}}, Workon: datamodel.Workon{BranchPattern: "{key}/{number}-{slug}", Casing: datamodel.CasingKebab}}
 	m := newModel(nil, cfg, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
 	m.width, m.height = w, h
 	if withData {

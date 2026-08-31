@@ -133,6 +133,6 @@
       <span>Created {{date $item.Created}}</span><span>Updated {{date $item.Updated}}</span><button class="text-button" type="button" data-copy="{{$item.ID}}" title="{{$item.ID}}">Copy immutable ID</button>
     </div>
   </div>
-  {{template "item-copy" (copyForms $item.ID $item.Number $item.Title)}}
+  {{template "item-copy" ($.CopyForms $item.ID $item.Number $item.Title)}}
 </aside>
 {{end}}
