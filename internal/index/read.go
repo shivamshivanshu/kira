@@ -28,7 +28,10 @@ func ReadCached(cacheDir string) ([]*datamodel.Item, error) {
 }
 
 // Items returns all cached items along with their aliases, labels, links,
-// and extras.
+// and extras. Read-only projections: the cache stores no Body, UnknownKeys,
+// UnknownLinkTypes or CRLF, so a rehydrated item claims HasUnknown() == false
+// even for a file kira must refuse to rewrite. Never feed these to a write
+// path — core reaches the filesystem loader for that.
 func (i *Index) Items() ([]*datamodel.Item, error) {
 	items, byID, err := i.scanItems()
 	if err != nil {

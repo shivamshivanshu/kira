@@ -134,6 +134,8 @@ func (r Repo) CommitScoped(pathspecs []string, parts ...string) error {
 	return err
 }
 
+// Whole-file context is load-bearing, not a convenience: core's diff walker
+// locates frontmatter by counting `---` fences from the start of each hunk.
 const fullFileContext = "--unified=1000000"
 
 func (r Repo) logPatch(args ...string) (string, error) {
