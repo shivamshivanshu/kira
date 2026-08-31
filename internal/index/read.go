@@ -9,7 +9,8 @@ import (
 )
 
 // ReadCached reads items straight from the on-disk index cache, read-only and
-// without refreshing it; it returns nil, nil if no cache exists yet.
+// without refreshing it; it returns nil, nil if no usable cache exists yet —
+// missing, or built by a different schema version.
 func ReadCached(cacheDir string) ([]*datamodel.Item, error) {
 	if _, err := os.Stat(dbPath(cacheDir)); err != nil {
 		return nil, nil
@@ -19,6 +20,10 @@ func ReadCached(cacheDir string) ([]*datamodel.Item, error) {
 		return nil, errx.Env("opening index read-only: %v", err)
 	}
 	defer func() { _ = db.Close() }()
+	var version int
+	if err := db.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != schemaVersion {
+		return nil, nil
+	}
 	return (&Index{db: db, cacheDir: cacheDir}).Items()
 }
 

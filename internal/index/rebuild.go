@@ -76,6 +76,9 @@ func (i *Index) full(store *storage.FS) (map[string]skipEntry, error) {
 			return nil, err
 		}
 	}
+	if err := deleteOrphanedGitRows(tx); err != nil {
+		return nil, err
+	}
 	return skipped, commit(tx)
 }
 
@@ -165,11 +168,27 @@ func (i *Index) refresh(store *storage.FS, absPaths []string, prevSkips map[stri
 			return nil, nil, err
 		}
 	}
+	if err := deleteOrphanedGitRows(tx); err != nil {
+		return nil, nil, err
+	}
 	processed := make([]string, 0, len(queue))
 	for _, abs := range queue {
 		processed = append(processed, filepath.Base(abs))
 	}
 	return skipped, processed, commit(tx)
+}
+
+// deleteOrphanedGitRows drops git-derived rows for items no longer in the
+// index: they have no FK to items, so nothing else cleans them up when a
+// ticket is deleted. Events re-derive from git if the item ever returns;
+// commit links come back on the next full trailer rescan.
+func deleteOrphanedGitRows(tx *sql.Tx) error {
+	for _, table := range []string{"events", "event_heads", "commit_links"} {
+		if _, err := tx.Exec("DELETE FROM " + table + " WHERE item_id NOT IN (SELECT id FROM items)"); err != nil {
+			return errx.Env("clearing orphaned index %s rows: %v", table, err)
+		}
+	}
+	return nil
 }
 
 func duplicateSkip(name, ulid, other string) skipEntry {
