@@ -4,7 +4,7 @@ number: KIRA-130
 aliases: []
 type: ticket
 title: "Watermark-persist failure discards already-committed close results"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
