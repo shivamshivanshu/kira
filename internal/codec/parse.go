@@ -65,14 +65,7 @@ func Parse(content string) (*datamodel.Item, error) {
 	it.Created = reqTimestamp(nodes, datamodel.KeyCreated, add)
 	it.Updated = reqTimestamp(nodes, datamodel.KeyUpdated, add)
 
-	for k, n := range nodes {
-		if datamodel.IsFrontmatterKey(k) {
-			continue
-		}
-		it.UnknownKeys = append(it.UnknownKeys, k)
-		captureExtra(it, k, n)
-	}
-	slices.Sort(it.UnknownKeys)
+	it.Extras, it.UnknownKeys = captureExtras(nodes)
 
 	if len(errs) > 0 {
 		return it, &datamodel.ParseError{Errs: errs}
@@ -80,15 +73,30 @@ func Parse(content string) (*datamodel.Item, error) {
 	return it, nil
 }
 
-func DecodeFrontmatter(content string, out any) (body string, err error) {
+// DecodeFrontmatter decodes content's frontmatter into out and captures
+// non-builtin keys the way Parse does: capturable values land in extras, and
+// every non-builtin key — capturable or not — is returned sorted in unknown.
+func DecodeFrontmatter(content string, out any) (body string, extras map[string]datamodel.ExtraValue, unknown []string, err error) {
 	front, body, err := splitDocument(content)
 	if err != nil {
-		return "", err
+		return "", nil, nil, err
 	}
-	if err := yaml.Unmarshal([]byte(front), out); err != nil {
-		return "", fmt.Errorf("frontmatter yaml: %w", err)
+	var doc yaml.Node
+	if err := yaml.Unmarshal([]byte(front), &doc); err != nil {
+		return "", nil, nil, fmt.Errorf("frontmatter yaml: %w", err)
 	}
-	return body, nil
+	if len(doc.Content) == 0 {
+		return body, nil, nil, nil
+	}
+	if doc.Content[0].Kind != yaml.MappingNode {
+		return "", nil, nil, fmt.Errorf("frontmatter: expected a mapping")
+	}
+	if err := doc.Decode(out); err != nil {
+		return "", nil, nil, fmt.Errorf("frontmatter yaml: %w", err)
+	}
+	nodes, _ := frontmatterNodes(&doc)
+	extras, unknown = captureExtras(nodes)
+	return body, extras, unknown, nil
 }
 
 func splitDocument(content string) (front, body string, err error) {
@@ -243,15 +251,23 @@ func scalarSeq(n *yaml.Node, label string, add addFunc) []string {
 	return out
 }
 
-func captureExtra(it *datamodel.Item, key string, n *yaml.Node) {
-	v, ok := extraValue(n)
-	if !ok {
-		return
+func captureExtras(nodes map[string]*yaml.Node) (extras map[string]datamodel.ExtraValue, unknown []string) {
+	for k, n := range nodes {
+		if datamodel.IsFrontmatterKey(k) {
+			continue
+		}
+		unknown = append(unknown, k)
+		v, ok := extraValue(n)
+		if !ok {
+			continue
+		}
+		if extras == nil {
+			extras = map[string]datamodel.ExtraValue{}
+		}
+		extras[k] = v
 	}
-	if it.Extras == nil {
-		it.Extras = map[string]datamodel.ExtraValue{}
-	}
-	it.Extras[key] = v
+	slices.Sort(unknown)
+	return extras, unknown
 }
 
 // Mappings, null, and sequences with non-scalar elements are not captured:

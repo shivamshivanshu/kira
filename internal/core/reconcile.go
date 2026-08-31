@@ -35,6 +35,8 @@ func (s *Store) Reconcile(cfg *datamodel.Config) (*datamodel.ReconcileResult, er
 		if !slices.Contains(it.Aliases, r.From) {
 			it.Aliases = append(it.Aliases, r.From)
 		}
+		// Deliberately bypasses the mutation pipeline, as in BoardMove — and a
+		// repair must also succeed on items that would fail validateMutation.
 		path, err := s.fs().WriteItem(it)
 		if err != nil {
 			return nil, err
