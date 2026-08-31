@@ -67,7 +67,13 @@ type ListItem struct {
 }
 
 // ExtraJSON is one schema-declared custom field rendered for --json output:
-// a decoded scalar string or a list of decoded strings.
+// a decoded scalar string or a list of decoded strings. Deliberately stringly
+// even when the schema types the field int/number/bool/date: extras store
+// canonical YAML text (what keeps `points: 42` un-requoted on rewrite), and
+// typing the JSON per FieldDef would make the generated output schema
+// per-field rather than static. Consumers interpret a value through the
+// field's declared type in .kira/schema/ — the same contract as due and
+// priority, typed by schema but strings on the wire (KIRA-145).
 type ExtraJSON any
 
 type ListResult struct {

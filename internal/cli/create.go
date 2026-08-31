@@ -53,7 +53,7 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 				return err
 			}
 			if _, ok := cfg.Workflows[opts.Type]; !ok {
-				return errx.User("%q is not a configured type", opts.Type).WithHint("configured types: %s", strings.Join(workflowTypes(cfg), ", "))
+				return errx.User("%q is not a configured type", opts.Type).WithHint("configured types: %s — a new type needs a workflows: entry in .kira/config.yaml; a schema file alone does not define one", strings.Join(workflowTypes(cfg), ", "))
 			}
 			if printTemplate {
 				tmpl, err := s.ResolveTemplate(opts)

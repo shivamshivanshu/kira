@@ -25,6 +25,11 @@ user-defined types.
 - Relocating config-backed instances (boards/sprints stay in `config.yaml`).
 - Replacing the `Item` struct wholesale (deferred to a late phase; may never be
   worth it — see Phasing).
+- Per-type identity (per-type ID sequences / display-number prefixes). Early
+  Phase 1 schemas declared a descriptive-only `identity` field that nothing
+  generated IDs from — every type shares the one project sequence — so it was
+  removed as inert (KIRA-141). The loader still tolerates the key in schema
+  files materialized by older versions. Remains open as a future feature.
 
 ## Decisions (from brainstorm)
 
@@ -107,7 +112,6 @@ This is what lets the CLI/TUI render an unknown entity generically. The schema
 {
   "name": "ticket",
   "workflow": "ticket",                        // -> config.workflows.ticket
-  "identity": { "style": "sequential", "prefix": "KIRA" },
   "fields": [
     { "name": "title",       "type": "string",   "required": true },
     { "name": "state",       "type": "state",    "workflow": "ticket", "guarded": true },
@@ -134,6 +138,22 @@ This is what lets the CLI/TUI render an unknown entity generically. The schema
 Named enums resolve, in order: inline `enum` map in a schema file, then
 `config.yaml` vocab (`priorities`, `subtypes`, `resolutions`, `labels`,
 `people`) so built-ins reuse today's config without duplication.
+
+### A type is two required halves
+
+A schema file alone does not create an entity type. A type is defined by its
+**schema** (`.kira/schema/<type>.json` — the shape) *and* a **`workflows:`
+entry** in `.kira/config.yaml` (the state set and transition policy). `kira
+create` refuses a type with no workflow (`no workflow configured for type
+"foo"`, hinting at the missing half), and existing items of a workflow-less
+type load read-only with an orphan warning. States are deliberately not
+inferred from the schema's `state` field: as long as workflows live in config,
+inference would give the state set two sources of truth. That duplication
+already exists between a schema's declared `state` values and `cfg.Workflows`,
+and `doctor`'s `state-drift` check (`internal/doctor/statedrift.go`) is what
+keeps it from rotting silently — inference would widen the seam rather than
+close it. CORE-39 (config entities become file-backed) is where it gets
+resolved for good.
 
 ## Engine architecture
 
@@ -174,7 +194,15 @@ faithfully reproduces hardcoded behavior.
   check + completion sourced from schema.
 - **Phase 3** — typed *extra* fields on ticket/epic: codec round-trips typed
   frontmatter (replacing untyped `UnknownKeys` for schema-declared keys);
-  create/edit/validate honor them.
+  create/edit/validate honor them. Typing is storage/validation-side only: in
+  `--json` output an extra always renders as a string or list of strings
+  (`datamodel.ExtraJSON`), even when its schema declares int/number/bool/date.
+  Extras store canonical YAML text (what keeps `points: 42` un-requoted on
+  rewrite), and typing the JSON per FieldDef would make the generated output
+  schema per-field rather than static, breaking the fixed `schema/kira.json`
+  contract. Consumers interpret an extra through the schema — the same
+  contract as `due`/`priority`, typed by schema but strings on the wire
+  (KIRA-145).
 - **Phase 4** — user-defined *new* item entity types: generic create/edit/list/show.
 - **Phase 5** — representation-driven rendering (list columns, show layout, icons)
   from schema.
