@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
+	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/showfmt"
 )
@@ -103,12 +104,13 @@ func TestNavigationClearsCommitAndOpensManagedItems(t *testing.T) {
 
 func TestCopyPickerUsesSharedFormats(t *testing.T) {
 	it := datamodel.ListItem{ID: "immutable-id", Number: "WEB-7", Title: `A <script> & a "title"`}
-	options := copyOptions(showfmt.Item{ID: it.ID, Number: it.Number, Title: it.Title})
+	cfg := config.Default()
+	options := pageData{Config: cfg}.CopyForms(it.ID, it.Number, it.Title)
 	if len(options) != len(showfmt.Forms) {
 		t.Fatalf("got %d copy formats, want %d", len(options), len(showfmt.Forms))
 	}
 	for i, form := range showfmt.Forms {
-		want, err := showfmt.Format(form, showfmt.Item{ID: it.ID, Number: it.Number, Title: it.Title})
+		want, err := showfmt.Format(form, showfmt.Item{ID: it.ID, Number: it.Number, Title: it.Title}, cfg.Workon)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -117,11 +119,12 @@ func TestCopyPickerUsesSharedFormats(t *testing.T) {
 		}
 	}
 	for view, p := range map[string]pageData{
-		"tree": {Tree: []treeRow{{Item: it}}},
-		"board": {Board: &datamodel.BoardResult{Columns: []datamodel.BoardColumn{
+		"tree": {Config: cfg, Tree: []treeRow{{Item: it}}},
+		"board": {Config: cfg, Board: &datamodel.BoardResult{Columns: []datamodel.BoardColumn{
 			{State: "todo", Count: 1, Items: []datamodel.ListItem{it}},
 		}}},
 		"detail": {
+			Config:   cfg,
 			Detail:   &datamodel.ShowResult{ID: it.ID, Number: it.Number, Title: it.Title},
 			Items:    []datamodel.ListItem{{ID: "other-id", Number: "WEB-1", Title: "Inside the filter"}},
 			AllItems: []datamodel.ListItem{{ID: "other-id", Number: "WEB-1", Title: "Inside the filter"}},

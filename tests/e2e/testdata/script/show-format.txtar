@@ -20,7 +20,7 @@ exec kira show KIRA-1 --format markdown
 stdout '^\[KIRA-1 Fix snapshot dedup\]\(KIRA-1\)$'
 
 exec kira show KIRA-1 --format branch
-stdout '^kira-1-fix-snapshot-dedup$'
+stdout '^kira/kira-1-fix-snapshot-dedup$'
 
 exec kira show KIRA-1 --format id
 stdout '.'

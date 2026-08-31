@@ -20,7 +20,7 @@
           </div>
           {{if .Due}}<div class="card-due {{if overdue .Due .Category}}overdue{{end}}">{{if overdue .Due .Category}}Overdue{{else}}Due{{end}} {{str .Due}}</div>{{end}}
         </a>
-        {{template "item-copy" (copyForms .ID .Number .Title)}}
+        {{template "item-copy" ($.CopyForms .ID .Number .Title)}}
       </article>
       {{else}}<div class="column-empty">Nothing here yet</div>{{end}}
     </div>

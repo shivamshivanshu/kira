@@ -57,7 +57,7 @@ func TestYankPickerCopiesChosenForm(t *testing.T) {
 	}
 
 	chosen, _ := m.Update(key("5"))
-	if want := clipx.OSC52("kira-100-order-book-hardening", false); buf.String() != want {
+	if want := clipx.OSC52("kira/kira-100-order-book-hardening", false); buf.String() != want {
 		t.Fatalf("branch form copied %q, want OSC52 of branch name", buf.String())
 	}
 	if chosen.(model).picker != nil {

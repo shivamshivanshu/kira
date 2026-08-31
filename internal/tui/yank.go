@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/showfmt"
 )
 
@@ -11,6 +12,13 @@ func selectedItem(m *model) (showfmt.Item, bool) {
 	return showfmt.Item{}, false
 }
 
+func (m *model) workonSettings() datamodel.Workon {
+	if m.cfg != nil {
+		return m.cfg.Workon
+	}
+	return datamodel.Workon{}
+}
+
 func (m *model) copyToClipboard(text string) {
 	if err := m.clip.Copy(text); err != nil {
 		m.bar.setError("copy: " + firstNonEmptyLine(err.Error()))
@@ -19,7 +27,7 @@ func (m *model) copyToClipboard(text string) {
 
 func (m *model) yankSelected() {
 	if it, ok := selectedItem(m); ok {
-		if text, err := showfmt.Format(showfmt.FormID, it); err == nil {
+		if text, err := showfmt.Format(showfmt.FormID, it, m.workonSettings()); err == nil {
 			m.copyToClipboard(text)
 		}
 	}
@@ -32,7 +40,7 @@ func (m *model) openYankPicker() {
 	}
 	entries := make([]pickerEntry, 0, len(showfmt.Forms))
 	for _, f := range showfmt.Forms {
-		preview, err := showfmt.Format(f, it)
+		preview, err := showfmt.Format(f, it, m.workonSettings())
 		if err != nil {
 			continue
 		}
