@@ -24,3 +24,24 @@ func TestDiscoverRejectedNonInteractive(t *testing.T) {
 		t.Errorf("err = %v, want mention of the interactive picker", err)
 	}
 }
+
+// --json must fail loudly rather than silently opening the alt-screen (`kira
+// tui --json`) or printing human help with exit 0 (`kira --json`).
+func TestTUIRejectsJSON(t *testing.T) {
+	dir := initFixture(t)
+	for _, args := range [][]string{{"-C", dir, "--json", "tui"}, {"-C", dir, "--json"}} {
+		root, _ := newRootCmd()
+		var out bytes.Buffer
+		root.SetOut(&out)
+		root.SetErr(&out)
+		root.SetIn(strings.NewReader(""))
+		root.SetArgs(args)
+		err := root.Execute()
+		if err == nil {
+			t.Fatalf("kira %v succeeded, want a --json rejection\n%s", args, out.String())
+		}
+		if !strings.Contains(err.Error(), "--json is not supported") {
+			t.Errorf("kira %v: err = %v, want a --json rejection", args, err)
+		}
+	}
+}

@@ -19,8 +19,13 @@ type completer = func(*cobra.Command, []string, string) ([]string, cobra.ShellCo
 
 func attachCompletions(root *cobra.Command, g *globalFlags) {
 	items := completeItems(g, "")
+	epics := completeItems(g, datamodel.TypeEpic)
 	people := completeVocab(g, func(c *datamodel.Config) []string { return c.People.Names() })
 	labels := completeVocab(g, func(c *datamodel.Config) []string { return c.Labels.Known })
+	subtypes := completeVocab(g, func(c *datamodel.Config) []string { return c.Subtypes.Values })
+	sprints := completeVocab(g, sprintKeys)
+	activeBoards := completeVocab(g, activeBoardKeys)
+	allBoards := completeVocab(g, func(c *datamodel.Config) []string { return c.BoardKeys() })
 
 	for _, name := range []string{"show", "edit", "comment", "log", "blame", "workon", "link"} {
 		if c := subCmd(root, name); c != nil {
@@ -29,12 +34,19 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 	}
 	if c := subCmd(root, "create"); c != nil {
 		c.ValidArgsFunction = positional(completeVocab(g, workflowTypes))
+		_ = c.RegisterFlagCompletionFunc("type", subtypes)
 	}
 	if c := subCmd(root, "move"); c != nil {
 		c.ValidArgsFunction = positional(items, completeMoveTarget(g))
 	}
 	if c := subCmd(root, "assign"); c != nil {
 		c.ValidArgsFunction = positional(items, people)
+	}
+	if c := subCmd(root, "tree"); c != nil {
+		c.ValidArgsFunction = positional(items)
+	}
+	if c := subCmd(root, "stats"); c != nil {
+		c.ValidArgsFunction = positional(epics)
 	}
 	if c := subCmd(subCmd(root, "config"), "set"); c != nil {
 		c.ValidArgsFunction = positional(completeStatic(config.SetKeys()))
@@ -46,30 +58,42 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 			}
 		}
 	}
+	if sp := subCmd(root, "sprint"); sp != nil {
+		setArgs(sp, "activate", positional(sprints))
+		setArgs(sp, "close", positional(sprints))
+	}
+	if b := subCmd(root, "board"); b != nil {
+		b.ValidArgsFunction = positional(epics)
+		setArgs(b, "rename", positional(allBoards))
+		setArgs(b, "archive", positional(activeBoards))
+		setArgs(b, "unarchive", positional(allBoards))
+		setArgs(b, "move", positional(items, activeBoards))
+	}
 
 	flags := map[string]completer{
 		"label":      labels,
 		"priority":   completeVocab(g, func(c *datamodel.Config) []string { return c.Priorities.Values }),
 		"owner":      people,
 		"reporter":   people,
-		"sprint":     completeVocab(g, sprintKeys),
+		"sprint":     sprints,
 		"filter":     completeVocab(g, filterNames),
 		"resolution": completeVocab(g, func(c *datamodel.Config) []string { return c.Resolutions.Values }),
-		"subtype":    completeVocab(g, func(c *datamodel.Config) []string { return c.Subtypes.Values }),
+		"subtype":    subtypes,
 		"state":      completeVocab(g, workflowStates),
 		"format":     completeStatic(showfmt.Names()),
 		"category":   completeStatic(categoryValues()),
 		"type":       completeVocab(g, workflowTypes),
-		"epic":       completeItems(g, datamodel.TypeEpic),
-		"parent":     completeItems(g, datamodel.TypeEpic),
+		"epic":       epics,
+		"parent":     epics,
 		"blocked-by": items,
-		"board":      completeVocab(g, activeBoardKeys),
+		"board":      activeBoards,
 	}
 	walk(root, func(c *cobra.Command) {
 		for name, fn := range flags {
-			if c.Flags().Lookup(name) != nil {
-				_ = c.RegisterFlagCompletionFunc(name, fn)
+			if _, bound := c.GetFlagCompletionFunc(name); bound || c.Flags().Lookup(name) == nil {
+				continue
 			}
+			_ = c.RegisterFlagCompletionFunc(name, fn)
 		}
 		for _, lt := range datamodel.LinkTypes {
 			if fl := core.FlagForLinkType(string(lt)); c.Flags().Lookup(fl) != nil {
@@ -77,6 +101,12 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 			}
 		}
 	})
+}
+
+func setArgs(parent *cobra.Command, name string, fn completer) {
+	if c := subCmd(parent, name); c != nil {
+		c.ValidArgsFunction = fn
+	}
 }
 
 func completeItems(g *globalFlags, typ string) completer {
