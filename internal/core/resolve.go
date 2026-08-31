@@ -128,13 +128,6 @@ func itemMatchesAny(it *datamodel.Item, refs []string) bool {
 	return false
 }
 
-func fieldString(it *datamodel.Item, field string) string {
-	if d, ok := datamodel.Field(field); ok {
-		return d.Get(it)
-	}
-	return ""
-}
-
 // fieldDescriptor covers arbitrated extras, which datamodel.Field does not
 // know about; an undeclared extra falls back to the scalar accessors.
 func fieldDescriptor(schemas map[string]entityschema.Schema, typ, key string) datamodel.FieldDescriptor {

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"reflect"
@@ -37,14 +38,10 @@ func changed[T any](a, b T) bool { return !reflect.DeepEqual(a, b) }
 // the loader-recorded tier that supplied it (repo when none was recorded,
 // e.g. a config parsed without the user tier).
 func tierOf(differs bool, tier datamodel.Provenance) datamodel.Provenance {
-	switch {
-	case !differs:
+	if !differs {
 		return datamodel.ProvenanceDefault
-	case tier != "":
-		return tier
-	default:
-		return datamodel.ProvenanceRepo
 	}
+	return cmp.Or(tier, datamodel.ProvenanceRepo)
 }
 
 func explainIdentity(cfg, def *datamodel.Config) datamodel.ExplainSection {
