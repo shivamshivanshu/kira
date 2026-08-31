@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -26,15 +27,25 @@ func Load(dir string) (map[string]Schema, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := overlayUserSchemas(schemas, dir); err != nil {
+		return nil, err
+	}
+	if err := checkExtrasAgreement(schemas); err != nil {
+		return nil, err
+	}
+	return schemas, nil
+}
+
+func overlayUserSchemas(schemas map[string]Schema, dir string) error {
 	if dir == "" {
-		return schemas, nil
+		return nil
 	}
 	entries, err := os.ReadDir(dir)
 	if errors.Is(err, os.ErrNotExist) {
-		return schemas, nil
+		return nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("reading %s: %w", dir, err)
+		return fmt.Errorf("reading %s: %w", dir, err)
 	}
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
@@ -42,15 +53,51 @@ func Load(dir string) (map[string]Schema, error) {
 		}
 		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
 		if err != nil {
-			return nil, fmt.Errorf("reading %s: %w", e.Name(), err)
+			return fmt.Errorf("reading %s: %w", e.Name(), err)
 		}
 		schema, err := parseSchema(e.Name(), data)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		schemas[schema.Name] = schema
 	}
-	return schemas, nil
+	return nil
+}
+
+// checkExtrasAgreement rejects two schemas declaring the same frontmatter
+// extra with different traits: the query layer builds one spec per field name
+// across all schemas, so a disagreement would let one schema's traits
+// silently win for every type.
+func checkExtrasAgreement(schemas map[string]Schema) error {
+	type origin struct {
+		schema string
+		field  FieldDef
+	}
+	first := map[string]origin{}
+	for _, name := range slices.Sorted(maps.Keys(schemas)) {
+		for _, f := range schemas[name].Fields {
+			if f.Placement != PlacementFrontmatter {
+				continue
+			}
+			prev, ok := first[f.Name]
+			if !ok {
+				first[f.Name] = origin{schema: name, field: f}
+				continue
+			}
+			if prev.field.Type != f.Type || prev.field.List != f.List {
+				return fmt.Errorf("field %q is declared as %s in schema %q but as %s in schema %q; schemas sharing a field must agree on its type and list-ness",
+					f.Name, fieldTrait(prev.field), prev.schema, fieldTrait(f), name)
+			}
+		}
+	}
+	return nil
+}
+
+func fieldTrait(f FieldDef) string {
+	if f.List {
+		return "list of " + string(f.Type)
+	}
+	return string(f.Type)
 }
 
 func BuiltinNames() ([]string, error) {
