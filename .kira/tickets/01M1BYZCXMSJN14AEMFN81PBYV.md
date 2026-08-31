@@ -4,7 +4,7 @@ number: KIRA-119
 aliases: []
 type: ticket
 title: "kira resolve writes the item file before checking it is the conflicted path"
-state: IN_PROGRESS
+state: REVIEW
 priority: P2
 labels: []
 epic: null
