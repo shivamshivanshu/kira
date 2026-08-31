@@ -4,7 +4,7 @@ number: KIRA-110
 aliases: []
 type: ticket
 title: "Full-editor edit silently destroys comments appended during the editor session"
-state: REVIEW
+state: DONE
 priority: P1
 labels: []
 epic: null
