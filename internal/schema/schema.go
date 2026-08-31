@@ -208,8 +208,7 @@ func (g *generator) register(t reflect.Type) string {
 }
 
 func (g *generator) addFields(t reflect.Type, props map[string]any, required *[]string) {
-	for i := range t.NumField() {
-		f := t.Field(i)
+	for f := range t.Fields() {
 		if !f.IsExported() {
 			continue
 		}
