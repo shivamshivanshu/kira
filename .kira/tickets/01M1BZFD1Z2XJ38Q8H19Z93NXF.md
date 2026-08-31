@@ -4,7 +4,7 @@ number: KIRA-147
 aliases: []
 type: ticket
 title: "webui: reject a bridge selection value that starts with a dash"
-state: IN_PROGRESS
+state: REVIEW
 priority: P3
 labels: []
 epic: null
