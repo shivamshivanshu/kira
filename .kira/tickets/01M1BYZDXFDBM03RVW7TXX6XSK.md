@@ -4,7 +4,7 @@ number: KIRA-121
 aliases: []
 type: ticket
 title: "resolve --interactive silently no-ops on arbitrated extra fields"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
