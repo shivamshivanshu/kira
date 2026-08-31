@@ -57,3 +57,29 @@ func TestWriteItemRawLeavesNoTempOnSuccess(t *testing.T) {
 		t.Fatalf("want exactly %s.md, got %v", ulid, names)
 	}
 }
+
+func TestWriteItemRawRejectsNonULIDID(t *testing.T) {
+	t.Parallel()
+	root := writeStore(t, nil)
+	s := storage.New(root)
+
+	escapes := []string{
+		"../../../ESCAPED",
+		"../sibling",
+		"nested/child",
+		"not-a-ulid",
+		"",
+	}
+	for _, ulid := range escapes {
+		t.Run(ulid, func(t *testing.T) {
+			if _, err := s.WriteItemRaw(ulid, "body"); err == nil {
+				t.Fatalf("WriteItemRaw(%q) must be refused", ulid)
+			}
+		})
+	}
+
+	outside := filepath.Join(filepath.Dir(root), "ESCAPED.md")
+	if _, err := os.Stat(outside); !os.IsNotExist(err) {
+		t.Fatalf("a refused write must not create %s", outside)
+	}
+}
