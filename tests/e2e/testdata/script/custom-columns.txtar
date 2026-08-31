@@ -1,0 +1,58 @@
+# Schema-declared custom frontmatter fields render as list columns via
+# ui.list.columns; unknown names still warn and drop at render time.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'Alpha' --no-edit
+exec kira create ticket --title 'Beta' --no-edit
+
+# schema representation.list_columns stays inert: the builtin ticket schema
+# declares its own list_columns, yet defaults render unchanged.
+exec kira list --no-color
+stdout 'NUMBER\s+STATE\s+TYPE\s+PRIORITY\s+TITLE'
+exec kira list --type ticket --no-color
+stdout 'NUMBER\s+STATE\s+TYPE\s+PRIORITY\s+TITLE'
+
+cp ticket-schema.json .kira/schema/ticket.json
+exec kira edit KIRA-1 --field severity=HIGH --field watchers=alice,bob
+cp columns-config.yaml .kira/config.yaml
+
+# a set extra renders its value, a list extra comma-joins, an absent one is -.
+exec kira list --no-color
+stdout 'NUMBER\s+TITLE\s+SEVERITY\s+WATCHERS'
+stdout 'KIRA-1\s+Alpha\s+HIGH\s+alice,bob'
+stdout 'KIRA-2\s+Beta\s+-\s+-'
+
+# a genuinely unknown column warns on stderr and is dropped from the table.
+cp typo-config.yaml .kira/config.yaml
+exec kira list --no-color
+stderr 'ui.list.columns: unknown column "severty"; ignored'
+! stdout 'SEVERTY'
+stdout 'NUMBER\s+TITLE'
+
+-- ticket-schema.json --
+{
+  "name": "ticket",
+  "fields": [
+    { "name": "severity", "type": "string", "placement": "frontmatter" },
+    { "name": "watchers", "type": "string", "list": true, "placement": "frontmatter" }
+  ]
+}
+-- columns-config.yaml --
+version: 1
+project:
+  key: KIRA
+ui:
+  list:
+    columns: [number, title, severity, watchers]
+-- typo-config.yaml --
+version: 1
+project:
+  key: KIRA
+ui:
+  list:
+    columns: [number, title, severty]
