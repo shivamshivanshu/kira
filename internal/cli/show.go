@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/ptr"
@@ -96,7 +97,13 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 	}
 	line("created", r.Created)
 	line("updated", r.Updated)
-	if strings.TrimSpace(r.Body) != "" {
-		_, _ = fmt.Fprintf(w, "\n%s", r.Body)
+	if desc := codec.Description(r.Body); strings.TrimSpace(desc) != "" {
+		_, _ = fmt.Fprintf(w, "\n%s\n", desc)
+	}
+	if len(r.Comments) > 0 {
+		_, _ = fmt.Fprintf(w, "\nComments\n")
+		for _, c := range r.Comments {
+			_, _ = fmt.Fprintf(w, "%s  %s\n%s\n", c.Author, c.Ts, strings.TrimRight(c.Text, "\n"))
+		}
 	}
 }
