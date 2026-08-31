@@ -4,13 +4,13 @@ number: KIRA-106
 aliases: []
 type: ticket
 title: "TestSeedProducesItems flakes on TempDir cleanup: .git directory not empty"
-state: IN_PROGRESS
+state: REVIEW
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T10:04:05+02:00
-updated: 2026-08-31T12:30:04+02:00
+updated: 2026-08-31T12:30:05+02:00
 ---
 
 ## Description
