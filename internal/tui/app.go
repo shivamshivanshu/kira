@@ -173,6 +173,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.request(refreshCmd(m.store, m.cfg, m.bar.filter))
 	case boardMovedMsg:
+		if msg.res != nil {
+			m.pending = append(m.pending, refreshCmd(m.store, m.cfg, m.bar.filter))
+		}
 		cmd := m.drain()
 		if bs, ok := m.boardScreen(); ok {
 			bs.applyMove(&m, msg)
