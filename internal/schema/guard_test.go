@@ -118,8 +118,7 @@ func collectNamedStringTypes(t reflect.Type, seen, out map[reflect.Type]bool) {
 	case reflect.Map:
 		collectNamedStringTypes(t.Elem(), seen, out)
 	case reflect.Struct:
-		for i := range t.NumField() {
-			f := t.Field(i)
+		for f := range t.Fields() {
 			name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
 			if !f.IsExported() || name == "-" {
 				continue
