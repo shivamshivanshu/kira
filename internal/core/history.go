@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/index"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
@@ -41,6 +42,11 @@ func (s *Store) cachedStateEvents(ulid, fileHead string) (events []stateTransiti
 	if err != nil {
 		return nil, false, err
 	}
+	return stateTransitions(all), committed, nil
+}
+
+func stateTransitions(all []datamodel.Event) []stateTransition {
+	var events []stateTransition
 	for _, e := range all {
 		if e.Field != datamodel.KeyState {
 			continue
@@ -52,7 +58,7 @@ func (s *Store) cachedStateEvents(ulid, fileHead string) (events []stateTransiti
 		events = append(events, stateTransition{ts: ts, from: e.Old, to: e.New})
 	}
 	slices.Reverse(events)
-	return events, committed, nil
+	return events
 }
 
 type metricItem struct {
@@ -68,12 +74,22 @@ type metricItem struct {
 	reopens  int
 }
 
-func (s *Store) itemMetrics(cfg *datamodel.Config, it *datamodel.Item, fileHead string) (metricItem, error) {
-	evs, committed, err := s.cachedStateEvents(it.ID, fileHead)
-	if err != nil {
-		return metricItem{}, err
+// itemsMetrics derives metrics for a whole item set, reading every item's
+// cached events through a single index open rather than one per item.
+func (s *Store) itemsMetrics(cfg *datamodel.Config, items []*datamodel.Item, heads map[string]string) ([]metricItem, error) {
+	ids := make([]string, len(items))
+	for i, it := range items {
+		ids[i] = it.ID
 	}
-	return metricsFrom(cfg, it, evs, committed), nil
+	byItem, err := index.EventsByItem(s.fs(), ids, heads, s.deriveEvents)
+	if err != nil {
+		return nil, err
+	}
+	mis := make([]metricItem, len(items))
+	for i, it := range items {
+		mis[i] = metricsFrom(cfg, it, stateTransitions(byItem[it.ID]), heads[it.ID] != "")
+	}
+	return mis, nil
 }
 
 func metricsFrom(cfg *datamodel.Config, it *datamodel.Item, evs []stateTransition, committed bool) metricItem {
