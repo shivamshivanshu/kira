@@ -4,7 +4,7 @@ number: KIRA-114
 aliases: []
 type: ticket
 title: "kira discover ignores --non-interactive; :discover from the TUI command bar hijacks or hangs the UI"
-state: REVIEW
+state: DONE
 priority: P1
 labels: []
 epic: null
