@@ -4,13 +4,13 @@ number: KIRA-131
 aliases: []
 type: ticket
 title: "BoardMove and Reconcile bypass the mutation pipeline with no marker saying so"
-state: TODO
+state: IN_PROGRESS
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:08:48+02:00
-updated: 2026-08-31T15:08:48+02:00
+updated: 2026-08-31T16:12:17+02:00
 ---
 
 ## Description
