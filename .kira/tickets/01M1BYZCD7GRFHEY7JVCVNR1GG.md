@@ -4,7 +4,7 @@ number: KIRA-118
 aliases: []
 type: ticket
 title: "TUI board screen performs store IO inside View(), against its own DONE ticket"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
