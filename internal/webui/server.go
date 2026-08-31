@@ -87,8 +87,7 @@ func (s *server) dashboardPage(r *http.Request) (pageData, error) {
 }
 
 func errorStatus(err error) int {
-	var e *errx.Error
-	if errors.As(err, &e) {
+	if e, ok := errors.AsType[*errx.Error](err); ok {
 		switch e.Code {
 		case errx.ExitConflict:
 			return http.StatusConflict
@@ -100,8 +99,7 @@ func errorStatus(err error) int {
 }
 
 func userError(err error) string {
-	var e *errx.Error
-	if errors.As(err, &e) && e.Hint != "" {
+	if e, ok := errors.AsType[*errx.Error](err); ok && e.Hint != "" {
 		return err.Error() + "\n" + e.Hint
 	}
 	return err.Error()
