@@ -227,11 +227,54 @@ func TestUpdatedIsMax(t *testing.T) {
 
 func TestImmutableFieldsFromOurs(t *testing.T) {
 	t.Parallel()
-	ours := base(func(it *datamodel.Item) { it.Number = "KIRA-1" })
-	theirs := base(func(it *datamodel.Item) { it.Number = "KIRA-9" })
+	ours := base(nil)
+	theirs := base(func(it *datamodel.Item) {
+		it.ID = "01J8X8Q7RZTN5Y3VXW2A9K4E99"
+		it.Created = "2027-01-01T00:00:00Z"
+	})
 	got := merge.Merge(base(nil), ours, theirs, merge.Theirs, conflictMerger).Item
-	if got.Number != "KIRA-1" || got.ID != ours.ID || got.Type != ours.Type || got.Created != ours.Created {
-		t.Fatalf("immutable/number not taken from ours: %+v", got)
+	if got.ID != ours.ID || got.Type != ours.Type || got.Created != ours.Created {
+		t.Fatalf("immutable fields not taken from ours: %+v", got)
+	}
+}
+
+func TestNumberRemoteBoardMoveSurvivesMerge(t *testing.T) {
+	t.Parallel()
+	b := base(func(it *datamodel.Item) { it.Number = "DX-7" })
+	ours := base(func(it *datamodel.Item) { it.Number = "DX-7"; it.Title = "Edited locally" })
+	theirs := base(func(it *datamodel.Item) { it.Number = "CORE-3"; it.Aliases = []string{"DX-7"} })
+	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
+	if got.Number != "CORE-3" || got.Title != "Edited locally" {
+		t.Fatalf("number = %q title = %q, want one-sided renumber CORE-3 with local title", got.Number, got.Title)
+	}
+	if !equalStrings(got.Aliases, []string{"DX-7"}) {
+		t.Fatalf("aliases = %v, want [DX-7] and never the item's own number", got.Aliases)
+	}
+	rev := merge.Merge(b, theirs, ours, merge.Ours, conflictMerger).Item
+	if rev.Number != "CORE-3" || rev.Title != "Edited locally" || !equalStrings(rev.Aliases, []string{"DX-7"}) {
+		t.Fatalf("mirror direction: number = %q title = %q aliases = %v, want CORE-3 / local title / [DX-7]", rev.Number, rev.Title, rev.Aliases)
+	}
+}
+
+func TestNumberBothRenumberedLaterUpdatedWins(t *testing.T) {
+	t.Parallel()
+	b := base(func(it *datamodel.Item) { it.Number = "DX-7" })
+	ours := base(func(it *datamodel.Item) {
+		it.Number = "CORE-3"
+		it.Aliases = []string{"DX-7"}
+		it.Updated = "2026-02-01T00:00:00Z"
+	})
+	theirs := base(func(it *datamodel.Item) {
+		it.Number = "CLI-2"
+		it.Aliases = []string{"DX-7"}
+		it.Updated = "2026-02-02T00:00:00Z"
+	})
+	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
+	if got.Number != "CLI-2" {
+		t.Fatalf("number = %q, want CLI-2 (theirs updated later)", got.Number)
+	}
+	if !equalStrings(got.Aliases, []string{"DX-7"}) {
+		t.Fatalf("aliases = %v, want [DX-7]", got.Aliases)
 	}
 }
 
