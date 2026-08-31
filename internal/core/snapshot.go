@@ -19,7 +19,7 @@ func (s *Store) Snapshot(cfg *datamodel.Config) (*Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	ld.matches = make(map[ListOpts][]*datamodel.Item)
+	ld.matches = make(map[string][]*datamodel.Item)
 	return &Snapshot{store: s, data: ld, query: s.queryOptions(ld)}, nil
 }
 

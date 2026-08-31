@@ -32,6 +32,9 @@ func newTUICmd(g *globalFlags) *cobra.Command {
 }
 
 func runTUI(cmd *cobra.Command, g *globalFlags, injectPanic, auto bool) error {
+	if g.json {
+		return errx.User("tui: --json is not supported").WithHint("the tui is interactive; script against `kira list --json` or `kira board --json` instead")
+	}
 	if g.nonInteractive && !auto {
 		return errx.User("cannot launch the tui in non-interactive mode")
 	}

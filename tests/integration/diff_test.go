@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -154,5 +155,30 @@ func TestDiffDefaultIsMyChangesVsIncoming(t *testing.T) {
 	}
 	if len(incoming.Items) != 0 {
 		t.Fatalf("incoming items = %+v, want none (%s has nothing new vs merge-base)", incoming.Items, mainBranch)
+	}
+}
+
+func TestChangesSinceAcceptsDatesLikeDiff(t *testing.T) {
+	t.Parallel()
+	root := initGitRepo(t)
+	initStore(t, root)
+	s, _ := core.Discover(root)
+	cfg, _ := s.Config()
+	if _, err := s.Create(cfg, core.CreateOpts{Type: datamodel.TypeTicket, Title: "Dated", NoEdit: true}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	date := time.Now().AddDate(0, 0, 1).Format(time.DateOnly)
+
+	diffRes, err := s.Diff("", date, false)
+	if err != nil {
+		t.Fatalf("Diff --since %s: %v", date, err)
+	}
+	changesRes, err := s.Changes(date)
+	if err != nil {
+		t.Fatalf("Changes --since %s: %v", date, err)
+	}
+	if changesRes.Since != diffRes.From {
+		t.Errorf("Changes resolved --since %s to %s, Diff to %s; both must use the same resolver",
+			date, changesRes.Since, diffRes.From)
 	}
 }

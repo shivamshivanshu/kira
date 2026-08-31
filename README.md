@@ -34,14 +34,15 @@ capture under the active ticket), `edit` (editor or `--field`, bulk), `move`
 (workflow transitions, bulk), `assign`, `label create/list/add/rm`, `link`
 (epic parent, blocked-by, typed links), `comment`, `show`.
 
-**Views & organization** — `list` (filterable, saved `--filter` queries),
+**Views & organization** — `list` (native filter flags, generic `--field
+key=value` equality filters, `--query` expressions, saved `--filter` queries),
 `tree`, `board` (kanban, WIP limits), `find` (ripgrep-backed full-text search),
 `discover` (fzf picker), `now` (active ticket), `stats` (completion, cycle/lead
 time, throughput), `log` (field history + linked commits), `blame` (per-field
 provenance), `diff`/`changes` (vs. a git ref).
 
 **Sprints & boards** — `sprint create/list/activate/close` (with `--move-to`
-spillover), multi-board support (`board create/rename/archive/move/list`,
+spillover), multi-board support (`board create/rename/archive/unarchive/move/list`,
 renumbering keeps the old number as an alias).
 
 **Git integration** — `init`, `hooks install/uninstall/status/run` (pre-commit,

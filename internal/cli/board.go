@@ -69,7 +69,7 @@ func newBoardCmd(g *globalFlags) *cobra.Command {
 	f.StringVar(&filter, "filter", "", "apply a named saved query from config filters")
 	f.StringVar(&query, "query", "", "filter by a query expression (ANDed with the flags)")
 	f.BoolVar(&plain, "plain", false, "force the static table instead of launching the interactive board")
-	f.StringVar(&at, "at", "", "render the board as of a git ref (static, read-only)")
+	f.StringVar(&at, "at", "", "render the board at a git ref or date (YYYY-MM-DD), anchored on HEAD (static, read-only)")
 	cmd.AddCommand(newBoardCreateCmd(g), newBoardListCmd(g), newBoardMoveCmd(g), newBoardRenameCmd(g), newBoardArchiveCmd(g), newBoardUnarchiveCmd(g))
 	return cmd
 }
