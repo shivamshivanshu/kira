@@ -101,9 +101,9 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 		_, _ = fmt.Fprintf(w, "\n%s\n", desc)
 	}
 	if len(r.Comments) > 0 {
-		_, _ = fmt.Fprintf(w, "\nComments\n")
+		_, _ = fmt.Fprintf(w, "\n%s\n", showfmt.CommentsHeader)
 		for _, c := range r.Comments {
-			_, _ = fmt.Fprintf(w, "%s  %s\n%s\n", c.Author, c.Ts, strings.TrimRight(c.Text, "\n"))
+			_, _ = fmt.Fprintf(w, "%s\n%s\n", showfmt.CommentByline(c.Author, c.Ts), showfmt.CommentBody(c.Text))
 		}
 	}
 }
