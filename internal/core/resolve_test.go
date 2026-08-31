@@ -52,6 +52,13 @@ func TestResolveSkipsFilenameIDMismatchInsteadOfMisreportingResolved(t *testing.
 	mismatched := eventTicket()
 	mismatched.ID = "01HZZ0TEST0000000000000099"
 	mismatched.Number = "KIRA-9"
+	victim := eventTicket()
+	victim.ID = mismatched.ID
+	victim.Number = "KIRA-99"
+	victim.Title = "victim at the canonical path for the mismatched id"
+	if _, err := s.fs().WriteItem(victim); err != nil {
+		t.Fatal(err)
+	}
 	wrongPath := filepath.Join(s.root, ".kira", "tickets", "01HZZ0TEST0000000000000000.md")
 	writeAndCommit := func(state, date string) {
 		mismatched.State = state
@@ -79,6 +86,11 @@ func TestResolveSkipsFilenameIDMismatchInsteadOfMisreportingResolved(t *testing.
 	}
 
 	wantRel := ".kira/tickets/01HZZ0TEST0000000000000000.md"
+	victimPath := s.fs().ItemPath(victim.ID)
+	victimBefore, err := os.ReadFile(victimPath)
+	if err != nil {
+		t.Fatal(err)
+	}
 	res, err := s.Resolve(config.Default(), nil, false)
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
@@ -95,6 +107,13 @@ func TestResolveSkipsFilenameIDMismatchInsteadOfMisreportingResolved(t *testing.
 	}
 	if !slices.Contains(unmerged, wantRel) {
 		t.Errorf("unmerged = %v, want the original conflict still standing at %s", unmerged, wantRel)
+	}
+	victimAfter, err := os.ReadFile(victimPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(victimAfter) != string(victimBefore) {
+		t.Errorf("resolve overwrote the item at the mismatched id's canonical path:\n%s", victimAfter)
 	}
 }
 
