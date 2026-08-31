@@ -23,6 +23,11 @@ func (r Repo) RebaseContinue() error {
 	return err
 }
 
+func (r Repo) RebaseSkip() error {
+	_, err := r.Output("rebase", "--skip")
+	return err
+}
+
 func (r Repo) RebaseAbort() error {
 	_, err := r.Output("rebase", "--abort")
 	return err
