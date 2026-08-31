@@ -6,6 +6,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/merge"
@@ -15,6 +16,13 @@ import (
 func (s *Store) Resolve(cfg *datamodel.Config, refs []string, interactive bool) (*datamodel.ResolveResult, error) {
 	if interactive && !s.prompter.Interactive() {
 		return nil, errx.User("--interactive needs a terminal; rerun without it to auto-resolve").WithHint("run in an interactive shell to pick fields by hand")
+	}
+	var schemas map[string]entityschema.Schema
+	if interactive {
+		var err error
+		if schemas, err = s.Schemas(); err != nil {
+			return nil, err
+		}
 	}
 	release, err := s.fs().Lock()
 	if err != nil {
@@ -71,18 +79,18 @@ func (s *Store) Resolve(cfg *datamodel.Config, refs []string, interactive bool) 
 		if err := s.guardWritable(oursItem, theirsItem); err != nil {
 			return nil, err
 		}
+		if s.fs().RelToRoot(s.fs().ItemPath(oursItem.ID)) != path {
+			result.Skipped = append(result.Skipped, path)
+			continue
+		}
 		res := merge.Merge(parseOrNil(base.Content), oursItem, theirsItem, remote, gitTextMerge)
 		if interactive {
-			s.pickFields(res.Item, oursItem, theirsItem, res.Arbitrated)
+			s.pickFields(res.Item, oursItem, theirsItem, res.Arbitrated, schemas)
 		}
 		clearStaleResolution(cfg, res.Item)
 		rel, err := s.fs().WriteItemRaw(res.Item.ID, codec.Serialize(res.Item))
 		if err != nil {
 			return nil, err
-		}
-		if rel != path {
-			result.Skipped = append(result.Skipped, path)
-			continue
 		}
 		staged = append(staged, rel)
 		result.Resolved = append(result.Resolved, mergeResultOf(res))
@@ -127,18 +135,25 @@ func fieldString(it *datamodel.Item, field string) string {
 	return ""
 }
 
-func (s *Store) pickFields(target, ours, theirs *datamodel.Item, fields []string) {
+// fieldDescriptor covers arbitrated extras, which datamodel.Field does not
+// know about; an undeclared extra falls back to the scalar accessors.
+func fieldDescriptor(schemas map[string]entityschema.Schema, typ, key string) datamodel.FieldDescriptor {
+	if d, ok := datamodel.Field(key); ok {
+		return d
+	}
+	f, _ := entityschema.DeclaredExtra(schemas, typ, key)
+	return datamodel.ExtraField(key, f.List)
+}
+
+func (s *Store) pickFields(target, ours, theirs *datamodel.Item, fields []string, schemas map[string]entityschema.Schema) {
 	for _, f := range fields {
-		prompt := f + ": [o]urs=" + fieldString(ours, f) + " [t]heirs=" + fieldString(theirs, f) + " (default: auto) "
+		d := fieldDescriptor(schemas, target.Type, f)
+		prompt := f + ": [o]urs=" + d.Get(ours) + " [t]heirs=" + d.Get(theirs) + " (default: auto) "
 		switch strings.ToLower(s.prompter.ReadLine(prompt, "")) {
 		case "o":
-			if d, ok := datamodel.Field(f); ok {
-				d.Copy(target, ours)
-			}
+			d.Copy(target, ours)
 		case "t":
-			if d, ok := datamodel.Field(f); ok {
-				d.Copy(target, theirs)
-			}
+			d.Copy(target, theirs)
 		}
 	}
 }
