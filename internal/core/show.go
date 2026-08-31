@@ -49,13 +49,14 @@ func (s *Store) detail(ld *loaded, ref string) (*ItemDetail, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(s.itemPath(ulid))
+	path := s.itemPath(ulid)
+	data, err := os.ReadFile(path)
 	var it *datamodel.Item
 	if err == nil {
 		it, err = codec.Parse(string(data))
 	}
 	if err != nil {
-		return nil, errx.User("reading %s from %s: %v", ref, s.itemPath(ulid), err).
+		return nil, errx.User("reading %s from %s: %v", ref, path, err).
 			WithHint("the file is malformed; repair it in a text editor, then verify with `kira doctor`")
 	}
 	res := showResultOf(ld.cfg, it)
