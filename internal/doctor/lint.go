@@ -6,6 +6,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 )
 
 func Lint(content string) (it *datamodel.Item, parsed bool, findings []Finding) {
@@ -21,13 +22,15 @@ func Lint(content string) (it *datamodel.Item, parsed bool, findings []Finding) 
 		}
 	}
 	if it != nil {
-		findings = append(findings, unknownFindings(it)...)
 		findings = append(findings, commentFindings(it.Body)...)
 	}
 	return it, err == nil, findings
 }
 
-func unknownFindings(it *datamodel.Item) []Finding {
+// unknownFindings warns per unknown key, except one the item's schema declares
+// as a frontmatter extra and parsing captured into Extras — the same set
+// core.guardWritable admits, so doctor warns exactly where writes block.
+func unknownFindings(it *datamodel.Item, schemas map[string]entityschema.Schema) []Finding {
 	out := make([]Finding, 0, len(it.UnknownKeys)+len(it.UnknownLinkTypes))
 	add := func(field, kind string) {
 		out = append(out, Finding{
@@ -38,6 +41,10 @@ func unknownFindings(it *datamodel.Item) []Finding {
 		})
 	}
 	for _, k := range it.UnknownKeys {
+		_, declared := entityschema.DeclaredExtra(schemas, it.Type, k)
+		if _, captured := it.Extras[k]; declared && captured {
+			continue
+		}
 		add(k, "top-level field")
 	}
 	for _, t := range it.UnknownLinkTypes {

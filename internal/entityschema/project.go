@@ -2,8 +2,10 @@ package entityschema
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
@@ -32,8 +34,11 @@ func ProjectItem(schema Schema, it *datamodel.Item) map[string]any {
 
 	sections := bodySections(it.Body)
 	for _, f := range schema.Fields {
-		if f.Placement == PlacementBody && f.Section != "" {
+		switch {
+		case f.Placement == PlacementBody && f.Section != "":
 			values[f.Name] = sections[f.Section]
+		case f.Placement == PlacementFrontmatter:
+			setExtra(values, f, it.Extras[f.Name])
 		}
 	}
 	return values
@@ -43,6 +48,44 @@ func setIfPresent[T any](values map[string]any, name string, v *T) {
 	if v != nil {
 		values[name] = *v
 	}
+}
+
+func setExtra(values map[string]any, f FieldDef, v datamodel.ExtraValue) {
+	switch {
+	case v.List != nil:
+		values[f.Name] = decodeElems(v.List)
+	case v.Scalar != nil:
+		values[f.Name] = typedScalar(f.Type, codec.DecodeScalar(*v.Scalar))
+	}
+}
+
+func decodeElems(elems []string) []string {
+	out := make([]string, len(elems))
+	for i, e := range elems {
+		out[i] = codec.DecodeScalar(e)
+	}
+	return out
+}
+
+// typedScalar converts an extra's decoded text to the Go type checkType
+// expects for f's declared type; unparseable text stays a string so the
+// validator reports the mismatch (date/datetime are string-checked as-is).
+func typedScalar(t FieldType, s string) any {
+	switch t {
+	case FieldInt:
+		if n, err := strconv.ParseInt(s, 10, 64); err == nil {
+			return n
+		}
+	case FieldNumber:
+		if f, err := strconv.ParseFloat(s, 64); err == nil {
+			return f
+		}
+	case FieldBool:
+		if b, err := strconv.ParseBool(s); err == nil {
+			return b
+		}
+	}
+	return s
 }
 
 func bodySections(body string) map[string]string {
@@ -61,6 +104,33 @@ func bodySections(body string) map[string]string {
 		sections[title] = strings.TrimSpace(content)
 	}
 	return sections
+}
+
+// ValidateExtras checks only the frontmatter-extra fields the item type's
+// schema declares — builtin fields keep their existing validators, so nothing
+// is double-reported. Enum vocabularies resolve through ResolveEnums: inline
+// schema enums, overridden by strict config vocab.
+func ValidateExtras(schemas map[string]Schema, cfg *datamodel.Config, it *datamodel.Item) []Violation {
+	schema, ok := schemas[it.Type]
+	if !ok {
+		return nil
+	}
+	extras := extrasOnly(schema)
+	if len(extras.Fields) == 0 {
+		return nil
+	}
+	return Validate(extras, ProjectItem(extras, it), ResolveEnums(schema, ConfigVocab(cfg)), nil)
+}
+
+func extrasOnly(schema Schema) Schema {
+	out := schema
+	out.Fields = nil
+	for _, f := range schema.Fields {
+		if f.Placement == PlacementFrontmatter {
+			out.Fields = append(out.Fields, f)
+		}
+	}
+	return out
 }
 
 // ConfigVocab mirrors core.validateItem's strict/open policy: a vocab is

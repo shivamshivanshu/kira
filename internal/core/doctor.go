@@ -31,6 +31,10 @@ func (s *Store) DoctorReport(cfg *datamodel.Config) (*doctor.Report, error) {
 }
 
 func (s *Store) ValidateFiles(cfg *datamodel.Config, args []string) (*doctor.Report, error) {
+	schemas, err := s.schemas()
+	if err != nil {
+		return nil, err
+	}
 	storeFiles, err := s.ticketFiles()
 	if err != nil {
 		return nil, err
@@ -54,7 +58,7 @@ func (s *Store) ValidateFiles(cfg *datamodel.Config, args []string) (*doctor.Rep
 		}
 		targets = append(targets, doctor.File{Path: path, Content: content})
 	}
-	return doctor.Validate(cfg, storeFiles, targets), nil
+	return doctor.Validate(cfg, storeFiles, targets, schemas), nil
 }
 
 func (s *Store) isProjectConfig(arg string) bool {

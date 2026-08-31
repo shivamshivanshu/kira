@@ -30,7 +30,7 @@ func (s *Store) BoardMove(cfg *datamodel.Config, ref, targetKey string) (*datamo
 	if err != nil {
 		return nil, err
 	}
-	if err := guardWritable(it); err != nil {
+	if err := s.guardWritable(it); err != nil {
 		return nil, err
 	}
 

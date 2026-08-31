@@ -56,7 +56,7 @@ func Run(cfg *datamodel.Config, files []File, strays []string, env Env, schemas 
 	resolver := resolverFor(cfg, items)
 	var findings []Finding
 	for _, s := range scanned {
-		findings = append(findings, fileFindings(cfg, resolver, s, true)...)
+		findings = append(findings, fileFindings(cfg, resolver, s, true, schemas)...)
 	}
 	findings = append(findings, stampByID(Collisions(items), pathByID)...)
 	findings = append(findings, stampByID(SequentialOutliers(items), pathByID)...)
@@ -84,25 +84,29 @@ func strayFindings(strays []string) []Finding {
 	return out
 }
 
-func Validate(cfg *datamodel.Config, storeFiles, targets []File) *Report {
+func Validate(cfg *datamodel.Config, storeFiles, targets []File, schemas map[string]entityschema.Schema) *Report {
 	targetScan := scan(targets)
 	resolver := resolverFor(cfg, dedupItems(scan(storeFiles), targetScan))
 
 	var findings []Finding
 	for _, s := range targetScan {
-		findings = append(findings, fileFindings(cfg, resolver, s, false)...)
+		findings = append(findings, fileFindings(cfg, resolver, s, false, schemas)...)
 	}
 	orderFindings(findings)
 	return newReport(findings)
 }
 
-func fileFindings(cfg *datamodel.Config, resolver *id.Resolver, s parsedFile, checkIdentity bool) []Finding {
+func fileFindings(cfg *datamodel.Config, resolver *id.Resolver, s parsedFile, checkIdentity bool, schemas map[string]entityschema.Schema) []Finding {
 	findings := stamp(slices.Clone(s.lint), s.path, s.item)
+	if s.item != nil {
+		findings = append(findings, stamp(unknownFindings(s.item, schemas), s.path, s.item)...)
+	}
 	if checkIdentity && s.identified() {
 		findings = append(findings, stamp(identityFindings(s.path, s.item), s.path, s.item)...)
 	}
 	if s.parsed {
 		findings = append(findings, stamp(Check(cfg, resolver, s.item), s.path, s.item)...)
+		findings = append(findings, stamp(extrasFindings(cfg, schemas, s.item), s.path, s.item)...)
 	}
 	return findings
 }

@@ -198,3 +198,51 @@ func TestChangedFieldsExtras(t *testing.T) {
 		})
 	}
 }
+
+func TestExtraFieldScalar(t *testing.T) {
+	d := ExtraField("team", false)
+	it := &Item{}
+
+	if d.Present(it) || d.Get(it) != "-" {
+		t.Fatalf("absent extra: Present=%v Get=%q", d.Present(it), d.Get(it))
+	}
+	if err := d.Set(it, "infra"); err != nil {
+		t.Fatal(err)
+	}
+	if !d.Present(it) || d.Get(it) != "infra" {
+		t.Fatalf("set extra: Present=%v Get=%q", d.Present(it), d.Get(it))
+	}
+	other := &Item{}
+	if !d.Changed(it, other) {
+		t.Fatal("Changed must see set-vs-absent")
+	}
+	d.Copy(other, it)
+	if d.Get(other) != "infra" || d.Changed(it, other) {
+		t.Fatalf("Copy did not carry the value: %q", d.Get(other))
+	}
+	if err := d.Set(it, ""); err != nil {
+		t.Fatal(err)
+	}
+	if d.Present(it) {
+		t.Fatal("empty Set must clear the extra")
+	}
+	d.Copy(other, it)
+	if d.Present(other) {
+		t.Fatal("Copy from an absent source must clear the destination")
+	}
+}
+
+func TestExtraFieldList(t *testing.T) {
+	d := ExtraField("watchers", true)
+	it := &Item{}
+
+	if err := d.Set(it, "a, b"); err != nil {
+		t.Fatal(err)
+	}
+	if !d.Present(it) || d.Get(it) != "[a, b]" {
+		t.Fatalf("list extra: Present=%v Get=%q", d.Present(it), d.Get(it))
+	}
+	if !slices.Equal(it.Extras["watchers"].List, []string{"a", "b"}) {
+		t.Fatalf("stored list = %v", it.Extras["watchers"].List)
+	}
+}
