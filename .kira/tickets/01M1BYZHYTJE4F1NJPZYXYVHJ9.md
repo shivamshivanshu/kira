@@ -4,7 +4,7 @@ number: KIRA-129
 aliases: []
 type: ticket
 title: "Tree screen shows stale state after a board move when auto-refresh is off"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
