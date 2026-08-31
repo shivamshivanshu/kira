@@ -20,8 +20,7 @@ func TestQueryErrorAdaptsQueryError(t *testing.T) {
 	if ce.Hint == "" {
 		t.Error("expected a hint")
 	}
-	var qerr *query.Error
-	if !errors.As(err, &qerr) {
+	if _, ok := errors.AsType[*query.Error](err); !ok {
 		t.Error("the wrapped error chain must still reach the original *query.Error")
 	}
 }

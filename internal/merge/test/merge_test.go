@@ -1,13 +1,13 @@
 package merge_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/merge"
-	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 func base(mut func(*datamodel.Item)) *datamodel.Item {
@@ -74,8 +74,8 @@ func TestScalarTieBreakGoesToRemote(t *testing.T) {
 func TestPointerScalarNilBaseLWW(t *testing.T) {
 	t.Parallel()
 	b := base(nil)
-	ours := base(func(it *datamodel.Item) { it.Owner = ptr.To("alice"); it.Updated = "2026-02-02T00:00:00Z" })
-	theirs := base(func(it *datamodel.Item) { it.Owner = ptr.To("bob"); it.Updated = "2026-02-01T00:00:00Z" })
+	ours := base(func(it *datamodel.Item) { it.Owner = new("alice"); it.Updated = "2026-02-02T00:00:00Z" })
+	theirs := base(func(it *datamodel.Item) { it.Owner = new("bob"); it.Updated = "2026-02-01T00:00:00Z" })
 	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
 	if got.Owner == nil || *got.Owner != "alice" {
 		t.Fatalf("owner = %v, want alice", got.Owner)
@@ -260,13 +260,13 @@ func TestDeterministicAcrossRuns(t *testing.T) {
 func TestArbitratedReportsOnlyBothSidesDivergedFromBase(t *testing.T) {
 	t.Parallel()
 	b := base(nil)
-	ours := base(func(it *datamodel.Item) { it.State = "REVIEW"; it.Owner = ptr.To("alice") })
+	ours := base(func(it *datamodel.Item) { it.State = "REVIEW"; it.Owner = new("alice") })
 	theirs := base(func(it *datamodel.Item) { it.State = "DONE"; it.Title = "other" })
 	res := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger)
-	if !contains(res.Arbitrated, "state") {
+	if !slices.Contains(res.Arbitrated, "state") {
 		t.Fatalf("arbitrated = %v, want state (both sides diverged from base)", res.Arbitrated)
 	}
-	if contains(res.Arbitrated, "owner") || contains(res.Arbitrated, "title") {
+	if slices.Contains(res.Arbitrated, "owner") || slices.Contains(res.Arbitrated, "title") {
 		t.Fatalf("arbitrated = %v, must exclude one-side-only changes (owner, title)", res.Arbitrated)
 	}
 }
@@ -281,13 +281,4 @@ func equalStrings(a, b []string) bool {
 		}
 	}
 	return true
-}
-
-func contains(xs []string, x string) bool {
-	for _, v := range xs {
-		if v == x {
-			return true
-		}
-	}
-	return false
 }

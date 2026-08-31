@@ -28,8 +28,7 @@ func unknownFilterErr(cfg *datamodel.Config, name string) error {
 }
 
 func queryError(err error) error {
-	var qerr *query.Error
-	if !errors.As(err, &qerr) {
+	if _, ok := errors.AsType[*query.Error](err); !ok {
 		return err
 	}
 	return errx.User("%w", err).WithHint("check the query expression syntax")

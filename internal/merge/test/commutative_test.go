@@ -8,7 +8,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/merge"
-	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 func swapSide(s merge.Side) merge.Side {
@@ -25,7 +24,7 @@ func pickPtr(r *rand.Rand, pool []string) *string {
 	if i == len(pool) {
 		return nil
 	}
-	return ptr.To(pool[i])
+	return new(pool[i])
 }
 
 func pickSubset(r *rand.Rand, pool []string) []string {
@@ -103,7 +102,7 @@ func canonItem(it *datamodel.Item) *datamodel.Item {
 func TestMergeCommutativeUnderSideSwap(t *testing.T) {
 	t.Parallel()
 	r := rand.New(rand.NewSource(20260714))
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		b := base(nil)
 		a, c := randSide(r), randSide(r)
 		remote := merge.Ours

@@ -90,7 +90,7 @@ func TestEmitListLongListStaysSingleLine(t *testing.T) {
 	out := codec.Serialize(it)
 
 	var line string
-	for _, l := range strings.Split(out, "\n") {
+	for l := range strings.SplitSeq(out, "\n") {
 		if strings.HasPrefix(l, "labels: ") {
 			line = l
 			break
@@ -133,7 +133,7 @@ func TestEmitScalarMatchesYAMLReference(t *testing.T) {
 	)
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-,:[]{}#'\" ."
 	r := rand.New(rand.NewSource(7))
-	for i := 0; i < 5000; i++ {
+	for range 5000 {
 		n := 1 + r.Intn(8)
 		b := make([]byte, n)
 		for j := range b {
@@ -162,8 +162,7 @@ func TestEmitScalarMatchesYAMLReference(t *testing.T) {
 func TestParseDuplicateKeyReported(t *testing.T) {
 	src := strings.Replace(readExample(t), "state: IN_PROGRESS\n", "state: IN_PROGRESS\nstate: DONE\n", 1)
 	_, err := codec.Parse(src)
-	var pe *datamodel.ParseError
-	if !errors.As(err, &pe) {
+	if _, ok := errors.AsType[*datamodel.ParseError](err); !ok {
 		t.Fatalf("want *datamodel.ParseError, got %v", err)
 	}
 	if !strings.Contains(err.Error(), `field "state": duplicate key`) {
@@ -185,8 +184,7 @@ func TestParseNonMappingFrontmatter(t *testing.T) {
 
 func TestParseEmptyFrontmatter(t *testing.T) {
 	it, err := codec.Parse("---\n---\nbody\n")
-	var pe *datamodel.ParseError
-	if !errors.As(err, &pe) {
+	if _, ok := errors.AsType[*datamodel.ParseError](err); !ok {
 		t.Fatalf("empty frontmatter must yield missing-field errors, got %v", err)
 	}
 	if strings.Contains(err.Error(), "fence") {

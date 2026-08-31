@@ -18,8 +18,6 @@ const (
 	ulidC = "01HCCCCCCCCCCCCCCCCCCCCCCC"
 )
 
-func strp(s string) *string { return &s }
-
 func builtinSchemas(t *testing.T) map[string]entityschema.Schema {
 	t.Helper()
 	schemas, err := entityschema.Load("")
@@ -203,8 +201,8 @@ func TestCheckUnknownStateAndSprintAndDue(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
 	it.State = "NOPE"
-	it.Sprint = strp("2099-S1")
-	it.Due = strp("not-a-date")
+	it.Sprint = new("2099-S1")
+	it.Due = new("not-a-date")
 	findings := doctor.Check(config.Default(), resolver(it), it)
 	cl := classes(findings)
 	if cl[doctor.ClassState] != doctor.SeverityError {
@@ -236,7 +234,7 @@ func TestCheckVocabStrictVsWarn(t *testing.T) {
 func TestCheckEnumVocabFollowsStrict(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
-	it.Priority = strp("P9")
+	it.Priority = new("P9")
 
 	lenient := config.Default()
 	lenient.Labels.Strict = false
@@ -254,7 +252,7 @@ func TestCheckEnumVocabFollowsStrict(t *testing.T) {
 func TestCheckDanglingAndSelfRef(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
-	it.Epic = strp(ulidB)
+	it.Epic = new(ulidB)
 	it.BlockedBy = []string{ulidA}
 	findings := doctor.Check(config.Default(), resolver(it), it)
 	var dangling, selfRef bool
@@ -392,7 +390,7 @@ func TestCollisionsAliasAlias(t *testing.T) {
 func TestCheckEmptyRankIsSchemaError(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
-	it.Rank = strp("")
+	it.Rank = new("")
 	findings := doctor.Check(config.Default(), resolver(it), it)
 	for _, f := range findings {
 		if f.Class == doctor.ClassSchema && f.Field == datamodel.KeyRank && f.Severity == doctor.SeverityError {
@@ -405,7 +403,7 @@ func TestCheckEmptyRankIsSchemaError(t *testing.T) {
 func TestWrongTypeRefSkipsMissingTarget(t *testing.T) {
 	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
-	child.Epic = strp(ulidC)
+	child.Epic = new(ulidC)
 	items := []*datamodel.Item{child}
 	if f := doctor.WrongTypeRefs(items, resolver(items...), builtinSchemas(t)); len(f) != 0 {
 		t.Fatalf("a missing/unresolved target must not raise a wrong-type finding, got %+v", f)
@@ -450,8 +448,8 @@ func TestEpicCycle(t *testing.T) {
 	t.Parallel()
 	a := valid(ulidA, "KIRA-1")
 	b := valid(ulidB, "KIRA-2")
-	a.Epic = strp(ulidB)
-	b.Epic = strp(ulidA)
+	a.Epic = new(ulidB)
+	b.Epic = new(ulidA)
 	items := []*datamodel.Item{a, b}
 	findings := doctor.EpicCycles(items, resolver(items...))
 	if len(findings) != 2 {
@@ -468,7 +466,7 @@ func TestEpicChainAcyclic(t *testing.T) {
 	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
 	parent := valid(ulidB, "KIRA-2")
-	child.Epic = strp(ulidB)
+	child.Epic = new(ulidB)
 	items := []*datamodel.Item{child, parent}
 	if f := doctor.EpicCycles(items, resolver(items...)); len(f) != 0 {
 		t.Fatalf("expected no cycle in a linear chain, got %+v", f)
@@ -479,7 +477,7 @@ func TestNonEpicParentDetected(t *testing.T) {
 	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
 	parent := valid(ulidB, "KIRA-2")
-	child.Epic = strp(ulidB)
+	child.Epic = new(ulidB)
 	items := []*datamodel.Item{child, parent}
 	f := doctor.WrongTypeRefs(items, resolver(items...), builtinSchemas(t))
 	if len(f) != 1 || f[0].Class != doctor.ClassEpicKind || f[0].ItemID != ulidA {
@@ -515,7 +513,7 @@ func TestCorrectlyTypedRefsAccepted(t *testing.T) {
 	epic.Type = datamodel.TypeEpic
 	epic.State = "PLANNED"
 	a.BlockedBy = []string{ulidB}
-	a.Epic = strp(ulidC)
+	a.Epic = new(ulidC)
 	items := []*datamodel.Item{a, b, epic}
 	if f := doctor.WrongTypeRefs(items, resolver(items...), builtinSchemas(t)); len(f) != 0 {
 		t.Fatalf("correctly typed refs must not be reported, got %+v", f)
@@ -526,9 +524,9 @@ func TestOwnerAndSprintValuesAreNotItemRefs(t *testing.T) {
 	t.Parallel()
 	other := valid(ulidB, "KIRA-2")
 	it := valid(ulidA, "KIRA-1")
-	it.Owner = strp(ulidB)
-	it.Reporter = strp("KIRA-2")
-	it.Sprint = strp(ulidB)
+	it.Owner = new(ulidB)
+	it.Reporter = new("KIRA-2")
+	it.Sprint = new(ulidB)
 	items := []*datamodel.Item{it, other}
 	if f := doctor.WrongTypeRefs(items, resolver(items...), builtinSchemas(t)); len(f) != 0 {
 		t.Fatalf("source-backed ref fields must not be checked against items, got %+v", f)
@@ -540,7 +538,7 @@ func TestEpicParentAccepted(t *testing.T) {
 	child := valid(ulidA, "KIRA-1")
 	parent := valid(ulidB, "KIRA-2")
 	parent.Type = datamodel.TypeEpic
-	child.Epic = strp(ulidB)
+	child.Epic = new(ulidB)
 	items := []*datamodel.Item{child, parent}
 	if f := doctor.WrongTypeRefs(items, resolver(items...), builtinSchemas(t)); len(f) != 0 {
 		t.Fatalf("an epic parent must be accepted, got %+v", f)
@@ -704,7 +702,7 @@ func TestValidateScopesToTargets(t *testing.T) {
 func TestCheckStaleResolutionWarns(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
-	it.Resolution = strp("done")
+	it.Resolution = new("done")
 	findings := doctor.Check(config.Default(), resolver(it), it)
 	if classes(findings)[doctor.ClassState] != doctor.SeverityWarning {
 		t.Fatalf("expected a stale-resolution warning on a non-done state, got %+v", findings)
@@ -723,7 +721,7 @@ func TestCheckDoneStateWithNilResolutionWarns(t *testing.T) {
 	if classes(findings)[doctor.ClassState] != doctor.SeverityWarning {
 		t.Fatalf("expected a missing-resolution warning on a done state with nil resolution, got %+v", findings)
 	}
-	it.Resolution = strp("dropped")
+	it.Resolution = new("dropped")
 	if f := doctor.Check(config.Default(), resolver(it), it); hasClass(f, doctor.ClassState) {
 		t.Fatalf("resolution set on a done state must be clean, got %+v", f)
 	}

@@ -12,8 +12,7 @@ import (
 func Lint(content string) (it *datamodel.Item, parsed bool, findings []Finding) {
 	it, err := codec.Parse(content)
 	if err != nil {
-		var pe *datamodel.ParseError
-		if errors.As(err, &pe) {
+		if pe, ok := errors.AsType[*datamodel.ParseError](err); ok {
 			for _, e := range pe.Errs {
 				findings = append(findings, Finding{Class: ClassSchema, Severity: SeverityError, Message: e.Error()})
 			}

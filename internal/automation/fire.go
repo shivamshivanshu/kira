@@ -120,7 +120,7 @@ func hookName(h datamodel.AutomationHook) string {
 }
 
 func emitPrefixed(w io.Writer, name string, out []byte) {
-	for _, line := range strings.Split(strings.TrimRight(string(out), "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.TrimRight(string(out), "\n"), "\n") {
 		if line == "" {
 			continue
 		}

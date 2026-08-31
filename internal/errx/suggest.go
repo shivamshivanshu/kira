@@ -4,10 +4,7 @@ import "strings"
 
 func Nearest(input string, candidates []string) string {
 	needle := []rune(strings.ToLower(input))
-	threshold := len(needle) / 3
-	if threshold < 1 {
-		threshold = 1
-	}
+	threshold := max(len(needle)/3, 1)
 	best := ""
 	bestDist := threshold + 1
 	for _, c := range candidates {

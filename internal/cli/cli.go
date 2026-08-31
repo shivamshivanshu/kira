@@ -35,8 +35,7 @@ func Main() int {
 func renderError(w io.Writer, err error, jsonMode bool) int {
 	code := errx.ExitUser
 	hint := ""
-	var ce *errx.Error
-	if errors.As(err, &ce) {
+	if ce, ok := errors.AsType[*errx.Error](err); ok {
 		code, hint = ce.Code, ce.Hint
 	}
 	var crash *tui.CrashError

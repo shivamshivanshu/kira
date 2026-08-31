@@ -40,7 +40,7 @@ func maybe(r *rand.Rand) *string {
 func randList(r *rand.Rand) []string {
 	n := r.Intn(4)
 	out := make([]string, 0, n)
-	for i := 0; i < n; i++ {
+	for range n {
 		out = append(out, pick(r))
 	}
 	return out
@@ -121,7 +121,7 @@ func randItem(r *rand.Rand) *datamodel.Item {
 
 func TestRoundTripProperty(t *testing.T) {
 	r := rand.New(rand.NewSource(1))
-	for i := 0; i < 2000; i++ {
+	for i := range 2000 {
 		want := randItem(r)
 		out := codec.Serialize(want)
 		got, err := codec.Parse(out)

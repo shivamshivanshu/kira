@@ -48,7 +48,7 @@ func ParseComments(body string) []datamodel.Comment {
 func LintComments(body string) []string {
 	var out []string
 	open := false
-	for _, line := range strings.Split(body, "\n") {
+	for line := range strings.SplitSeq(body, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if trimmed != line && (strings.HasPrefix(trimmed, "<!-- kira:comment") || trimmed == commentClose) {
 			out = append(out, "whitespace-padded comment marker is ignored by the parser")

@@ -320,7 +320,7 @@ func TestAddBoardPreservesUnrelatedLines(t *testing.T) {
 	imp := implicitKIRA
 	out := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)
 
-	for _, line := range strings.Split(boardBaseConfig, "\n") {
+	for line := range strings.SplitSeq(boardBaseConfig, "\n") {
 		if strings.HasPrefix(line, "version:") {
 			continue
 		}

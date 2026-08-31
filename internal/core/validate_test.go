@@ -19,13 +19,13 @@ func TestValidateGraph(t *testing.T) {
 	}
 
 	t.Run("epic parent allowed", func(t *testing.T) {
-		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Epic: ptr.To("E")}
+		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Epic: new("E")}
 		if errs := validateGraph(child, []*datamodel.Item{epic, child}); len(errs) != 0 {
 			t.Fatalf("epic parent must be allowed: %v", errs)
 		}
 	})
 	t.Run("non-epic parent rejected", func(t *testing.T) {
-		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Epic: ptr.To("T")}
+		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Epic: new("T")}
 		errs := validateGraph(child, []*datamodel.Item{ticket, child})
 		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "not an epic") {
 			t.Fatalf("non-epic parent must be rejected, got %v", errs)
@@ -86,36 +86,36 @@ func TestValidateItemVocabAndFields(t *testing.T) {
 	}{
 		{"owner-known-strict", func(c *datamodel.Config) {
 			c.People = datamodel.People{Known: []datamodel.Person{{Name: "shivam"}}, Strict: true}
-		}, func(it *datamodel.Item) { it.Owner = ptr.To("shivam") }, false, false, false},
-		{"owner-unknown-strict", func(c *datamodel.Config) { c.People.Strict = true }, func(it *datamodel.Item) { it.Owner = ptr.To("mallory") }, false, true, false},
-		{"owner-unknown-strict-force", func(c *datamodel.Config) { c.People.Strict = true }, func(it *datamodel.Item) { it.Owner = ptr.To("mallory") }, true, false, true},
-		{"owner-unknown-lenient", nil, func(it *datamodel.Item) { it.Owner = ptr.To("mallory") }, false, false, true},
+		}, func(it *datamodel.Item) { it.Owner = new("shivam") }, false, false, false},
+		{"owner-unknown-strict", func(c *datamodel.Config) { c.People.Strict = true }, func(it *datamodel.Item) { it.Owner = new("mallory") }, false, true, false},
+		{"owner-unknown-strict-force", func(c *datamodel.Config) { c.People.Strict = true }, func(it *datamodel.Item) { it.Owner = new("mallory") }, true, false, true},
+		{"owner-unknown-lenient", nil, func(it *datamodel.Item) { it.Owner = new("mallory") }, false, false, true},
 		{"owner-known-lenient", func(c *datamodel.Config) {
 			c.People.Known = []datamodel.Person{{Name: "alice"}}
-		}, func(it *datamodel.Item) { it.Owner = ptr.To("alice") }, false, false, false},
-		{"subtype-known", nil, func(it *datamodel.Item) { it.Subtype = ptr.To("bug") }, false, false, false},
-		{"subtype-unknown-lenient", nil, func(it *datamodel.Item) { it.Subtype = ptr.To("saga") }, false, false, true},
+		}, func(it *datamodel.Item) { it.Owner = new("alice") }, false, false, false},
+		{"subtype-known", nil, func(it *datamodel.Item) { it.Subtype = new("bug") }, false, false, false},
+		{"subtype-unknown-lenient", nil, func(it *datamodel.Item) { it.Subtype = new("saga") }, false, false, true},
 		{"subtype-unknown-strict", func(c *datamodel.Config) { c.Labels.Strict = true },
-			func(it *datamodel.Item) { it.Subtype = ptr.To("saga") }, false, true, false},
+			func(it *datamodel.Item) { it.Subtype = new("saga") }, false, true, false},
 		{"subtype-freeform-when-empty", func(c *datamodel.Config) { c.Subtypes = datamodel.EnumVocab{} },
-			func(it *datamodel.Item) { it.Subtype = ptr.To("saga") }, false, false, false},
-		{"priority-unknown-lenient", nil, func(it *datamodel.Item) { it.Priority = ptr.To("P9") }, false, false, true},
+			func(it *datamodel.Item) { it.Subtype = new("saga") }, false, false, false},
+		{"priority-unknown-lenient", nil, func(it *datamodel.Item) { it.Priority = new("P9") }, false, false, true},
 		{"priority-unknown-strict", func(c *datamodel.Config) { c.Labels.Strict = true },
-			func(it *datamodel.Item) { it.Priority = ptr.To("P9") }, false, true, false},
-		{"subtype-per-vocab-strict-without-labels-strict", func(c *datamodel.Config) { c.Subtypes.Strict = ptr.To(true) },
-			func(it *datamodel.Item) { it.Subtype = ptr.To("saga") }, false, true, false},
-		{"priority-per-vocab-lenient-overrides-labels-strict", func(c *datamodel.Config) { c.Labels.Strict = true; c.Priorities.Strict = ptr.To(false) },
-			func(it *datamodel.Item) { it.Priority = ptr.To("P9") }, false, false, true},
-		{"resolution-known", nil, func(it *datamodel.Item) { it.Resolution = ptr.To("dropped") }, false, false, false},
-		{"resolution-unknown-lenient", nil, func(it *datamodel.Item) { it.Resolution = ptr.To("meh") }, false, false, true},
-		{"rank-empty", nil, func(it *datamodel.Item) { it.Rank = ptr.To("") }, false, true, false},
-		{"rank-freeform", nil, func(it *datamodel.Item) { it.Rank = ptr.To("0|zzz:") }, false, false, false},
+			func(it *datamodel.Item) { it.Priority = new("P9") }, false, true, false},
+		{"subtype-per-vocab-strict-without-labels-strict", func(c *datamodel.Config) { c.Subtypes.Strict = new(true) },
+			func(it *datamodel.Item) { it.Subtype = new("saga") }, false, true, false},
+		{"priority-per-vocab-lenient-overrides-labels-strict", func(c *datamodel.Config) { c.Labels.Strict = true; c.Priorities.Strict = new(false) },
+			func(it *datamodel.Item) { it.Priority = new("P9") }, false, false, true},
+		{"resolution-known", nil, func(it *datamodel.Item) { it.Resolution = new("dropped") }, false, false, false},
+		{"resolution-unknown-lenient", nil, func(it *datamodel.Item) { it.Resolution = new("meh") }, false, false, true},
+		{"rank-empty", nil, func(it *datamodel.Item) { it.Rank = new("") }, false, true, false},
+		{"rank-freeform", nil, func(it *datamodel.Item) { it.Rank = new("0|zzz:") }, false, false, false},
 		{"sprint-known", func(c *datamodel.Config) {
 			c.Sprints = []datamodel.Sprint{{Key: "2026-S14", Name: "Sprint 14", Start: "2026-07-13", End: "2026-07-26"}}
-		}, func(it *datamodel.Item) { it.Sprint = ptr.To("2026-S14") }, false, false, false},
-		{"sprint-unknown", nil, func(it *datamodel.Item) { it.Sprint = ptr.To("2099-S1") }, false, true, false},
-		{"due-valid", nil, func(it *datamodel.Item) { it.Due = ptr.To("2026-07-20") }, false, false, false},
-		{"due-invalid", nil, func(it *datamodel.Item) { it.Due = ptr.To("someday") }, false, true, false},
+		}, func(it *datamodel.Item) { it.Sprint = new("2026-S14") }, false, false, false},
+		{"sprint-unknown", nil, func(it *datamodel.Item) { it.Sprint = new("2099-S1") }, false, true, false},
+		{"due-valid", nil, func(it *datamodel.Item) { it.Due = new("2026-07-20") }, false, false, false},
+		{"due-invalid", nil, func(it *datamodel.Item) { it.Due = new("someday") }, false, true, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -157,8 +157,8 @@ func TestFieldPresentCoversMutableFields(t *testing.T) {
 
 func TestValidateResolutionState(t *testing.T) {
 	cfg := config.Default()
-	stale := &datamodel.Item{Type: datamodel.TypeTicket, State: "TODO", Resolution: ptr.To("done")}
-	done := &datamodel.Item{Type: datamodel.TypeTicket, State: "WONT_DO", Resolution: ptr.To("dropped")}
+	stale := &datamodel.Item{Type: datamodel.TypeTicket, State: "TODO", Resolution: new("done")}
+	done := &datamodel.Item{Type: datamodel.TypeTicket, State: "WONT_DO", Resolution: new("dropped")}
 
 	if errs := validateResolutionState(cfg, stale, stale); len(errs) != 0 {
 		t.Errorf("untouched stale item must be grandfathered, got %v", errs)
@@ -172,7 +172,7 @@ func TestValidateResolutionState(t *testing.T) {
 		t.Errorf("newly created bad shape must be rejected, got %v", errs)
 	}
 	reEdit := *stale
-	reEdit.Resolution = ptr.To("duplicate")
+	reEdit.Resolution = new("duplicate")
 	errs := validateResolutionState(cfg, stale, &reEdit)
 	if len(errs) != 1 || !strings.Contains(errs[0].Error(), "done-category") {
 		t.Fatalf("re-writing resolution on a non-done state must be rejected, got %v", errs)

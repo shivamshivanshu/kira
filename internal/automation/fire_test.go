@@ -43,7 +43,7 @@ func TestFiringSetTrustPartition(t *testing.T) {
 
 func nonEmptyLines(s string) []string {
 	var lines []string
-	for _, l := range strings.Split(s, "\n") {
+	for l := range strings.SplitSeq(s, "\n") {
 		if l != "" {
 			lines = append(lines, l)
 		}
@@ -137,8 +137,8 @@ func TestEnvMirrorAgreesWithPayloadItem(t *testing.T) {
 	get := func(key string) string {
 		prefix := key + "="
 		for _, kv := range env {
-			if strings.HasPrefix(kv, prefix) {
-				return strings.TrimPrefix(kv, prefix)
+			if after, ok := strings.CutPrefix(kv, prefix); ok {
+				return after
 			}
 		}
 		t.Fatalf("env var %s not set", key)
