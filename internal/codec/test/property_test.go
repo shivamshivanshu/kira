@@ -88,9 +88,21 @@ func randLinks(r *rand.Rand) map[string][]string {
 	return links
 }
 
+// id is the item's filename, so the parser enforces ULID shape; generate
+// conforming ids rather than arbitrary tokens.
+func randULID(r *rand.Rand) string {
+	const crockford = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+	b := make([]byte, 26)
+	b[0] = "01234567"[r.Intn(8)]
+	for i := 1; i < len(b); i++ {
+		b[i] = crockford[r.Intn(len(crockford))]
+	}
+	return string(b)
+}
+
 func randItem(r *rand.Rand) *datamodel.Item {
 	it := &datamodel.Item{
-		ID:         pickNonEmpty(r),
+		ID:         randULID(r),
 		Number:     fmt.Sprintf("KIRA-%d", r.Intn(1000)),
 		Aliases:    randList(r),
 		Type:       []string{"ticket", "epic"}[r.Intn(2)],

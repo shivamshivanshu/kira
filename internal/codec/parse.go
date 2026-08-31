@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/id"
 )
 
 const (
@@ -42,7 +43,7 @@ func Parse(content string) (*datamodel.Item, error) {
 		add("field %q: duplicate key", key)
 	}
 
-	it.ID = reqScalar(nodes, datamodel.KeyID, add)
+	it.ID = reqULID(nodes, datamodel.KeyID, add)
 	it.Number = reqScalar(nodes, datamodel.KeyNumber, add)
 	it.Aliases = reqList(nodes, datamodel.KeyAliases, add)
 	it.Type = reqScalar(nodes, datamodel.KeyType, add)
@@ -168,6 +169,20 @@ func reqScalar(nodes map[string]*yaml.Node, key string, add addFunc) string {
 		return ""
 	}
 	return n.Value
+}
+
+// reqULID rejects a non-ULID id outright: the id becomes the item's filename,
+// so a value carrying path separators would write outside the store.
+func reqULID(nodes map[string]*yaml.Node, key string, add addFunc) string {
+	v := reqScalar(nodes, key, add)
+	if v == "" {
+		return ""
+	}
+	if _, err := id.ParseULIDLoose(v); err != nil {
+		add("field %q: %q is not a valid ULID", key, v)
+		return ""
+	}
+	return v
 }
 
 func optScalar(nodes map[string]*yaml.Node, key string, add addFunc) *string {
