@@ -17,41 +17,56 @@ func LogEntries(store *storage.FS, itemID, fileHead string, derive func() ([]dat
 		return nil, nil, err
 	}
 	defer func() { _ = idx.Close() }()
-	if fileHead == "" {
-		events, derr := derive()
-		if derr != nil {
-			return nil, nil, derr
-		}
-		links, err := idx.CommitLinks(itemID)
-		if err != nil {
-			return nil, nil, err
-		}
-		return events, links, nil
-	}
-	head, err := idx.eventHead(itemID)
+	events, err := idx.cachedEvents(itemID, fileHead, derive)
 	if err != nil {
 		return nil, nil, err
-	}
-	var events []datamodel.Event
-	if head != fileHead {
-		events, err = derive()
-		if err != nil {
-			return nil, nil, err
-		}
-		if err := idx.replaceEvents(itemID, fileHead, events); err != nil {
-			return nil, nil, err
-		}
-	} else {
-		events, err = idx.events(itemID)
-		if err != nil {
-			return nil, nil, err
-		}
 	}
 	links, err := idx.CommitLinks(itemID)
 	if err != nil {
 		return nil, nil, err
 	}
 	return events, links, nil
+}
+
+// EventsByItem returns the cached events for every id in one pass, opening the
+// index once for the whole batch rather than once per item; derive recomputes
+// an item whose cache is missing or stale for its heads entry.
+func EventsByItem(store *storage.FS, ids []string, heads map[string]string, derive func(string) ([]datamodel.Event, error)) (map[string][]datamodel.Event, error) {
+	idx, err := Open(store.CacheDir())
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = idx.Close() }()
+	out := make(map[string][]datamodel.Event, len(ids))
+	for _, id := range ids {
+		events, err := idx.cachedEvents(id, heads[id], func() ([]datamodel.Event, error) { return derive(id) })
+		if err != nil {
+			return nil, err
+		}
+		out[id] = events
+	}
+	return out, nil
+}
+
+func (i *Index) cachedEvents(itemID, fileHead string, derive func() ([]datamodel.Event, error)) ([]datamodel.Event, error) {
+	if fileHead == "" {
+		return derive()
+	}
+	head, err := i.eventHead(itemID)
+	if err != nil {
+		return nil, err
+	}
+	if head == fileHead {
+		return i.events(itemID)
+	}
+	events, err := derive()
+	if err != nil {
+		return nil, err
+	}
+	if err := i.replaceEvents(itemID, fileHead, events); err != nil {
+		return nil, err
+	}
+	return events, nil
 }
 
 func (i *Index) eventHead(itemID string) (string, error) {

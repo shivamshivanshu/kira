@@ -37,7 +37,7 @@ func TestItemMetricsIgnoresForgedBodyState(t *testing.T) {
 	it.Body = "\n## Notes\n\nstate: DONE\n"
 	commitState(t, s, it, "TODO", "2026-01-06")
 
-	di, err := s.itemMetrics(cfg, it, s.fileHead(it.ID))
+	di, err := itemMetric(s, cfg, it)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -12,6 +12,16 @@ import (
 	"github.com/shivamshivanshu/kira/internal/testutil"
 )
 
+// itemMetric is the single-item form of itemsMetrics, for tests that assert on
+// one ticket's derived metrics.
+func itemMetric(s *Store, cfg *datamodel.Config, it *datamodel.Item) (metricItem, error) {
+	mis, err := s.itemsMetrics(cfg, []*datamodel.Item{it}, map[string]string{it.ID: s.fileHead(it.ID)})
+	if err != nil {
+		return metricItem{}, err
+	}
+	return mis[0], nil
+}
+
 func eventRepo(t *testing.T) *Store {
 	t.Helper()
 	dir := testutil.InitGitRepo(t)
@@ -55,7 +65,7 @@ func TestItemMetricsCleanHistory(t *testing.T) {
 	commitState(t, s, it, "REVIEW", "2026-01-07")
 	commitState(t, s, it, "DONE", "2026-01-08")
 
-	di, err := s.itemMetrics(cfg, it, s.fileHead(it.ID))
+	di, err := itemMetric(s, cfg, it)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +84,7 @@ func TestItemMetricsSquashedHistoryDegrades(t *testing.T) {
 	commitState(t, s, it, "TODO", "2026-01-05")
 	commitState(t, s, it, "DONE", "2026-01-08")
 
-	di, err := s.itemMetrics(cfg, it, s.fileHead(it.ID))
+	di, err := itemMetric(s, cfg, it)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +102,7 @@ func TestItemMetricsCreatedAlreadyDone(t *testing.T) {
 	it := eventTicket()
 	commitState(t, s, it, "DONE", "2026-01-05")
 
-	di, err := s.itemMetrics(cfg, it, s.fileHead(it.ID))
+	di, err := itemMetric(s, cfg, it)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +124,7 @@ func TestItemMetricsUncommittedFallsBackToUpdated(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	di, err := s.itemMetrics(cfg, it, s.fileHead(it.ID))
+	di, err := itemMetric(s, cfg, it)
 	if err != nil {
 		t.Fatal(err)
 	}

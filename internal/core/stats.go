@@ -30,14 +30,9 @@ func (s *Store) Stats(cfg *datamodel.Config, opts StatsOpts) (*datamodel.StatsRe
 		return nil, err
 	}
 
-	heads := s.fileHeads()
-	mis := make([]metricItem, 0, len(set))
-	for _, it := range set {
-		mi, err := s.itemMetrics(cfg, it, heads[it.ID])
-		if err != nil {
-			return nil, err
-		}
-		mis = append(mis, mi)
+	mis, err := s.itemsMetrics(cfg, set, s.fileHeads())
+	if err != nil {
+		return nil, err
 	}
 
 	return &datamodel.StatsResult{
