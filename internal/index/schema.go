@@ -8,6 +8,10 @@ import (
 
 const schemaVersion = 7
 
+// One extras row per (item_id, name, ord): a scalar is a single
+// extraKindScalar row, a list is one extraKindList row per element in ord
+// order -- except an empty list, which is a single NULL-valued row so a
+// present-but-empty key stays distinct from an absent one.
 const (
 	extraKindScalar = "scalar"
 	extraKindList   = "list"

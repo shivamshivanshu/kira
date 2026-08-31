@@ -44,7 +44,7 @@ func Plan(snap id.Snapshot) []Renumber {
 	}
 	var plan []Renumber
 	for _, number := range collided {
-		holders := append([]string(nil), liveHolders[number]...)
+		holders := slices.Clone(liveHolders[number])
 		slices.Sort(holders)
 		key := snap.Key
 		if num, err := id.ParseNumber(number); err == nil {

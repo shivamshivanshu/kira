@@ -77,6 +77,9 @@ func keyUnion[V any](ms ...map[string]V) map[string]bool {
 	return keys
 }
 
+// listEqual keeps nil distinct from empty: for extras those are different
+// values (key absent vs key present and empty), so setMerge's identity fast
+// paths must not collapse them the way a bare slices.Equal would.
 func listEqual(a, b []string) bool {
 	return (a == nil) == (b == nil) && slices.Equal(a, b)
 }
