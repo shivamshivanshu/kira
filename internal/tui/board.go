@@ -132,9 +132,13 @@ func renderCard(t theme.Theme, ic iconSet, cat datamodel.Category, it datamodel.
 	if datamodel.IsOverdue(it.Due, it.Category, timex.Now()) {
 		segments = append(segments, rowSegment{ic.overdueGlyph(), t.Heat.Hot}, rowSegment{" ", t.Text})
 	}
-	segments = append(segments, rowSegment{it.Number, t.Dim}, rowSegment{"  ", t.Text})
-	title := fitWidth(it.Title, w-2-segmentsWidth(segments))
-	segments = append(segments, rowSegment{title, t.Text})
+	segments = append(segments, rowSegment{it.Number, t.Dim})
+	// the gap belongs to the title: emitting it when the title does not fit
+	// pushes the card one column past w and truncation would show it as an
+	// ellipsis where the old renderer padded.
+	if title := fitWidth(it.Title, w-4-segmentsWidth(segments)); title != "" {
+		segments = append(segments, rowSegment{"  ", t.Text}, rowSegment{title, t.Text})
+	}
 	lead := " "
 	if selected {
 		lead = t.Accent.Render("▌")
