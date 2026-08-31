@@ -10,6 +10,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
@@ -40,10 +41,7 @@ func LoadWithUser(root string, env func(string) string, warn io.Writer) (*datamo
 	if err := parseInto(cfg, data, ignore); err != nil {
 		return nil, err
 	}
-	alreadyWarned := make(map[string]bool, len(tier.uiWarnings))
-	for _, w := range tier.uiWarnings {
-		alreadyWarned[w] = true
-	}
+	alreadyWarned := setx.ToSet(tier.uiWarnings)
 	for _, w := range UIWarnings(cfg.UI) {
 		if !alreadyWarned[w] {
 			ignore("%s", w)

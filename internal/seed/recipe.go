@@ -6,6 +6,7 @@ import (
 	"math/rand"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 type Spec struct {
@@ -119,14 +120,12 @@ func pickComments(rng *rand.Rand) []string {
 }
 
 func dedup(in []string) []string {
-	seen := make(map[string]struct{}, len(in))
+	dedup := setx.NewDeduper[string]()
 	out := make([]string, 0, len(in))
 	for _, s := range in {
-		if _, ok := seen[s]; ok {
-			continue
+		if dedup.Add(s) {
+			out = append(out, s)
 		}
-		seen[s] = struct{}{}
-		out = append(out, s)
 	}
 	return out
 }

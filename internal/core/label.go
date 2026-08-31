@@ -9,6 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 func (s *Store) LabelCreate(_ *datamodel.Config, names []string) (*datamodel.LabelCreateResult, error) {
@@ -20,10 +21,7 @@ func (s *Store) LabelCreate(_ *datamodel.Config, names []string) (*datamodel.Lab
 	res := &datamodel.LabelCreateResult{Created: []string{}, AlreadyKnown: []string{}}
 
 	err := s.mutateConfig(func(data []byte, locked *datamodel.Config) (configEdit, error) {
-		known := make(map[string]bool, len(locked.Labels.Known))
-		for _, n := range locked.Labels.Known {
-			known[n] = true
-		}
+		known := setx.ToSet(locked.Labels.Known)
 		var toAdd []string
 		for _, n := range names {
 			if known[n] {
@@ -59,13 +57,11 @@ func (s *Store) LabelList(cfg *datamodel.Config) (*datamodel.LabelListResult, er
 		counts[n] = 0
 	}
 	for _, it := range ld.items {
-		seen := make(map[string]bool, len(it.Labels))
+		dedup := setx.NewDeduper[string]()
 		for _, l := range it.Labels {
-			if seen[l] {
-				continue
+			if dedup.Add(l) {
+				counts[l]++
 			}
-			seen[l] = true
-			counts[l]++
 		}
 	}
 	rows := make([]datamodel.LabelCount, 0, len(counts))

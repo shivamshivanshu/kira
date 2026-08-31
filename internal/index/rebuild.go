@@ -12,6 +12,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
@@ -102,12 +103,11 @@ func (i *Index) refresh(store *storage.FS, absPaths []string, prevSkips map[stri
 	}
 
 	var queue []string
-	queued := map[string]bool{}
+	queued := setx.NewDeduper[string]()
 	for _, abs := range slices.Sorted(slices.Values(absPaths)) {
-		if ulid := storage.ULIDFromPath(abs); ulid == "" || queued[filepath.Base(abs)] {
+		if ulid := storage.ULIDFromPath(abs); ulid == "" || !queued.Add(filepath.Base(abs)) {
 			continue
 		}
-		queued[filepath.Base(abs)] = true
 		queue = append(queue, abs)
 	}
 	for _, abs := range queue {
@@ -117,11 +117,9 @@ func (i *Index) refresh(store *storage.FS, absPaths []string, prevSkips map[stri
 	}
 	enqueuePartners := func(id string) {
 		for _, name := range conflicts[id] {
-			if queued[name] {
-				continue
+			if queued.Add(name) {
+				queue = append(queue, filepath.Join(store.ItemsDir(), name))
 			}
-			queued[name] = true
-			queue = append(queue, filepath.Join(store.ItemsDir(), name))
 		}
 	}
 

@@ -91,7 +91,7 @@ func (s *Store) resolveHere(_ *datamodel.Config, opts *CreateOpts) (string, erro
 	if err != nil {
 		return "", err
 	}
-	active, ok := byULID(items)[ap.Ticket]
+	active, ok := datamodel.IndexByID(items)[ap.Ticket]
 	if !ok {
 		return "", errx.User("active ticket %s resolves to no item", ap.Ticket).WithHint("start one with kira workon <id>")
 	}

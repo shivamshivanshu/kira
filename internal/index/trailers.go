@@ -121,14 +121,13 @@ func (i *Index) collectCloses(root gitx.Repo, opts Options, prev meta, numbers m
 
 func latestCloses(commits []gitx.Commit, numbers map[string]string) (candidates []CloseCandidate, unknown []string) {
 	latest := map[string]string{}
-	unknownSeen := map[string]bool{}
+	unknownDedup := setx.NewDeduper[string]()
 	var order []string
 	for _, c := range commits {
 		for _, value := range c.Closes {
 			ulid, ok := numbers[strings.ToUpper(value)]
 			if !ok {
-				if !unknownSeen[value] {
-					unknownSeen[value] = true
+				if unknownDedup.Add(value) {
 					unknown = append(unknown, value)
 				}
 				continue

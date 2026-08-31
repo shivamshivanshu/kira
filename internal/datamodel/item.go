@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 type Item struct {
@@ -119,13 +120,7 @@ var FrontmatterKeys = []string{
 	KeyCreated, KeyUpdated,
 }
 
-var frontmatterKeySet = func() map[string]bool {
-	m := make(map[string]bool, len(FrontmatterKeys))
-	for _, k := range FrontmatterKeys {
-		m[k] = true
-	}
-	return m
-}()
+var frontmatterKeySet = setx.ToSet(FrontmatterKeys)
 
 func IsFrontmatterKey(k string) bool { return frontmatterKeySet[k] }
 

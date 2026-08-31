@@ -28,7 +28,7 @@ golangci-lint run ./...          # pinned to v2.12.2 in CI — install/verify th
 Dependency order, low to high (each layer only depends on layers above it —
 see `REVIEW.md` for the full bottom-up file list):
 
-- `datamodel` — domain types (items, config, workflow) and JSON result shapes. Zero deps.
+- `datamodel` — domain types (items, config, workflow) and JSON result shapes. Depends only on the setx leaf.
 - `id` — two-tier identity: immutable ULIDs + renumberable `KIRA-n` display numbers.
 - `codec` — parses/serializes items to/from Markdown-with-frontmatter.
 - `storage` — reads/writes item files under `.kira/`, file locking, path resolution.

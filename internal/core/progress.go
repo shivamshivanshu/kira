@@ -7,7 +7,7 @@ import (
 )
 
 func indexByEpic(items []*datamodel.Item) (map[string]*datamodel.Item, map[string][]*datamodel.Item) {
-	byID := byULID(items)
+	byID := datamodel.IndexByID(items)
 	children := map[string][]*datamodel.Item{}
 	for _, it := range items {
 		if it.Epic != nil {
