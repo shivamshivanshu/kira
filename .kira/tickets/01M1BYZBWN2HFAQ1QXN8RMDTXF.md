@@ -4,7 +4,7 @@ number: KIRA-117
 aliases: []
 type: ticket
 title: "Collision detection is case-sensitive while resolution is case-insensitive, leaving unrepairable pairs"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
