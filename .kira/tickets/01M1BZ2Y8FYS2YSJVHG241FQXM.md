@@ -18,3 +18,8 @@ updated: 2026-08-31T15:10:38+02:00
 ## Acceptance criteria
 
 ## Comments
+
+<!-- kira:comment id=01M1BZ2YGZEYM4J6FR9WTQAK50 author=Shivam-Shivanshu ts=2026-08-31T15:10:38+02:00 -->
+From the phase 3c review. core.queryExtras dedupes the extras spec across all loaded schemas first-wins, iterating schemas in sorted order. If ticket.json declares 'severity' as an enum scalar and epic.json declares it as a list, one schema's traits silently win for both types - deterministic, but arbitrary and unexplainable to a user.
+Options: (a) namespace the query field by type; (b) reject conflicting declarations at schema load with a clear error; (c) keep first-wins and document it. The reviewer flagged it as needing a design decision rather than a quiet patch, and I agree.
+<!-- /kira:comment -->
