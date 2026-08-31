@@ -98,7 +98,7 @@ func (s *Store) extrasErrors(cfg *datamodel.Config, it *datamodel.Item) []error 
 		return []error{err}
 	}
 	var errs []error
-	for _, k := range hostileKeys(schemas, it) {
+	for _, k := range blockingUnknownKeys(schemas, it) {
 		errs = append(errs, errx.User("field %q: not a builtin field or schema-declared extra", k).
 			WithHint("remove it, or declare it in the %s entity schema", it.Type))
 	}
