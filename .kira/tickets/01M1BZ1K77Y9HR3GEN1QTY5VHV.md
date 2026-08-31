@@ -18,3 +18,8 @@ updated: 2026-08-31T15:09:54+02:00
 ## Acceptance criteria
 
 ## Comments
+
+<!-- kira:comment id=01M1BZ1KFM45K9546N2C895B3H author=Shivam-Shivanshu ts=2026-08-31T15:09:54+02:00 -->
+From the data contextual DX-1 review. go list shows: datamodel imports errx, ptr, setx and timex, while CLAUDE.md says 'depends only on the setx leaf' (already amended once this session for setx, still wrong for the rest). treeish imports config, while CLAUDE.md lists config many layers above treeish; the real order is config -> query, storage and treeish -> config, with no cycle.
+Fix: correct CLAUDE.md and REVIEW.md to state the actual tiers, or invert treeish's config dependency by injecting a parsed config. The doc fix is the honest minimum - the layering itself is sound.
+<!-- /kira:comment -->
