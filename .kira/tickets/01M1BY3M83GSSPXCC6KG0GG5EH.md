@@ -4,7 +4,7 @@ number: KIRA-108
 aliases: []
 type: ticket
 title: "Automation trust grant is committable: arbitrary code execution on clone"
-state: IN_PROGRESS
+state: REVIEW
 priority: P0
 labels: []
 epic: null
