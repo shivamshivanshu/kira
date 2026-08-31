@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/storage"
@@ -38,7 +39,7 @@ func scan(files []File) []parsedFile {
 	return out
 }
 
-func Run(cfg *datamodel.Config, files []File, strays []string, env Env) *Report {
+func Run(cfg *datamodel.Config, files []File, strays []string, env Env, schemas map[string]entityschema.Schema) *Report {
 	files = slices.Clone(files)
 	slices.SortFunc(files, func(a, b File) int { return strings.Compare(a.Path, b.Path) })
 	scanned := scan(files)
@@ -60,8 +61,9 @@ func Run(cfg *datamodel.Config, files []File, strays []string, env Env) *Report 
 	findings = append(findings, stampByID(Collisions(items), pathByID)...)
 	findings = append(findings, stampByID(SequentialOutliers(items), pathByID)...)
 	findings = append(findings, stampByID(EpicCycles(items, resolver), pathByID)...)
-	findings = append(findings, stampByID(NonEpicParents(items, resolver), pathByID)...)
+	findings = append(findings, stampByID(WrongTypeRefs(items, resolver, schemas), pathByID)...)
 	findings = append(findings, stampByID(RefCycles(items, resolver), pathByID)...)
+	findings = append(findings, StateDrift(cfg, schemas)...)
 	findings = append(findings, strayFindings(strays)...)
 	findings = append(findings, envFindings(env)...)
 
