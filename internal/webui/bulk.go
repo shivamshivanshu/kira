@@ -1,0 +1,130 @@
+package webui
+
+import (
+	"fmt"
+	"net/url"
+	"strings"
+
+	"github.com/shivamshivanshu/kira/internal/core"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
+)
+
+type bulkOutcome struct {
+	Ref, Number, Message, Error string
+}
+
+func (s *server) bulk(cfg *datamodel.Config, f url.Values) ([]bulkOutcome, error) {
+	refs := f["ids"]
+	if len(refs) == 0 || len(refs) > 100 {
+		return nil, errx.User("select between 1 and 100 items")
+	}
+	operation, value := f.Get("operation"), f.Get("value")
+	switch operation {
+	case "move", "assign", "label-add", "label-rm", "board-move", "sprint":
+	default:
+		return nil, errx.User("unknown bulk operation %q", operation)
+	}
+	if value == "" && operation != "assign" && operation != "sprint" {
+		return nil, errx.User("a value is required for %s", operation)
+	}
+	outcomes, err := s.resolveBulk(cfg, refs)
+	if err != nil {
+		return nil, err
+	}
+	if len(outcomes) == 0 {
+		return nil, errx.User("select at least one item")
+	}
+	for i := range outcomes {
+		row := &outcomes[i]
+		if row.Error != "" {
+			continue
+		}
+		message, number, err := s.bulkItem(cfg, operation, row.Ref, value, f.Get("resolution"))
+		if number != "" {
+			row.Number = number
+		}
+		if err != nil {
+			row.Error = userError(err)
+		} else {
+			row.Message = message
+		}
+	}
+	return outcomes, nil
+}
+
+func (s *server) resolveBulk(cfg *datamodel.Config, refs []string) ([]bulkOutcome, error) {
+	batch, err := s.store.BeginBatch(cfg)
+	if err != nil {
+		return nil, err
+	}
+	defer batch.Close()
+	seen := make(map[string]bool, len(refs))
+	outcomes := make([]bulkOutcome, 0, len(refs))
+	for _, ref := range refs {
+		ref = strings.TrimSpace(ref)
+		if ref == "" || seen[ref] {
+			continue
+		}
+		seen[ref] = true
+		it, err := batch.Resolve(ref)
+		if err != nil {
+			outcomes = append(outcomes, bulkOutcome{Ref: ref, Error: userError(err)})
+			continue
+		}
+		if it.ID != ref && seen[it.ID] {
+			continue
+		}
+		seen[it.ID] = true
+		outcomes = append(outcomes, bulkOutcome{Ref: it.ID, Number: it.Number})
+	}
+	return outcomes, nil
+}
+
+func (s *server) bulkItem(cfg *datamodel.Config, operation, ref, value, resolution string) (string, string, error) {
+	switch operation {
+	case "move":
+		res, err := s.store.Move(cfg, ref, value, core.MoveOpts{Resolution: resolution})
+		if err != nil {
+			return "", "", err
+		}
+		return joinMessages("Moved to "+res.To, strings.Join(res.Warnings, "\n")), res.Number, nil
+	case "assign":
+		res, err := s.store.Assign(cfg, ref, value, core.AssignOpts{})
+		return mutationMessage(res, err, "Assigned", "")
+	case "label-add", "label-rm":
+		res, err := s.store.LabelSet(cfg, ref, value, operation == "label-add", false)
+		return mutationMessage(res, err, "Updated labels for", "")
+	case "board-move":
+		res, err := s.store.BoardMove(cfg, ref, value)
+		if err != nil {
+			return "", "", err
+		}
+		return "Moved " + res.From + " to " + res.To, res.To, nil
+	case "sprint":
+		res, err := s.store.Edit(cfg, ref, core.EditOpts{Fields: []core.FieldEdit{{Key: "sprint", Value: value}}})
+		return mutationMessage(res, err, "Updated sprint for", "")
+	default:
+		return "", "", errx.User("unknown bulk operation %q", operation)
+	}
+}
+
+func bulkMessage(outcomes []bulkOutcome) string {
+	failed := 0
+	for _, outcome := range outcomes {
+		if outcome.Error != "" {
+			failed++
+		}
+	}
+	return fmt.Sprintf("Bulk action: %d succeeded, %d failed.", len(outcomes)-failed, failed)
+}
+
+func bulkRetry(f url.Values, outcomes []bulkOutcome) url.Values {
+	retry := url.Values{"operation": {f.Get("operation")}, "value": {f.Get("value")}, "resolution": {f.Get("resolution")}}
+	for _, outcome := range outcomes {
+		if outcome.Error != "" {
+			retry.Add("ids", outcome.Ref)
+		}
+	}
+	return retry
+}

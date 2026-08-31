@@ -1,0 +1,88 @@
+{{define "filters"}}
+<form class="filters" action="/" method="get" aria-label="Filter items">
+  <input type="hidden" name="view" value="{{.View}}">
+  {{if .Selected}}<input type="hidden" name="item" value="{{.Selected}}">{{end}}
+  {{if eq .View "stats"}}
+  <div class="stats-scope-fields">
+    <label>Epic<input name="epic" value="{{.Epic}}" list="epics" placeholder="All epics"></label>
+    <label>Since<input name="since" type="date" value="{{.Since}}"></label>
+    <label>Weeks<input name="weeks" type="number" min="1" max="260" value="{{if .Weeks}}{{.Weeks}}{{else}}8{{end}}"></label>
+  </div>
+  {{else}}
+  <div class="search-field">
+    <span aria-hidden="true">⌕</span>
+    <label for="query" class="sr-only">Kira query</label>
+    <input id="query" name="q" value="{{.Query}}" placeholder="Query work… category = doing ORDER BY updated DESC" aria-describedby="query-syntax" autocomplete="off" spellcheck="false"><kbd>/</kbd>
+  </div>
+  <label class="sr-only" for="filter">Saved filter</label>
+  <select id="filter" name="filter">
+    <option value="">Saved filters</option>
+    {{if .Config}}{{range $name, $query := .Config.Filters}}<option value="{{$name}}" {{if eq $.Filter $name}}selected{{end}}>{{$name}}</option>{{end}}{{end}}
+  </select>
+  <label class="sr-only" for="board-filter">Board</label>
+  <select id="board-filter" name="board">
+    <option value="">All boards</option>
+    {{if .Config}}{{range .Config.EffectiveBoards}}<option value="{{.Key}}" {{if eq $.BoardKey .Key}}selected{{end}}>{{.Key}}</option>{{end}}{{end}}
+  </select>
+  <label class="sr-only" for="type-filter">Item type</label>
+  <select id="type-filter" name="type">
+    {{if ne .View "board"}}<option value="">All types</option>{{end}}
+    {{if .Config}}{{range $name, $workflow := .Config.Workflows}}<option value="{{$name}}" {{if eq $.Type $name}}selected{{end}}>{{$name}}</option>{{end}}{{end}}
+  </select>
+  {{end}}
+  <label class="sr-only" for="sprint-filter">Sprint</label>
+  <select id="sprint-filter" name="sprint">
+    <option value="">All sprints</option>
+    {{range .Sprints}}<option value="{{.Key}}" {{if eq $.Sprint .Key}}selected{{end}}>{{.Name}}{{if .Active}} · active{{end}}</option>{{end}}
+  </select>
+  {{if ne .View "stats"}}
+  <details class="advanced-filters" {{if or .State .Owner .Priority .Label}}open{{end}}>
+    <summary>More filters{{if or .State .Owner .Priority .Label}} <span class="tag">Active</span>{{end}}</summary>
+    <div class="filter-fields">
+      <label for="state-filter">State
+        <select id="state-filter" name="state">
+          <option value="">All states</option>
+          {{range .StateOptions}}<option value="{{.}}" {{if eq $.State .}}selected{{end}}>{{label .}}</option>{{end}}
+        </select>
+      </label>
+      <label for="owner-filter">Owner
+        <select id="owner-filter" name="owner">
+          <option value="">All owners</option>
+          <option value="@me" {{if eq .Owner "@me"}}selected{{end}}>Assigned to me</option>
+          {{range .OwnerOptions}}<option value="{{.}}" {{if eq $.Owner .}}selected{{end}}>{{.}}</option>{{end}}
+        </select>
+      </label>
+      <label for="priority-filter">Priority
+        <select id="priority-filter" name="priority">
+          <option value="">All priorities</option>
+          {{if .Config}}{{range .Config.Priorities.Values}}<option value="{{.}}" {{if eq $.Priority .}}selected{{end}}>{{.}}</option>{{end}}{{end}}
+        </select>
+      </label>
+      <label for="label-filter">Label
+        <select id="label-filter" name="label">
+          <option value="">All labels</option>
+          {{range .LabelOptions}}<option value="{{.}}" {{if eq $.Label .}}selected{{end}}>{{.}}</option>{{end}}
+        </select>
+      </label>
+    </div>
+  </details>
+  <details class="query-help">
+    <summary>Query syntax and examples</summary>
+    <p id="query-syntax">Use Kira's SQL-like query language: <code>AND</code>, <code>OR</code>, <code>NOT</code>, <code>IN</code>, <code>IS EMPTY</code>, and <code>ORDER BY</code>. Dropdowns and saved filters are combined with your query using AND.</p>
+    <div class="query-examples">
+      <button class="button small" type="button" data-query-example="category = doing ORDER BY updated DESC">Recently active</button>
+      <button class="button small" type="button" data-query-example="owner = @me AND category != done">My open work</button>
+      <button class="button small" type="button" data-query-example="blocked = true">Blocked work</button>
+      <button class="button small" type="button" data-query-example="due IS NOT EMPTY ORDER BY due">Upcoming due dates</button>
+    </div>
+    <p class="muted">Quote multi-word values, for example <code>owner = "Ada Lovelace"</code>. A saved filter and query may contain only one ORDER BY clause between them. Examples fill the query; Apply runs it.</p>
+  </details>
+  {{end}}
+  <div class="filter-actions">
+    <button class="button small" type="submit">Apply filters</button>
+    {{if or .Query .Filter .BoardKey .Type .Sprint .Epic .Since .State .Owner .Priority .Label}}
+    <a class="text-button" href="{{.Link "q" "" "filter" "" "board" "" "type" "" "sprint" "" "epic" "" "since" "" "weeks" "" "state" "" "owner" "" "priority" "" "label" ""}}">Clear all</a>
+    {{end}}
+  </div>
+</form>
+{{end}}

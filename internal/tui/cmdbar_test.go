@@ -16,12 +16,72 @@ func typeInto(m *model, s string) {
 	}
 }
 
-func TestTokenizeRespectsQuotes(t *testing.T) {
+func TestCommandBarRespectsQuotesAndEscapes(t *testing.T) {
 	t.Parallel()
-	got := tokenize(`edit KIRA-2 --title "order book merge" 'p3'`)
-	want := []string{"edit", "KIRA-2", "--title", "order book merge", "p3"}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("tokenize = %#v, want %#v", got, want)
+	for _, tc := range []struct {
+		line string
+		want []string
+	}{
+		{`edit KIRA-2 --title "order book merge" 'p3'`, []string{"edit", "KIRA-2", "--title", "order book merge", "p3"}},
+		{`comment . -m "say \"hi\""`, []string{"comment", "KIRA-100", "-m", `say "hi"`}},
+		{`comment . -m note\ `, []string{"comment", "KIRA-100", "-m", "note "}},
+	} {
+		t.Run(tc.line, func(t *testing.T) {
+			m := newTestModel(100, 12, true)
+			var got []string
+			m.bar.run = func(argv []string) (string, error) { got = argv; return "ok", nil }
+			m.bar.open(barCommand, tc.line)
+			cmd, _ := m.barRoute(enter())
+			if cmd == nil {
+				t.Fatalf("command rejected: %s", m.bar.msg)
+			}
+			cmd()
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("argv = %#v, want %#v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCommandBarRejectsMalformedInput(t *testing.T) {
+	t.Parallel()
+	for _, line := range []string{`comment . -m "unfinished`, `edit . --title 'unfinished`, `show .\`} {
+		t.Run(line, func(t *testing.T) {
+			m := newTestModel(100, 12, true)
+			m.bar.run = func([]string) (string, error) {
+				t.Fatal("malformed command must not execute")
+				return "", nil
+			}
+			m.bar.open(barCommand, line)
+			if cmd, _ := m.barRoute(enter()); cmd != nil {
+				cmd()
+				t.Fatal("malformed command returned a command")
+			}
+			if !m.bar.msgErr || !strings.Contains(m.bar.msg, "unfinished quote or escape") {
+				t.Fatalf("missing parse error: %q", m.bar.msg)
+			}
+		})
+	}
+}
+
+func TestCommandBarEmptyInputIsNoop(t *testing.T) {
+	t.Parallel()
+	for _, line := range []string{"", "   "} {
+		t.Run(line, func(t *testing.T) {
+			m := newTestModel(100, 12, true)
+			m.bar.run = func([]string) (string, error) {
+				t.Fatal("empty command must not execute")
+				return "", nil
+			}
+			m.bar.open(barCommand, line)
+			if cmd, _ := m.barRoute(enter()); cmd != nil {
+				cmd()
+				t.Fatal("empty input returned a command")
+			}
+			if m.bar.msgErr || m.bar.msg != "" || m.bar.mode != barClosed {
+				t.Fatalf("empty input was not a no-op: %+v", m.bar)
+			}
+		})
 	}
 }
 

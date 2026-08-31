@@ -7,6 +7,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/warningfmt"
 )
 
 func emitWarningLines(w io.Writer, warns []string) {
@@ -18,27 +19,9 @@ func emitWarningLines(w io.Writer, warns []string) {
 func emitMutationWarnings(w io.Writer, warns []datamodel.Warning) {
 	rendered := make([]string, len(warns))
 	for i, wn := range warns {
-		rendered[i] = renderWarning(wn)
+		rendered[i] = warningfmt.Message(wn)
 	}
 	emitWarningLines(w, rendered)
-}
-
-func renderWarning(w datamodel.Warning) string {
-	switch w.Code {
-	case datamodel.WarnIndexFallback:
-		return fmt.Sprintf("index unavailable (%s), using linear scan", w.Args[0])
-	case datamodel.WarnNoActiveSprint:
-		return "no active sprint set; sprint=active matches nothing (run `kira sprint activate <key>`)"
-	case datamodel.WarnCloseUnknown:
-		return fmt.Sprintf("unknown ticket %s in %s (hint: run `kira config explain` to see the configured close trailer)", w.Args[0], w.Args[1])
-	case datamodel.WarnCloseFailed:
-		return fmt.Sprintf("failed to close %s: %s", w.Args[0], w.Args[1])
-	case datamodel.WarnLiteral:
-		return w.Args[0]
-	case datamodel.WarnOrphanType:
-		return fmt.Sprintf("%s has no workflow for type %q; it is read-only until a workflow is configured", w.Args[0], w.Args[1])
-	}
-	return ""
 }
 
 func emitJSON(w io.Writer, v any) error {
