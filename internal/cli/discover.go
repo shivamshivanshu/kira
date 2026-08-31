@@ -29,6 +29,9 @@ func newDiscoverCmd(g *globalFlags) *cobra.Command {
 		Short: "Interactively pick a ticket or epic (fzf)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if g.nonInteractive {
+				return errx.User("discover is an interactive picker, unavailable in non-interactive mode").WithHint("script against `kira list` or `kira show` instead")
+			}
 			sel := action(act)
 			if sel != actionShow && sel != actionEdit {
 				return errx.User("--action: must be %s or %s, got %q", actionShow, actionEdit, act)
