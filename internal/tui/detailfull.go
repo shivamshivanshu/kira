@@ -10,6 +10,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/showfmt"
 	"github.com/shivamshivanshu/kira/internal/timex"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
@@ -109,9 +110,9 @@ func detailLines(t theme.Theme, ic iconSet, res *datamodel.ShowResult, width int
 	add(wrap(detailMeta(t, ic, res)))
 	add("", wrap(body))
 	if len(res.Comments) > 0 {
-		add("", t.Dim.Render("Comments"))
+		add("", t.Dim.Render(showfmt.CommentsHeader))
 		for _, c := range res.Comments {
-			add(t.Dim.Render(wrap(c.Author+"  "+c.Ts)), wrap(strings.TrimRight(c.Text, "\n")))
+			add(t.Dim.Render(wrap(showfmt.CommentByline(c.Author, c.Ts))), wrap(showfmt.CommentBody(c.Text)))
 		}
 	}
 	if len(res.LinkedCommits) > 0 {
