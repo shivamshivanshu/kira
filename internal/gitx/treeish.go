@@ -13,7 +13,7 @@ import (
 
 // ResolveTreeish resolves ref to the SHA of the commit it points at.
 func (r Repo) ResolveTreeish(ref string) (string, error) {
-	return r.Output("rev-parse", "--verify", "--quiet", ref+"^{commit}")
+	return r.Output("rev-parse", "--verify", "--quiet", "--end-of-options", ref+"^{commit}")
 }
 
 // Date is a date expression accepted by `git rev-list --before`.
@@ -25,7 +25,7 @@ type Ref string
 // ResolveAtDate returns the SHA of the last commit on anchor at or before
 // date.
 func (r Repo) ResolveAtDate(date Date, anchor Ref) (string, error) {
-	sha, err := r.Output("rev-list", "-1", "--before="+string(date), string(anchor))
+	sha, err := r.Output("rev-list", "-1", "--before="+string(date), "--end-of-options", string(anchor))
 	if err != nil {
 		return "", err
 	}

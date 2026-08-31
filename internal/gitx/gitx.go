@@ -79,6 +79,15 @@ func (r Repo) splitLines(args ...string) ([]string, error) {
 	return strings.Split(out, "\n"), nil
 }
 
+// requireNonFlag guards positional args to git subcommands without portable
+// --end-of-options support; no valid branch or remote name starts with "-".
+func requireNonFlag(kind, name string) error {
+	if strings.HasPrefix(name, "-") {
+		return fmt.Errorf("invalid %s %q", kind, name)
+	}
+	return nil
+}
+
 // InsideWorkTree returns an error unless r.Dir is inside a git work tree.
 func (r Repo) InsideWorkTree() error {
 	_, err := r.Output("rev-parse", "--is-inside-work-tree")
@@ -189,7 +198,7 @@ func (r Repo) FileCommitMeta(relPath string) (string, error) {
 // expression.
 func (r Repo) RevListSince(rev, since string) ([]Commit, error) {
 	format := "--format=%H" + nulFmt + "%s" + nulFmt + "%an" + nulFmt + "%cI"
-	out, err := r.Output("rev-list", "--since="+since, format, rev)
+	out, err := r.Output("rev-list", "--since="+since, format, "--end-of-options", rev)
 	if err != nil {
 		return nil, err
 	}

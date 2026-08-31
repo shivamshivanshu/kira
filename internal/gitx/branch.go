@@ -46,11 +46,17 @@ func (r Repo) Branches() ([]string, error) {
 }
 
 func (r Repo) Checkout(branch string) error {
+	if err := requireNonFlag("branch", branch); err != nil {
+		return err
+	}
 	_, err := r.Output("checkout", branch)
 	return err
 }
 
 func (r Repo) CheckoutNew(branch string) error {
+	if err := requireNonFlag("branch", branch); err != nil {
+		return err
+	}
 	_, err := r.Output("checkout", "-b", branch)
 	return err
 }
