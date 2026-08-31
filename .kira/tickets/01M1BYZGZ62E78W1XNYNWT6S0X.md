@@ -4,7 +4,7 @@ number: KIRA-127
 aliases: []
 type: ticket
 title: "kira sync stashes the whole tree though its dirty check is .kira-scoped"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
