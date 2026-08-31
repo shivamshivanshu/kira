@@ -40,6 +40,21 @@ func TestLiveCollisionRenumbersLaterULID(t *testing.T) {
 	}
 }
 
+func TestLiveCollisionDetectedCaseInsensitively(t *testing.T) {
+	t.Parallel()
+	s := snap(
+		id.Item{ULID: "A", Number: "KIRA-5"},
+		id.Item{ULID: "B", Number: "kira-5"},
+	)
+	p := reconcile.Plan(s)
+	if len(p) != 1 {
+		t.Fatalf("expected 1 renumber for a case-insensitive collision, got %v", p)
+	}
+	if p[0].ULID != "B" || p[0].From != "kira-5" || p[0].To != "KIRA-6" {
+		t.Fatalf("wrong renumber: %+v (want B kira-5 -> KIRA-6)", p[0])
+	}
+}
+
 func TestNextFreeSkipsAliasReservedNumbers(t *testing.T) {
 	t.Parallel()
 	s := snap(
