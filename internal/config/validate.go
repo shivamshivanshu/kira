@@ -180,13 +180,12 @@ func validateWorkonSection(w datamodel.Workon) error {
 }
 
 // UIWarnings returns validation warnings for the UI configuration.
+//
+// ui.list.columns is not checked here: schema-declared custom fields are
+// valid columns but resolve only where a store can load schemas, so `kira
+// list` warns about genuinely unknown columns at render time instead.
 func UIWarnings(ui datamodel.UI) []string {
 	var out []string
-	for _, c := range ui.List.Columns {
-		if !slices.Contains(datamodel.ListColumns, c) {
-			out = append(out, fmt.Sprintf("ui.list.columns: unknown column %q", c))
-		}
-	}
 	for _, slot := range slices.Sorted(maps.Keys(ui.Theme)) {
 		switch {
 		case !slices.Contains(datamodel.ThemeSlots, slot):

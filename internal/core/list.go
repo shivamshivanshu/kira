@@ -94,7 +94,7 @@ func (s *Store) queryOptions(cfg *datamodel.Config, resolver *id.Resolver, items
 }
 
 func (s *Store) queryExtras() ([]query.ExtraField, error) {
-	schemas, err := s.schemas()
+	schemas, err := s.Schemas()
 	if err != nil {
 		return nil, err
 	}
