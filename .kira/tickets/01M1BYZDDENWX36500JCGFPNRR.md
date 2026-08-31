@@ -4,7 +4,7 @@ number: KIRA-120
 aliases: []
 type: ticket
 title: "kira init accepts invalid project keys from the prompt and from the derived default"
-state: IN_PROGRESS
+state: REVIEW
 priority: P2
 labels: []
 epic: null
