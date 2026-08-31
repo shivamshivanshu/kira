@@ -4,7 +4,7 @@ number: KIRA-143
 aliases: []
 type: ticket
 title: "DECISION: --field k=v filtering on kira list"
-state: REVIEW
+state: DONE
 priority: P3
 labels: []
 epic: null
