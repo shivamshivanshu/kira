@@ -4,7 +4,7 @@ number: KIRA-123
 aliases: []
 type: ticket
 title: "Board cards wrap instead of truncating in narrow columns, misaligning the board"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
