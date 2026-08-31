@@ -4,7 +4,7 @@ number: KIRA-138
 aliases: []
 type: ticket
 title: "Document the fragile cross-file invariants the blind reviewers had to reverse-engineer"
-state: REVIEW
+state: DONE
 priority: P3
 labels: []
 epic: null
