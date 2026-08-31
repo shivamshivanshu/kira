@@ -28,29 +28,32 @@ golangci-lint run ./...          # pinned to v2.12.2 in CI — install/verify th
 Dependency order, low to high (each layer only depends on layers above it —
 see `REVIEW.md` for the full bottom-up file list):
 
-- `datamodel` — domain types (items, config, workflow) and JSON result shapes. Depends only on the setx leaf.
+- `datamodel` — domain types (items, config, workflow) and JSON result shapes. Depends only on the `errx`/`ptr`/`setx`/`timex` leaves.
 - `id` — two-tier identity: immutable ULIDs + renumberable `KIRA-n` display numbers.
 - `codec` — parses/serializes items to/from Markdown-with-frontmatter.
+- `entityschema` — entity types (ticket/epic/board + user-defined) as JSON schema data: embedded builtins layered under `.kira/schema/*.json`, pure validator.
 - `storage` — reads/writes item files under `.kira/`, file locking, path resolution.
 - `gitx` — git CLI wrapper: commands, staging, branches, trailers, sync.
 - `query` — the `list`/filter expression grammar.
+- `config` — loads/validates/defaults `.kira/config.yaml` (uses `query` and `storage`).
 - `merge` — field-level three-way auto-merge policy for kira item files.
 - `reconcile` — deterministic ID-collision repair plans.
 - `index` — disposable SQLite cache under `.kira/.cache/` (staleness detection, incremental refresh).
 - `treeish` — loads an item set + config from any git tree-ish (for `diff`/`changes`/merge-driver).
 - `hooks` — tracked git-hook shim scripts + their pure logic.
+- `syncx` — report shape, dirty-tree policy, seams for `sync`.
 - `automation` — user-defined observer scripts firing post-commit (distinct from `hooks`, which is git-hook territory).
 - `workon` — pure branch-naming/slug/active-pointer logic.
 - `showfmt` — item-reference string forms shared by TUI/CLI.
+- `warningfmt` — renders `datamodel.Warning` codes as user-facing text shared by CLI/webui.
 - `doctor` — read-only consistency checks (id collisions, dangling refs, schema violations).
-- `syncx` — report shape, dirty-tree policy, seams for `sync`.
 - `core` — service layer: the one implementation of every mutation and read; everything else composes here.
-- `cli` — cobra command tree; every command is a thin argv/flag adapter over `core`.
-- `tui` — terminal UI (tree, board, stats screens); `tui/theme` is the single source of terminal color.
-- `config` — loads/validates/defaults `.kira/config.yaml`.
 - `schema` — generates JSON Schema for `--json` output shapes.
+- `tui` — terminal UI (tree, board, stats screens); `tui/theme` is the single source of terminal color.
+- `webui` — embedded HTTP web dashboard served by `kira server`; mutations go through `core`.
+- `cli` — cobra command tree; every command is a thin argv/flag adapter over `core` (launches `tui`/`webui`).
 - `seed` — deterministic fixture generation (perf harness, tour/vhs demos).
-- Small leaf utilities: `errx` (user-facing errors + suggestions), `ptr`, `rgx`, `fzfx` (fzf picker), `statsfmt`, `termx`, `timex`, `clipx` (OSC 52 clipboard), `editorx`, `testutil` (hermetic git repo test helpers), `setx` (generic dedup/set helpers, zero deps).
+- Small leaf utilities: `errx` (user-facing errors + suggestions), `ptr`, `rgx`, `fzfx` (fzf picker), `statsfmt`, `termx`, `timex`, `clipx` (OSC 52 clipboard), `editorx`, `commandline` (shell-style argv splitting), `testutil` (hermetic git repo test helpers), `setx` (generic dedup/set helpers, zero deps).
 
 `cmd/kira` — the entry point (`os.Exit(cli.Main())`). `schema/kira.json` —
 generated (not hand-edited) output-shape schema. `tests/` — `contract`,

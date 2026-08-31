@@ -1,7 +1,6 @@
 {
   "name": "epic",
   "workflow": "epic",
-  "identity": { "style": "sequential", "prefix": "KIRA" },
   "fields": [
     { "name": "title", "type": "string", "required": true },
     { "name": "state", "type": "state", "required": true, "system": true, "guarded": true,
