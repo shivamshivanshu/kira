@@ -233,7 +233,7 @@ func (s *Store) editField(it *datamodel.Item, key, value string) error {
 }
 
 func (s *Store) editExtraField(it *datamodel.Item, key, value string) error {
-	schemas, err := s.schemas()
+	schemas, err := s.Schemas()
 	if err != nil {
 		return err
 	}
