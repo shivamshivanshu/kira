@@ -559,3 +559,30 @@ func TestBoardCardPlumbsPriorityAndResolution(t *testing.T) {
 		t.Errorf("dropped card must not render the done glyph:\n%s", out)
 	}
 }
+
+func TestBoardCardTruncatesInsteadOfWrapping(t *testing.T) {
+	t.Parallel()
+	card := bItem("a", "CORE-40", "Long enough title", "IN_PROGRESS", "doing")
+	card.Priority = new("P0")
+	res := &datamodel.BoardResult{Type: datamodel.TypeTicket, Columns: []datamodel.BoardColumn{
+		{State: "TODO", Category: "todo"},
+		{State: "IN_PROGRESS", Category: "doing", Count: 1, Items: []datamodel.ListItem{card}},
+		{State: "REVIEW", Category: "doing"},
+		{State: "DONE", Category: "done"},
+		{State: "WONT_DO", Category: "done"},
+	}}
+	ic := iconSet{mode: datamodel.IconText, priorities: []string{"P0", "P1", "P2"}}
+	out := renderBoard(asciiTheme(), ic, res, 80, 3, 1, 0)
+	lines := strings.Split(out, "\n")
+	if len(lines) != 3 {
+		t.Fatalf("a card must render as exactly one line; board of height 3 came out %d lines:\n%s", len(lines), out)
+	}
+	for i, l := range lines {
+		if w := lipgloss.Width(l); w > 80 {
+			t.Fatalf("line %d is %d cells wide, budget 80:\n%s", i, w, out)
+		}
+	}
+	if !strings.Contains(out, "CORE-") {
+		t.Fatalf("truncated card must keep the leading segments visible:\n%s", out)
+	}
+}
