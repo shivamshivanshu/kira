@@ -4,7 +4,7 @@ number: KIRA-109
 aliases: []
 type: ticket
 title: "edit --from-file writes an undeclared frontmatter key and locks the item out of all mutations"
-state: IN_PROGRESS
+state: REVIEW
 priority: P1
 labels: []
 epic: null
