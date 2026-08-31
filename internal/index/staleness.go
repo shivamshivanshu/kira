@@ -75,6 +75,10 @@ func (i *Index) reindex(store *storage.FS, repo gitx.Repo, opts Options, force b
 	if err != nil {
 		return Result{}, err
 	}
+	// Skipping the save is safe rather than merely cheap: actionFresh means
+	// head, dirty hash and skips already match what the last run persisted,
+	// and with the config hash unchanged too, scanTrailers took its early
+	// return and handed prev's watermarks straight back.
 	if needsRebuild {
 		if err := i.saveMeta(meta{
 			ScanConfigHash:     configHash,

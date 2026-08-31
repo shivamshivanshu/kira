@@ -87,6 +87,9 @@ func walkPatch(stream string, fields eventFields, emit func(path string, events 
 	flush()
 }
 
+// Counting fences to find the frontmatter block only works because
+// gitx.logPatch asks git for whole-file context; under a narrower -U a hunk
+// can open mid-frontmatter and every field change in it is dropped silently.
 type fmDiffState struct {
 	fences  int
 	created bool
@@ -263,6 +266,8 @@ func (s *Store) rangeEvents(repo gitx.Repo, sinceSHA, headSHA string, tracked ma
 	return events, nil
 }
 
+// cachedEvents returns events newest-first, the order git log emits them in;
+// callers that read them chronologically must reverse first.
 func (s *Store) cachedEvents(ulid, fileHead string) (events []datamodel.Event, committed bool, err error) {
 	events, _, err = index.LogEntries(s.fs(), ulid, fileHead, func() ([]datamodel.Event, error) {
 		return s.deriveEvents(ulid)

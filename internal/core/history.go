@@ -37,7 +37,7 @@ func (s *Store) fileHeads() map[string]string {
 	return heads
 }
 
-func (s *Store) cachedStateEvents(ulid, fileHead string) (events []stateTransition, committed bool, err error) {
+func (s *Store) cachedStateEvents(ulid, fileHead string) (oldestFirst []stateTransition, committed bool, err error) {
 	all, committed, err := s.cachedEvents(ulid, fileHead)
 	if err != nil {
 		return nil, false, err
@@ -45,7 +45,7 @@ func (s *Store) cachedStateEvents(ulid, fileHead string) (events []stateTransiti
 	return stateTransitions(all), committed, nil
 }
 
-func stateTransitions(all []datamodel.Event) (events []stateTransition) {
+func stateTransitions(all []datamodel.Event) (oldestFirst []stateTransition) {
 	for _, e := range all {
 		if e.Field != datamodel.KeyState {
 			continue
@@ -54,10 +54,10 @@ func stateTransitions(all []datamodel.Event) (events []stateTransition) {
 		if perr != nil {
 			continue
 		}
-		events = append(events, stateTransition{ts: ts, from: e.Old, to: e.New})
+		oldestFirst = append(oldestFirst, stateTransition{ts: ts, from: e.Old, to: e.New})
 	}
-	slices.Reverse(events)
-	return events
+	slices.Reverse(oldestFirst)
+	return oldestFirst
 }
 
 type metricItem struct {

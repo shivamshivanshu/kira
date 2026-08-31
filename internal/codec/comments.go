@@ -102,6 +102,10 @@ func commentBoundary(lines []string) int {
 	return -1
 }
 
+// AppendComment splices c.Body in verbatim, so a body line that is itself a
+// kira comment marker breaks ParseComments on the next read. Nothing here
+// rejects one: callers must screen the body with IsCommentMarker first, as
+// core.validateCommentText does.
 func AppendComment(content string, c datamodel.Comment) string {
 	if content == "" {
 		return formatComment(c) + "\n"
