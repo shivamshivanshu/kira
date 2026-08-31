@@ -93,7 +93,7 @@ func (s *Store) validateAssembled(cfg *datamodel.Config, it *datamodel.Item, res
 }
 
 func (s *Store) extrasErrors(cfg *datamodel.Config, it *datamodel.Item) []error {
-	schemas, err := s.schemas()
+	schemas, err := s.Schemas()
 	if err != nil {
 		return []error{err}
 	}

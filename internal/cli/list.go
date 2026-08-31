@@ -9,6 +9,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/warningfmt"
 )
@@ -32,7 +33,13 @@ func newListCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			renderListResult(cmd.OutOrStdout(), res, cfg.UI.List.Columns)
+			schemas, err := s.Schemas()
+			if err != nil {
+				return err
+			}
+			cols, unknown := resolveColumns(cfg.UI.List.Columns, schemas)
+			warnUnknownColumns(cmd.ErrOrStderr(), unknown)
+			renderListResult(cmd.OutOrStdout(), res, cols)
 			return nil
 		},
 	}
@@ -59,20 +66,19 @@ func emitStderrNotes(w io.Writer, notes []datamodel.Warning) {
 	}
 }
 
-func renderListResult(w io.Writer, res *datamodel.ListResult, columns []string) {
+func renderListResult(w io.Writer, res *datamodel.ListResult, cols []string) {
 	if res.Tree != nil {
-		renderTreeGroups(w, res, columns)
+		renderTreeGroups(w, res, cols)
 		return
 	}
-	renderList(w, res, columns)
+	renderList(w, res, cols)
 }
 
-func renderList(w io.Writer, res *datamodel.ListResult, columns []string) {
+func renderList(w io.Writer, res *datamodel.ListResult, cols []string) {
 	if res.Count == 0 {
 		_, _ = fmt.Fprintln(w, msgNoItems)
 		return
 	}
-	cols := resolveColumns(columns)
 	tw := newTabWriter(w)
 	_, _ = fmt.Fprintln(tw, columnHeader(cols))
 	for _, it := range res.Items {
@@ -81,17 +87,35 @@ func renderList(w io.Writer, res *datamodel.ListResult, columns []string) {
 	_ = tw.Flush()
 }
 
-func resolveColumns(columns []string) []string {
-	out := make([]string, 0, len(columns))
+func resolveColumns(columns []string, schemas map[string]entityschema.Schema) (cols, unknown []string) {
 	for _, c := range columns {
-		if _, ok := listCells[c]; ok {
-			out = append(out, c)
+		if _, ok := listCells[c]; ok || declaredExtraColumn(schemas, c) {
+			cols = append(cols, c)
+			continue
+		}
+		unknown = append(unknown, c)
+	}
+	if len(cols) == 0 {
+		return datamodel.DefaultListColumns, unknown
+	}
+	return cols, unknown
+}
+
+func declaredExtraColumn(schemas map[string]entityschema.Schema, name string) bool {
+	for typ := range schemas {
+		if _, ok := entityschema.DeclaredExtra(schemas, typ, name); ok {
+			return true
 		}
 	}
-	if len(out) == 0 {
-		return datamodel.DefaultListColumns
+	return false
+}
+
+func warnUnknownColumns(w io.Writer, unknown []string) {
+	msgs := make([]string, len(unknown))
+	for i, c := range unknown {
+		msgs[i] = fmt.Sprintf("ui.list.columns: unknown column %q; ignored", c)
 	}
-	return out
+	emitWarningLines(w, msgs)
 }
 
 func columnHeader(cols []string) string {
@@ -105,9 +129,27 @@ func columnHeader(cols []string) string {
 func formatItemRow(cols []string, it datamodel.ListItem) string {
 	cells := make([]string, len(cols))
 	for i, c := range cols {
-		cells[i] = listCells[c](it)
+		cells[i] = cellValue(c, it)
 	}
 	return strings.Join(cells, "\t")
+}
+
+func cellValue(col string, it datamodel.ListItem) string {
+	if cell, ok := listCells[col]; ok {
+		return cell(it)
+	}
+	return extraCell(it.Extras[col])
+}
+
+func extraCell(v datamodel.ExtraJSON) string {
+	switch v := v.(type) {
+	case string:
+		return v
+	case []string:
+		return strings.Join(v, ",")
+	default:
+		return "-"
+	}
 }
 
 var listCells = map[string]func(datamodel.ListItem) string{

@@ -54,7 +54,7 @@ func (s *Store) WithPrompter(p Prompter) *Store {
 
 func (s *Store) fs() *storage.FS { return s.store }
 
-func (s *Store) schemas() (map[string]entityschema.Schema, error) {
+func (s *Store) Schemas() (map[string]entityschema.Schema, error) {
 	if s.schemaCache == nil {
 		schemas, err := entityschema.Load(s.fs().SchemaDir())
 		if err != nil {
@@ -172,7 +172,7 @@ func (s *Store) ResolveItemFile(cfg *datamodel.Config, ref string) (string, stri
 }
 
 func (s *Store) guardWritable(items ...*datamodel.Item) error {
-	schemas, err := s.schemas()
+	schemas, err := s.Schemas()
 	if err != nil {
 		return err
 	}
