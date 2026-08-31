@@ -7,15 +7,14 @@ import (
 	"github.com/charmbracelet/x/exp/golden"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 func sampleDetail() *datamodel.ShowResult {
 	from := "TODO"
 	return &datamodel.ShowResult{
 		Number: "KIRA-142", Title: "Fix race in order-book snapshot merge",
-		State: "IN_PROGRESS", Category: "doing", Owner: ptr.To("shivam"),
-		Priority: ptr.To("P1"), Labels: []string{"bug", "orderbook"},
+		State: "IN_PROGRESS", Category: "doing", Owner: new("shivam"),
+		Priority: new("P1"), Labels: []string{"bug", "orderbook"},
 		Body: "The snapshot merge path drops updates when two feed threads race.\n\n" +
 			"## Acceptance criteria\n\n- TSan clean on order_book_test\n- No p99 regression\n",
 		Comments: []datamodel.CommentView{
@@ -26,8 +25,8 @@ func sampleDetail() *datamodel.ShowResult {
 			{SHA: "f6a7b8c9d0", Subject: "add burst regression bench", Author: "shivam", Ts: "2026-07-11T19:02:00+05:30"},
 		},
 		HistoryTail: []datamodel.HistoryEvent{
-			{Ts: "2026-07-11T18:30:00+05:30", Field: "state", From: &from, To: ptr.To("IN_PROGRESS")},
-			{Ts: "2026-07-10T09:00:00+05:30", Field: "owner", From: nil, To: ptr.To("shivam")},
+			{Ts: "2026-07-11T18:30:00+05:30", Field: "state", From: &from, To: new("IN_PROGRESS")},
+			{Ts: "2026-07-10T09:00:00+05:30", Field: "owner", From: nil, To: new("shivam")},
 		},
 	}
 }
@@ -47,7 +46,7 @@ func TestDetailPanelNarrowGuard(t *testing.T) {
 func TestDetailPanelRendersSubtypeWhenSet(t *testing.T) {
 	t.Parallel()
 	res := sampleDetail()
-	res.Subtype = ptr.To("bug")
+	res.Subtype = new("bug")
 	got := newDetailPanel().render(asciiTheme(), iconSet{mode: datamodel.IconText}, res, 100, 40)
 	if !strings.Contains(got, "subtype bug") {
 		t.Fatalf("detail should render the subtype:\n%s", got)
