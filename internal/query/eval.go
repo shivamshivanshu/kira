@@ -262,12 +262,6 @@ func (c *compiler) compileIn(n *inExpr) (Predicate, error) {
 }
 
 func (c *compiler) compileIsEmpty(n *emptyExpr) Predicate {
-	if c.spec[n.field].List {
-		field, want := n.field, !n.notEmpty
-		return func(it *datamodel.Item, _ *datamodel.Config) bool {
-			return (len(it.Extras[field].List) == 0) == want
-		}
-	}
 	var isEmpty func(it *datamodel.Item, cfg *datamodel.Config) bool
 	switch n.field {
 	case fieldLabel:
@@ -279,7 +273,12 @@ func (c *compiler) compileIsEmpty(n *emptyExpr) Predicate {
 	case fieldEstimate:
 		isEmpty = func(it *datamodel.Item, _ *datamodel.Config) bool { return it.Estimate == nil }
 	default:
-		get := scalarGet(n.field)
+		field := n.field
+		if c.spec[field].List {
+			isEmpty = func(it *datamodel.Item, _ *datamodel.Config) bool { return len(it.Extras[field].List) == 0 }
+			break
+		}
+		get := scalarGet(field)
 		isEmpty = func(it *datamodel.Item, cfg *datamodel.Config) bool { return get(it, cfg) == "" }
 	}
 	want := !n.notEmpty

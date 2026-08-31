@@ -278,7 +278,7 @@ func extraValue(n *yaml.Node) (datamodel.ExtraValue, bool) {
 		if isNull(n) {
 			return datamodel.ExtraValue{}, false
 		}
-		v, ok := RenderScalarNode(n)
+		v, ok := renderScalarNode(n)
 		if !ok {
 			return datamodel.ExtraValue{}, false
 		}
