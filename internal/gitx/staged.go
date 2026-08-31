@@ -8,6 +8,16 @@ func (r Repo) StagedPaths() ([]string, error) {
 	return r.relToDir(lines)
 }
 
+// HasStagedChanges reports whether the index differs from HEAD at all,
+// including deletions that StagedPaths' ACM filter would miss.
+func (r Repo) HasStagedChanges() (bool, error) {
+	lines, err := r.splitLines("diff", "--cached", "--name-only")
+	if err != nil {
+		return false, err
+	}
+	return len(lines) > 0, nil
+}
+
 func (r Repo) ShowStaged(path string) (string, error) {
 	return r.OutputRaw("show", RevPath("", path))
 }
