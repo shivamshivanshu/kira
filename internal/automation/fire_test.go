@@ -181,3 +181,16 @@ func TestFireExportsEventEnvAndGuard(t *testing.T) {
 		t.Fatalf("Fire output = %q, want %q", w.String(), want)
 	}
 }
+
+func TestFirePayloadTimestampIsPinnable(t *testing.T) {
+	t.Setenv("KIRA_NOW", "2026-07-15T09:00:00Z")
+	var w bytes.Buffer
+	hook := datamodel.AutomationHook{Name: "ts", On: datamodel.EventItemCreated, Run: "cat"}
+	cfg := &datamodel.Config{UserAutomation: []datamodel.AutomationHook{hook}}
+
+	Fire(&w, t.TempDir(), t.TempDir(), cfg, Event{Name: datamodel.EventItemCreated}, func() Actor { return Actor{} })
+
+	if !strings.Contains(w.String(), `"ts":"2026-07-15T09:00:00Z"`) {
+		t.Fatalf("payload ts not pinned by KIRA_NOW: %q", w.String())
+	}
+}

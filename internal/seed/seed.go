@@ -53,10 +53,10 @@ func Run(root string, cfg *datamodel.Config, opts Opts) (Summary, error) {
 	}
 
 	repo := gitx.Repo{Dir: root}
-	if err := repo.Stage(".kira"); err != nil {
+	if err := repo.Stage(storage.DirName); err != nil {
 		return sum, err
 	}
-	if err := repo.Commit(fmt.Sprintf("kira: seed %d fixture items", len(specs)), "", ""); err != nil {
+	if err := repo.CommitScoped([]string{storage.DirName}, fmt.Sprintf("kira: seed %d fixture items", len(specs))); err != nil {
 		return sum, err
 	}
 	return sum, nil

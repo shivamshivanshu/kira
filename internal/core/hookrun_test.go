@@ -130,3 +130,23 @@ func TestPrepareCommitMsgHookTicketBranchAddsTrailer(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateStagedCatchesRenameToStray(t *testing.T) {
+	s, cfg, repo := stagedFixture(t)
+	it := eventTicket()
+	stageItem(t, s, repo, it)
+	if err := repo.Commit("add ticket", "", ""); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+	ticketsDir := filepath.Join(repo.Dir, ".kira", "tickets")
+	if err := os.Rename(filepath.Join(ticketsDir, it.ID+".md"), filepath.Join(ticketsDir, "notes.md")); err != nil {
+		t.Fatalf("rename: %v", err)
+	}
+	if err := repo.Stage(".kira"); err != nil {
+		t.Fatalf("stage: %v", err)
+	}
+
+	if err := s.ValidateStaged(cfg); err == nil {
+		t.Fatal("item renamed to a stray filename must be rejected")
+	}
+}

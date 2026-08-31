@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
 func Fire(w io.Writer, root, cacheDir string, cfg *datamodel.Config, ev Event, actor func() Actor) {
@@ -36,7 +37,7 @@ func Fire(w io.Writer, root, cacheDir string, cfg *datamodel.Config, ev Event, a
 	if len(run) == 0 {
 		return
 	}
-	stdin, err := Payload(ev, root, time.Now().Format(time.RFC3339), actor())
+	stdin, err := Payload(ev, root, timex.Now().Format(time.RFC3339), actor())
 	if err != nil {
 		_, _ = fmt.Fprintf(w, "kira: automation: building payload: %v\n", err)
 		return

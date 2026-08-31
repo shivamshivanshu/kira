@@ -40,9 +40,16 @@ func Confirm(prompt string) bool {
 	}
 }
 
+// stdinReader is shared across prompts: a per-call reader would buffer ahead
+// and drop the remaining piped input between consecutive prompts.
+var stdinReader *bufio.Reader
+
 func ReadLineDefault(prompt, def string) string {
 	fmt.Fprint(os.Stderr, prompt)
-	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+	if stdinReader == nil {
+		stdinReader = bufio.NewReader(os.Stdin)
+	}
+	line, err := stdinReader.ReadString('\n')
 	if err != nil {
 		return def
 	}

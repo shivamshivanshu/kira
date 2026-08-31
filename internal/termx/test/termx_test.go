@@ -31,3 +31,24 @@ func TestIsTerminalPipe(t *testing.T) {
 		t.Error("IsTerminal(pipe) = true, want false")
 	}
 }
+
+func TestReadLineDefaultConsecutivePrompts(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	orig := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { os.Stdin = orig; _ = r.Close() })
+	if _, err := w.WriteString("y\nn\n"); err != nil {
+		t.Fatal(err)
+	}
+	_ = w.Close()
+
+	if got := termx.ReadLineDefault("", "d"); got != "y" {
+		t.Fatalf("first prompt = %q, want %q", got, "y")
+	}
+	if got := termx.ReadLineDefault("", "d"); got != "n" {
+		t.Fatalf("second prompt = %q, want %q (buffered stdin dropped between prompts)", got, "n")
+	}
+}

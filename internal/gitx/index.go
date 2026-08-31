@@ -102,17 +102,15 @@ func RevPath(rev, path string) string {
 	return rev + ":./" + path
 }
 
+// parsePorcelainPaths expects --no-renames output: with no rename entries,
+// any " -> " in a line is part of the filename, never an arrow to split on.
 func parsePorcelainPaths(out string) []string {
 	var paths []string
 	for line := range strings.SplitSeq(out, "\n") {
 		if len(line) < 4 {
 			continue
 		}
-		rest := line[3:]
-		if i := strings.Index(rest, " -> "); i >= 0 {
-			rest = rest[i+len(" -> "):]
-		}
-		paths = append(paths, unquotePath(rest))
+		paths = append(paths, unquotePath(line[3:]))
 	}
 	return paths
 }
