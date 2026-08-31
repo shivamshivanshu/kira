@@ -4,7 +4,7 @@ number: KIRA-139
 aliases: []
 type: ticket
 title: "Correct the package-layering documentation to match reality"
-state: IN_PROGRESS
+state: REVIEW
 priority: P3
 labels: []
 epic: null
