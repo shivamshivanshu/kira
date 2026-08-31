@@ -51,6 +51,23 @@ func TestLoadUserFileOverridesBuiltinByName(t *testing.T) {
 	}
 }
 
+func TestLoadIgnoresDroppedIdentityKey(t *testing.T) {
+	dir := t.TempDir()
+	custom := `{"name": "ticket", "identity": {"style": "sequential", "prefix": "KIRA"}, "fields": [{"name": "title", "type": "string", "required": true}]}`
+	if err := os.WriteFile(filepath.Join(dir, "ticket.json"), []byte(custom), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	schemas, err := Load(dir)
+
+	if err != nil {
+		t.Fatalf("a schema materialized by an older kira must keep loading: %v", err)
+	}
+	if len(schemas["ticket"].Fields) != 1 {
+		t.Fatalf("user schema should still override the built-in, got fields %v", schemas["ticket"].Fields)
+	}
+}
+
 func TestLoadUserFileAddsNewType(t *testing.T) {
 	dir := t.TempDir()
 	custom := `{"name": "bug", "fields": [{"name": "title", "type": "string", "required": true}]}`

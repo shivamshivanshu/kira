@@ -39,12 +39,6 @@ const (
 	PlacementBody        Placement = "body"
 )
 
-// Identity is descriptive only in phase 1 — nothing generates IDs from it yet.
-type Identity struct {
-	Style  string `json:"style,omitempty"`
-	Prefix string `json:"prefix,omitempty"`
-}
-
 type EnumDef struct {
 	Name   string   `json:"name"`
 	Values []string `json:"values"`
@@ -85,7 +79,6 @@ type FieldDef struct {
 type Schema struct {
 	Name           string         `json:"name"`
 	Workflow       string         `json:"workflow,omitempty"`
-	Identity       Identity       `json:"identity,omitzero"`
 	Fields         []FieldDef     `json:"fields"`
 	Enums          []EnumDef      `json:"enums,omitempty"`
 	Representation Representation `json:"representation,omitzero"`
