@@ -1,6 +1,9 @@
 package gitx
 
 func (r Repo) Pull(remote string) error {
+	if err := requireNonFlag("remote", remote); err != nil {
+		return err
+	}
 	args := []string{"pull", "--rebase"}
 	if remote != "" {
 		args = append(args, remote)
@@ -10,6 +13,9 @@ func (r Repo) Pull(remote string) error {
 }
 
 func (r Repo) Push(remote string) error {
+	if err := requireNonFlag("remote", remote); err != nil {
+		return err
+	}
 	args := []string{"push"}
 	if remote != "" {
 		args = append(args, remote)
