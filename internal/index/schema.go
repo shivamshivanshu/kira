@@ -6,7 +6,12 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-const schemaVersion = 6
+const schemaVersion = 7
+
+const (
+	extraKindScalar = "scalar"
+	extraKindList   = "list"
+)
 
 const ddl = `
 CREATE TABLE IF NOT EXISTS items (
@@ -42,6 +47,14 @@ CREATE TABLE IF NOT EXISTS labels (
   PRIMARY KEY (item_id, ord)
 );
 CREATE INDEX IF NOT EXISTS idx_labels_label ON labels(label);
+CREATE TABLE IF NOT EXISTS extras (
+  item_id TEXT NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+  name    TEXT NOT NULL,
+  ord     INTEGER NOT NULL,
+  kind    TEXT NOT NULL,
+  value   TEXT,
+  PRIMARY KEY (item_id, name, ord)
+);
 CREATE TABLE IF NOT EXISTS links (
   item_id   TEXT NOT NULL REFERENCES items(id) ON DELETE CASCADE,
   ord       INTEGER NOT NULL,

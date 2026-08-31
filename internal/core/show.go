@@ -99,6 +99,7 @@ func showResultOf(cfg *datamodel.Config, it *datamodel.Item) datamodel.ShowResul
 		Estimate:      it.Estimate,
 		Created:       it.Created,
 		Updated:       it.Updated,
+		Extras:        codec.DecodeExtras(it.Extras),
 		Body:          it.Body,
 		Comments:      views,
 		LinkedCommits: []datamodel.CommitLink{},

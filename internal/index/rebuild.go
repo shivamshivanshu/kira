@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -31,7 +32,7 @@ func (i *Index) full(store *storage.FS) (map[string]skipEntry, error) {
 		return nil, errx.Env("beginning index tx: %v", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	for _, table := range []string{"aliases", "labels", "links", "items"} {
+	for _, table := range []string{"aliases", "labels", "links", "extras", "items"} {
 		if _, err := tx.Exec("DELETE FROM " + table); err != nil {
 			return nil, errx.Env("clearing index %s: %v", table, err)
 		}
@@ -183,12 +184,12 @@ func fileExists(path string) bool {
 	return err == nil && !fi.IsDir()
 }
 
-// itemStmts holds the item/alias/label/link insert statements prepared once
-// per transaction; modernc's sqlite driver re-prepares on every tx.Exec call,
-// so re-running the same four inserts per item without caching them turns an
-// N-item rebuild into 4N prepares.
+// itemStmts holds the per-item insert statements prepared once per
+// transaction; modernc's sqlite driver re-prepares on every tx.Exec call,
+// so re-running the same inserts per item without caching them turns an
+// N-item rebuild into a multiple of N prepares.
 type itemStmts struct {
-	item, alias, label, link *sql.Stmt
+	item, alias, label, link, extra *sql.Stmt
 }
 
 func prepareItemStmts(tx *sql.Tx) (itemStmts, error) {
@@ -224,7 +225,11 @@ func prepareItemStmts(tx *sql.Tx) (itemStmts, error) {
 	if err != nil {
 		return itemStmts{}, err
 	}
-	return itemStmts{item: item, alias: alias, label: label, link: link}, nil
+	extra, err := prepare("INSERT INTO extras (item_id, name, ord, kind, value) VALUES (?,?,?,?,?)", "extra insert")
+	if err != nil {
+		return itemStmts{}, err
+	}
+	return itemStmts{item: item, alias: alias, label: label, link: link, extra: extra}, nil
 }
 
 func (s itemStmts) close() {
@@ -232,6 +237,7 @@ func (s itemStmts) close() {
 	_ = s.alias.Close()
 	_ = s.label.Close()
 	_ = s.link.Close()
+	_ = s.extra.Close()
 }
 
 func (s itemStmts) insert(it *datamodel.Item) error {
@@ -267,7 +273,41 @@ func (s itemStmts) insert(it *datamodel.Item) error {
 			ord++
 		}
 	}
+	for _, name := range slices.Sorted(maps.Keys(it.Extras)) {
+		if err := s.insertExtra(it.ID, name, it.Extras[name]); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// insertExtra mirrors writeExtras' arm precedence: a non-nil list wins over a
+// set scalar, and a zero value writes nothing. An empty list writes a single
+// NULL-valued row so the key survives the round trip distinct from absence.
+func (s itemStmts) insertExtra(id, name string, v datamodel.ExtraValue) error {
+	wrap := func(err error) error {
+		if err != nil {
+			return errx.Env("inserting index extra: %v", err)
+		}
+		return nil
+	}
+	if v.List != nil {
+		if len(v.List) == 0 {
+			_, err := s.extra.Exec(id, name, 0, extraKindList, nil)
+			return wrap(err)
+		}
+		for ord, elem := range v.List {
+			if _, err := s.extra.Exec(id, name, ord, extraKindList, elem); err != nil {
+				return wrap(err)
+			}
+		}
+		return nil
+	}
+	if v.Scalar == nil {
+		return nil
+	}
+	_, err := s.extra.Exec(id, name, 0, extraKindScalar, *v.Scalar)
+	return wrap(err)
 }
 
 func readItem(abs string) (*datamodel.Item, string) {

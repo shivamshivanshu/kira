@@ -62,7 +62,13 @@ type ListItem struct {
 	Priority   *string  `json:"priority"`
 	Resolution *string  `json:"resolution"`
 	Due        *string  `json:"due"`
+
+	Extras map[string]ExtraJSON `json:"extras,omitempty"`
 }
+
+// ExtraJSON is one schema-declared custom field rendered for --json output:
+// a decoded scalar string or a list of decoded strings.
+type ExtraJSON any
 
 type ListResult struct {
 	Items []ListItem  `json:"items"`
@@ -115,36 +121,37 @@ type HistoryEvent struct {
 }
 
 type ShowResult struct {
-	ID            string              `json:"id"`
-	Number        string              `json:"number"`
-	Board         string              `json:"board"`
-	Aliases       []string            `json:"aliases"`
-	Type          string              `json:"type"`
-	Subtype       *string             `json:"subtype"`
-	Title         string              `json:"title"`
-	State         string              `json:"state"`
-	Category      string              `json:"category"`
-	Resolution    *string             `json:"resolution"`
-	Priority      *string             `json:"priority"`
-	Rank          *string             `json:"rank"`
-	Sprint        *string             `json:"sprint"`
-	Due           *string             `json:"due"`
-	Owner         *string             `json:"owner"`
-	Reporter      *string             `json:"reporter"`
-	Labels        []string            `json:"labels"`
-	Epic          *string             `json:"epic"`
-	BlockedBy     []string            `json:"blocked_by"`
-	Links         map[string][]string `json:"links"`
-	Blocks        []string            `json:"blocks"`
-	Estimate      *float64            `json:"estimate"`
-	Created       string              `json:"created"`
-	Updated       string              `json:"updated"`
-	Body          string              `json:"body"`
-	Comments      []CommentView       `json:"comments"`
-	LinkedCommits []CommitLink        `json:"linked_commits"`
-	ReferencedBy  []CommitLink        `json:"referenced_by"`
-	HistoryTail   []HistoryEvent      `json:"history_tail"`
-	Skew          *Skew               `json:"skew,omitempty"`
+	ID            string               `json:"id"`
+	Number        string               `json:"number"`
+	Board         string               `json:"board"`
+	Aliases       []string             `json:"aliases"`
+	Type          string               `json:"type"`
+	Subtype       *string              `json:"subtype"`
+	Title         string               `json:"title"`
+	State         string               `json:"state"`
+	Category      string               `json:"category"`
+	Resolution    *string              `json:"resolution"`
+	Priority      *string              `json:"priority"`
+	Rank          *string              `json:"rank"`
+	Sprint        *string              `json:"sprint"`
+	Due           *string              `json:"due"`
+	Owner         *string              `json:"owner"`
+	Reporter      *string              `json:"reporter"`
+	Labels        []string             `json:"labels"`
+	Epic          *string              `json:"epic"`
+	BlockedBy     []string             `json:"blocked_by"`
+	Links         map[string][]string  `json:"links"`
+	Blocks        []string             `json:"blocks"`
+	Estimate      *float64             `json:"estimate"`
+	Created       string               `json:"created"`
+	Updated       string               `json:"updated"`
+	Body          string               `json:"body"`
+	Comments      []CommentView        `json:"comments"`
+	LinkedCommits []CommitLink         `json:"linked_commits"`
+	ReferencedBy  []CommitLink         `json:"referenced_by"`
+	HistoryTail   []HistoryEvent       `json:"history_tail"`
+	Skew          *Skew                `json:"skew,omitempty"`
+	Extras        map[string]ExtraJSON `json:"extras,omitempty"`
 
 	StderrNotes []Warning `json:"-"`
 }

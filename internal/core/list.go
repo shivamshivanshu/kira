@@ -1,10 +1,16 @@
 package core
 
 import (
+	"maps"
+	"slices"
+
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/query"
+	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 type ListOpts struct {
@@ -31,7 +37,11 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 	cfg = ld.cfg
 	items, resolver, idxNotes := ld.items, ld.resolver, ld.notes
 
-	pred, order, notes, err := opts.compile(cfg, s.queryOptions(cfg, resolver, items))
+	qopts, err := s.queryOptions(cfg, resolver, items)
+	if err != nil {
+		return nil, err
+	}
+	pred, order, notes, err := opts.compile(cfg, qopts)
 	if err != nil {
 		return nil, queryError(err)
 	}
@@ -51,7 +61,11 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 }
 
 func (s *Store) matchSorted(cfg *datamodel.Config, ld *loaded, opts ListOpts) ([]*datamodel.Item, error) {
-	pred, order, _, err := opts.compile(cfg, s.queryOptions(cfg, ld.resolver, ld.items))
+	qopts, err := s.queryOptions(cfg, ld.resolver, ld.items)
+	if err != nil {
+		return nil, err
+	}
+	pred, order, _, err := opts.compile(cfg, qopts)
 	if err != nil {
 		return nil, queryError(err)
 	}
@@ -70,9 +84,35 @@ func filterSort(cfg *datamodel.Config, items []*datamodel.Item, pred query.Predi
 	return matched
 }
 
-func (s *Store) queryOptions(cfg *datamodel.Config, resolver *id.Resolver, items []*datamodel.Item) query.Options {
+func (s *Store) queryOptions(cfg *datamodel.Config, resolver *id.Resolver, items []*datamodel.Item) (query.Options, error) {
+	extras, err := s.queryExtras()
+	if err != nil {
+		return query.Options{}, err
+	}
 	me, _ := s.identity(cfg)
-	return query.Options{Resolver: resolver, Priorities: cfg.Priorities.Values, ActiveSprint: s.ActiveSprintKey(), Me: me, Items: items}
+	return query.Options{Resolver: resolver, Priorities: cfg.Priorities.Values, ActiveSprint: s.ActiveSprintKey(), Me: me, Items: items, Extras: extras}, nil
+}
+
+func (s *Store) queryExtras() ([]query.ExtraField, error) {
+	schemas, err := s.schemas()
+	if err != nil {
+		return nil, err
+	}
+	seen := setx.NewDeduper[string]()
+	var out []query.ExtraField
+	for _, name := range slices.Sorted(maps.Keys(schemas)) {
+		for _, f := range schemas[name].Fields {
+			if f.Placement != entityschema.PlacementFrontmatter || !seen.Add(f.Name) {
+				continue
+			}
+			out = append(out, query.ExtraField{Name: f.Name, List: f.List, Ordered: numericExtra(f)})
+		}
+	}
+	return out, nil
+}
+
+func numericExtra(f entityschema.FieldDef) bool {
+	return !f.List && (f.Type == entityschema.FieldInt || f.Type == entityschema.FieldNumber)
 }
 
 func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel.ListItem, map[string]bool, error) {
@@ -80,7 +120,11 @@ func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel
 	if err != nil {
 		return nil, nil, err
 	}
-	pred, _, _, err := ListOpts{Query: expr}.compile(cfg, s.queryOptions(cfg, ld.resolver, ld.items))
+	qopts, err := s.queryOptions(cfg, ld.resolver, ld.items)
+	if err != nil {
+		return nil, nil, err
+	}
+	pred, _, _, err := ListOpts{Query: expr}.compile(cfg, qopts)
 	if err != nil {
 		return nil, nil, queryError(err)
 	}
@@ -269,6 +313,7 @@ func listItemOf(cfg *datamodel.Config, it *datamodel.Item, epicNumbers map[strin
 		Priority:   it.Priority,
 		Resolution: it.Resolution,
 		Due:        it.Due,
+		Extras:     codec.DecodeExtras(it.Extras),
 	}
 	if it.Epic != nil {
 		if num, ok := epicNumbers[*it.Epic]; ok {
