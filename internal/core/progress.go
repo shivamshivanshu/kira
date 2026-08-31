@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 func indexByEpic(items []*datamodel.Item) (map[string]*datamodel.Item, map[string][]*datamodel.Item) {
@@ -31,13 +32,42 @@ func (s *Store) EpicProgress(cfg *datamodel.Config) (map[string]datamodel.EpicPr
 func allEpicProgress(cfg *datamodel.Config, items []*datamodel.Item) (map[string]datamodel.EpicProgress, error) {
 	_, children := indexByEpic(items)
 	out := make(map[string]datamodel.EpicProgress)
+	visiting := make(map[string]bool)
+	var count func(*datamodel.Item) (datamodel.EpicProgress, error)
+	count = func(it *datamodel.Item) (datamodel.EpicProgress, error) {
+		if p, ok := out[it.ID]; ok {
+			return p, nil
+		}
+		if visiting[it.ID] {
+			return datamodel.EpicProgress{}, errx.Conflict("epic cycle detected at %s", it.Number)
+		}
+		visiting[it.ID] = true
+		var p datamodel.EpicProgress
+		for _, child := range children[it.ID] {
+			if child.Type == datamodel.TypeEpic {
+				sub, err := count(child)
+				if err != nil {
+					return p, err
+				}
+				p.Total += sub.Total
+				p.Done += sub.Done
+			} else {
+				p.Total++
+				if isDoneState(cfg, child.Type, child.State) {
+					p.Done++
+				}
+			}
+		}
+		delete(visiting, it.ID)
+		out[it.ID] = p
+		return p, nil
+	}
 	for _, it := range items {
 		if it.Type == datamodel.TypeEpic {
-			p, err := epicProgress(cfg, children, it.ID)
+			_, err := count(it)
 			if err != nil {
 				return nil, err
 			}
-			out[it.ID] = p
 		}
 	}
 	return out, nil

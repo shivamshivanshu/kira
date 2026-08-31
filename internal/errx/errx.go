@@ -45,8 +45,7 @@ func Env(format string, args ...any) *Error {
 func Invalid(prefix string, errs []error) *Error {
 	hint := ""
 	for _, e := range errs {
-		var ce *Error
-		if errors.As(e, &ce) && ce.Hint != "" {
+		if ce, ok := errors.AsType[*Error](e); ok && ce.Hint != "" {
 			hint = ce.Hint
 			break
 		}

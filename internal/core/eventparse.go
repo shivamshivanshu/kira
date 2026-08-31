@@ -147,6 +147,53 @@ func (s *Store) deriveEvents(ulid string) ([]datamodel.Event, error) {
 	return events, nil
 }
 
+// Linear histories have identical per-file and multi-file log simplification.
+// At merges Git can choose different parents for different pathspecs; retain
+// per-file derivation there so batching never changes historical metrics.
+func (s *Store) deriveEventBatch(ids []string) (map[string][]datamodel.Event, error) {
+	out := make(map[string][]datamodel.Event, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	if len(ids) == 1 {
+		events, err := s.deriveEvents(ids[0])
+		out[ids[0]] = events
+		return out, err
+	}
+	merges, err := s.repo().Output("rev-list", "--min-parents=2", "--max-count=1", "HEAD")
+	if err != nil || merges != "" {
+		for _, id := range ids {
+			events, err := s.deriveEvents(id)
+			if err != nil {
+				return nil, err
+			}
+			out[id] = events
+		}
+		return out, nil
+	}
+	paths := []string{s.fs().RelToRoot(s.fs().ItemsDir())}
+	if len(ids) <= 64 {
+		paths = make([]string, len(ids))
+		for n, id := range ids {
+			paths[n] = s.fs().RelToRoot(s.itemPath(id))
+		}
+	}
+	stream, err := s.repo().FileLogs(paths)
+	if err != nil {
+		return nil, errx.User("%s", err)
+	}
+	for _, id := range ids {
+		out[id] = nil
+	}
+	walkPatch(stream, func(path string, events []datamodel.Event) {
+		id := storage.ULIDFromPath(path)
+		if _, wanted := out[id]; wanted {
+			out[id] = append(out[id], events...)
+		}
+	})
+	return out, nil
+}
+
 func (s *Store) rangeEvents(repo gitx.Repo, sinceSHA, headSHA string, tracked map[string]*datamodel.Item) (map[string][]datamodel.Event, error) {
 	fs := s.fs()
 	out, err := repo.RangePatch(sinceSHA+".."+headSHA, fs.RelToRoot(fs.ItemsDir()))

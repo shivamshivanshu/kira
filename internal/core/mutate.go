@@ -8,6 +8,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
 const invalidItemPrefix = "invalid item"
@@ -37,16 +38,16 @@ func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply appl
 		return nil, nil, nil, err
 	}
 	defer release()
-	return s.mutateAgainst(cfg, orig, items, resolver, force, apply, subjectOf, source)
+	return s.mutateAgainst(cfg, orig, items, resolver, force, apply, subjectOf, source, nil)
 }
 
-func (s *Store) mutateAgainst(cfg *datamodel.Config, orig *datamodel.Item, items []*datamodel.Item, resolver *id.Resolver, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, []error, error) {
+func (s *Store) mutateAgainst(cfg *datamodel.Config, orig *datamodel.Item, items []*datamodel.Item, resolver *id.Resolver, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource, byID map[string]*datamodel.Item) (*datamodel.Item, []string, []error, error) {
 	updated := cloneItem(orig)
 	hard, warns := apply(updated, resolver, items)
 	if len(hard) > 0 {
 		return nil, nil, nil, errx.Invalid(invalidItemPrefix, hard)
 	}
-	vhard, vwarns := s.validateMutation(cfg, orig, updated, resolver, items, force)
+	vhard, vwarns := s.validateMutationAgainst(cfg, orig, updated, resolver, items, force, byID)
 	if len(vhard) > 0 {
 		return nil, nil, nil, errx.Invalid(invalidItemPrefix, vhard)
 	}
@@ -61,11 +62,13 @@ func (s *Store) mutateAgainst(cfg *datamodel.Config, orig *datamodel.Item, items
 }
 
 type Batch struct {
-	cfg      *datamodel.Config
-	store    *Store
-	release  func()
-	items    []*datamodel.Item
-	resolver *id.Resolver
+	cfg       *datamodel.Config
+	store     *Store
+	release   func()
+	items     []*datamodel.Item
+	resolver  *id.Resolver
+	byID      map[string]*datamodel.Item
+	positions map[string]int
 }
 
 func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
@@ -78,13 +81,31 @@ func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
 		release()
 		return nil, err
 	}
-	return &Batch{cfg: cfg, store: s, release: release, items: ld.items, resolver: ld.resolver}, nil
+	positions := make(map[string]int, len(ld.items))
+	for n, it := range ld.items {
+		if _, exists := positions[it.ID]; !exists {
+			positions[it.ID] = n
+		}
+	}
+	return &Batch{cfg: cfg, store: s, release: release, items: ld.items, resolver: ld.resolver, byID: datamodel.IndexByID(ld.items), positions: positions}, nil
 }
 
 func (b *Batch) Close() { b.release() }
 
 func (b *Batch) Resolve(ref string) (*datamodel.Item, error) {
-	return findItem(b.items, b.resolver, ref)
+	ulid, err := resolveID(b.resolver, ref)
+	if err != nil {
+		return nil, err
+	}
+	if n, ok := b.positions[ulid]; ok {
+		return b.items[n], nil
+	}
+	return nil, errx.User("resolved %s to %s, which has no file", ref, ulid)
+}
+
+func (b *Batch) replace(it *datamodel.Item) {
+	b.items[b.positions[it.ID]] = it
+	b.byID[it.ID] = it
 }
 
 func (b *Batch) RefExists(ref string) bool {
@@ -100,13 +121,18 @@ func (b *Batch) Mutate(ref string, force bool, apply applyFn, subjectOf func(ori
 	if err := b.store.guardWritable(orig); err != nil {
 		return nil, nil, nil, err
 	}
-	updated, changed, warns, err := b.store.mutateAgainst(b.cfg, orig, b.items, b.resolver, force, apply, subjectOf, source)
+	updated, changed, warns, err := b.store.mutateAgainst(b.cfg, orig, b.items, b.resolver, force, apply, subjectOf, source, b.byID)
 	if err != nil {
+		// A write may succeed before its Git commit fails. Later operations
+		// must validate against the actual on-disk state even in that case.
+		if disk, readErr := storage.ReadItem(b.store.itemPath(orig.ID)); readErr == nil && disk.ID == orig.ID {
+			b.replace(disk)
+		}
 		return nil, nil, nil, err
 	}
 	// The next item validated in this batch (e.g. against a WIP limit) must
 	// see this commit, not the pre-batch snapshot.
-	replaceByULID(b.items, updated)
+	b.replace(updated)
 	return updated, changed, warns, nil
 }
 
@@ -138,8 +164,7 @@ func (s *Store) commitMutation(cfg *datamodel.Config, before, updated *datamodel
 func scopeVocabWarnings(warns []error, changed []string) []error {
 	out := warns[:0:0]
 	for _, w := range warns {
-		var vw *vocabWarning
-		if errors.As(w, &vw) && !slices.Contains(changed, vw.field) {
+		if vw, ok := errors.AsType[*vocabWarning](w); ok && !slices.Contains(changed, vw.field) {
 			continue
 		}
 		out = append(out, w)

@@ -143,11 +143,17 @@ func SplitComments(body string) (prose string, comments []datamodel.Comment, can
 }
 
 func JoinComments(prose string, comments []datamodel.Comment) string {
-	out := prose
+	var out strings.Builder
+	out.Grow(len(prose))
+	out.WriteString(prose)
 	for _, c := range comments {
-		out = AppendComment(out, c)
+		if out.Len() > 0 {
+			out.WriteByte('\n')
+		}
+		out.WriteString(formatComment(c))
+		out.WriteByte('\n')
 	}
-	return out
+	return out.String()
 }
 
 func formatComment(c datamodel.Comment) string {

@@ -146,6 +146,10 @@ func (r Repo) FileLog(relPath string) (string, error) {
 	return r.logPatch("--", relPath)
 }
 
+func (r Repo) FileLogs(relPaths []string) (string, error) {
+	return r.logPatch(append([]string{"--"}, relPaths...)...)
+}
+
 // RangePatch returns the full-context patch log for pathspec over revRange.
 func (r Repo) RangePatch(revRange, pathspec string) (string, error) {
 	return r.logPatch(revRange, "--", pathspec)

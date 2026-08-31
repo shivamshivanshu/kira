@@ -45,8 +45,7 @@ func (s *Store) cachedStateEvents(ulid, fileHead string) (events []stateTransiti
 	return stateTransitions(all), committed, nil
 }
 
-func stateTransitions(all []datamodel.Event) []stateTransition {
-	var events []stateTransition
+func stateTransitions(all []datamodel.Event) (events []stateTransition) {
 	for _, e := range all {
 		if e.Field != datamodel.KeyState {
 			continue
@@ -75,13 +74,18 @@ type metricItem struct {
 }
 
 // itemsMetrics derives metrics for a whole item set, reading every item's
-// cached events through a single index open rather than one per item.
-func (s *Store) itemsMetrics(cfg *datamodel.Config, items []*datamodel.Item, heads map[string]string) ([]metricItem, error) {
-	ids := make([]string, len(items))
-	for i, it := range items {
-		ids[i] = it.ID
+// cached state events through a single index open rather than one per item,
+// and deriving whatever the cache is missing in a single git log.
+func (s *Store) itemsMetrics(cfg *datamodel.Config, items []*datamodel.Item) ([]metricItem, error) {
+	if len(items) == 0 {
+		return nil, nil
 	}
-	byItem, err := index.EventsByItem(s.fs(), ids, heads, s.deriveEvents)
+	heads := s.fileHeads()
+	selected := make(map[string]string, len(items))
+	for _, it := range items {
+		selected[it.ID] = heads[it.ID]
+	}
+	byItem, err := index.StateEventsByItem(s.fs(), selected, s.deriveEventBatch)
 	if err != nil {
 		return nil, err
 	}

@@ -5,7 +5,7 @@
   <strong>{{.Active.Number}}</strong><span class="active-title">{{.Active.Title}}</span>
   <span class="state category-{{.Active.Category}}">{{label .Active.State}}</span>
   {{if .Active.Branch}}<code class="branch">{{.Active.Branch}}</code>{{end}}
-  {{if .Active.Blockers}}<span class="warning-text">{{len .Active.Blockers}} blockers</span>{{end}}
+  {{if .Active.BlockerCount}}<span class="warning-text">{{.Active.BlockerCount}} blockers</span>{{end}}
   <span aria-hidden="true">↗</span>
 </a>
 {{end}}
