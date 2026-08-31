@@ -152,3 +152,49 @@ func TestFieldDescriptorCopyClonesLinks(t *testing.T) {
 		t.Fatalf("Copy did not deep-clone: dst.Links = %v", dst.Links)
 	}
 }
+
+func scalarExtra(s string) ExtraValue { return ExtraValue{Scalar: &s} }
+
+func TestChangedFieldsExtras(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b map[string]ExtraValue
+		want []string
+	}{
+		{
+			"equal",
+			map[string]ExtraValue{"team": scalarExtra("infra"), "watchers": {List: []string{"a"}}},
+			map[string]ExtraValue{"team": scalarExtra("infra"), "watchers": {List: []string{"a"}}},
+			nil,
+		},
+		{"added", nil, map[string]ExtraValue{"team": scalarExtra("infra")}, []string{"team"}},
+		{"removed", map[string]ExtraValue{"team": scalarExtra("infra")}, nil, []string{"team"}},
+		{
+			"modified scalar",
+			map[string]ExtraValue{"team": scalarExtra("infra")},
+			map[string]ExtraValue{"team": scalarExtra("core")},
+			[]string{"team"},
+		},
+		{
+			"modified list",
+			map[string]ExtraValue{"watchers": {List: []string{"a"}}},
+			map[string]ExtraValue{"watchers": {List: []string{"a", "b"}}},
+			[]string{"watchers"},
+		},
+		{
+			"independent keys sorted",
+			map[string]ExtraValue{"k2": scalarExtra("y")},
+			map[string]ExtraValue{"k1": scalarExtra("x")},
+			[]string{"k1", "k2"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a, b := fieldsBaseItem(), fieldsBaseItem()
+			a.Extras, b.Extras = tt.a, tt.b
+			if got := ChangedFields(a, b); !slices.Equal(got, tt.want) {
+				t.Fatalf("ChangedFields = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

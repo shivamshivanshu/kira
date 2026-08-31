@@ -43,18 +43,8 @@ func aliasUnion(lists ...[]string) []string {
 }
 
 func linkMerge(base, ours, theirs map[string][]string) map[string][]string {
-	types := map[string]bool{}
-	for t := range base {
-		types[t] = true
-	}
-	for t := range ours {
-		types[t] = true
-	}
-	for t := range theirs {
-		types[t] = true
-	}
 	out := map[string][]string{}
-	for t := range types {
+	for t := range keyUnion(base, ours, theirs) {
 		if merged := setMerge(base[t], ours[t], theirs[t]); len(merged) > 0 {
 			out[t] = merged
 		}
@@ -63,4 +53,14 @@ func linkMerge(base, ours, theirs map[string][]string) map[string][]string {
 		return nil
 	}
 	return out
+}
+
+func keyUnion[V any](ms ...map[string]V) map[string]bool {
+	keys := map[string]bool{}
+	for _, m := range ms {
+		for k := range m {
+			keys[k] = true
+		}
+	}
+	return keys
 }

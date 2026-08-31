@@ -64,10 +64,12 @@ func Parse(content string) (*datamodel.Item, error) {
 	it.Created = reqTimestamp(nodes, datamodel.KeyCreated, add)
 	it.Updated = reqTimestamp(nodes, datamodel.KeyUpdated, add)
 
-	for k := range nodes {
-		if !datamodel.IsFrontmatterKey(k) {
-			it.UnknownKeys = append(it.UnknownKeys, k)
+	for k, n := range nodes {
+		if datamodel.IsFrontmatterKey(k) {
+			continue
 		}
+		it.UnknownKeys = append(it.UnknownKeys, k)
+		captureExtra(it, k, n)
 	}
 	slices.Sort(it.UnknownKeys)
 
@@ -225,6 +227,44 @@ func scalarSeq(n *yaml.Node, label string, add addFunc) []string {
 		out = append(out, c.Value)
 	}
 	return out
+}
+
+func captureExtra(it *datamodel.Item, key string, n *yaml.Node) {
+	v, ok := extraValue(n)
+	if !ok {
+		return
+	}
+	if it.Extras == nil {
+		it.Extras = map[string]datamodel.ExtraValue{}
+	}
+	it.Extras[key] = v
+}
+
+// Mappings, null, and sequences with non-scalar elements are not captured:
+// nested objects are a declared non-goal, so those stay in UnknownKeys only.
+func extraValue(n *yaml.Node) (datamodel.ExtraValue, bool) {
+	switch n.Kind {
+	case yaml.ScalarNode:
+		if isNull(n) {
+			return datamodel.ExtraValue{}, false
+		}
+		v, ok := RenderScalarNode(n)
+		if !ok {
+			return datamodel.ExtraValue{}, false
+		}
+		return datamodel.ExtraValue{Scalar: &v}, true
+	case yaml.SequenceNode:
+		vals := make([]string, 0, len(n.Content))
+		for _, c := range n.Content {
+			v, ok := renderFlowElem(c)
+			if !ok {
+				return datamodel.ExtraValue{}, false
+			}
+			vals = append(vals, v)
+		}
+		return datamodel.ExtraValue{List: vals}, true
+	}
+	return datamodel.ExtraValue{}, false
 }
 
 func optLinks(nodes map[string]*yaml.Node, key string, add addFunc) (map[string][]string, []string) {

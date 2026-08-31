@@ -194,5 +194,6 @@ func cloneItem(src *datamodel.Item) *datamodel.Item {
 	dst.Labels = slices.Clone(src.Labels)
 	dst.BlockedBy = slices.Clone(src.BlockedBy)
 	dst.Links = datamodel.CloneLinks(src.Links)
+	dst.Extras = datamodel.CloneExtras(src.Extras)
 	return &dst
 }
