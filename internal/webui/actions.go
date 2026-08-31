@@ -99,8 +99,7 @@ func (s *server) mutate(cfg *datamodel.Config, action string, f url.Values) (mes
 			opts.Type = datamodel.TypeTicket
 		}
 		if strings.TrimSpace(f.Get("body")) != "" {
-			body := f.Get("body")
-			opts.Body = &body
+			opts.Body = new(f.Get("body"))
 		}
 		res, err := s.store.Create(cfg, opts)
 		if err != nil {
@@ -118,8 +117,7 @@ func (s *server) mutate(cfg *datamodel.Config, action string, f url.Values) (mes
 			}
 		}
 		if f.Has("body") {
-			body := f.Get("body")
-			opts.Description = &body
+			opts.Description = new(f.Get("body"))
 		}
 		if len(opts.Fields) == 0 && opts.Description == nil {
 			return "", selected, errx.User("no fields to edit")
