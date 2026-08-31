@@ -199,6 +199,9 @@ func commandArgs(line, selected string) ([]string, error) {
 			if selected == "" {
 				return nil, errx.User("select an item before using . in a command")
 			}
+			if strings.HasPrefix(selected, "-") {
+				return nil, errx.User("invalid selected item %q", selected)
+			}
 			args[i] = selected
 		}
 	}
