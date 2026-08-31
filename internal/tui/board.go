@@ -139,7 +139,7 @@ func renderCard(t theme.Theme, ic iconSet, cat datamodel.Category, it datamodel.
 	if selected {
 		lead = t.Accent.Render("▌")
 	}
-	return lead + renderSegments(segments, selected)
+	return fitWidth(lead+renderSegments(segments, selected), w)
 }
 
 func cardWindow(total, capacity, focusRow int) (start, slots, above, below int) {

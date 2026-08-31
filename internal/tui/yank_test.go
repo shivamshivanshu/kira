@@ -68,7 +68,7 @@ func TestYankPickerCopiesChosenForm(t *testing.T) {
 func boardYankModel() (model, *bytes.Buffer) {
 	m, buf := yankModel()
 	bs := m.screens[viewBoard].(*boardScreen)
-	bs.loaded = true
+	bs.state = loadReady
 	bs.board.load(buildBoardResult())
 	bs.board.focusByID("t2")
 	m.view = viewBoard

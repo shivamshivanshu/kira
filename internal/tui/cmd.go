@@ -16,6 +16,10 @@ type crashMsg struct {
 
 type tickMsg struct{}
 
+// activateMsg fires once at startup so the initial screen dispatches its load
+// through the executor, matching what switchView does on later transitions.
+type activateMsg struct{}
+
 type treeData struct {
 	nodes    []datamodel.TreeNode
 	fields   map[string]datamodel.ListItem
@@ -64,6 +68,18 @@ func statsLoadCmd(store *core.Store, cfg *datamodel.Config) tea.Cmd {
 	return safeCmd(func() tea.Msg {
 		res, err := loadStats(store, cfg)
 		return statsLoadedMsg{res: res, err: err}
+	})
+}
+
+type boardLoadedMsg struct {
+	res *datamodel.BoardResult
+	err error
+}
+
+func boardLoadCmd(store *core.Store, cfg *datamodel.Config) tea.Cmd {
+	return safeCmd(func() tea.Msg {
+		res, err := store.Board(cfg, core.BoardOpts{})
+		return boardLoadedMsg{res: res, err: err}
 	})
 }
 
