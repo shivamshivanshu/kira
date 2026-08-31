@@ -586,3 +586,43 @@ func TestBoardCardTruncatesInsteadOfWrapping(t *testing.T) {
 		t.Fatalf("truncated card must keep the leading segments visible:\n%s", out)
 	}
 }
+
+func TestBoardMoveRefreshesTree(t *testing.T) {
+	t.Parallel()
+	s, cfg := boardStore(t)
+	cr, err := s.Create(cfg, core.CreateOpts{Type: datamodel.TypeTicket, Title: "M", NoEdit: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := newModel(s, cfg, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
+	m.width, m.height = 100, 12
+	m.view = viewBoard
+	bs := m.screens[viewBoard].(*boardScreen)
+	drainBoardLoad(t, &m, bs)
+	bs.board.focusByID(cr.ID)
+
+	u, mv := m.Update(key("L"))
+	m = u.(model)
+	if mv == nil {
+		t.Fatal("L on a TODO card must dispatch a move command")
+	}
+	u, cmd := m.Update(mv())
+	m = u.(model)
+	if cmd == nil {
+		t.Fatal("a successful board move must enqueue a tree refresh; without one the tree stays stale forever under the default no-auto-refresh config")
+	}
+	msg, ok := cmd().(treeLoadedMsg)
+	if !ok {
+		t.Fatalf("the enqueued refresh must resolve to treeLoadedMsg, got %T", cmd())
+	}
+	u, _ = m.Update(msg)
+	m = u.(model)
+	ts := m.screens[viewTree].(*treeScreen)
+	if got := ts.tree.fields[cr.ID].State; got != "IN_PROGRESS" {
+		t.Fatalf("tree must show the moved state after the refresh, got %q", got)
+	}
+
+	if _, cmd := m.Update(boardMovedMsg{err: errStub("boom"), cardID: cr.ID}); cmd != nil {
+		t.Fatal("a failed move must not enqueue a refresh")
+	}
+}
