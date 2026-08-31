@@ -17,8 +17,11 @@ type Renumber struct {
 
 func Plan(snap id.Snapshot) []Renumber {
 	liveHolders := map[string][]string{}
+	numberOf := map[string]string{}
 	for _, it := range snap.Items {
-		liveHolders[it.Number] = append(liveHolders[it.Number], it.ULID)
+		norm := strings.ToUpper(it.Number)
+		liveHolders[norm] = append(liveHolders[norm], it.ULID)
+		numberOf[it.ULID] = it.Number
 	}
 
 	collided := make([]string, 0)
@@ -49,7 +52,7 @@ func Plan(snap id.Snapshot) []Renumber {
 		}
 		for _, ulid := range holders[1:] {
 			to := id.Number{Key: key, N: nextFor(key)}.String()
-			plan = append(plan, Renumber{ULID: ulid, From: number, To: to})
+			plan = append(plan, Renumber{ULID: ulid, From: numberOf[ulid], To: to})
 		}
 	}
 	return plan

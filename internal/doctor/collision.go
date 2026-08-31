@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
@@ -11,32 +12,35 @@ import (
 func Collisions(items []*datamodel.Item) []Finding {
 	live := map[string][]string{}
 	alias := map[string][]string{}
+	original := map[string]string{}
+	norm := func(v string) string {
+		up := strings.ToUpper(v)
+		if _, ok := original[up]; !ok {
+			original[up] = v
+		}
+		return up
+	}
 	for _, it := range items {
 		if it.ID == "" {
 			continue
 		}
 		if it.Number != "" {
-			live[it.Number] = appendUnique(live[it.Number], it.ID)
+			n := norm(it.Number)
+			live[n] = appendUnique(live[n], it.ID)
 		}
 		for _, a := range it.Aliases {
 			if a != "" {
-				alias[a] = appendUnique(alias[a], it.ID)
+				n := norm(a)
+				alias[n] = appendUnique(alias[n], it.ID)
 			}
 		}
 	}
 
-	values := map[string]bool{}
-	for v := range live {
-		values[v] = true
-	}
-	for v := range alias {
-		values[v] = true
-	}
-
 	var out []Finding
-	for _, value := range slices.Sorted(maps.Keys(values)) {
-		liveIDs := live[value]
-		aliasIDs := without(alias[value], liveIDs)
+	for _, key := range slices.Sorted(maps.Keys(original)) {
+		value := original[key]
+		liveIDs := live[key]
+		aliasIDs := without(alias[key], liveIDs)
 		switch {
 		case len(liveIDs) >= 2:
 			out = append(out, collisionFinding(value, CollisionLiveLive, liveIDs, aliasIDs, slices.Min(liveIDs)))
