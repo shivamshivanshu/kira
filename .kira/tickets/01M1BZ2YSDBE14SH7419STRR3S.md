@@ -4,7 +4,7 @@ number: KIRA-145
 aliases: []
 type: ticket
 title: "DECISION: typed extras serialize as strings in --json"
-state: IN_PROGRESS
+state: REVIEW
 priority: P3
 labels: []
 epic: null
