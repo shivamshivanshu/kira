@@ -25,7 +25,10 @@ func (s *Store) EpicProgress(cfg *datamodel.Config) (map[string]datamodel.EpicPr
 	if err != nil {
 		return nil, err
 	}
-	items := ld.items
+	return allEpicProgress(cfg, ld.items)
+}
+
+func allEpicProgress(cfg *datamodel.Config, items []*datamodel.Item) (map[string]datamodel.EpicProgress, error) {
 	_, children := indexByEpic(items)
 	out := make(map[string]datamodel.EpicProgress)
 	for _, it := range items {

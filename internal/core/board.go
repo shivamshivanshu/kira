@@ -7,6 +7,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/query"
 )
 
 var reservedBoardKeys = map[string]bool{
@@ -24,13 +25,17 @@ func boardView(b datamodel.Board) datamodel.BoardView {
 
 // BoardOpts filters and scopes a Board query.
 type BoardOpts struct {
-	Type   string
-	Epic   string
-	Owner  string
-	Label  string
-	Query  string
-	Filter string
-	At     string
+	Type     string
+	Epic     string
+	State    string
+	Owner    string
+	Priority string
+	Label    string
+	Board    string
+	Sprint   string
+	Query    string
+	Filter   string
+	At       string
 }
 
 // Board returns the workflow columns for opts.Type, populated with the
@@ -40,7 +45,15 @@ func (s *Store) Board(cfg *datamodel.Config, opts BoardOpts) (*datamodel.BoardRe
 	if err != nil {
 		return nil, err
 	}
-	cfg = ld.cfg
+	qopts, err := s.queryOptions(ld.cfg, ld.resolver, ld.items)
+	if err != nil {
+		return nil, err
+	}
+	return boardResult(ld, opts, qopts)
+}
+
+func boardResult(ld *loaded, opts BoardOpts, qopts query.Options) (*datamodel.BoardResult, error) {
+	cfg := ld.cfg
 	typ := opts.Type
 	if typ == "" {
 		typ = datamodel.TypeTicket
@@ -50,8 +63,12 @@ func (s *Store) Board(cfg *datamodel.Config, opts BoardOpts) (*datamodel.BoardRe
 		return nil, errx.User("no workflow configured for type %q", typ)
 	}
 
-	base := ListOpts{Type: typ, Owner: opts.Owner, Label: opts.Label, Query: opts.Query, Filter: opts.Filter, At: opts.At}
-	global, err := s.matchSorted(cfg, ld, base)
+	base := ListOpts{
+		Type: typ, State: opts.State, Owner: opts.Owner, Priority: opts.Priority,
+		Label: opts.Label, Board: opts.Board, Sprint: opts.Sprint,
+		Query: opts.Query, Filter: opts.Filter, At: opts.At,
+	}
+	global, err := matchSorted(ld, base, qopts)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +76,7 @@ func (s *Store) Board(cfg *datamodel.Config, opts BoardOpts) (*datamodel.BoardRe
 	if opts.Epic != "" {
 		scoped := base
 		scoped.Epic = opts.Epic
-		if shown, err = s.matchSorted(cfg, ld, scoped); err != nil {
+		if shown, err = matchSorted(ld, scoped, qopts); err != nil {
 			return nil, err
 		}
 	}

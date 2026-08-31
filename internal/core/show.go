@@ -1,40 +1,64 @@
 package core
 
 import (
+	"os"
+
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/index"
 	"github.com/shivamshivanshu/kira/internal/ptr"
-	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
 const historyTailLimit = 10
+
+// ItemDetail pairs displayed content with a revision of the same file bytes.
+type ItemDetail struct {
+	Item     *datamodel.ShowResult
+	Revision string
+	store    *Store
+}
 
 func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResult, error) {
 	ld, err := s.read(cfg, loadOpts{at: at, useIndex: true})
 	if err != nil {
 		return nil, err
 	}
+	if at == "" {
+		detail, err := s.detail(ld, ref)
+		if err != nil {
+			return nil, err
+		}
+		return detail.Item, nil
+	}
 	ulid, err := resolveID(ld.resolver, ref)
 	if err != nil {
 		return nil, err
 	}
-	if at != "" {
-		it := findByULID(ld.items, ulid)
-		if it == nil {
-			return nil, errx.User("%s resolved to %s, which is absent at %s", ref, ulid, at)
-		}
-		res := showResultOf(ld.cfg, it)
-		res.Skew = s.skew(cfg, ref, ulid, at)
-		return &res, nil
+	it := findByULID(ld.items, ulid)
+	if it == nil {
+		return nil, errx.User("%s resolved to %s, which is absent at %s", ref, ulid, at)
 	}
-	it, err := storage.ReadItem(s.itemPath(ulid))
+	res := showResultOf(ld.cfg, it)
+	res.Skew = s.skew(cfg, ref, ulid, at)
+	return &res, nil
+}
+
+func (s *Store) detail(ld *loaded, ref string) (*ItemDetail, error) {
+	ulid, err := resolveID(ld.resolver, ref)
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(s.itemPath(ulid))
+	var it *datamodel.Item
+	if err == nil {
+		it, err = codec.Parse(string(data))
+	}
 	if err != nil {
 		return nil, errx.User("reading %s from %s: %v", ref, s.itemPath(ulid), err).
 			WithHint("the file is malformed; repair it in a text editor, then verify with `kira doctor`")
 	}
-	res := showResultOf(cfg, it)
+	res := showResultOf(ld.cfg, it)
 	res.StderrNotes = ld.notes
 
 	events, links, err := s.logEntries(ulid)
@@ -44,7 +68,7 @@ func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResu
 	res.LinkedCommits = commitLinksView(links, index.LinkLinked)
 	res.ReferencedBy = commitLinksView(links, index.LinkReferenced)
 	res.HistoryTail = historyTailView(events)
-	return &res, nil
+	return &ItemDetail{Item: &res, Revision: ItemRevision(string(data)), store: s}, nil
 }
 
 func commitLinksView(links []index.CommitLink, kind index.LinkKind) []datamodel.CommitLink {
