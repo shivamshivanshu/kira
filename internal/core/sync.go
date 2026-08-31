@@ -8,6 +8,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/index"
+	"github.com/shivamshivanshu/kira/internal/storage"
 	"github.com/shivamshivanshu/kira/internal/syncx"
 )
 
@@ -119,7 +120,7 @@ func dirtyPolicyFor(cfg *datamodel.Config) syncx.DirtyPolicy {
 }
 
 func (s *Store) prepareTree(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts, report *syncx.Report) (bool, error) {
-	dirty, err := repo.DirtyPaths(".kira")
+	dirty, err := repo.DirtyPaths(storage.DirName)
 	if err != nil {
 		return false, errx.User("%v", err)
 	}
@@ -135,7 +136,7 @@ func (s *Store) prepareTree(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts
 	case syncx.DirtyFail:
 		return false, errx.User("uncommitted kira changes; re-run with --commit or --stash")
 	case syncx.DirtyStash:
-		if err := repo.Stash(); err != nil {
+		if err := repo.Stash(storage.DirName); err != nil {
 			return false, errx.User("%v", err)
 		}
 		report.Add("prepare", syncx.StepDone, fmt.Sprintf("stashed %d paths", len(dirty)))
@@ -179,10 +180,24 @@ func (s *Store) pullRebase(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts,
 			report.Add("pull", syncx.StepFailed, "unresolved conflicts: "+strings.Join(unmerged, ", "))
 			return errx.Conflict("rebase halted, could not auto-resolve: %s", strings.Join(unmerged, ", "))
 		}
-		if err := repo.RebaseContinue(); err != nil && !repo.RebaseInProgress() {
-			_ = repo.RebaseAbort()
-			report.Add("pull", syncx.StepFailed, err.Error())
-			return errx.Conflict("%v", err)
+		if err := repo.RebaseContinue(); err != nil {
+			if !repo.RebaseInProgress() {
+				_ = repo.RebaseAbort()
+				report.Add("pull", syncx.StepFailed, err.Error())
+				return errx.Conflict("%v", err)
+			}
+			// Auto-resolve can arbitrate every conflicting field to the incoming
+			// side, leaving the staged file identical to the rebase parent; the
+			// apply backend's --continue then refuses the empty patch. Skip it —
+			// but only with an empty index, so a genuine failure while real
+			// changes are staged never silently drops a commit.
+			if staged, serr := repo.HasStagedChanges(); serr == nil && !staged {
+				if skipErr := repo.RebaseSkip(); skipErr != nil {
+					_ = repo.RebaseAbort()
+					report.Add("pull", syncx.StepFailed, skipErr.Error())
+					return errx.Conflict("%v", skipErr)
+				}
+			}
 		}
 		if !repo.RebaseInProgress() {
 			report.Add("pull", syncx.StepDone, "rebased with auto-resolved kira conflicts")
