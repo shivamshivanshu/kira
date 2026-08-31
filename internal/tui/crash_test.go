@@ -40,7 +40,7 @@ func TestHandleCrashRestoresAndReports(t *testing.T) {
 
 func TestInjectPanicRecoversThroughUpdateToQuit(t *testing.T) {
 	t.Parallel()
-	m := newModel(nil, nil, asciiTheme(), iconSet{mode: datamodel.IconText}, true)
+	m := newModel(nil, &datamodel.Config{}, asciiTheme(), iconSet{mode: datamodel.IconText}, true)
 
 	cmd := m.Init()
 	if cmd == nil {

@@ -43,6 +43,8 @@ func TestStripGlobalPrefix(t *testing.T) {
 		{"no chdir", []string{"find", "pattern"}, []string{"pattern"}, "", []string{"pattern"}},
 		{"ripgrep's own -C after find is not chdir", []string{"find", "pattern", "-C", "3"},
 			[]string{"pattern", "-C", "3"}, "", []string{"pattern", "-C", "3"}},
+		{"chdir target named like the subcommand", []string{"-C", "find", "find", "pattern"},
+			[]string{"-C", "find", "pattern"}, "find", []string{"pattern"}},
 		{"bridged: find absent from argv, rest passes through", []string{"tui"},
 			[]string{"--no-color", "pattern"}, "", []string{"--no-color", "pattern"}},
 	}

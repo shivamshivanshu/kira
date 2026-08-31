@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
 const terminalRestore = "\x1b[?1049l\x1b[?25h\x1b[?1000l\x1b[?1006l\x1b[0m"
@@ -42,7 +44,7 @@ func guard(f func()) {
 
 func crashLogPath(root string) string {
 	name := "crash-" + time.Now().UTC().Format("20060102T150405Z") + ".log"
-	return filepath.Join(root, ".kira", ".local", name)
+	return filepath.Join(root, storage.DirName, ".local", name)
 }
 
 func writeCrashLog(path string, info crashInfo) string {
