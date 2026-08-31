@@ -20,6 +20,7 @@ type Store struct {
 	store       *storage.FS
 	prompter    Prompter
 	schemaCache map[string]entityschema.Schema
+	trust       string
 }
 
 func newStore(root string) *Store {
