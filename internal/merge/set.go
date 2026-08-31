@@ -1,8 +1,20 @@
 package merge
 
-import "github.com/shivamshivanshu/kira/internal/setx"
+import (
+	"slices"
+
+	"github.com/shivamshivanshu/kira/internal/setx"
+)
 
 func setMerge(base, ours, theirs []string) []string {
+	switch {
+	case listEqual(ours, theirs):
+		return ours
+	case listEqual(ours, base):
+		return theirs
+	case listEqual(theirs, base):
+		return ours
+	}
 	b, o, t := setx.ToSet(base), setx.ToSet(ours), setx.ToSet(theirs)
 	var out []string
 	dedup := setx.NewDeduper[string]()
@@ -63,4 +75,8 @@ func keyUnion[V any](ms ...map[string]V) map[string]bool {
 		}
 	}
 	return keys
+}
+
+func listEqual(a, b []string) bool {
+	return (a == nil) == (b == nil) && slices.Equal(a, b)
 }

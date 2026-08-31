@@ -3,6 +3,8 @@
 package merge
 
 import (
+	"slices"
+
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/setx"
 )
@@ -17,13 +19,15 @@ func Merge(base, ours, theirs *datamodel.Item, remote Side, tm TextMerger) Resul
 		base = &datamodel.Item{}
 	}
 	winner := laterUpdated(ours.Updated, theirs.Updated, remote)
+	number := threeWayScalar(base.Number, ours.Number, theirs.Number, winner)
+	aliases := slices.DeleteFunc(aliasUnion(base.Aliases, ours.Aliases, theirs.Aliases), func(a string) bool { return a == number })
 
 	m := &datamodel.Item{
 		ID:         ours.ID,
-		Number:     ours.Number,
+		Number:     number,
 		Type:       ours.Type,
 		Created:    ours.Created,
-		Aliases:    aliasUnion(base.Aliases, ours.Aliases, theirs.Aliases),
+		Aliases:    aliases,
 		Subtype:    threeWayPtr(base.Subtype, ours.Subtype, theirs.Subtype, winner),
 		Title:      threeWayScalar(base.Title, ours.Title, theirs.Title, winner),
 		State:      threeWayScalar(base.State, ours.State, theirs.State, winner),
