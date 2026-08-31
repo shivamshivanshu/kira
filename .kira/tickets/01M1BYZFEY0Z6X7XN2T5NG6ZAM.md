@@ -4,7 +4,7 @@ number: KIRA-124
 aliases: []
 type: ticket
 title: "termx.IsTerminal treats /dev/null as a TTY"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
