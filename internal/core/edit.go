@@ -123,16 +123,8 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 			return nil, errx.Invalid(invalidItemPrefix, errs)
 		}
 		if opts.Description != nil {
-			_, comments, canonical := codec.SplitComments(codec.CanonicalizeCommentBody(orig.Body))
-			if !canonical {
-				return nil, errx.User("%s has non-canonical comment blocks; edit its file to preserve them", orig.Number)
-			}
-			prose := normalizeEOL(*opts.Description)
-			if len(codec.LintComments(prose)) > 0 || len(codec.ParseComments(prose)) > 0 {
-				return nil, errx.User("description cannot contain kira comment markers")
-			}
-			if prose != codec.Description(orig.Body) {
-				it.Body = codec.JoinComments(prose, comments)
+			if err := replaceDescription(it, orig, *opts.Description); err != nil {
+				return nil, err
 			}
 		}
 		if err := finish(it); err != nil {
@@ -298,6 +290,21 @@ func storedExtraValue(f entityschema.FieldDef, value string) (string, error) {
 func extraValueError(name, value string) error {
 	return errx.User("--field %s: value %q cannot be stored in frontmatter", name, value).
 		WithHint("values must fit one line; clear with `--field %s=`", name)
+}
+
+func replaceDescription(it, orig *datamodel.Item, description string) error {
+	_, comments, canonical := codec.SplitComments(codec.CanonicalizeCommentBody(orig.Body))
+	if !canonical {
+		return errx.User("%s has non-canonical comment blocks; edit its file to preserve them", orig.Number)
+	}
+	prose := normalizeEOL(description)
+	if len(codec.LintComments(prose)) > 0 || len(codec.ParseComments(prose)) > 0 {
+		return errx.User("description cannot contain kira comment markers")
+	}
+	if prose != codec.Description(orig.Body) {
+		it.Body = codec.JoinComments(prose, comments)
+	}
+	return nil
 }
 
 func cloneItem(src *datamodel.Item) *datamodel.Item {
