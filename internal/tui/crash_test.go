@@ -116,8 +116,7 @@ func TestGuardRunCatchesSetupPanic(t *testing.T) {
 	var buf bytes.Buffer
 	err := guardRun(root, &buf, func() error { panic("setup boom") })
 
-	var ce *CrashError
-	if !errors.As(err, &ce) {
+	if _, ok := errors.AsType[*CrashError](err); !ok {
 		t.Fatalf("guardRun returned %v, want *CrashError from the recover funnel", err)
 	}
 	if n := strings.Count(buf.String(), "\n"); n != 3 {

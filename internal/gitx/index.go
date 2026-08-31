@@ -40,8 +40,7 @@ func (r Repo) IsAncestor(ancestor Ancestor, descendant Descendant) (bool, error)
 	if err == nil {
 		return true, nil
 	}
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 		if exit.ExitCode() == 1 {
 			return false, nil
 		}

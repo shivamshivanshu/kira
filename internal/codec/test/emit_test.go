@@ -162,8 +162,7 @@ func TestEmitScalarMatchesYAMLReference(t *testing.T) {
 func TestParseDuplicateKeyReported(t *testing.T) {
 	src := strings.Replace(readExample(t), "state: IN_PROGRESS\n", "state: IN_PROGRESS\nstate: DONE\n", 1)
 	_, err := codec.Parse(src)
-	var pe *datamodel.ParseError
-	if !errors.As(err, &pe) {
+	if _, ok := errors.AsType[*datamodel.ParseError](err); !ok {
 		t.Fatalf("want *datamodel.ParseError, got %v", err)
 	}
 	if !strings.Contains(err.Error(), `field "state": duplicate key`) {
@@ -185,8 +184,7 @@ func TestParseNonMappingFrontmatter(t *testing.T) {
 
 func TestParseEmptyFrontmatter(t *testing.T) {
 	it, err := codec.Parse("---\n---\nbody\n")
-	var pe *datamodel.ParseError
-	if !errors.As(err, &pe) {
+	if _, ok := errors.AsType[*datamodel.ParseError](err); !ok {
 		t.Fatalf("empty frontmatter must yield missing-field errors, got %v", err)
 	}
 	if strings.Contains(err.Error(), "fence") {

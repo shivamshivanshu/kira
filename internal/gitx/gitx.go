@@ -406,8 +406,7 @@ func MergeText(base, ours, theirs string) (merged string, conflict bool, err err
 	if runErr == nil {
 		return stdout.String(), false, nil
 	}
-	var ee *exec.ExitError
-	if errors.As(runErr, &ee) {
+	if ee, ok := errors.AsType[*exec.ExitError](runErr); ok {
 		if code := ee.ExitCode(); code > 0 && code < 128 {
 			return stdout.String(), true, nil
 		}
