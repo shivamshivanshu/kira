@@ -4,7 +4,7 @@ number: KIRA-133
 aliases: []
 type: ticket
 title: "Query and CLI flag drift: changes --since, --json universality, completion gaps"
-state: REVIEW
+state: DONE
 priority: P3
 labels: []
 epic: null
