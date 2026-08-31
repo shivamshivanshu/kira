@@ -260,7 +260,11 @@ func validateFilters(c *datamodel.Config) error {
 		if name == "" {
 			return errx.User("config: filters: empty filter name")
 		}
-		if _, err := query.Parse(q); err != nil {
+		// Unknown fields pass here: schema-declared custom fields resolve
+		// only where a store can load schemas, and every use site re-parses
+		// the saved filter with them; a stricter check would brick config
+		// load for any repo whose saved filter names one.
+		if _, err := query.Parse(q, nil); err != nil && !query.IsUnknownField(err) {
 			return errx.User("config: filters.%s: %v", name, err)
 		}
 	}

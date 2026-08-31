@@ -138,6 +138,32 @@ func DecodeScalar(raw string) string {
 	return v
 }
 
+func DecodeList(elems []string) []string {
+	out := make([]string, len(elems))
+	for i, e := range elems {
+		out[i] = DecodeScalar(e)
+	}
+	return out
+}
+
+// DecodeExtras renders captured extras for --json output: scalars as decoded
+// strings, lists as decoded string arrays; nil when the item has none.
+func DecodeExtras(extras map[string]datamodel.ExtraValue) map[string]datamodel.ExtraJSON {
+	if len(extras) == 0 {
+		return nil
+	}
+	out := make(map[string]datamodel.ExtraJSON, len(extras))
+	for k, v := range extras {
+		switch {
+		case v.List != nil:
+			out[k] = DecodeList(v.List)
+		case v.Scalar != nil:
+			out[k] = DecodeScalar(*v.Scalar)
+		}
+	}
+	return out
+}
+
 // RenderScalar is RenderScalarNode for plain text, giving `--field` writes the
 // same canonical form parsing produces: an untagged node resolves its implicit
 // tag from the text, so "42" stays an unquoted int rather than EmitScalar's

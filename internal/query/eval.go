@@ -3,11 +3,14 @@ package query
 
 import (
 	"cmp"
+	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/ptr"
@@ -23,6 +26,7 @@ type Options struct {
 	ActiveSprint string
 	Me           string
 	Items        []*datamodel.Item
+	Extras       []ExtraField
 }
 
 type Compiled struct {
@@ -32,18 +36,27 @@ type Compiled struct {
 }
 
 type Error struct {
-	Pos int
-	Msg string
+	Pos          int
+	Msg          string
+	unknownField bool
 }
 
 func (e *Error) Error() string { return fmt.Sprintf("query: %s at position %d", e.Msg, e.Pos) }
 
+// IsUnknownField reports whether err is a query error about an unrecognised
+// field name — the one class of parse error whose validity depends on which
+// schema-declared extras the caller could supply.
+func IsUnknownField(err error) bool {
+	var e *Error
+	return errors.As(err, &e) && e.unknownField
+}
+
 func Compile(input string, opts Options) (*Compiled, error) {
-	q, err := Parse(input)
+	q, err := Parse(input, opts.Extras)
 	if err != nil {
 		return nil, err
 	}
-	c := &compiler{opts: opts}
+	c := &compiler{opts: opts, spec: specOf(opts.Extras)}
 	pred, err := c.compile(q.Expr)
 	if err != nil {
 		return nil, err
@@ -58,8 +71,9 @@ func Compile(input string, opts Options) (*Compiled, error) {
 }
 
 func Match(field, value string, opts Options) (Predicate, []datamodel.WarnCode, error) {
-	if !fields[field] {
-		return nil, nil, unknownFieldErr(0, field)
+	spec := specOf(opts.Extras)
+	if !spec.known(field) {
+		return nil, nil, unknownFieldErr(0, field, spec)
 	}
 	if isDateField(field) {
 		return nil, nil, &Error{Pos: 0, Msg: "field " + field + " is not an equality filter"}
@@ -68,10 +82,10 @@ func Match(field, value string, opts Options) (Predicate, []datamodel.WarnCode, 
 		return nil, nil, &Error{Pos: 0, Msg: "field " + field + " is boolean; use the query grammar instead"}
 	}
 	pred := &predExpr{field: field, op: token{kind: tokEq, text: "="}, value: value}
-	if err := typeCheckValue(field, token{kind: tokWord, text: value}, &pred.date, &pred.num); err != nil {
+	if err := typeCheckValue(spec, field, token{kind: tokWord, text: value}, &pred.date, &pred.num); err != nil {
 		return nil, nil, err
 	}
-	c := &compiler{opts: opts}
+	c := &compiler{opts: opts, spec: spec}
 	p, err := c.compilePred(pred)
 	if err != nil {
 		return nil, nil, err
@@ -81,6 +95,7 @@ func Match(field, value string, opts Options) (Predicate, []datamodel.WarnCode, 
 
 type compiler struct {
 	opts  Options
+	spec  extraSpec
 	notes []datamodel.WarnCode
 }
 
@@ -103,7 +118,7 @@ func (c *compiler) compile(e Expr) (Predicate, error) {
 	case *inExpr:
 		return c.compileIn(n)
 	case *emptyExpr:
-		return compileIsEmpty(n), nil
+		return c.compileIsEmpty(n), nil
 	case *boolExpr:
 		return c.compileBool(n)
 	default:
@@ -178,16 +193,38 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 	case fieldDue:
 		return datePred(n, func(it *datamodel.Item) string { return ptr.Deref(it.Due) }), nil
 	}
-	return nil, unknownFieldErr(n.op.pos, n.field)
+	if ef, ok := c.spec[n.field]; ok {
+		return extraPred(n, ef), nil
+	}
+	return nil, unknownFieldErr(n.op.pos, n.field, c.spec)
 }
 
-func unknownFieldErr(pos int, field string) *Error {
-	names := make([]string, 0, len(fields))
-	for f := range fields {
-		names = append(names, f)
+func extraPred(n *predExpr, ef ExtraField) Predicate {
+	eq := n.op.kind == tokEq
+	switch {
+	case ef.List:
+		field, want := n.field, n.value
+		return func(it *datamodel.Item, _ *datamodel.Config) bool {
+			return slices.ContainsFunc(it.Extras[field].List, func(e string) bool {
+				return codec.DecodeScalar(e) == want
+			}) == eq
+		}
+	case ef.Ordered:
+		get, op, want := scalarGet(n.field), n.op.kind, n.num
+		return func(it *datamodel.Item, cfg *datamodel.Config) bool {
+			got, err := strconv.ParseFloat(get(it, cfg), 64)
+			return err == nil && applyCmp(op, got, want)
+		}
 	}
-	slices.Sort(names)
-	return &Error{Pos: pos, Msg: fmt.Sprintf("unknown field %s (available: %s)", quote(field), strings.Join(names, ", "))}
+	return scalarPred(eq, n.value, scalarGet(n.field))
+}
+
+func unknownFieldErr(pos int, field string, spec extraSpec) *Error {
+	return &Error{
+		Pos:          pos,
+		Msg:          fmt.Sprintf("unknown field %s (available: %s)", quote(field), strings.Join(spec.names(), ", ")),
+		unknownField: true,
+	}
 }
 
 func (c *compiler) compileRefPred(n *predExpr, eq bool, matches func(*datamodel.Item, string) bool) (Predicate, error) {
@@ -205,7 +242,7 @@ func (c *compiler) compileIn(n *inExpr) (Predicate, error) {
 			field: n.field, op: token{kind: tokEq, text: "=", pos: n.fieldPos},
 			value: v, valuePos: n.valuePos[i],
 		}
-		if err := typeCheckValue(n.field, token{text: v, pos: n.valuePos[i]}, &pred.date, &pred.num); err != nil {
+		if err := typeCheckValue(c.spec, n.field, token{text: v, pos: n.valuePos[i]}, &pred.date, &pred.num); err != nil {
 			return nil, err
 		}
 		p, err := c.compilePred(pred)
@@ -224,7 +261,13 @@ func (c *compiler) compileIn(n *inExpr) (Predicate, error) {
 	}, nil
 }
 
-func compileIsEmpty(n *emptyExpr) Predicate {
+func (c *compiler) compileIsEmpty(n *emptyExpr) Predicate {
+	if c.spec[n.field].List {
+		field, want := n.field, !n.notEmpty
+		return func(it *datamodel.Item, _ *datamodel.Config) bool {
+			return (len(it.Extras[field].List) == 0) == want
+		}
+	}
 	var isEmpty func(it *datamodel.Item, cfg *datamodel.Config) bool
 	switch n.field {
 	case fieldLabel:
@@ -315,7 +358,12 @@ func scalarGet(field string) func(*datamodel.Item, *datamodel.Config) string {
 	if get, ok := accessors[field]; ok {
 		return get
 	}
-	return func(*datamodel.Item, *datamodel.Config) string { return "" }
+	return func(it *datamodel.Item, _ *datamodel.Config) string {
+		if v := it.Extras[field].Scalar; v != nil {
+			return codec.DecodeScalar(*v)
+		}
+		return ""
+	}
 }
 
 func PriorityIndex(priorities []string) map[string]int {

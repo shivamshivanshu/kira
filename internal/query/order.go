@@ -1,6 +1,8 @@
 package query
 
 import (
+	"strconv"
+
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 )
@@ -44,6 +46,15 @@ func (o *Order) Keyer(cfg *datamodel.Config) func(*datamodel.Item) OrderKey {
 		}
 	default:
 		get := scalarGet(o.Field)
+		if o.extraNumeric {
+			return func(it *datamodel.Item) OrderKey {
+				n, err := strconv.ParseFloat(get(it, cfg), 64)
+				if err != nil {
+					return OrderKey{null: true}
+				}
+				return OrderKey{numeric: true, num: n}
+			}
+		}
 		return func(it *datamodel.Item) OrderKey {
 			s := get(it, cfg)
 			if s == "" {
