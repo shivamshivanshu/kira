@@ -4,7 +4,7 @@ number: KIRA-135
 aliases: []
 type: ticket
 title: "Platform hardening: rename detection, entityschema placement validation, WIP doctor check, misc"
-state: REVIEW
+state: DONE
 priority: P3
 labels: []
 epic: null
