@@ -47,8 +47,6 @@ func (m *model) barRoute(msg tea.KeyMsg) (tea.Cmd, bool) {
 		return nil, false
 	}
 	switch msg.String() {
-	case "ctrl+c":
-		return nil, false
 	case "esc":
 		m.bar.close()
 		return nil, true

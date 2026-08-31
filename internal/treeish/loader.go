@@ -1,13 +1,16 @@
-// Package treeish loads a kira item set and its config from any git tree-ish
-// in one batched cat-file pass, backing read-only time-travel views and diffs.
+// Package treeish loads a kira item set, its config and its schemas from any
+// git tree-ish in one batched cat-file pass, backing read-only time-travel
+// views and diffs.
 package treeish
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/id"
@@ -17,6 +20,7 @@ import (
 type Loaded struct {
 	Items    []*datamodel.Item
 	Config   *datamodel.Config
+	Schemas  map[string]entityschema.Schema
 	Resolver *id.Resolver
 	Warnings []string
 }
@@ -27,11 +31,11 @@ func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
 		return nil, errx.User("resolving %s: %v", treeish, err)
 	}
 
-	names, err := repo.LsTreeNames(sha, storage.TicketsPrefix, storage.ConfigRelPath)
+	names, err := repo.LsTreeNames(sha, storage.TicketsPrefix, storage.SchemaPrefix, storage.ConfigRelPath)
 	if err != nil {
 		return nil, err
 	}
-	var ticketPaths []string
+	var ticketPaths, schemaPaths []string
 	hasConfig := false
 	for _, n := range names {
 		switch {
@@ -39,15 +43,17 @@ func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
 			hasConfig = true
 		case storage.IsItemPath(n):
 			ticketPaths = append(ticketPaths, n)
+		case storage.IsSchemaPath(n):
+			schemaPaths = append(schemaPaths, n)
 		}
 	}
 	if !hasConfig {
 		return nil, errConfigMissing(sha)
 	}
 
-	specs := make([]string, 0, len(ticketPaths)+1)
+	specs := make([]string, 0, len(ticketPaths)+len(schemaPaths)+1)
 	specs = append(specs, gitx.RevPath(sha, storage.ConfigRelPath))
-	for _, p := range ticketPaths {
+	for _, p := range slices.Concat(ticketPaths, schemaPaths) {
 		specs = append(specs, gitx.RevPath(sha, p))
 	}
 	blobs, err := repo.CatFileBatch(specs)
@@ -67,10 +73,13 @@ func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
 
 	items := make([]*datamodel.Item, 0, len(ticketPaths))
 	var warnings []string
+	blobWarning := func(p string) string {
+		return fmt.Sprintf("skipped %s at %s: listed in the tree but its blob is missing (corrupt tree)", p, sha)
+	}
 	for i, p := range ticketPaths {
 		blob := blobs[i+1]
 		if !blob.Found {
-			warnings = append(warnings, fmt.Sprintf("skipped %s at %s: listed in the tree but its blob is missing (corrupt tree)", p, sha))
+			warnings = append(warnings, blobWarning(p))
 			continue
 		}
 		it, err := codec.Parse(blob.Content)
@@ -82,10 +91,25 @@ func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
 		items = append(items, it)
 	}
 
+	var schemaFiles []entityschema.File
+	for i, p := range schemaPaths {
+		blob := blobs[len(ticketPaths)+i+1]
+		if !blob.Found {
+			warnings = append(warnings, blobWarning(p))
+			continue
+		}
+		schemaFiles = append(schemaFiles, entityschema.File{Name: p, Data: []byte(blob.Content)})
+	}
+	schemas, err := entityschema.LoadFiles(schemaFiles)
+	if err != nil {
+		return nil, errx.User("schema at %s: %v", sha, err)
+	}
+
 	_, resolver := storage.SnapshotAndResolver(cfg.Project.Key, items)
 	return &Loaded{
 		Items:    items,
 		Config:   cfg,
+		Schemas:  schemas,
 		Resolver: resolver,
 		Warnings: warnings,
 	}, nil

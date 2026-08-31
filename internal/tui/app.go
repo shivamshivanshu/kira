@@ -111,11 +111,8 @@ type model struct {
 }
 
 func newModel(store *core.Store, cfg *datamodel.Config, th theme.Theme, ic iconSet, injectPanic bool) model {
-	var every time.Duration
-	if cfg != nil {
-		every = cfg.UI.Tui.RefreshInterval()
-	}
-	return model{store: store, cfg: cfg, theme: th, icons: ic, view: viewTree, screens: buildScreens(), bar: newBar(), injectPanic: injectPanic, refreshEvery: every}
+	return model{store: store, cfg: cfg, theme: th, icons: ic, view: viewTree, screens: buildScreens(),
+		bar: newBar(), injectPanic: injectPanic, refreshEvery: cfg.UI.Tui.RefreshInterval()}
 }
 
 func (m model) Init() tea.Cmd {

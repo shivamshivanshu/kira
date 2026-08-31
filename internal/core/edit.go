@@ -91,7 +91,11 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 	var updated *datamodel.Item
 	var warns []error
 	finish := func(it *datamodel.Item) error {
-		restoreImmutable(it, orig)
+		schemas, err := s.Schemas()
+		if err != nil {
+			return err
+		}
+		restoreImmutable(schemas, it, orig)
 		guardErrs, guardWarns := applyEditGuards(cfg, orig, it, opts.Force, resolver, items)
 		if len(guardErrs) > 0 {
 			return errx.Invalid(invalidItemPrefix, guardErrs)
@@ -208,12 +212,16 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 	if err != nil {
 		return "", "", err
 	}
+	schemas, err := s.Schemas()
+	if err != nil {
+		return "", "", err
+	}
 	content, err := runEditor(cfg.UI.Editor, opts.Stdio, codec.Serialize(orig), func(c string) []error {
 		it, errs := parseFullItem(c)
 		if len(errs) > 0 {
 			return errs
 		}
-		restoreImmutable(it, orig)
+		restoreImmutable(schemas, it, orig)
 		if hard, _ := applyEditGuards(cfg, orig, it, opts.Force, resolver, items); len(hard) > 0 {
 			return hard
 		}
@@ -256,29 +264,38 @@ func parseFullItem(content string) (*datamodel.Item, []error) {
 	return it, nil
 }
 
-func restoreImmutable(it, orig *datamodel.Item) {
+// restoreImmutable reverts every field the editor and --from-file paths may
+// not change: the builtin identity fields, plus the extras orig's schema
+// declares immutable. Copy also covers a deletion, since it clears a key
+// absent from orig.
+func restoreImmutable(schemas map[string]entityschema.Schema, it, orig *datamodel.Item) {
 	it.ID = orig.ID
 	it.Number = orig.Number
 	it.Type = orig.Type
 	it.Created = orig.Created
 	it.Aliases = orig.Aliases
+	for _, f := range schemas[orig.Type].Fields {
+		if f.Immutable && f.Placement == entityschema.PlacementFrontmatter {
+			datamodel.ExtraField(f.Name, f.List).Copy(it, orig)
+		}
+	}
 }
 
 func applyFieldEdit(it *datamodel.Item, key, value string) error {
 	d, ok := datamodel.Field(key)
 	if !ok || d.Set == nil {
-		return fieldEditError(key)
+		return fieldEditError(key, nil)
 	}
 	return d.Set(it, value)
 }
 
-func fieldEditError(key string) error {
-	return errx.User("--field: unknown or immutable field %q", key).WithHint("%s", fieldHint(key))
+func fieldEditError(key string, extras []string) error {
+	return errx.User("--field: unknown or immutable field %q", key).WithHint("%s", fieldHint(key, extras))
 }
 
 func (s *Store) editField(it *datamodel.Item, key, value string) error {
-	if _, ok := datamodel.Field(key); ok {
-		return applyFieldEdit(it, key, value)
+	if d, ok := datamodel.Field(key); ok && d.Set != nil {
+		return d.Set(it, value)
 	}
 	return s.editExtraField(it, key, value)
 }
@@ -290,7 +307,7 @@ func (s *Store) editExtraField(it *datamodel.Item, key, value string) error {
 	}
 	f, ok := entityschema.DeclaredExtra(schemas, it.Type, key)
 	if !ok || f.Immutable {
-		return fieldEditError(key)
+		return fieldEditError(key, editableExtras(schemas, it.Type))
 	}
 	stored, err := storedExtraValue(f, value)
 	if err != nil {

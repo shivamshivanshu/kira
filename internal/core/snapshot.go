@@ -19,12 +19,8 @@ func (s *Store) Snapshot(cfg *datamodel.Config) (*Snapshot, error) {
 	if err != nil {
 		return nil, err
 	}
-	qopts, err := s.queryOptions(ld.cfg, ld.resolver, ld.items)
-	if err != nil {
-		return nil, err
-	}
 	ld.matches = make(map[ListOpts][]*datamodel.Item)
-	return &Snapshot{store: s, data: ld, query: qopts}, nil
+	return &Snapshot{store: s, data: ld, query: s.queryOptions(ld)}, nil
 }
 
 func (v *Snapshot) ListWithMatches(expr string) ([]datamodel.ListItem, map[string]bool, error) {

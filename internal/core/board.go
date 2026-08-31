@@ -45,11 +45,7 @@ func (s *Store) Board(cfg *datamodel.Config, opts BoardOpts) (*datamodel.BoardRe
 	if err != nil {
 		return nil, err
 	}
-	qopts, err := s.queryOptions(ld.cfg, ld.resolver, ld.items)
-	if err != nil {
-		return nil, err
-	}
-	return boardResult(ld, opts, qopts)
+	return boardResult(ld, opts, s.queryOptions(ld))
 }
 
 func boardResult(ld *loaded, opts BoardOpts, qopts query.Options) (*datamodel.BoardResult, error) {

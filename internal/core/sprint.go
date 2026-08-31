@@ -169,7 +169,7 @@ func (s *Store) SprintClose(cfg *datamodel.Config, key, moveTo string) (*datamod
 	if s.ActiveSprintKey() == key {
 		res.WasActive = true
 		if err := os.Remove(filepath.Join(s.fs().CacheDir(), activeSprintFile)); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return nil, errx.User("clearing active-sprint pointer: %v", err)
+			return nil, errx.Env("clearing active-sprint pointer: %v", err)
 		}
 	}
 	return res, nil
