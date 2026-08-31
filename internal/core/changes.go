@@ -26,8 +26,8 @@ func (s *Store) Changes(ref string) (*datamodel.ChangesResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	fromByID := byULID(from.Items)
-	toByID := byULID(to.Items)
+	fromByID := datamodel.IndexByID(from.Items)
+	toByID := datamodel.IndexByID(to.Items)
 
 	events, err := s.rangeEvents(repo, sinceSHA, headSHA, toByID)
 	if err != nil {

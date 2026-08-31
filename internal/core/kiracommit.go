@@ -68,7 +68,7 @@ func (s *Store) CommitKira(cfg *datamodel.Config) (*datamodel.CommitResult, erro
 func (s *Store) summarizeDirty(cfg *datamodel.Config, dirty []string) (numbers, body []string) {
 	byID := map[string]*datamodel.Item{}
 	if ld, err := s.load(cfg); err == nil {
-		byID = byULID(ld.items)
+		byID = datamodel.IndexByID(ld.items)
 	}
 	for _, p := range dirty {
 		if !storage.IsItemPath(p) {

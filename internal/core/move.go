@@ -170,7 +170,7 @@ func wipGuard(wf datamodel.Workflow, it *datamodel.Item, items []*datamodel.Item
 }
 
 func blockersClosedGuard(cfg *datamodel.Config, it *datamodel.Item, items []*datamodel.Item, from, state string, force bool) (hard, warns []error) {
-	byID := byULID(items)
+	byID := datamodel.IndexByID(items)
 	open, skipped := query.OpenBlockers(cfg, it, byID)
 	for _, s := range skipped {
 		warns = append(warns, fmt.Errorf("blocked_by %s %s; treating blocker as satisfied", numberOrID(s.Blocker, s.ID), s.Reason))

@@ -112,7 +112,7 @@ func (s *Store) Find(cfg *datamodel.Config, args FindArgs) ([]FindRow, error) {
 }
 
 func (s *Store) findRipgrep(args FindArgs, items []*datamodel.Item) ([]FindRow, error) {
-	byID := byULID(items)
+	byID := datamodel.IndexByID(items)
 
 	fs := s.fs()
 	lines, err := rgx.Search(fs.Root(), args.Passthru, fs.RelToRoot(fs.ItemsDir()))

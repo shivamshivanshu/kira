@@ -59,8 +59,8 @@ func diffEndpoints(repo gitx.Repo, ref, since string, incoming bool) (baseSHA, t
 }
 
 func diffSnapshots(repo gitx.Repo, from, to *treeish.Loaded, fromSHA, toSHA string) (*datamodel.DiffResult, error) {
-	fromByID := byULID(from.Items)
-	toByID := byULID(to.Items)
+	fromByID := datamodel.IndexByID(from.Items)
+	toByID := datamodel.IndexByID(to.Items)
 
 	var items []datamodel.DiffItem
 	for ulid, t := range toByID {

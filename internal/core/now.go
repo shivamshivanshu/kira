@@ -25,7 +25,7 @@ func (s *Store) Now(cfg *datamodel.Config) (*datamodel.NowResult, error) {
 	}
 
 	since := s.stateSince(it)
-	byID := byULID(ld.items)
+	byID := datamodel.IndexByID(ld.items)
 	blockers := make([]datamodel.NowBlocker, 0, len(it.BlockedBy))
 	for _, b := range it.BlockedBy {
 		blocker := byID[b]
