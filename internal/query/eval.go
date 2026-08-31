@@ -222,7 +222,10 @@ func extraPred(n *predExpr, ef ExtraField) Predicate {
 		get, op, want := scalarGet(n.field), n.op.kind, n.num
 		return func(it *datamodel.Item, cfg *datamodel.Config) bool {
 			got, err := strconv.ParseFloat(get(it, cfg), 64)
-			return err == nil && applyCmp(op, got, want)
+			if err != nil {
+				return op == tokNe
+			}
+			return applyCmp(op, got, want)
 		}
 	}
 	return scalarPred(eq, n.value, scalarGet(n.field))
@@ -514,7 +517,10 @@ func scalarPred(eq bool, want string, get func(*datamodel.Item, *datamodel.Confi
 
 func estimatePred(op tokKind, want float64) Predicate {
 	return func(it *datamodel.Item, _ *datamodel.Config) bool {
-		return it.Estimate != nil && applyCmp(op, *it.Estimate, want)
+		if it.Estimate == nil {
+			return op == tokNe
+		}
+		return applyCmp(op, *it.Estimate, want)
 	}
 }
 
@@ -524,7 +530,7 @@ func datePred(n *predExpr, get func(*datamodel.Item) string) Predicate {
 	return func(it *datamodel.Item, _ *datamodel.Config) bool {
 		day := get(it)
 		if day == "" {
-			return false
+			return op == tokNe
 		}
 		return applyCmp(op, day, want)
 	}
