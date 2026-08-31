@@ -25,6 +25,17 @@ func ParseFlexible(s string) (time.Time, error) {
 	return time.Parse(time.DateOnly, s)
 }
 
+// Day reduces an RFC3339 timestamp to its calendar day at the timestamp's
+// own recorded offset — never the host timezone — so date comparisons match
+// the day string written in the item file on every machine.
+func Day(ts string) (string, bool) {
+	t, err := time.Parse(time.RFC3339, ts)
+	if err != nil {
+		return "", false
+	}
+	return t.Format(time.DateOnly), true
+}
+
 func CompareRFC3339(a, b string) (cmp int, aOK, bOK bool) {
 	ta, ea := time.Parse(time.RFC3339, a)
 	tb, eb := time.Parse(time.RFC3339, b)

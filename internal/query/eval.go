@@ -14,6 +14,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/ptr"
+	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
 type Predicate func(it *datamodel.Item, cfg *datamodel.Config) bool
@@ -193,11 +194,11 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 	case fieldEstimate:
 		return estimatePred(n.op.kind, n.num), nil
 	case fieldCreated:
-		return datePred(n, localDay(func(it *datamodel.Item) string { return it.Created })), nil
+		return datePred(n, recordedDay(func(it *datamodel.Item) string { return it.Created })), nil
 	case fieldUpdated:
-		return datePred(n, localDay(func(it *datamodel.Item) string { return it.Updated })), nil
+		return datePred(n, recordedDay(func(it *datamodel.Item) string { return it.Updated })), nil
 	case fieldActivity:
-		return datePred(n, localDay(func(it *datamodel.Item) string { return it.Activity })), nil
+		return datePred(n, recordedDay(func(it *datamodel.Item) string { return it.Activity })), nil
 	case fieldDue:
 		return datePred(n, func(it *datamodel.Item) string { return ptr.Deref(it.Due) }), nil
 	}
@@ -221,7 +222,10 @@ func extraPred(n *predExpr, ef ExtraField) Predicate {
 		get, op, want := scalarGet(n.field), n.op.kind, n.num
 		return func(it *datamodel.Item, cfg *datamodel.Config) bool {
 			got, err := strconv.ParseFloat(get(it, cfg), 64)
-			return err == nil && applyCmp(op, got, want)
+			if err != nil {
+				return op == tokNe
+			}
+			return applyCmp(op, got, want)
 		}
 	}
 	return scalarPred(eq, n.value, scalarGet(n.field))
@@ -513,7 +517,10 @@ func scalarPred(eq bool, want string, get func(*datamodel.Item, *datamodel.Confi
 
 func estimatePred(op tokKind, want float64) Predicate {
 	return func(it *datamodel.Item, _ *datamodel.Config) bool {
-		return it.Estimate != nil && applyCmp(op, *it.Estimate, want)
+		if it.Estimate == nil {
+			return op == tokNe
+		}
+		return applyCmp(op, *it.Estimate, want)
 	}
 }
 
@@ -523,18 +530,15 @@ func datePred(n *predExpr, get func(*datamodel.Item) string) Predicate {
 	return func(it *datamodel.Item, _ *datamodel.Config) bool {
 		day := get(it)
 		if day == "" {
-			return false
+			return op == tokNe
 		}
 		return applyCmp(op, day, want)
 	}
 }
 
-func localDay(get func(*datamodel.Item) string) func(*datamodel.Item) string {
+func recordedDay(get func(*datamodel.Item) string) func(*datamodel.Item) string {
 	return func(it *datamodel.Item) string {
-		t, err := time.Parse(time.RFC3339, get(it))
-		if err != nil {
-			return ""
-		}
-		return t.Local().Format(time.DateOnly)
+		day, _ := timex.Day(get(it))
+		return day
 	}
 }

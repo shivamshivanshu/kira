@@ -525,6 +525,25 @@ func TestAppendCommentToDocument(t *testing.T) {
 	}
 }
 
+func TestAppendCommentToDocumentToleratesCRLF(t *testing.T) {
+	c := datamodel.Comment{ID: "01J8XB000000000000000000AA", Author: "alice", Ts: "2026-07-12T12:00:00+05:30", Body: "one"}
+	doc := "---\r\nid: x\r\ntitle: t\r\n---\r\n\r\n## Description\r\n"
+	got, err := codec.AppendCommentToDocument(doc, c)
+	if err != nil {
+		t.Fatalf("CRLF document must append like the CRLF-tolerant parse path: %v", err)
+	}
+	if strings.Contains(got, "\r") {
+		t.Fatalf("CRLF input must be normalized to LF like splitDocument does: %q", got)
+	}
+	body, _, _, err := codec.DecodeFrontmatter(got, &struct{}{})
+	if err != nil {
+		t.Fatalf("result unparseable: %v\n%q", err, got)
+	}
+	if _, comments, _ := codec.SplitComments(body); len(comments) != 1 || comments[0].ID != c.ID {
+		t.Fatalf("comments = %+v, want the appended comment", comments)
+	}
+}
+
 func TestCanonicalizeCommentBody(t *testing.T) {
 	block := codec.AppendComment("", datamodel.Comment{
 		ID: "01J8XB000000000000000000AA", Author: "alice", Ts: "2026-07-12T12:00:00+05:30", Body: "note",
