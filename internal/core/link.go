@@ -119,7 +119,7 @@ func resolveTarget(resolver *id.Resolver, edge, ref string) (string, error) {
 	}
 	ulid, err := resolver.Resolve(ref)
 	if err != nil {
-		return "", fmt.Errorf("%s: %v", edge, err)
+		return "", fmt.Errorf("%s: %w", edge, err)
 	}
 	return ulid, nil
 }
