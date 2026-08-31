@@ -84,10 +84,10 @@ type FieldDef struct {
 type Schema struct {
 	Name           string         `json:"name"`
 	Workflow       string         `json:"workflow,omitempty"`
-	Identity       Identity       `json:"identity,omitempty"`
+	Identity       Identity       `json:"identity,omitzero"`
 	Fields         []FieldDef     `json:"fields"`
 	Enums          []EnumDef      `json:"enums,omitempty"`
-	Representation Representation `json:"representation,omitempty"`
+	Representation Representation `json:"representation,omitzero"`
 }
 
 func (s Schema) Field(name string) (FieldDef, bool) {
