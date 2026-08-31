@@ -15,16 +15,30 @@ func (s *Store) AutomationList(cfg *datamodel.Config) *datamodel.AutomationListR
 	views = append(views, automationViews(cfg.UserAutomation, datamodel.AutomationSourceUser)...)
 	return &datamodel.AutomationListResult{
 		Hooks:   views,
-		Trusted: automation.Trusted(s.fs().CacheDir(), cfg),
+		Trusted: automation.Trusted(s.trustDir(), cfg),
 	}
 }
 
 func (s *Store) AutomationTrust(cfg *datamodel.Config) (*datamodel.AutomationTrustResult, error) {
-	hash, err := automation.Grant(s.fs().CacheDir(), cfg)
+	hash, err := automation.Grant(s.trustDir(), cfg)
 	if err != nil {
 		return nil, errx.User("recording automation trust: %v", err)
 	}
 	return &datamodel.AutomationTrustResult{Hooks: automationViews(cfg.Automation, datamodel.AutomationSourceRepo), Hash: hash}, nil
+}
+
+// trustDir resolves the git dir once; an unresolvable one yields "", which
+// automation refuses, so a repo kira cannot place a grant outside of stays
+// untrusted rather than falling back into the worktree.
+func (s *Store) trustDir() string {
+	if s.trust == "" {
+		p, err := s.repo().GitPath("kira")
+		if err != nil {
+			return ""
+		}
+		s.trust = p
+	}
+	return s.trust
 }
 
 func automationViews(hooks []datamodel.AutomationHook, source datamodel.AutomationSource) []datamodel.AutomationHookView {
@@ -36,7 +50,7 @@ func automationViews(hooks []datamodel.AutomationHook, source datamodel.Automati
 }
 
 func (s *Store) fire(cfg *datamodel.Config, ev automation.Event) {
-	automation.Fire(os.Stderr, s.root, s.fs().CacheDir(), cfg, ev, s.actor)
+	automation.Fire(os.Stderr, s.root, s.trustDir(), cfg, ev, s.actor)
 }
 
 func (s *Store) fireAutomation(cfg *datamodel.Config, cs *datamodel.ChangeSet, sha string) {
