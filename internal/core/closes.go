@@ -31,12 +31,12 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 		if isDoneState(cfg, it.Type, it.State) {
 			continue
 		}
-		reopened, tsErr := reopenedSince(cand.CommitterTs, it.Updated)
+		touched, tsErr := touchedSince(cand.CommitterTs, it.Updated)
 		if tsErr != nil {
 			closeFailed(it.Number, tsErr)
 			continue
 		}
-		if reopened {
+		if touched {
 			continue
 		}
 		target := closeTargetState(cfg, it.Type)
@@ -64,7 +64,7 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 	return closed, notes, nil
 }
 
-func reopenedSince(committerTs, updated string) (bool, error) {
+func touchedSince(committerTs, updated string) (bool, error) {
 	cmp, ctOK, utOK := timex.CompareRFC3339(committerTs, updated)
 	if !ctOK {
 		return false, fmt.Errorf("parsing committer date %q", committerTs)
