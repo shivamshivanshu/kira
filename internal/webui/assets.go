@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
@@ -42,49 +43,54 @@ func markdown(s string) (template.HTML, error) {
 	return template.HTML(out.String()), nil
 }
 
-var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{
-	"asset":    assetURL,
-	"markdown": markdown,
-	"prose":    codec.Description,
-	"mul100":   func(n float64) float64 { return n * 100 },
-	"samples": func(p *datamodel.Percentiles) *datamodel.Percentiles {
-		if p == nil || p.N == 0 {
-			return nil
-		}
-		return p
-	},
-	"label": func(s string) string { return strings.ReplaceAll(s, "_", " ") },
-	"str":   ptr.Deref[string],
-	"number": func(n *float64) string {
-		if n == nil {
-			return ""
-		}
-		return fmt.Sprintf("%g", *n)
-	},
-	"date": displayTime,
-	"join": func(s []string) string { return strings.Join(s, ", ") },
-	"short": func(s string) string {
-		if len(s) > 8 {
-			return s[:8]
-		}
-		return s
-	},
-	"depth": func(n int) int { return min(max(n, 0), 6) },
-	"inc":   func(n int) int { return n + 1 },
-	"peak": func(values []int) int {
-		peak := 1
-		for _, n := range values {
-			peak = max(peak, n)
-		}
-		return peak
-	},
-	"overdue": func(due *string, category string) bool {
-		return datamodel.IsOverdue(due, category, timex.Now())
-	},
-}).ParseFS(templates, "templates/*.html"))
+// pageTemplate parses the dashboard templates on first render rather than at
+// package init: only `kira server` ever renders a page, but every other kira
+// invocation pays an init that runs unconditionally in the same binary.
+var pageTemplate = sync.OnceValue(func() *template.Template {
+	return template.Must(template.New("page").Funcs(template.FuncMap{
+		"asset":    assetURL,
+		"markdown": markdown,
+		"prose":    codec.Description,
+		"mul100":   func(n float64) float64 { return n * 100 },
+		"samples": func(p *datamodel.Percentiles) *datamodel.Percentiles {
+			if p == nil || p.N == 0 {
+				return nil
+			}
+			return p
+		},
+		"label": func(s string) string { return strings.ReplaceAll(s, "_", " ") },
+		"str":   ptr.Deref[string],
+		"number": func(n *float64) string {
+			if n == nil {
+				return ""
+			}
+			return fmt.Sprintf("%g", *n)
+		},
+		"date": displayTime,
+		"join": func(s []string) string { return strings.Join(s, ", ") },
+		"short": func(s string) string {
+			if len(s) > 8 {
+				return s[:8]
+			}
+			return s
+		},
+		"depth": func(n int) int { return min(max(n, 0), 6) },
+		"inc":   func(n int) int { return n + 1 },
+		"peak": func(values []int) int {
+			peak := 1
+			for _, n := range values {
+				peak = max(peak, n)
+			}
+			return peak
+		},
+		"overdue": func(due *string, category string) bool {
+			return datamodel.IsOverdue(due, category, timex.Now())
+		},
+	}).ParseFS(templates, "templates/*.html"))
+})
 
 func renderPage(w io.Writer, p pageData) error {
-	return pageTemplate.ExecuteTemplate(w, "page", p)
+	return pageTemplate().ExecuteTemplate(w, "page", p)
 }
 
 func writePage(w http.ResponseWriter, p pageData, status int) {

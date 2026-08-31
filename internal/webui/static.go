@@ -6,15 +6,18 @@ import (
 	"io/fs"
 	"net/http"
 	"strings"
+	"sync"
 )
 
-var assetVersion = func() string {
+// assetVersion fingerprints the embedded static assets on first use, not at
+// package init: it hashes every static file, and only `kira server` needs it.
+var assetVersion = sync.OnceValue(func() string {
 	version, err := assetFingerprint(assets)
 	if err != nil {
 		panic(fmt.Errorf("fingerprinting embedded assets: %w", err))
 	}
 	return version
-}()
+})
 
 func assetFingerprint(files fs.FS) (string, error) {
 	hash := sha256.New()
@@ -36,7 +39,7 @@ func assetFingerprint(files fs.FS) (string, error) {
 	return fmt.Sprintf("%x", hash.Sum(nil)[:16]), nil
 }
 
-func assetURL(path string) string { return "/static/" + assetVersion + "/" + path }
+func assetURL(path string) string { return "/static/" + assetVersion() + "/" + path }
 
 func staticHandler(files fs.FS) http.Handler {
 	prefix := assetURL("")
@@ -49,7 +52,7 @@ func staticHandler(files fs.FS) http.Handler {
 			return
 		}
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		w.Header().Set("ETag", `"`+assetVersion+`"`)
+		w.Header().Set("ETag", `"`+assetVersion()+`"`)
 		fileServer.ServeHTTP(w, r)
 	})
 }

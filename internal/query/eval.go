@@ -21,10 +21,13 @@ type Predicate func(it *datamodel.Item, cfg *datamodel.Config) bool
 const MeToken = "@me"
 
 type Options struct {
-	Resolver     *id.Resolver
-	Priorities   []string
+	Resolver   *id.Resolver
+	Priorities []string
+	// Me resolves the caller's identity for @me. It is called only when a
+	// query actually names @me, so the git lookup behind it costs nothing on
+	// the queries — the overwhelming majority — that never mention it.
+	Me           func() string
 	ActiveSprint string
-	Me           string
 	Items        []*datamodel.Item
 	Extras       []ExtraField
 }
@@ -155,10 +158,14 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 	case fieldState, fieldType, fieldPriority, fieldOwner, fieldReporter,
 		fieldSubtype, fieldResolution, fieldRank, fieldCategory:
 		if (n.field == fieldOwner || n.field == fieldReporter) && want == MeToken {
-			if c.opts.Me == "" {
+			me := ""
+			if c.opts.Me != nil {
+				me = c.opts.Me()
+			}
+			if me == "" {
 				return nil, &Error{Pos: n.valuePos, Msg: "cannot resolve @me: set git user.name or user.email"}
 			}
-			want = c.opts.Me
+			want = me
 		}
 		return scalarPred(eq, want, accessors[n.field]), nil
 	case fieldSprint:
