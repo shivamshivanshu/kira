@@ -4,13 +4,13 @@ number: KIRA-128
 aliases: []
 type: ticket
 title: "showfmt branch form re-implements workon slug rules and drifts from the real branch name"
-state: TODO
+state: IN_PROGRESS
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:08:46+02:00
-updated: 2026-08-31T15:08:46+02:00
+updated: 2026-08-31T16:12:15+02:00
 ---
 
 ## Description
