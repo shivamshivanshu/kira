@@ -41,7 +41,7 @@ time, throughput), `log` (field history + linked commits), `blame` (per-field
 provenance), `diff`/`changes` (vs. a git ref).
 
 **Sprints & boards** — `sprint create/list/activate/close` (with `--move-to`
-spillover), multi-board support (`board create/rename/archive/move/list`,
+spillover), multi-board support (`board create/rename/archive/unarchive/move/list`,
 renumbering keeps the old number as an alias).
 
 **Git integration** — `init`, `hooks install/uninstall/status/run` (pre-commit,
