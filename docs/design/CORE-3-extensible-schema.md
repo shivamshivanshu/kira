@@ -25,6 +25,11 @@ user-defined types.
 - Relocating config-backed instances (boards/sprints stay in `config.yaml`).
 - Replacing the `Item` struct wholesale (deferred to a late phase; may never be
   worth it — see Phasing).
+- Per-type identity (per-type ID sequences / display-number prefixes). Early
+  Phase 1 schemas declared a descriptive-only `identity` field that nothing
+  generated IDs from — every type shares the one project sequence — so it was
+  removed as inert (KIRA-141). The loader still tolerates the key in schema
+  files materialized by older versions. Remains open as a future feature.
 
 ## Decisions (from brainstorm)
 
@@ -107,7 +112,6 @@ This is what lets the CLI/TUI render an unknown entity generically. The schema
 {
   "name": "ticket",
   "workflow": "ticket",                        // -> config.workflows.ticket
-  "identity": { "style": "sequential", "prefix": "KIRA" },
   "fields": [
     { "name": "title",       "type": "string",   "required": true },
     { "name": "state",       "type": "state",    "workflow": "ticket", "guarded": true },

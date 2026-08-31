@@ -161,6 +161,10 @@ func loadBuiltins() (map[string]Schema, error) {
 	return schemas, nil
 }
 
+// parseSchema deliberately tolerates unknown JSON keys: kira init materializes
+// the builtin schemas into .kira/schema/, so files on disk may carry keys a
+// later kira dropped (e.g. "identity", removed as inert in KIRA-141) and must
+// keep loading.
 func parseSchema(filename string, data []byte) (Schema, error) {
 	var s Schema
 	if err := json.Unmarshal(data, &s); err != nil {
