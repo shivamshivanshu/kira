@@ -4,13 +4,13 @@ number: KIRA-135
 aliases: []
 type: ticket
 title: "Platform hardening: rename detection, entityschema placement validation, WIP doctor check, misc"
-state: IN_PROGRESS
+state: REVIEW
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:09:51+02:00
-updated: 2026-08-31T23:51:26+02:00
+updated: 2026-08-31T23:51:27+02:00
 ---
 
 ## Description
