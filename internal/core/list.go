@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"slices"
 	"sync"
 
@@ -11,6 +12,13 @@ import (
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/query"
 )
+
+// FieldFilter is one `--field key=value` equality filter. It desugars to the
+// same query predicate a native flag or a `key = value` expression produces.
+type FieldFilter struct {
+	Key   string
+	Value string
+}
 
 type ListOpts struct {
 	Type     string
@@ -25,6 +33,7 @@ type ListOpts struct {
 	Board    string
 	Filter   string
 	Query    string
+	Fields   []FieldFilter
 	Tree     bool
 	At       string
 }
@@ -68,13 +77,17 @@ func matchSorted(ld *loaded, opts ListOpts, qopts query.Options) ([]*datamodel.I
 }
 
 func (ld *loaded) match(opts ListOpts, pred query.Predicate, order *query.Order) []*datamodel.Item {
-	if matched, ok := ld.matches[opts]; ok {
+	if ld.matches == nil {
+		return filterSort(ld.cfg, ld.items, pred, order)
+	}
+	// ListOpts carries a slice, so it cannot key a map directly; %#v renders
+	// every field unambiguously.
+	key := fmt.Sprintf("%#v", opts)
+	if matched, ok := ld.matches[key]; ok {
 		return matched
 	}
 	matched := filterSort(ld.cfg, ld.items, pred, order)
-	if ld.matches != nil {
-		ld.matches[opts] = matched
-	}
+	ld.matches[key] = matched
 	return matched
 }
 
@@ -106,6 +119,14 @@ func queryExtras(schemas map[string]entityschema.Schema) []query.ExtraField {
 		out[i] = query.ExtraField{Name: f.Name, List: f.List, Ordered: numericExtra(f)}
 	}
 	return out
+}
+
+func (s *Store) FilterableFields() ([]string, error) {
+	schemas, err := s.Schemas()
+	if err != nil {
+		return nil, err
+	}
+	return query.FieldNames(queryExtras(schemas)), nil
 }
 
 func numericExtra(f entityschema.FieldDef) bool {
@@ -169,22 +190,33 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 	var preds []query.Predicate
 	var order *query.Order
 	var notes []datamodel.Warning
-	flat := []struct{ field, value string }{
+	flat := []FieldFilter{
 		{"type", opts.Type}, {"subtype", opts.Subtype}, {"state", opts.State}, {"category", opts.Category},
 		{"owner", opts.Owner}, {"label", opts.Label}, {"epic", opts.Epic},
 		{"priority", opts.Priority}, {"sprint", opts.Sprint}, {"board", opts.Board},
 	}
-	for _, f := range flat {
-		if f.value == "" {
-			continue
+	addMatch := func(f FieldFilter) error {
+		if f.Value == "" {
+			return nil
 		}
-		p, warns, err := query.Match(f.field, f.value, qopts)
+		p, warns, err := query.Match(f.Key, f.Value, qopts)
 		if err != nil {
-			return nil, nil, nil, err
+			return err
 		}
 		preds = append(preds, p)
 		for _, w := range warns {
 			notes = append(notes, datamodel.Warning{Code: w})
+		}
+		return nil
+	}
+	for _, f := range flat {
+		if err := addMatch(f); err != nil {
+			return nil, nil, nil, err
+		}
+	}
+	for _, f := range opts.Fields {
+		if err := addMatch(f); err != nil {
+			return nil, nil, nil, fieldFilterErr(f.Key, err, qopts.Extras)
 		}
 	}
 

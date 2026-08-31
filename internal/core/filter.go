@@ -27,6 +27,24 @@ func unknownFilterErr(cfg *datamodel.Config, name string) error {
 	return base
 }
 
+// fieldFilterErr reframes a grammar error as a `--field key=value` error:
+// unlike a native flag, both halves of that pair are typed freehand, so the
+// key gets a did-you-mean and nothing should mention query syntax positions.
+func fieldFilterErr(key string, err error, extras []query.ExtraField) error {
+	if query.IsUnknownField(err) {
+		names := query.FieldNames(extras)
+		base := errx.User("--field %q: unknown field (available: %s)", key, strings.Join(names, ", "))
+		if n := errx.Nearest(key, names); n != "" {
+			return base.WithHint("did you mean `%s`?", n)
+		}
+		return base
+	}
+	if qe, ok := errors.AsType[*query.Error](err); ok {
+		return errx.User("--field %q: %s", key, qe.Msg)
+	}
+	return err
+}
+
 func queryError(err error) error {
 	if _, ok := errors.AsType[*query.Error](err); !ok {
 		return err

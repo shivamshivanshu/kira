@@ -80,7 +80,7 @@ func Match(field, value string, opts Options) (Predicate, []datamodel.WarnCode, 
 		return nil, nil, unknownFieldErr(0, field, spec)
 	}
 	if isDateField(field) {
-		return nil, nil, &Error{Pos: 0, Msg: "field " + field + " is not an equality filter"}
+		return nil, nil, &Error{Pos: 0, Msg: "field " + field + " is a date; use the query grammar instead"}
 	}
 	if isBoolField(field) {
 		return nil, nil, &Error{Pos: 0, Msg: "field " + field + " is boolean; use the query grammar instead"}

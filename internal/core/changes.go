@@ -10,9 +10,9 @@ import (
 
 func (s *Store) Changes(ref string) (*datamodel.ChangesResult, error) {
 	repo := s.repo()
-	sinceSHA, err := repo.ResolveTreeish(ref)
+	sinceSHA, err := resolveDateOrTreeish(repo, ref, "--since")
 	if err != nil {
-		return nil, errx.User("resolving %s: %v", ref, err)
+		return nil, err
 	}
 	headSHA, err := repo.ResolveTreeish("HEAD")
 	if err != nil {

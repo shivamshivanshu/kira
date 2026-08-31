@@ -36,7 +36,7 @@ func newChangesCmd(g *globalFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&since, "since", "", "git ref or sha to compare from (exclusive)")
+	cmd.Flags().StringVar(&since, "since", "", "compare from a git ref or date (YYYY-MM-DD), relative to HEAD (exclusive)")
 	return cmd
 }
 
