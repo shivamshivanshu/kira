@@ -950,7 +950,8 @@
             "number-outlier",
             "stray-file",
             "ref-kind",
-            "state-drift"
+            "state-drift",
+            "wip-limit"
           ],
           "type": "string"
         },

@@ -99,12 +99,14 @@ func TestLoadRejectsUnknownFieldType(t *testing.T) {
 
 func TestValidateSchemaRejectsMalformedDefinitions(t *testing.T) {
 	cases := map[string]Schema{
-		"missing schema name": {Fields: []FieldDef{{Name: "x", Type: FieldString}}},
-		"duplicate field":     {Name: "w", Fields: []FieldDef{{Name: "x", Type: FieldString}, {Name: "x", Type: FieldInt}}},
-		"enum without enum":   {Name: "w", Fields: []FieldDef{{Name: "p", Type: FieldEnum}}},
-		"ref without target":  {Name: "w", Fields: []FieldDef{{Name: "o", Type: FieldRef}}},
-		"non-string list":     {Name: "w", Fields: []FieldDef{{Name: "n", Type: FieldInt, List: true}}},
-		"builtin shadowed":    {Name: "w", Fields: []FieldDef{{Name: "title", Type: FieldString, Placement: PlacementFrontmatter}}},
+		"missing schema name":  {Fields: []FieldDef{{Name: "x", Type: FieldString}}},
+		"duplicate field":      {Name: "w", Fields: []FieldDef{{Name: "x", Type: FieldString}, {Name: "x", Type: FieldInt}}},
+		"enum without enum":    {Name: "w", Fields: []FieldDef{{Name: "p", Type: FieldEnum}}},
+		"ref without target":   {Name: "w", Fields: []FieldDef{{Name: "o", Type: FieldRef}}},
+		"non-string list":      {Name: "w", Fields: []FieldDef{{Name: "n", Type: FieldInt, List: true}}},
+		"builtin shadowed":     {Name: "w", Fields: []FieldDef{{Name: "title", Type: FieldString, Placement: PlacementFrontmatter}}},
+		"unknown placement":    {Name: "w", Fields: []FieldDef{{Name: "x", Type: FieldString, Placement: "front-matter"}}},
+		"body without section": {Name: "w", Fields: []FieldDef{{Name: "x", Type: FieldMarkdown, Placement: PlacementBody}}},
 	}
 
 	for name, schema := range cases {

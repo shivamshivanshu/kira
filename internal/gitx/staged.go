@@ -1,7 +1,7 @@
 package gitx
 
 func (r Repo) StagedPaths() ([]string, error) {
-	lines, err := r.splitLines("diff", "--cached", "--name-only", "--diff-filter=ACM")
+	lines, err := r.splitLines("diff", "--cached", "--name-only", "--no-renames", "--diff-filter=ACM")
 	if err != nil {
 		return nil, err
 	}
@@ -23,7 +23,7 @@ func (r Repo) ShowStaged(path string) (string, error) {
 }
 
 func (r Repo) DirtyPaths(pathspecs ...string) ([]string, error) {
-	out, err := r.OutputRaw(append([]string{"status", "--porcelain", "--untracked-files=all", "--"}, pathspecs...)...)
+	out, err := r.OutputRaw(append([]string{"status", "--porcelain", "--no-renames", "--untracked-files=all", "--"}, pathspecs...)...)
 	if err != nil {
 		return nil, err
 	}
