@@ -64,6 +64,17 @@ const (
 	loadReady
 )
 
+// activateLoad dispatches load through the model's command queue at most
+// once per invalidation cycle; the result lands later via the message type
+// load's tea.Cmd produces.
+func activateLoad(state *loadState, m *model, load tea.Cmd) tea.Cmd {
+	if *state != loadNeeded || m.store == nil {
+		return nil
+	}
+	*state = loadPending
+	return m.request(load)
+}
+
 func buildScreens() map[view]screen {
 	return map[view]screen{
 		viewTree:  newTreeScreen(),

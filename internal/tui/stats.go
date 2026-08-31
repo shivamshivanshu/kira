@@ -56,14 +56,8 @@ func (s *statsScreen) invalidate() {
 	s.err = nil
 }
 
-// activate dispatches an async reload through the model's command queue at
-// most once per invalidation; the result lands later via statsLoadedMsg.
 func (s *statsScreen) activate(m *model) tea.Cmd {
-	if s.state != loadNeeded || m.store == nil {
-		return nil
-	}
-	s.state = loadPending
-	return m.request(statsLoadCmd(m.store, m.cfg))
+	return activateLoad(&s.state, m, statsLoadCmd(m.store, m.cfg))
 }
 
 func (s *statsScreen) applyLoaded(msg statsLoadedMsg) {

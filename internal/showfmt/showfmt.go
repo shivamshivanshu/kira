@@ -1,5 +1,5 @@
-// Package showfmt defines the item-reference string forms shared by the TUI
-// yank picker and `kira show --format`, so both render identical text.
+// Package showfmt defines the item-reference and comment string forms shared
+// by the TUI and `kira show`, so both render identical text.
 package showfmt
 
 import (
@@ -72,3 +72,14 @@ func numberTitle(it Item) string {
 func branch(it Item, w datamodel.Workon) string {
 	return workon.RenderBranch(w.BranchPattern, id.KeyOf(it.Number), it.Number, it.Title, w.Casing.Separator())
 }
+
+// CommentsHeader is the section title `kira show` and the TUI detail panel
+// both print above an item's comments.
+const CommentsHeader = "Comments"
+
+// CommentByline is the author/timestamp line `kira show` and the TUI detail
+// panel both print above a comment's text.
+func CommentByline(author, ts string) string { return author + "  " + ts }
+
+// CommentBody strips the trailing newline a comment's stored text carries.
+func CommentBody(text string) string { return strings.TrimRight(text, "\n") }

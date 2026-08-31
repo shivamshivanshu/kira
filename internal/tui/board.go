@@ -121,6 +121,12 @@ func renderColumn(t theme.Theme, ic iconSet, col datamodel.BoardColumn, w, heigh
 	return strings.Join(lines, "\n")
 }
 
+const (
+	cardLeadWidth     = 1 // the "▌" selection marker, or a blank column when unselected
+	cardTitleGapWidth = 2 // the "  " separator between the number and the title
+	cardMarginWidth   = 1 // headroom so a card never rides flush on the column boundary
+)
+
 func renderCard(t theme.Theme, ic iconSet, cat datamodel.Category, it datamodel.ListItem, w int, selected bool) string {
 	priority := ptr.Deref(it.Priority)
 	glyph := ic.categoryGlyph(cat, it.Resolution)
@@ -136,7 +142,8 @@ func renderCard(t theme.Theme, ic iconSet, cat datamodel.Category, it datamodel.
 	// the gap belongs to the title: emitting it when the title does not fit
 	// pushes the card one column past w and truncation would show it as an
 	// ellipsis where the old renderer padded.
-	if title := fitWidth(it.Title, w-4-segmentsWidth(segments)); title != "" {
+	titleBudget := w - cardLeadWidth - cardTitleGapWidth - cardMarginWidth - segmentsWidth(segments)
+	if title := fitWidth(it.Title, titleBudget); title != "" {
 		segments = append(segments, rowSegment{"  ", t.Text}, rowSegment{title, t.Text})
 	}
 	lead := " "
