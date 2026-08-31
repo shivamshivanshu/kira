@@ -4,13 +4,13 @@ number: KIRA-124
 aliases: []
 type: ticket
 title: "termx.IsTerminal treats /dev/null as a TTY"
-state: TODO
+state: IN_PROGRESS
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:08:44+02:00
-updated: 2026-08-31T15:08:44+02:00
+updated: 2026-08-31T16:12:11+02:00
 ---
 
 ## Description
