@@ -4,7 +4,7 @@ number: KIRA-107
 aliases: []
 type: ticket
 title: "Path traversal: unvalidated frontmatter id writes outside the store"
-state: REVIEW
+state: DONE
 priority: P0
 labels: []
 epic: null
