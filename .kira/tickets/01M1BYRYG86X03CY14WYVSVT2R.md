@@ -4,13 +4,13 @@ number: KIRA-111
 aliases: []
 type: ticket
 title: "Three-way merge reverts a remote board move: Number is ours-wins but renumberable"
-state: IN_PROGRESS
+state: REVIEW
 priority: P1
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:05:10+02:00
-updated: 2026-08-31T15:53:54+02:00
+updated: 2026-08-31T15:53:56+02:00
 ---
 
 ## Description
