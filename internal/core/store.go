@@ -180,7 +180,7 @@ func (s *Store) guardWritable(items ...*datamodel.Item) error {
 		if it == nil {
 			continue
 		}
-		if names := slices.Concat(hostileKeys(schemas, it), it.UnknownLinkTypes); len(names) > 0 {
+		if names := slices.Concat(blockingUnknownKeys(schemas, it), it.UnknownLinkTypes); len(names) > 0 {
 			return errx.Env("this item uses fields from a newer kira: %s", strings.Join(names, ", ")).
 				WithHint("upgrade kira, then retry: `go install github.com/shivamshivanshu/kira/cmd/kira@latest`")
 		}
@@ -192,11 +192,11 @@ func (s *Store) guardWritable(items ...*datamodel.Item) error {
 	return nil
 }
 
-// hostileKeys keeps the write block for every unknown key except one the
-// item's schema declares as a frontmatter extra AND parsing captured into
+// blockingUnknownKeys keeps the write block for every unknown key except one
+// the item's schema declares as a frontmatter extra AND parsing captured into
 // Extras: a declared key holding an uncapturable value (mapping, null) must
 // still block, or a rewrite would silently drop it.
-func hostileKeys(schemas map[string]entityschema.Schema, it *datamodel.Item) []string {
+func blockingUnknownKeys(schemas map[string]entityschema.Schema, it *datamodel.Item) []string {
 	var out []string
 	for _, k := range it.UnknownKeys {
 		_, declared := entityschema.DeclaredExtra(schemas, it.Type, k)

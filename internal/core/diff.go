@@ -117,6 +117,13 @@ func fieldChange(repo gitx.Repo, from, to *datamodel.Item, field string) (datamo
 	return datamodel.FieldChange{Field: field, From: fieldString(from, field), To: fieldString(to, field)}, nil
 }
 
+func fieldString(it *datamodel.Item, field string) string {
+	if d, ok := datamodel.Field(field); ok {
+		return d.Get(it)
+	}
+	return ""
+}
+
 func sortDiffItems(items []datamodel.DiffItem) {
 	sortByKey(items, func(it datamodel.DiffItem) id.SortKey {
 		return id.NewSortKey(it.Number, it.ID)
