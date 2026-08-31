@@ -6,7 +6,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-const schemaVersion = 7
+const schemaVersion = 8
 
 // One extras row per (item_id, name, ord): a scalar is a single
 // extraKindScalar row, a list is one extraKindList row per element in ord

@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -9,11 +10,12 @@ import (
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
-func fieldHint(key string) string {
-	if n := errx.Nearest(key, datamodel.EditableFields); n != "" {
+func fieldHint(key string, extras []string) string {
+	candidates := slices.Sorted(slices.Values(slices.Concat(datamodel.EditableFields, extras)))
+	if n := errx.Nearest(key, candidates); n != "" {
 		return "did you mean `--field " + n + "=...`?"
 	}
-	return "editable fields: " + strings.Join(datamodel.EditableFields, ", ")
+	return "editable fields: " + strings.Join(candidates, ", ")
 }
 
 func sprintKeys(cfg *datamodel.Config) []string {

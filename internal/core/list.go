@@ -1,7 +1,6 @@
 package core
 
 import (
-	"maps"
 	"slices"
 	"sync"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/query"
-	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 type ListOpts struct {
@@ -36,11 +34,7 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 	if err != nil {
 		return nil, err
 	}
-	qopts, err := s.queryOptions(ld.cfg, ld.resolver, ld.items)
-	if err != nil {
-		return nil, err
-	}
-	return listResult(ld, opts, qopts)
+	return listResult(ld, opts, s.queryOptions(ld))
 }
 
 func listResult(ld *loaded, opts ListOpts, qopts query.Options) (*datamodel.ListResult, error) {
@@ -96,31 +90,22 @@ func filterSort(cfg *datamodel.Config, items []*datamodel.Item, pred query.Predi
 	return matched
 }
 
-func (s *Store) queryOptions(cfg *datamodel.Config, resolver *id.Resolver, items []*datamodel.Item) (query.Options, error) {
-	extras, err := s.queryExtras()
-	if err != nil {
-		return query.Options{}, err
-	}
+// queryOptions compiles queries against ld's own schemas, so an --at read
+// resolves extras exactly as the snapshot declared them.
+func (s *Store) queryOptions(ld *loaded) query.Options {
+	cfg := ld.cfg
 	me := sync.OnceValue(func() string { value, _ := s.identity(cfg); return value })
-	return query.Options{Resolver: resolver, Priorities: cfg.Priorities.Values, ActiveSprint: s.ActiveSprintKey(), Me: me, Items: items, Extras: extras}, nil
+	return query.Options{Resolver: ld.resolver, Priorities: cfg.Priorities.Values, ActiveSprint: s.ActiveSprintKey(),
+		Me: me, Items: ld.items, Extras: queryExtras(ld.schemas)}
 }
 
-func (s *Store) queryExtras() ([]query.ExtraField, error) {
-	schemas, err := s.Schemas()
-	if err != nil {
-		return nil, err
+func queryExtras(schemas map[string]entityschema.Schema) []query.ExtraField {
+	extras := declaredExtras(schemas)
+	out := make([]query.ExtraField, len(extras))
+	for i, f := range extras {
+		out[i] = query.ExtraField{Name: f.Name, List: f.List, Ordered: numericExtra(f)}
 	}
-	seen := setx.NewDeduper[string]()
-	var out []query.ExtraField
-	for _, name := range slices.Sorted(maps.Keys(schemas)) {
-		for _, f := range schemas[name].Fields {
-			if f.Placement != entityschema.PlacementFrontmatter || !seen.Add(f.Name) {
-				continue
-			}
-			out = append(out, query.ExtraField{Name: f.Name, List: f.List, Ordered: numericExtra(f)})
-		}
-	}
-	return out, nil
+	return out
 }
 
 func numericExtra(f entityschema.FieldDef) bool {
@@ -128,15 +113,11 @@ func numericExtra(f entityschema.FieldDef) bool {
 }
 
 func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel.ListItem, map[string]bool, error) {
-	ld, err := s.load(cfg)
+	ld, err := s.readRaw(cfg, loadOpts{})
 	if err != nil {
 		return nil, nil, err
 	}
-	qopts, err := s.queryOptions(cfg, ld.resolver, ld.items)
-	if err != nil {
-		return nil, nil, err
-	}
-	return listWithMatches(cfg, ld.items, expr, qopts)
+	return listWithMatches(cfg, ld.items, expr, s.queryOptions(ld))
 }
 
 func listWithMatches(cfg *datamodel.Config, items []*datamodel.Item, expr string, qopts query.Options) ([]datamodel.ListItem, map[string]bool, error) {

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/id"
@@ -18,10 +19,13 @@ type loadOpts struct {
 	useIndex bool
 }
 
+// schemas always describes the same tree the items came from: the working
+// tree, or the tree-ish an --at read resolved to.
 type loaded struct {
 	items    []*datamodel.Item
 	resolver *id.Resolver
 	cfg      *datamodel.Config
+	schemas  map[string]entityschema.Schema
 	notes    []datamodel.Warning
 	matches  map[ListOpts][]*datamodel.Item
 }
@@ -56,14 +60,18 @@ func (s *Store) readRaw(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &loaded{items: tl.Items, resolver: tl.Resolver, cfg: tl.Config, notes: literalWarnings(tl.Warnings)}, nil
+		return &loaded{items: tl.Items, resolver: tl.Resolver, cfg: tl.Config, schemas: tl.Schemas, notes: literalWarnings(tl.Warnings)}, nil
+	}
+	schemas, err := s.Schemas()
+	if err != nil {
+		return nil, err
 	}
 	var indexErr error
 	if opts.useIndex {
 		items, res, err := index.Load(s.fs(), s.repo(), indexOptions(cfg))
 		if err == nil {
 			_, resolver := storage.SnapshotAndResolver(cfg.Project.Key, items)
-			return &loaded{items: items, resolver: resolver, cfg: cfg, notes: literalWarnings(res.Warnings)}, nil
+			return &loaded{items: items, resolver: resolver, cfg: cfg, schemas: schemas, notes: literalWarnings(res.Warnings)}, nil
 		}
 		indexErr = err
 	}
@@ -78,7 +86,7 @@ func (s *Store) readRaw(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
 	if opts.useIndex {
 		notes = append([]datamodel.Warning{{Code: datamodel.WarnIndexFallback, Args: []string{indexErr.Error()}}}, notes...)
 	}
-	return &loaded{items: ld.items, resolver: ld.resolver, cfg: cfg, notes: notes}, nil
+	return &loaded{items: ld.items, resolver: ld.resolver, cfg: cfg, schemas: schemas, notes: notes}, nil
 }
 
 func (s *Store) resolveAtRef(at string) (string, error) {

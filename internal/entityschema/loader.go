@@ -20,15 +20,53 @@ var builtinFiles embed.FS
 
 const builtinDir = "builtin"
 
+// File is one user schema document, named for error messages.
+type File struct {
+	Name string
+	Data []byte
+}
+
 // Load layers user .kira/schema/*.json over the embedded built-ins, overriding
 // by name; a missing dir yields the built-ins alone.
 func Load(dir string) (map[string]Schema, error) {
+	if dir == "" {
+		return LoadFiles(nil)
+	}
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return LoadFiles(nil)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", dir, err)
+	}
+	var files []File
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			return nil, fmt.Errorf("reading %s: %w", e.Name(), err)
+		}
+		files = append(files, File{Name: e.Name(), Data: data})
+	}
+	return LoadFiles(files)
+}
+
+// LoadFiles layers already-read schema documents over the embedded built-ins,
+// for schema files that come from somewhere other than a working tree — a git
+// tree-ish, say.
+func LoadFiles(files []File) (map[string]Schema, error) {
 	schemas, err := loadBuiltins()
 	if err != nil {
 		return nil, err
 	}
-	if err := overlayUserSchemas(schemas, dir); err != nil {
-		return nil, err
+	for _, f := range files {
+		schema, err := parseSchema(f.Name, f.Data)
+		if err != nil {
+			return nil, err
+		}
+		schemas[schema.Name] = schema
 	}
 	if err := checkExtrasAgreement(schemas); err != nil {
 		return nil, err
@@ -36,38 +74,6 @@ func Load(dir string) (map[string]Schema, error) {
 	return schemas, nil
 }
 
-func overlayUserSchemas(schemas map[string]Schema, dir string) error {
-	if dir == "" {
-		return nil
-	}
-	entries, err := os.ReadDir(dir)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("reading %s: %w", dir, err)
-	}
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
-		if err != nil {
-			return fmt.Errorf("reading %s: %w", e.Name(), err)
-		}
-		schema, err := parseSchema(e.Name(), data)
-		if err != nil {
-			return err
-		}
-		schemas[schema.Name] = schema
-	}
-	return nil
-}
-
-// checkExtrasAgreement rejects two schemas declaring the same frontmatter
-// extra with different traits: the query layer builds one spec per field name
-// across all schemas, so a disagreement would let one schema's traits
-// silently win for every type.
 func checkExtrasAgreement(schemas map[string]Schema) error {
 	type origin struct {
 		schema string
