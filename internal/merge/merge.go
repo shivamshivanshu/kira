@@ -39,6 +39,7 @@ func Merge(base, ours, theirs *datamodel.Item, remote Side, tm TextMerger) Resul
 		Sprint:     threeWayPtr(base.Sprint, ours.Sprint, theirs.Sprint, winner),
 		Due:        threeWayPtr(base.Due, ours.Due, theirs.Due, winner),
 		Estimate:   threeWayPtr(base.Estimate, ours.Estimate, theirs.Estimate, winner),
+		Extras:     extrasMerge(base.Extras, ours.Extras, theirs.Extras, winner),
 		Updated:    maxUpdated(ours.Updated, theirs.Updated),
 		Body:       mergeBody(base.Body, ours.Body, theirs.Body, winner, tm),
 	}

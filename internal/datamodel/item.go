@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
@@ -30,6 +31,7 @@ type Item struct {
 	Estimate   *float64
 	Created    string
 	Updated    string
+	Extras     map[string]ExtraValue
 
 	Body string
 
@@ -41,6 +43,30 @@ type Item struct {
 
 func (it *Item) HasUnknown() bool {
 	return len(it.UnknownKeys) > 0 || len(it.UnknownLinkTypes) > 0
+}
+
+// ExtraValue holds a non-builtin frontmatter value as rendered one-line YAML
+// text (codec renders and decodes it). Exactly one arm is set:
+// doctor, treeish, and the merge driver all parse without a schema, so
+// scalar-vs-list must be evident from the data alone.
+type ExtraValue struct {
+	Scalar *string
+	List   []string
+}
+
+func (v ExtraValue) Equal(o ExtraValue) bool {
+	return ptr.Equal(v.Scalar, o.Scalar) && slices.Equal(v.List, o.List)
+}
+
+func CloneExtras(extras map[string]ExtraValue) map[string]ExtraValue {
+	if extras == nil {
+		return nil
+	}
+	out := make(map[string]ExtraValue, len(extras))
+	for k, v := range extras {
+		out[k] = ExtraValue{Scalar: v.Scalar, List: slices.Clone(v.List)}
+	}
+	return out
 }
 
 // IndexByID maps items by ID, skipping any with an empty ID.
