@@ -4,7 +4,7 @@ number: KIRA-134
 aliases: []
 type: ticket
 title: "Index and codec edge cases: stale-schema cache, estimate != semantics, CRLF drift, orphan rows"
-state: REVIEW
+state: DONE
 priority: P3
 labels: []
 epic: null
