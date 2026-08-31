@@ -4,7 +4,7 @@ number: KIRA-116
 aliases: []
 type: ticket
 title: "kira create silently drops schema-declared extras from templates, editor buffers and --from-file"
-state: REVIEW
+state: DONE
 priority: P2
 labels: []
 epic: null
