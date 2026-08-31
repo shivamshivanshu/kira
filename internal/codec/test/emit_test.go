@@ -133,7 +133,7 @@ func TestEmitScalarMatchesYAMLReference(t *testing.T) {
 	)
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-,:[]{}#'\" ."
 	r := rand.New(rand.NewSource(7))
-	for i := 0; i < 5000; i++ {
+	for range 5000 {
 		n := 1 + r.Intn(8)
 		b := make([]byte, n)
 		for j := range b {

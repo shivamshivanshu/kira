@@ -159,7 +159,7 @@ func TestDetailHostSurfacesLoadError(t *testing.T) {
 func TestDetailPanelScrollClamp(t *testing.T) {
 	t.Parallel()
 	d := newDetailPanel()
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		d.update(&model{}, sampleDetail(), "j")
 	}
 	d.render(asciiTheme(), iconSet{mode: datamodel.IconText}, sampleDetail(), 100, 8)

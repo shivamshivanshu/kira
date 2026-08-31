@@ -19,12 +19,12 @@ func TestAllocateEmptyStartsAtOne(t *testing.T) {
 func TestAllocateIsMaxUnionPlusOne(t *testing.T) {
 	t.Parallel()
 	rng := rand.New(rand.NewSource(1))
-	for trial := 0; trial < 500; trial++ {
+	for trial := range 500 {
 		var items []id.Item
 		union := map[int]bool{}
 		highest := 0
 		nItems := rng.Intn(8)
-		for i := 0; i < nItems; i++ {
+		for range nItems {
 			num := rng.Intn(1000) + 1
 			union[num] = true
 			if num > highest {

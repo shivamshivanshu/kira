@@ -1,6 +1,7 @@
 package merge_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
@@ -262,10 +263,10 @@ func TestArbitratedReportsOnlyBothSidesDivergedFromBase(t *testing.T) {
 	ours := base(func(it *datamodel.Item) { it.State = "REVIEW"; it.Owner = new("alice") })
 	theirs := base(func(it *datamodel.Item) { it.State = "DONE"; it.Title = "other" })
 	res := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger)
-	if !contains(res.Arbitrated, "state") {
+	if !slices.Contains(res.Arbitrated, "state") {
 		t.Fatalf("arbitrated = %v, want state (both sides diverged from base)", res.Arbitrated)
 	}
-	if contains(res.Arbitrated, "owner") || contains(res.Arbitrated, "title") {
+	if slices.Contains(res.Arbitrated, "owner") || slices.Contains(res.Arbitrated, "title") {
 		t.Fatalf("arbitrated = %v, must exclude one-side-only changes (owner, title)", res.Arbitrated)
 	}
 }
@@ -280,13 +281,4 @@ func equalStrings(a, b []string) bool {
 		}
 	}
 	return true
-}
-
-func contains(xs []string, x string) bool {
-	for _, v := range xs {
-		if v == x {
-			return true
-		}
-	}
-	return false
 }

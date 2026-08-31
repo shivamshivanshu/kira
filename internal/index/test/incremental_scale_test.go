@@ -25,7 +25,7 @@ func TestIncrementalIndexAtScale(t *testing.T) {
 	}
 	const n = 1000
 	f := newRepo(t)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		u := scaleULID(i + 1)
 		f.writeTicket(t, u, ticket(u, fmt.Sprintf("KIRA-%d", i+1), fmt.Sprintf("title %d", i+1)))
 	}

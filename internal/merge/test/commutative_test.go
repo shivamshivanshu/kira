@@ -102,7 +102,7 @@ func canonItem(it *datamodel.Item) *datamodel.Item {
 func TestMergeCommutativeUnderSideSwap(t *testing.T) {
 	t.Parallel()
 	r := rand.New(rand.NewSource(20260714))
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		b := base(nil)
 		a, c := randSide(r), randSide(r)
 		remote := merge.Ours
