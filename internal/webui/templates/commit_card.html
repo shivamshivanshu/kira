@@ -1,0 +1,8 @@
+{{define "commit-card"}}
+<article class="commit">
+  <div>
+    <a class="commit-sha" href="{{.URL}}"><code>{{short .SHA}}</code> View patch</a><button class="text-button" type="button" data-copy="{{.SHA}}" aria-label="Copy commit SHA">Copy</button>
+  </div>
+  <p>{{.Subject}}</p><small>{{.Author}} · {{date .Ts}}</small>
+</article>
+{{end}}

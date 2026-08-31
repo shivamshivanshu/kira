@@ -1,0 +1,44 @@
+{{define "active-work"}}
+{{if .Active}}
+<a class="active-banner" href="{{.Link "item" .Active.ID}}">
+  <span class="live-dot"></span><span class="eyebrow">WORKING ON</span>
+  <strong>{{.Active.Number}}</strong><span class="active-title">{{.Active.Title}}</span>
+  <span class="state category-{{.Active.Category}}">{{label .Active.State}}</span>
+  {{if .Active.Branch}}<code class="branch">{{.Active.Branch}}</code>{{end}}
+  {{if .Active.Blockers}}<span class="warning-text">{{len .Active.Blockers}} blockers</span>{{end}}
+  <span aria-hidden="true">↗</span>
+</a>
+{{end}}
+{{end}}
+
+{{define "notices"}}
+{{if .Error}}
+<div class="notice error" role="alert">
+  <div><strong>Could not complete that request.</strong><div>{{.Error}}</div></div>
+</div>
+{{end}}
+{{if .Message}}
+<div class="notice success" role="status">
+  <div>{{.Message}}</div>
+  <button class="icon-button" type="button" data-dismiss-notice aria-label="Dismiss result notice">×</button>
+</div>
+{{end}}
+{{end}}
+
+{{define "overview"}}
+<div class="page-heading">
+  <div>
+    <div class="eyebrow">{{if eq .View "stats"}}PROJECT METRICS{{else}}WORKSPACE OVERVIEW{{end}}</div>
+    <h1>{{.Heading}}</h1>
+    <p>{{if eq .View "stats"}}Completion, flow, and the work behind the numbers.{{else if eq .View "manage"}}Boards, sprints, configuration, and repository actions.{{else}}Track work, follow progress, and keep the context close.{{end}}</p>
+  </div>
+  {{if or (eq .View "tree") (eq .View "board")}}{{$summary := .Summary}}
+  <div class="summary-strip" aria-label="Filtered item summary">
+    <div><strong>{{$summary.Total}}</strong><span>items</span></div>
+    <div><strong>{{$summary.InProgress}}</strong><span>in progress</span></div>
+    <div><strong>{{$summary.Done}}</strong><span>done</span></div>
+    {{if $summary.Overdue}}<div class="warning-text"><strong>{{$summary.Overdue}}</strong><span>overdue</span></div>{{end}}
+  </div>
+  {{end}}
+</div>
+{{end}}

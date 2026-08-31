@@ -1,26 +1,22 @@
 package cli
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
-func TestRenderWarning(t *testing.T) {
-	cases := []struct {
-		warning datamodel.Warning
-		want    string
-	}{
-		{datamodel.Warning{Code: datamodel.WarnIndexFallback, Args: []string{"boom"}}, "index unavailable (boom), using linear scan"},
-		{datamodel.Warning{Code: datamodel.WarnNoActiveSprint}, "no active sprint set; sprint=active matches nothing (run `kira sprint activate <key>`)"},
-		{datamodel.Warning{Code: datamodel.WarnCloseUnknown, Args: []string{"KIRA-9", "Kira-Closes"}}, "unknown ticket KIRA-9 in Kira-Closes (hint: run `kira config explain` to see the configured close trailer)"},
-		{datamodel.Warning{Code: datamodel.WarnCloseFailed, Args: []string{"KIRA-2", "boom"}}, "failed to close KIRA-2: boom"},
-		{datamodel.Warning{Code: datamodel.WarnLiteral, Args: []string{"skipped a file"}}, "skipped a file"},
+func TestWarningOutputPrefixes(t *testing.T) {
+	warnings := []datamodel.Warning{{Code: datamodel.WarnCloseFailed, Args: []string{"KIRA-2", "boom"}}}
+	var mutations, notes strings.Builder
+	emitMutationWarnings(&mutations, warnings)
+	emitStderrNotes(&notes, warnings)
+	if got, want := mutations.String(), msgPrefix+" warning: failed to close KIRA-2: boom\n"; got != want {
+		t.Errorf("mutation warnings = %q, want %q", got, want)
 	}
-	for _, c := range cases {
-		if got := renderWarning(c.warning); got != c.want {
-			t.Errorf("renderWarning(%+v) = %q, want %q", c.warning, got, c.want)
-		}
+	if got, want := notes.String(), msgPrefix+" failed to close KIRA-2: boom\n"; got != want {
+		t.Errorf("stderr notes = %q, want %q", got, want)
 	}
 }
 

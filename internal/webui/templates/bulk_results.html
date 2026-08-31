@@ -1,0 +1,11 @@
+{{define "bulk-results"}}
+{{if .Bulk}}
+<section class="bulk-results" aria-labelledby="bulk-results-title">
+  <h2 id="bulk-results-title">Bulk action results</h2>
+  <table><thead><tr><th>Item</th><th>Result</th></tr></thead><tbody>
+    {{range .Bulk}}<tr><td><a href="{{$.Link "item" .Ref}}">{{or .Number .Ref}}</a></td><td>{{if .Error}}<span class="warning-text">{{.Error}}</span>{{else}}{{.Message}}{{end}}</td></tr>{{end}}
+  </tbody></table>
+  <p class="muted">Failed items remain selected so you can fix the issue and retry.</p>
+</section>
+{{end}}
+{{end}}

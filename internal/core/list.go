@@ -1,6 +1,8 @@
 package core
 
 import (
+	"slices"
+
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
@@ -17,6 +19,7 @@ type ListOpts struct {
 	Epic     string
 	Priority string
 	Sprint   string
+	Board    string
 	Filter   string
 	Query    string
 	Tree     bool
@@ -28,10 +31,13 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 	if err != nil {
 		return nil, err
 	}
-	cfg = ld.cfg
-	items, resolver, idxNotes := ld.items, ld.resolver, ld.notes
+	return listResult(ld, opts, s.queryOptions(ld.cfg, ld.resolver, ld.items))
+}
 
-	pred, order, notes, err := opts.compile(cfg, s.queryOptions(cfg, resolver, items))
+func listResult(ld *loaded, opts ListOpts, qopts query.Options) (*datamodel.ListResult, error) {
+	cfg, items := ld.cfg, ld.items
+
+	pred, order, notes, err := opts.compile(cfg, qopts)
 	if err != nil {
 		return nil, queryError(err)
 	}
@@ -43,19 +49,19 @@ func (s *Store) List(cfg *datamodel.Config, opts ListOpts) (*datamodel.ListResul
 	for i, it := range matched {
 		rows[i] = listItemOf(cfg, it, epicNumbers)
 	}
-	res := &datamodel.ListResult{Items: rows, Count: len(rows), StderrNotes: append(idxNotes, notes...)}
+	res := &datamodel.ListResult{Items: rows, Count: len(rows), StderrNotes: slices.Concat(ld.notes, notes)}
 	if opts.Tree {
 		res.Tree = groupByEpic(rows, epicNumbers)
 	}
 	return res, nil
 }
 
-func (s *Store) matchSorted(cfg *datamodel.Config, ld *loaded, opts ListOpts) ([]*datamodel.Item, error) {
-	pred, order, _, err := opts.compile(cfg, s.queryOptions(cfg, ld.resolver, ld.items))
+func matchSorted(ld *loaded, opts ListOpts, qopts query.Options) ([]*datamodel.Item, error) {
+	pred, order, _, err := opts.compile(ld.cfg, qopts)
 	if err != nil {
 		return nil, queryError(err)
 	}
-	return filterSort(cfg, ld.items, pred, order), nil
+	return filterSort(ld.cfg, ld.items, pred, order), nil
 }
 
 func filterSort(cfg *datamodel.Config, items []*datamodel.Item, pred query.Predicate, order *query.Order) []*datamodel.Item {
@@ -131,7 +137,7 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 	flat := []struct{ field, value string }{
 		{"type", opts.Type}, {"subtype", opts.Subtype}, {"state", opts.State}, {"category", opts.Category},
 		{"owner", opts.Owner}, {"label", opts.Label}, {"epic", opts.Epic},
-		{"priority", opts.Priority}, {"sprint", opts.Sprint},
+		{"priority", opts.Priority}, {"sprint", opts.Sprint}, {"board", opts.Board},
 	}
 	for _, f := range flat {
 		if f.value == "" {

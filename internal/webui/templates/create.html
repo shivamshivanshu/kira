@@ -1,0 +1,18 @@
+{{define "create"}}
+<form action="/actions/create" method="post" class="stack-form create-form">
+  {{template "csrf" .}}<h2 id="create-heading">New item</h2><p class="muted">Start with a title. The details can follow.</p>
+  <label>Title<input name="title" value="{{.FormValue "create" "title" ""}}" placeholder="What needs to happen?" required maxlength="1000"></label>
+  <div class="field-pair">
+    <label>Type<select name="type">{{if .Config}}{{range $name, $workflow := .Config.Workflows}}<option value="{{$name}}" {{if eq $name ($.FormValue "create" "type" "ticket")}}selected{{end}}>{{$name}}</option>{{end}}{{end}}</select></label>
+    <label>Board<select name="board">{{if .Config}}{{range .Config.ActiveBoards}}<option value="{{.Key}}" {{if or (eq ($.FormValue "create" "board" $.BoardKey) .Key) (and (not ($.FormValue "create" "board" $.BoardKey)) .Default)}}selected{{end}}>{{.Key}} · {{.Name}}</option>{{end}}{{end}}</select></label>
+  </div>
+  <label>Description <span class="optional">optional · Markdown supported</span><textarea name="body" rows="5" placeholder="Leave blank to use the item template, or add your own description…">{{.FormValue "create" "body" ""}}</textarea></label>
+  <div class="field-pair">
+    <label>Owner<input name="owner" list="people" value="{{.FormValue "create" "owner" ""}}" placeholder="Unassigned"></label>
+    <label>Priority<input name="priority" list="priorities" value="{{.FormValue "create" "priority" ""}}" placeholder="Default priority"></label>
+  </div>
+  <label>Parent / epic <span class="optional">optional</span><input name="epic" value="{{.FormValue "create" "epic" ""}}" placeholder="Item ID"></label>
+  <div class="form-actions">
+    <button class="button primary" type="submit">Create item <span aria-hidden="true">↗</span></button>
+  </div>
+</form>{{end}}
