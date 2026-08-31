@@ -56,11 +56,8 @@ func (s *Store) resolveScope(cfg *datamodel.Config, opts StatsOpts, items []*dat
 		scope.Weeks = defaultWeeks
 	}
 
-	var since time.Time
 	if opts.Since != "" {
-		var err error
-		since, err = time.ParseInLocation(time.DateOnly, opts.Since, time.Local)
-		if err != nil {
+		if _, err := time.Parse(time.DateOnly, opts.Since); err != nil {
 			return nil, nil, errx.User("--since %q: %v", opts.Since, err)
 		}
 	}
@@ -96,8 +93,8 @@ func (s *Store) resolveScope(cfg *datamodel.Config, opts StatsOpts, items []*dat
 			if opts.Since == "" {
 				return false
 			}
-			created, err := it.CreatedTime()
-			return err != nil || created.Before(since)
+			day, ok := timex.Day(it.Created)
+			return !ok || day < opts.Since
 		})
 	}
 	return scope, set, nil

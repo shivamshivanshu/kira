@@ -59,6 +59,25 @@ func TestNow(t *testing.T) {
 	})
 }
 
+func TestDay(t *testing.T) {
+	cases := []struct {
+		ts   string
+		want string
+		ok   bool
+	}{
+		{"2026-01-01T02:00:00+05:30", "2026-01-01", true},
+		{"2026-01-01T23:30:00-12:00", "2026-01-01", true},
+		{"2026-01-01T00:00:00Z", "2026-01-01", true},
+		{"not-a-timestamp", "", false},
+		{"", "", false},
+	}
+	for _, c := range cases {
+		if got, ok := Day(c.ts); got != c.want || ok != c.ok {
+			t.Errorf("Day(%q) = %q, %v, want %q, %v", c.ts, got, ok, c.want, c.ok)
+		}
+	}
+}
+
 func TestCompareRFC3339(t *testing.T) {
 	t.Run("same instant across offsets", func(t *testing.T) {
 		cmp, a, b := CompareRFC3339("2026-01-01T10:00:00+05:30", "2026-01-01T04:30:00Z")
