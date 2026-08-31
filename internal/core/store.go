@@ -8,6 +8,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/query"
@@ -15,9 +16,10 @@ import (
 )
 
 type Store struct {
-	root     string
-	store    *storage.FS
-	prompter Prompter
+	root        string
+	store       *storage.FS
+	prompter    Prompter
+	schemaCache map[string]entityschema.Schema
 }
 
 func newStore(root string) *Store {
@@ -50,6 +52,17 @@ func (s *Store) WithPrompter(p Prompter) *Store {
 }
 
 func (s *Store) fs() *storage.FS { return s.store }
+
+func (s *Store) schemas() (map[string]entityschema.Schema, error) {
+	if s.schemaCache == nil {
+		schemas, err := entityschema.Load(s.fs().SchemaDir())
+		if err != nil {
+			return nil, errx.User("%v", err)
+		}
+		s.schemaCache = schemas
+	}
+	return s.schemaCache, nil
+}
 
 func (s *Store) Root() string { return s.root }
 

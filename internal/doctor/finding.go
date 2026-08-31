@@ -30,12 +30,15 @@ const (
 	ClassBoard         Class = "board"
 	ClassNumberOutlier Class = "number-outlier"
 	ClassStray         Class = "stray-file"
+	ClassRefKind       Class = "ref-kind"
+	ClassStateDrift    Class = "state-drift"
 )
 
 var Classes = []Class{
 	ClassSchema, ClassState, ClassVocab, ClassRef, ClassCollision,
 	ClassCycle, ClassRefCycle, ClassEpicKind, ClassComment, ClassFreshness,
 	ClassHooks, ClassEnv, ClassBoard, ClassNumberOutlier, ClassStray,
+	ClassRefKind, ClassStateDrift,
 }
 
 type CollisionKind string
