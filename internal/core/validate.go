@@ -181,7 +181,7 @@ func normalizeAndCheckRefs(it *datamodel.Item, resolver *id.Resolver) []error {
 	resolve := func(label, ref string) (string, bool) {
 		ulid, err := resolver.Resolve(ref)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("%s: %v", label, err))
+			errs = append(errs, fmt.Errorf("%s: %w", label, err))
 			return "", false
 		}
 		if ulid == it.ID {

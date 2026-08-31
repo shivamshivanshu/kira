@@ -58,7 +58,7 @@ func Search(dir string, passthru []string, path string) ([]Line, error) {
 	if err != nil {
 		var ee *exec.ExitError
 		if !errors.As(err, &ee) {
-			return nil, fmt.Errorf("running ripgrep: %v", err)
+			return nil, fmt.Errorf("running ripgrep: %w", err)
 		}
 		if ee.ExitCode() == 1 {
 			return nil, nil

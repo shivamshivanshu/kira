@@ -28,7 +28,7 @@ func TestQueryErrorAdaptsQueryError(t *testing.T) {
 func TestQueryErrorPassesThroughOtherErrors(t *testing.T) {
 	orig := errx.User("unknown filter %q", "bogus").WithHint("did you mean `x`?")
 	got := queryError(orig)
-	if got != error(orig) {
+	if !errors.Is(got, orig) {
 		t.Errorf("queryError must return non-*query.Error errors unchanged, got %v", got)
 	}
 }

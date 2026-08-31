@@ -1,6 +1,9 @@
 package query
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestParseCanonical(t *testing.T) {
 	tests := []struct {
@@ -107,7 +110,7 @@ func TestParseErrors(t *testing.T) {
 	}
 	for _, tc := range tests {
 		_, err := Parse(tc.in)
-		qe, ok := err.(*Error)
+		qe, ok := errors.AsType[*Error](err)
 		if !ok {
 			t.Fatalf("%s: Parse(%q) err = %v, want *Error", tc.name, tc.in, err)
 		}

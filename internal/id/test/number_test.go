@@ -31,7 +31,7 @@ func TestAllocateIsMaxUnionPlusOne(t *testing.T) {
 				highest = num
 			}
 			var aliases []string
-			for j := 0; j < rng.Intn(4); j++ {
+			for range rng.Intn(4) {
 				a := rng.Intn(1000) + 1
 				union[a] = true
 				if a > highest {

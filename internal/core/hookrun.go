@@ -99,13 +99,13 @@ func (s *Store) ValidateStaged(cfg *datamodel.Config) error {
 		}
 		it, err := codec.Parse(content)
 		if err != nil {
-			problems = append(problems, fmt.Errorf("%s: %v", p, err))
+			problems = append(problems, fmt.Errorf("%s: %w", p, err))
 			continue
 		}
 		errs, _ := validateItem(cfg, it, false)
 		errs = append(errs, s.extrasErrors(cfg, it)...)
 		for _, e := range errs {
-			problems = append(problems, fmt.Errorf("%s: %v", p, e))
+			problems = append(problems, fmt.Errorf("%s: %w", p, e))
 		}
 	}
 	if len(problems) > 0 {

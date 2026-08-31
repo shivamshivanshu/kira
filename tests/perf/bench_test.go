@@ -25,7 +25,7 @@ func BenchmarkCommands(b *testing.B) {
 	dir := fixture(b, benchSize())
 	for _, c := range commands {
 		b.Run(c.name, func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				if _, out, err := runKira(bin, dir, nil, c.args...); err != nil {
 					b.Fatalf("%s: %v\n%s", c.name, err, out)
 				}
