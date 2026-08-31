@@ -22,6 +22,9 @@ func (s *FS) WriteItem(it *datamodel.Item) (string, error) {
 // WriteItemRaw writes content to the item file for ulid, returning the path
 // relative to the store root.
 func (s *FS) WriteItemRaw(ulid, content string) (string, error) {
+	if !isItemFilename(ItemFilename(ulid)) {
+		return "", errx.User("refusing to write item with a non-ULID id %q", ulid)
+	}
 	if err := os.MkdirAll(s.ItemsDir(), 0o755); err != nil {
 		return "", errx.User("creating tickets dir: %v", err)
 	}
