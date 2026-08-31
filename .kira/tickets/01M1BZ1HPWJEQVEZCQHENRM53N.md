@@ -4,7 +4,7 @@ number: KIRA-136
 aliases: []
 type: ticket
 title: "Extras coverage gaps: log/blame invisibility, --at schema provenance, immutability, did-you-mean"
-state: REVIEW
+state: DONE
 priority: P3
 labels: []
 epic: null
