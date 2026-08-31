@@ -90,7 +90,7 @@ func TestEmitListLongListStaysSingleLine(t *testing.T) {
 	out := codec.Serialize(it)
 
 	var line string
-	for _, l := range strings.Split(out, "\n") {
+	for l := range strings.SplitSeq(out, "\n") {
 		if strings.HasPrefix(l, "labels: ") {
 			line = l
 			break

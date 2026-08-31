@@ -152,7 +152,7 @@ func (r Repo) LastCommits(pathspec string) (map[string]string, error) {
 	var paths, shas []string
 	dedup := setx.NewDeduper[string]()
 	var sha string
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if strings.HasPrefix(line, nul) {
 			sha = line[len(nul):]
 			continue
@@ -189,7 +189,7 @@ func (r Repo) RevListSince(rev, since string) ([]Commit, error) {
 		return nil, err
 	}
 	var commits []Commit
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		f := strings.Split(line, nul)
 		if len(f) != 4 {
 			continue
@@ -225,7 +225,7 @@ func (r Repo) AppendInfoAttribute(line string) error {
 }
 
 func containsLine(content, line string) bool {
-	for _, l := range strings.Split(content, "\n") {
+	for l := range strings.SplitSeq(content, "\n") {
 		if strings.TrimSpace(l) == line {
 			return true
 		}

@@ -55,7 +55,7 @@ func (r Repo) LogTrailers(rangeExpr, ticketKey, closeKey string) ([]Commit, erro
 
 func splitValues(field string) []string {
 	var out []string
-	for _, v := range strings.Split(field, valueSep) {
+	for v := range strings.SplitSeq(field, valueSep) {
 		if v = strings.TrimSpace(v); v != "" {
 			out = append(out, v)
 		}

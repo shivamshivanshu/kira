@@ -105,7 +105,7 @@ func RevPath(rev, path string) string {
 
 func parsePorcelainPaths(out string) []string {
 	var paths []string
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if len(line) < 4 {
 			continue
 		}
@@ -128,7 +128,7 @@ func (r Repo) DiffNameStatus(from DiffFrom, to DiffTo, pathspec string) ([]strin
 		return nil, err
 	}
 	var paths []string
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		fields := strings.Split(line, "\t")
 		if len(fields) < 2 {
 			continue

@@ -43,7 +43,7 @@ func TestFiringSetTrustPartition(t *testing.T) {
 
 func nonEmptyLines(s string) []string {
 	var lines []string
-	for _, l := range strings.Split(s, "\n") {
+	for l := range strings.SplitSeq(s, "\n") {
 		if l != "" {
 			lines = append(lines, l)
 		}

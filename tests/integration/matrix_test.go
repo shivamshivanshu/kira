@@ -489,7 +489,7 @@ func assertDriverMatchesEngine(t *testing.T, w *world) {
 	if err != nil {
 		t.Fatalf("ls-tree: %v", err)
 	}
-	for _, rel := range strings.Split(strings.TrimSpace(listed), "\n") {
+	for rel := range strings.SplitSeq(strings.TrimSpace(listed), "\n") {
 		if rel == "" {
 			continue
 		}

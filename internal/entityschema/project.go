@@ -91,7 +91,7 @@ func typedScalar(t FieldType, s string) any {
 func bodySections(body string) map[string]string {
 	sections := make(map[string]string)
 	current := ""
-	for _, line := range strings.Split(body, "\n") {
+	for line := range strings.SplitSeq(body, "\n") {
 		if title, ok := strings.CutPrefix(line, "## "); ok {
 			current = title
 			continue
