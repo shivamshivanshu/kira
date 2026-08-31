@@ -94,3 +94,23 @@ func TestCreateTypeFlagCompletesSubtypes(t *testing.T) {
 		t.Errorf("list --type = %v, want it to still include %q", list, datamodel.TypeTicket)
 	}
 }
+
+func TestFieldFilterCompletion(t *testing.T) {
+	dir := initFixture(t)
+	s, cfg := reopen(t, dir)
+	if _, err := s.Create(cfg, core.CreateOpts{Type: datamodel.TypeTicket, Title: "T", NoEdit: true}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	names := complete(t, dir, "list", "--field", "")
+	if !hasSuggestion(names, "state=") || !hasSuggestion(names, "priority=") {
+		t.Errorf("--field <TAB> = %v, want field names suffixed with '='", names)
+	}
+	values := complete(t, dir, "list", "--field", "state=")
+	if !hasSuggestion(values, "state=TODO") {
+		t.Errorf("--field state=<TAB> = %v, want that field's values", values)
+	}
+	if got := complete(t, dir, "list", "--field", "nosuch="); len(got) != 0 {
+		t.Errorf("--field nosuch=<TAB> = %v, want nothing", got)
+	}
+}
