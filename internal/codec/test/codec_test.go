@@ -514,7 +514,7 @@ func TestAppendCommentToDocument(t *testing.T) {
 	if err != nil {
 		t.Fatalf("terminal-fence append: %v", err)
 	}
-	if body, err := codec.DecodeFrontmatter(terminal, &struct{}{}); err != nil {
+	if body, _, _, err := codec.DecodeFrontmatter(terminal, &struct{}{}); err != nil {
 		t.Fatalf("terminal-fence result unparseable: %v\n%q", err, terminal)
 	} else if _, _, canonical := codec.SplitComments(body); !canonical {
 		t.Fatalf("terminal-fence append must be canonical: %q", terminal)

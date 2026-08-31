@@ -4,9 +4,12 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/editorx"
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
@@ -24,7 +27,11 @@ func TestDraftRoundTrip(t *testing.T) {
 		Sprint:   new("2026-S14"),
 		Due:      new("2026-07-20"),
 		Estimate: &est,
-		Body:     "\n## Description\n\nbody text\n",
+		Extras: map[string]datamodel.ExtraValue{
+			"severity": {Scalar: new("high")},
+			"watchers": {List: []string{"alice", "bob"}},
+		},
+		Body: "\n## Description\n\nbody text\n",
 	}
 	got, err := parseDraft(serializeDraft(d))
 	if err != nil {
@@ -50,6 +57,9 @@ func TestDraftRoundTrip(t *testing.T) {
 	}
 	if len(got.Labels) != 2 || got.Estimate == nil || *got.Estimate != est {
 		t.Fatalf("labels/estimate lost: %+v", got)
+	}
+	if !reflect.DeepEqual(got.Extras, d.Extras) || !slices.Equal(got.Unknown, []string{"severity", "watchers"}) {
+		t.Fatalf("extras lost: %+v (unknown %v)", got.Extras, got.Unknown)
 	}
 	if got.Body != d.Body {
 		t.Fatalf("body = %q, want %q", got.Body, d.Body)

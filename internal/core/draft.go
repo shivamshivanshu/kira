@@ -1,11 +1,14 @@
 package core
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/editorx"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 )
@@ -24,17 +27,40 @@ type draft struct {
 	Due      *string  `yaml:"due"`
 	Estimate *float64 `yaml:"estimate"`
 
-	Body string `yaml:"-"`
+	Extras  map[string]datamodel.ExtraValue `yaml:"-"`
+	Unknown []string                        `yaml:"-"`
+	Body    string                          `yaml:"-"`
 }
 
 func parseDraft(content string) (draft, error) {
 	var d draft
-	body, err := codec.DecodeFrontmatter(content, &d)
+	body, extras, unknown, err := codec.DecodeFrontmatter(content, &d)
 	if err != nil {
 		return draft{}, err
 	}
-	d.Body = body
+	d.Extras, d.Unknown, d.Body = extras, unknown, body
 	return d, nil
+}
+
+func (s *Store) draftExtraErrors(typ string, d draft) []error {
+	if len(d.Unknown) == 0 {
+		return nil
+	}
+	schemas, err := s.Schemas()
+	if err != nil {
+		return []error{err}
+	}
+	var errs []error
+	for _, k := range d.Unknown {
+		if _, declared := entityschema.DeclaredExtra(schemas, typ, k); !declared {
+			errs = append(errs, fmt.Errorf("field %q: not a builtin field and not declared in the %s schema", k, typ))
+			continue
+		}
+		if _, captured := d.Extras[k]; !captured {
+			errs = append(errs, fmt.Errorf("field %q: value cannot be stored in frontmatter; use a scalar or a list of scalars", k))
+		}
+	}
+	return errs
 }
 
 func serializeDraft(d draft) string {
@@ -56,6 +82,7 @@ func serializeDraft(d draft) string {
 		estimate = codec.EmitFloat(*d.Estimate)
 	}
 	b.WriteString("estimate: " + estimate + "\n")
+	codec.WriteExtras(&b, d.Extras)
 	b.WriteString(codec.FenceLine)
 	b.WriteString(d.Body)
 	return b.String()
