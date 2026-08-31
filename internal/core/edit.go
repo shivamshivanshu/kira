@@ -10,6 +10,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/editorx"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 type FieldEdit struct {
@@ -144,10 +145,7 @@ func applyEditGuards(cfg *datamodel.Config, orig, it *datamodel.Item, force bool
 	if it.State == orig.State {
 		return nil, nil
 	}
-	edited := make(map[string]bool)
-	for _, f := range datamodel.ChangedFields(orig, it) {
-		edited[f] = true
-	}
+	edited := setx.ToSet(datamodel.ChangedFields(orig, it))
 	mo := MoveOpts{Force: force}
 	if edited[datamodel.KeyResolution] && it.Resolution != nil {
 		mo.Resolution = *it.Resolution

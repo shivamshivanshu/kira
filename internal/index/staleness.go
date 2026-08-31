@@ -7,6 +7,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
@@ -257,12 +258,11 @@ func ticketAbsPaths(toplevel string, relPaths []string) []string {
 }
 
 func unionPaths(a, b []string) []string {
-	seen := make(map[string]bool, len(a)+len(b))
+	dedup := setx.NewDeduper[string]()
 	out := make([]string, 0, len(a)+len(b))
 	for _, group := range [][]string{a, b} {
 		for _, p := range group {
-			if !seen[p] {
-				seen[p] = true
+			if dedup.Add(p) {
 				out = append(out, p)
 			}
 		}
