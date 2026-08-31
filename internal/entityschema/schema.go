@@ -99,6 +99,21 @@ func (s Schema) Field(name string) (FieldDef, bool) {
 	return FieldDef{}, false
 }
 
+// DeclaredExtra reports whether typ's schema declares name as a frontmatter
+// extra (a non-builtin key promoted to a first-class field). A type with no
+// schema declares nothing, so its extras stay unknown.
+func DeclaredExtra(schemas map[string]Schema, typ, name string) (FieldDef, bool) {
+	schema, ok := schemas[typ]
+	if !ok {
+		return FieldDef{}, false
+	}
+	f, ok := schema.Field(name)
+	if !ok || f.Placement != PlacementFrontmatter {
+		return FieldDef{}, false
+	}
+	return f, true
+}
+
 // ResolveEnums merges inline enums with config vocab; config wins on a name
 // conflict.
 func ResolveEnums(schema Schema, configVocab map[string][]string) map[string][]string {

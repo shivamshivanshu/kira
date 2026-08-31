@@ -104,6 +104,7 @@ func TestValidateSchemaRejectsMalformedDefinitions(t *testing.T) {
 		"enum without enum":   {Name: "w", Fields: []FieldDef{{Name: "p", Type: FieldEnum}}},
 		"ref without target":  {Name: "w", Fields: []FieldDef{{Name: "o", Type: FieldRef}}},
 		"non-string list":     {Name: "w", Fields: []FieldDef{{Name: "n", Type: FieldInt, List: true}}},
+		"builtin shadowed":    {Name: "w", Fields: []FieldDef{{Name: "title", Type: FieldString, Placement: PlacementFrontmatter}}},
 	}
 
 	for name, schema := range cases {
