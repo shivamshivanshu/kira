@@ -15,6 +15,10 @@ import (
 )
 
 func (s *Store) DoctorReport(cfg *datamodel.Config) (*doctor.Report, error) {
+	schemas, err := s.schemas()
+	if err != nil {
+		return nil, err
+	}
 	files, err := s.ticketFiles()
 	if err != nil {
 		return nil, err
@@ -23,7 +27,7 @@ func (s *Store) DoctorReport(cfg *datamodel.Config) (*doctor.Report, error) {
 	if err != nil {
 		return nil, err
 	}
-	return doctor.Run(cfg, files, strays, s.doctorEnv()), nil
+	return doctor.Run(cfg, files, strays, s.doctorEnv(), schemas), nil
 }
 
 func (s *Store) ValidateFiles(cfg *datamodel.Config, args []string) (*doctor.Report, error) {

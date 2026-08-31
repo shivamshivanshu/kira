@@ -948,7 +948,9 @@
             "environment",
             "board",
             "number-outlier",
-            "stray-file"
+            "stray-file",
+            "ref-kind",
+            "state-drift"
           ],
           "type": "string"
         },
