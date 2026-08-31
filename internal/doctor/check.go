@@ -85,7 +85,7 @@ func vocabFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 		{datamodel.KeyOwner, it.Owner},
 		{datamodel.KeyReporter, it.Reporter},
 	} {
-		if p.value != nil && *p.value != "" && !slices.Contains(cfg.People.Names(), *p.value) {
+		if p.value != nil && *p.value != "" && !slices.ContainsFunc(cfg.People.Known, func(person datamodel.Person) bool { return person.Name == *p.value }) {
 			out = append(out, vocabFinding(p.field, *p.value, vocabSeverity(cfg.People.Strict)))
 		}
 	}

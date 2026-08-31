@@ -2,6 +2,7 @@ package merge
 
 import (
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
@@ -48,26 +49,25 @@ func unionComments(groups ...[]datamodel.Comment) []datamodel.Comment {
 			}
 		}
 	}
-	out := make([]datamodel.Comment, 0, len(byID))
+	type datedComment struct {
+		comment datamodel.Comment
+		ts      time.Time
+		valid   bool
+	}
+	ordered := make([]datedComment, 0, len(byID))
 	for _, c := range byID {
-		out = append(out, c)
+		ts, err := time.Parse(time.RFC3339, c.Ts)
+		ordered = append(ordered, datedComment{c, ts, err == nil})
 	}
-	slices.SortFunc(out, compareComments)
+	slices.SortFunc(ordered, func(a, b datedComment) int {
+		if a.valid && b.valid && !a.ts.Equal(b.ts) {
+			return a.ts.Compare(b.ts)
+		}
+		return strings.Compare(a.comment.ID, b.comment.ID)
+	})
+	out := make([]datamodel.Comment, len(ordered))
+	for i, c := range ordered {
+		out[i] = c.comment
+	}
 	return out
-}
-
-func compareComments(a, b datamodel.Comment) int {
-	ta, ea := time.Parse(time.RFC3339, a.Ts)
-	tb, eb := time.Parse(time.RFC3339, b.Ts)
-	if ea == nil && eb == nil && !ta.Equal(tb) {
-		return ta.Compare(tb)
-	}
-	switch {
-	case a.ID < b.ID:
-		return -1
-	case a.ID > b.ID:
-		return 1
-	default:
-		return 0
-	}
 }

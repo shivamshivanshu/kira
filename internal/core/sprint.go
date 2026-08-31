@@ -78,18 +78,21 @@ func (s *Store) SprintList(cfg *datamodel.Config) (*datamodel.SprintListResult, 
 }
 
 func sprintList(cfg *datamodel.Config, items []*datamodel.Item, active string) *datamodel.SprintListResult {
+	bySprint := make(map[string]datamodel.SprintItemCounts, len(cfg.Sprints))
+	for _, it := range items {
+		if it.Sprint == nil {
+			continue
+		}
+		counts := bySprint[*it.Sprint]
+		counts.Total++
+		if isDoneState(cfg, it.Type, it.State) {
+			counts.Done++
+		}
+		bySprint[*it.Sprint] = counts
+	}
 	rows := make([]datamodel.SprintListRow, 0, len(cfg.Sprints))
 	for _, sp := range cfg.Sprints {
-		counts := datamodel.SprintItemCounts{}
-		for _, it := range items {
-			if !inSprint(it, sp.Key) {
-				continue
-			}
-			counts.Total++
-			if isDoneState(cfg, it.Type, it.State) {
-				counts.Done++
-			}
-		}
+		counts := bySprint[sp.Key]
 		rows = append(rows, datamodel.SprintListRow{SprintView: sprintView(sp), Active: sp.Key == active, Items: counts})
 	}
 	return &datamodel.SprintListResult{Sprints: rows}

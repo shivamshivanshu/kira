@@ -50,8 +50,8 @@ func (e *Error) Error() string { return fmt.Sprintf("query: %s at position %d", 
 // field name — the one class of parse error whose validity depends on which
 // schema-declared extras the caller could supply.
 func IsUnknownField(err error) bool {
-	var e *Error
-	return errors.As(err, &e) && e.unknownField
+	e, ok := errors.AsType[*Error](err)
+	return ok && e.unknownField
 }
 
 func Compile(input string, opts Options) (*Compiled, error) {
@@ -100,14 +100,15 @@ type compiler struct {
 	opts  Options
 	spec  extraSpec
 	notes []datamodel.WarnCode
+	byID  map[string]*datamodel.Item
 }
 
 func (c *compiler) compile(e Expr) (Predicate, error) {
 	switch n := e.(type) {
 	case *orExpr:
-		return c.compileBinary(n.left, n.right, func(a, b bool) bool { return a || b })
+		return c.compileBinary(n.left, n.right, false)
 	case *andExpr:
-		return c.compileBinary(n.left, n.right, func(a, b bool) bool { return a && b })
+		return c.compileBinary(n.left, n.right, true)
 	case *notExpr:
 		x, err := c.compile(n.x)
 		if err != nil {
@@ -136,7 +137,7 @@ func titleSubstringPred(text string) Predicate {
 	}
 }
 
-func (c *compiler) compileBinary(left, right Expr, join func(a, b bool) bool) (Predicate, error) {
+func (c *compiler) compileBinary(left, right Expr, and bool) (Predicate, error) {
 	l, err := c.compile(left)
 	if err != nil {
 		return nil, err
@@ -145,7 +146,10 @@ func (c *compiler) compileBinary(left, right Expr, join func(a, b bool) bool) (P
 	if err != nil {
 		return nil, err
 	}
-	return func(it *datamodel.Item, cfg *datamodel.Config) bool { return join(l(it, cfg), r(it, cfg)) }, nil
+	if and {
+		return func(it *datamodel.Item, cfg *datamodel.Config) bool { return l(it, cfg) && r(it, cfg) }, nil
+	}
+	return func(it *datamodel.Item, cfg *datamodel.Config) bool { return l(it, cfg) || r(it, cfg) }, nil
 }
 
 func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
@@ -158,12 +162,9 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 	case fieldState, fieldType, fieldPriority, fieldOwner, fieldReporter,
 		fieldSubtype, fieldResolution, fieldRank, fieldCategory:
 		if (n.field == fieldOwner || n.field == fieldReporter) && want == MeToken {
-			me := ""
-			if c.opts.Me != nil {
-				me = c.opts.Me()
-			}
-			if me == "" {
-				return nil, &Error{Pos: n.valuePos, Msg: "cannot resolve @me: set git user.name or user.email"}
+			me, err := c.resolveMe(n.valuePos)
+			if err != nil {
+				return nil, err
 			}
 			want = me
 		}
@@ -242,7 +243,38 @@ func (c *compiler) compileRefPred(n *predExpr, eq bool, matches func(*datamodel.
 	return func(it *datamodel.Item, _ *datamodel.Config) bool { return matches(it, u) == eq }, nil
 }
 
+func (c *compiler) resolveMe(pos int) (string, error) {
+	me := ""
+	if c.opts.Me != nil {
+		me = c.opts.Me()
+	}
+	if me == "" {
+		return "", &Error{Pos: pos, Msg: "cannot resolve @me: set git user.name or user.email"}
+	}
+	return me, nil
+}
+
 func (c *compiler) compileIn(n *inExpr) (Predicate, error) {
+	// Large scalar sets need one field extraction per item, including extras
+	// whose quoted values otherwise get YAML-decoded once per alternative.
+	if len(n.values) >= 8 && c.scalarInField(n.field) {
+		values := make(map[string]bool, len(n.values))
+		for i, value := range n.values {
+			if (n.field == fieldOwner || n.field == fieldReporter) && value == MeToken {
+				me, err := c.resolveMe(n.valuePos[i])
+				if err != nil {
+					return nil, err
+				}
+				value = me
+			}
+			if n.field == fieldBoard {
+				value = strings.ToUpper(value)
+			}
+			values[value] = true
+		}
+		get := scalarGet(n.field)
+		return func(it *datamodel.Item, cfg *datamodel.Config) bool { return values[get(it, cfg)] }, nil
+	}
 	orPreds := make([]Predicate, len(n.values))
 	for i, v := range n.values {
 		pred := &predExpr{
@@ -266,6 +298,16 @@ func (c *compiler) compileIn(n *inExpr) (Predicate, error) {
 		}
 		return false
 	}, nil
+}
+
+func (c *compiler) scalarInField(field string) bool {
+	switch field {
+	case fieldState, fieldType, fieldPriority, fieldOwner, fieldReporter,
+		fieldSubtype, fieldResolution, fieldRank, fieldCategory, fieldBoard:
+		return true
+	}
+	f, ok := c.spec[field]
+	return ok && !f.List && !f.Ordered
 }
 
 func (c *compiler) compileIsEmpty(n *emptyExpr) Predicate {
@@ -299,10 +341,19 @@ func (c *compiler) compileBool(n *boolExpr) (Predicate, error) {
 }
 
 func (c *compiler) blockedPred() Predicate {
-	byID := datamodel.IndexByID(c.opts.Items)
+	if c.byID == nil {
+		c.byID = datamodel.IndexByID(c.opts.Items)
+	}
+	byID := c.byID
 	return func(it *datamodel.Item, cfg *datamodel.Config) bool {
-		open, _ := OpenBlockers(cfg, it, byID)
-		return len(open) > 0
+		for _, id := range it.BlockedBy {
+			if blocker := byID[id]; blocker != nil {
+				if cat, known := cfg.CategoryOf(blocker.Type, blocker.State); known && cat != datamodel.CategoryDone {
+					return true
+				}
+			}
+		}
+		return false
 	}
 }
 

@@ -38,8 +38,7 @@ func renderError(w io.Writer, err error, jsonMode bool) int {
 	if ce, ok := errors.AsType[*errx.Error](err); ok {
 		code, hint = ce.Code, ce.Hint
 	}
-	var crash *tui.CrashError
-	isCrash := errors.As(err, &crash)
+	crash, isCrash := errors.AsType[*tui.CrashError](err)
 	if isCrash {
 		code, hint = errx.ExitCrash, crash.LogPath
 	}

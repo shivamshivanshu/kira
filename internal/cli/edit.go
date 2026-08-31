@@ -73,6 +73,14 @@ func newEditCmd(g *globalFlags) *cobra.Command {
 				if len(opts.Fields) == 0 {
 					return errx.User("editing multiple ids requires field flags; editor mode is single-id only")
 				}
+				batch, err := s.BeginBatch(cfg)
+				if err != nil {
+					return err
+				}
+				defer batch.Close()
+				apply = func(id string) (*datamodel.MutationResult, error) {
+					return batch.EditFields(id, opts.Fields, opts.Force)
+				}
 			}
 			return runSingleOrBulk(out, cmd.ErrOrStderr(), g.json, args, apply, editLine, warn)
 		},

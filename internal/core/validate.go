@@ -109,10 +109,17 @@ func (s *Store) extrasErrors(cfg *datamodel.Config, it *datamodel.Item) []error 
 }
 
 func (s *Store) validateMutation(cfg *datamodel.Config, orig, it *datamodel.Item, resolver *id.Resolver, items []*datamodel.Item, force bool) (hard, warns []error) {
+	return s.validateMutationAgainst(cfg, orig, it, resolver, items, force, nil)
+}
+
+func (s *Store) validateMutationAgainst(cfg *datamodel.Config, orig, it *datamodel.Item, resolver *id.Resolver, items []*datamodel.Item, force bool, byID map[string]*datamodel.Item) (hard, warns []error) {
 	hard, warns = s.validateAssembled(cfg, it, resolver, force)
 	hard = append(hard, validateResolutionState(cfg, orig, it)...)
 	if len(hard) == 0 {
-		hard = validateGraph(it, items)
+		if byID == nil {
+			byID = datamodel.IndexByID(items)
+		}
+		hard = validateGraphIndex(it, byID)
 	}
 	return hard, warns
 }
@@ -142,8 +149,19 @@ func (s *Store) validateBuffer(cfg *datamodel.Config, resolver *id.Resolver, for
 }
 
 func validateGraph(updated *datamodel.Item, items []*datamodel.Item) []error {
-	byID := datamodel.IndexByID(items)
+	return validateGraphIndex(updated, datamodel.IndexByID(items))
+}
+
+func validateGraphIndex(updated *datamodel.Item, byID map[string]*datamodel.Item) []error {
+	prev, existed := byID[updated.ID]
 	byID[updated.ID] = updated
+	defer func() {
+		if existed {
+			byID[updated.ID] = prev
+		} else {
+			delete(byID, updated.ID)
+		}
+	}()
 
 	var errs []error
 	if updated.Epic != nil && *updated.Epic != "" {
@@ -152,11 +170,8 @@ func validateGraph(updated *datamodel.Item, items []*datamodel.Item) []error {
 		}
 	}
 	for _, rel := range datamodel.CycleRelations() {
-		for _, cycle := range datamodel.FindCycles(byID, rel.Edges) {
-			if slices.Contains(cycle, updated.ID) {
-				errs = append(errs, fmt.Errorf("field %q forms a cycle: %s", rel.Field, cycleTrail(cycle, byID)))
-				break
-			}
+		if cycle := datamodel.FindCycleFrom(byID, updated.ID, rel.Edges); len(cycle) > 0 {
+			errs = append(errs, fmt.Errorf("field %q forms a cycle: %s", rel.Field, cycleTrail(cycle, byID)))
 		}
 	}
 	return errs

@@ -15,7 +15,7 @@ import (
 // itemMetric is the single-item form of itemsMetrics, for tests that assert on
 // one ticket's derived metrics.
 func itemMetric(s *Store, cfg *datamodel.Config, it *datamodel.Item) (metricItem, error) {
-	mis, err := s.itemsMetrics(cfg, []*datamodel.Item{it}, map[string]string{it.ID: s.fileHead(it.ID)})
+	mis, err := s.itemsMetrics(cfg, []*datamodel.Item{it})
 	if err != nil {
 		return metricItem{}, err
 	}

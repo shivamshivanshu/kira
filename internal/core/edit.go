@@ -157,6 +157,44 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 	return &datamodel.MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed, Warnings: warningsFromErrors(finalWarns)}, nil
 }
 
+// EditFields applies noninteractive field edits against the batch's live state.
+func (b *Batch) EditFields(ref string, fields []FieldEdit, force bool) (*datamodel.MutationResult, error) {
+	orig, err := b.Resolve(ref)
+	if err != nil {
+		return nil, err
+	}
+	var changed []string
+	apply := func(it *datamodel.Item, resolver *id.Resolver, items []*datamodel.Item) (hard, warns []error) {
+		for _, field := range fields {
+			value := field.Value
+			if field.Key == datamodel.KeyOwner || field.Key == datamodel.KeyReporter {
+				var err error
+				value, err = b.store.resolveMe(b.cfg, value)
+				if err != nil {
+					return []error{err}, nil
+				}
+			}
+			if err := b.store.editField(it, field.Key, value); err != nil {
+				hard = append(hard, err)
+			}
+		}
+		if len(hard) > 0 {
+			return hard, nil
+		}
+		hard, warns = applyEditGuards(b.cfg, orig, it, force, resolver, items)
+		changed = datamodel.ChangedFields(orig, it)
+		return hard, warns
+	}
+	subject := func(it *datamodel.Item) string {
+		return b.cfg.Commit.SubjectPrefix + it.Number + " edit " + strings.Join(changed, ",")
+	}
+	updated, changed, warns, err := b.Mutate(ref, force, apply, subject, datamodel.SourceCLI)
+	if err != nil {
+		return nil, err
+	}
+	return &datamodel.MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed, Warnings: warningsFromErrors(warns)}, nil
+}
+
 func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) (string, string, error) {
 	orig, items, resolver, err := s.resolveRef(cfg, ref)
 	if err != nil {
