@@ -5,7 +5,7 @@ import "github.com/shivamshivanshu/kira/internal/datamodel"
 func extrasMerge(base, ours, theirs map[string]datamodel.ExtraValue, winner Side) map[string]datamodel.ExtraValue {
 	out := map[string]datamodel.ExtraValue{}
 	for k := range keyUnion(base, ours, theirs) {
-		if merged := mergeExtra(base[k], ours[k], theirs[k], winner); !merged.Equal(datamodel.ExtraValue{}) {
+		if merged := mergeExtra(base[k], ours[k], theirs[k], winner); merged.Scalar != nil || merged.List != nil {
 			out[k] = merged
 		}
 	}
