@@ -4,13 +4,13 @@ number: KIRA-139
 aliases: []
 type: ticket
 title: "Correct the package-layering documentation to match reality"
-state: TODO
+state: IN_PROGRESS
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:09:54+02:00
-updated: 2026-08-31T15:09:54+02:00
+updated: 2026-08-31T23:51:31+02:00
 ---
 
 ## Description
