@@ -22,16 +22,8 @@ var statsKeys = []KeyBinding{
 	{"^d/^u", "half-page"},
 }
 
-type statsLoadState int
-
-const (
-	statsNotLoaded statsLoadState = iota
-	statsPending
-	statsReady
-)
-
 type statsScreen struct {
-	state statsLoadState
+	state loadState
 	res   *datamodel.StatsResult
 	err   error
 	scroller
@@ -57,30 +49,30 @@ func (s *statsScreen) focusedItem() (showfmt.Item, bool) { return showfmt.Item{}
 func (s *statsScreen) settle(_ *model) {}
 
 func (s *statsScreen) invalidate() {
-	if s.state == statsPending {
+	if s.state == loadPending {
 		return
 	}
-	s.state = statsNotLoaded
+	s.state = loadNeeded
 	s.err = nil
 }
 
 // activate dispatches an async reload through the model's command queue at
 // most once per invalidation; the result lands later via statsLoadedMsg.
 func (s *statsScreen) activate(m *model) tea.Cmd {
-	if s.state != statsNotLoaded || m.store == nil {
+	if s.state != loadNeeded || m.store == nil {
 		return nil
 	}
-	s.state = statsPending
+	s.state = loadPending
 	return m.request(statsLoadCmd(m.store, m.cfg))
 }
 
 func (s *statsScreen) applyLoaded(msg statsLoadedMsg) {
 	s.res, s.err = msg.res, msg.err
-	s.state = statsReady
+	s.state = loadReady
 }
 
 func (s *statsScreen) view(m *model, width, height int) string {
-	if s.state == statsPending {
+	if s.state == loadPending {
 		return renderLoading(m.theme, width, height)
 	}
 	if s.err != nil {

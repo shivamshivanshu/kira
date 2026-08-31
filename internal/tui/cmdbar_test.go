@@ -157,7 +157,7 @@ func TestCommandBarDotResolvesBoardSelection(t *testing.T) {
 	t.Parallel()
 	m := newTestModel(100, 12, true)
 	bs := m.screens[viewBoard].(*boardScreen)
-	bs.loaded = true
+	bs.state = loadReady
 	bs.board.load(buildBoardResult())
 	bs.board.focusByID("t3")
 	m.view = viewBoard
