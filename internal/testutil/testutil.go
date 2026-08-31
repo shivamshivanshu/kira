@@ -48,13 +48,17 @@ func HermeticEnvironment() []string {
 // exit, so it keeps touching .git/objects after the test body returns and
 // races t.TempDir's RemoveAll (KIRA-106).
 func GitMaintenanceDisabled() []string {
-	return []string{
-		"GIT_CONFIG_COUNT=2",
-		"GIT_CONFIG_KEY_0=maintenance.auto",
-		"GIT_CONFIG_VALUE_0=false",
-		"GIT_CONFIG_KEY_1=gc.auto",
-		"GIT_CONFIG_VALUE_1=0",
+	overrides := [][2]string{
+		{"maintenance.auto", "false"},
+		{"gc.auto", "0"},
 	}
+	env := []string{fmt.Sprintf("GIT_CONFIG_COUNT=%d", len(overrides))}
+	for i, kv := range overrides {
+		env = append(env,
+			fmt.Sprintf("GIT_CONFIG_KEY_%d=%s", i, kv[0]),
+			fmt.Sprintf("GIT_CONFIG_VALUE_%d=%s", i, kv[1]))
+	}
+	return env
 }
 
 func ApplyHermeticEnvironment() {

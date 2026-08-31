@@ -69,8 +69,7 @@ func (r Repo) NumstatNoIndex(a, b string) (added, removed int, err error) {
 	cmd.Stderr = &stderr
 	runErr := cmd.Run()
 	if runErr != nil {
-		var ee *exec.ExitError
-		if !errors.As(runErr, &ee) || ee.ExitCode() >= 128 {
+		if ee, ok := errors.AsType[*exec.ExitError](runErr); !ok || ee.ExitCode() >= 128 {
 			return 0, 0, cmdError("git diff --numstat --no-index", &stderr, runErr)
 		}
 	}
