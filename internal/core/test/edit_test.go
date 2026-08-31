@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
@@ -88,5 +89,51 @@ func TestEditorModeRefusesLostUpdate(t *testing.T) {
 	}
 	if got := mustReadItem(t, s, res.ID); !strings.Contains(got, "title: \"original\"") {
 		t.Fatalf("lost-update refusal must not overwrite the concurrent version:\n%s", got)
+	}
+}
+
+func TestEditorModeRefusesLostComment(t *testing.T) {
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "original")
+
+	orig := mustReadItem(t, s, res.ID)
+	commented, err := codec.AppendCommentToDocument(orig, datamodel.Comment{
+		ID: "01ARZ3NDEKTSV4RRFFQ69G5FAV", Author: "alice", Ts: "2026-01-01T00:00:00Z", Body: "important",
+	})
+	if err != nil {
+		t.Fatalf("AppendCommentToDocument: %v", err)
+	}
+	concurrent := writeTempItem(t, commented)
+	buffer := writeTempItem(t, strings.Replace(orig, "title: \"original\"", "title: \"edited by user\"", 1))
+
+	t.Setenv("KIRA_ITEM", storage.New(s.Root()).ItemPath(res.ID))
+	t.Setenv("KIRA_CONCURRENT", concurrent)
+	t.Setenv("KIRA_BUFFER", buffer)
+	writeEditorScript(t, "cp \"$KIRA_CONCURRENT\" \"$KIRA_ITEM\"\ncp \"$KIRA_BUFFER\" \"$1\"\n")
+
+	_, err = s.Edit(cfg, "KIRA-1", core.EditOpts{})
+	var e *errx.Error
+	if !errors.As(err, &e) || e.Code != errx.ExitConflict {
+		t.Fatalf("want ExitConflict for a comment appended mid-session, got %v (%T)", err, err)
+	}
+	if got := mustReadItem(t, s, res.ID); !strings.Contains(got, "important") {
+		t.Fatalf("refused edit must preserve the concurrent comment:\n%s", got)
+	}
+}
+
+func TestFieldEditAfterCommentDoesNotConflict(t *testing.T) {
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "original")
+	if _, err := s.Comment(cfg, "KIRA-1", core.CommentOpts{Message: "important", HasMessage: true}); err != nil {
+		t.Fatalf("Comment: %v", err)
+	}
+
+	fields := []core.FieldEdit{{Key: "title", Value: "edited"}}
+	if _, err := s.Edit(cfg, "KIRA-1", core.EditOpts{Fields: fields}); err != nil {
+		t.Fatalf("--field edit after a comment must not conflict: %v", err)
+	}
+	got := mustReadItem(t, s, res.ID)
+	if !strings.Contains(got, "title: \"edited\"") || !strings.Contains(got, "important") {
+		t.Fatalf("--field edit lost the title change or the comment:\n%s", got)
 	}
 }

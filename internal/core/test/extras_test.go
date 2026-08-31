@@ -341,3 +341,73 @@ func TestListExtraIsEmptyParityWithLabels(t *testing.T) {
 		}
 	}
 }
+
+func TestEditFromFileRejectsUndeclaredKey(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "Clean item")
+	before := mustReadItem(t, s, res.ID)
+	src := writeTempItem(t, strings.Replace(before, "---\n", "---\nfoo: bar\n", 1))
+
+	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{FromFile: src})
+	var e *errx.Error
+	if !errors.As(err, &e) || e.Code != errx.ExitUser {
+		t.Fatalf("want ExitUser refusal, got %v (%T)", err, err)
+	}
+	if !strings.Contains(e.Error(), `"foo"`) {
+		t.Fatalf("refusal must name the offending key: %v", err)
+	}
+	if got := mustReadItem(t, s, res.ID); got != before {
+		t.Fatalf("a refused edit must not mutate the file:\n%s", got)
+	}
+}
+
+func TestEditFromFileAcceptsDeclaredExtra(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "Declared extra from file")
+	s = declareTicketExtras(t, s, futureFieldDecl)
+	src := writeTempItem(t, strings.Replace(mustReadItem(t, s, res.ID), "---\n", "---\nfuture_field: x\n", 1))
+
+	if _, err := s.Edit(cfg, "KIRA-1", core.EditOpts{FromFile: src}); err != nil {
+		t.Fatalf("a schema-declared extra must edit fine: %v", err)
+	}
+	if got := mustReadItem(t, s, res.ID); !strings.Contains(got, "future_field: x\n") {
+		t.Fatalf("edit dropped the declared extra:\n%s", got)
+	}
+}
+
+func TestEditorModeRejectsUndeclaredKey(t *testing.T) {
+	s, cfg := newStore(t)
+	res := mustCreate(t, s, cfg, "Clean item")
+	before := mustReadItem(t, s, res.ID)
+
+	counter := filepath.Join(t.TempDir(), "counter")
+	seen := filepath.Join(t.TempDir(), "seen")
+	t.Setenv("KIRA_COUNTER", counter)
+	t.Setenv("KIRA_SEEN", seen)
+	writeEditorScript(t,
+		"n=$(cat \"$KIRA_COUNTER\" 2>/dev/null || echo 0)\n"+
+			"n=$((n+1)); echo \"$n\" > \"$KIRA_COUNTER\"\n"+
+			"if [ \"$n\" -eq 1 ]; then\n"+
+			"  head -n 1 \"$1\" > \"$1.tmp\"; printf 'foo: bar\\n' >> \"$1.tmp\"; tail -n +2 \"$1\" >> \"$1.tmp\"; mv \"$1.tmp\" \"$1\"\n"+
+			"else\n"+
+			"  cp \"$1\" \"$KIRA_SEEN\"\n"+
+			"fi\n")
+
+	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{})
+	var e *errx.Error
+	if !errors.As(err, &e) || e.Code != errx.ExitUser {
+		t.Fatalf("want ExitUser refusal, got %v (%T)", err, err)
+	}
+	banner, readErr := os.ReadFile(seen)
+	if readErr != nil {
+		t.Fatalf("editor never saw a retry banner: %v", readErr)
+	}
+	if !strings.Contains(string(banner), `"foo"`) {
+		t.Fatalf("retry banner must name the offending key:\n%s", banner)
+	}
+	if got := mustReadItem(t, s, res.ID); got != before {
+		t.Fatalf("a refused edit must not mutate the file:\n%s", got)
+	}
+}
