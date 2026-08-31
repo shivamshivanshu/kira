@@ -46,6 +46,7 @@ func TestEvalExtras(t *testing.T) {
 		{"watchers IS EMPTY", []string{"KIRA-100", "KIRA-2", "KIRA-3"}},
 		{"watchers IS NOT EMPTY", []string{"KIRA-1"}},
 		{"points=8", []string{"KIRA-1"}},
+		{"points!=8", []string{"KIRA-100", "KIRA-2", "KIRA-3"}},
 		{"points>8", []string{"KIRA-2"}},
 		{"points>=8", []string{"KIRA-1", "KIRA-2"}},
 		{"points<8", nil},

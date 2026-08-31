@@ -815,6 +815,89 @@ func TestSchemaVersionMismatchRebuilds(t *testing.T) {
 	}
 }
 
+func TestReadCachedTreatsStaleSchemaAsAbsent(t *testing.T) {
+	t.Parallel()
+	f := newRepo(t)
+	f.writeTicket(t, "01J8X7B1Q2W3E4R5T6Y7U8I9O0", ticket("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first"))
+	f.commit(t, "one")
+	if _, _, err := index.Load(f.store, f.repo, index.Options{}); err != nil {
+		t.Fatalf("initial Load: %v", err)
+	}
+
+	db, err := sql.Open("sqlite", filepath.Join(f.store.CacheDir(), "index.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("ALTER TABLE items DROP COLUMN activity"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("PRAGMA user_version=6"); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Close()
+
+	items, err := index.ReadCached(f.store.CacheDir())
+	if err != nil || items != nil {
+		t.Fatalf("a cache from another schema version must read as absent, got %d items, err %v", len(items), err)
+	}
+}
+
+func TestDeletedItemSweepsGitDerivedRows(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		opts index.Options
+		full bool
+	}{
+		{"incremental refresh", trailerOpts(), false},
+		{"full rebuild without trailer scan", index.Options{}, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
+			f := newRepo(t)
+			f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
+			f.commit(t, "seed")
+			f.commitTrailer(t, "work", "Kira-Ticket: KIRA-1")
+			idx := open(t, f)
+			if _, err := index.Refresh(f.store, f.repo, trailerOpts(), false); err != nil {
+				t.Fatalf("Refresh: %v", err)
+			}
+			derive := func() ([]datamodel.Event, error) {
+				return []datamodel.Event{{Ts: "2026-01-01T00:00:00Z", Field: "state", Old: "TODO", New: "DONE", CommitSHA: "abc"}}, nil
+			}
+			if _, _, err := index.LogEntries(f.store, a, "head1", derive); err != nil {
+				t.Fatalf("LogEntries: %v", err)
+			}
+			if links, err := idx.CommitLinks(a); err != nil || len(links) == 0 {
+				t.Fatalf("precondition: commit links must exist before the delete, got %v, err %v", links, err)
+			}
+
+			f.removeTicket(t, a)
+			f.commit(t, "drop")
+			if _, err := index.Refresh(f.store, f.repo, tc.opts, tc.full); err != nil {
+				t.Fatalf("Refresh after delete: %v", err)
+			}
+
+			db, err := sql.Open("sqlite", "file:"+filepath.Join(f.store.CacheDir(), "index.db")+"?mode=ro")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = db.Close() }()
+			for _, table := range []string{"events", "event_heads", "commit_links"} {
+				var n int
+				if err := db.QueryRow("SELECT count(*) FROM "+table+" WHERE item_id = ?", a).Scan(&n); err != nil {
+					t.Fatal(err)
+				}
+				if n != 0 {
+					t.Errorf("deleting the item left %d orphaned %s rows", n, table)
+				}
+			}
+		})
+	}
+}
+
 func TestProbeReportsFreshnessReadOnly(t *testing.T) {
 	t.Parallel()
 	f := newRepo(t)

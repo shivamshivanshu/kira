@@ -121,6 +121,7 @@ func splitDocument(content string) (front, body string, err error) {
 }
 
 func cutAfterFrontmatter(doc string) (head, body string, ok bool) {
+	doc = strings.ReplaceAll(doc, "\r\n", "\n")
 	rest, found := strings.CutPrefix(doc, FenceLine)
 	if !found {
 		return "", "", false

@@ -73,10 +73,13 @@ func TestEval(t *testing.T) {
 		{"due<2026-07-10", []string{"KIRA-2"}},
 		{"due>=2026-07-20", []string{"KIRA-1"}},
 		{"due=2026-07-01", []string{"KIRA-2"}},
-		{"due!=2026-07-01", []string{"KIRA-1"}},
+		{"due!=2026-07-01", []string{"KIRA-1", "KIRA-100", "KIRA-3"}},
+		{"NOT due=2026-07-01", []string{"KIRA-1", "KIRA-100", "KIRA-3"}},
 		{"estimate>3", []string{"KIRA-2"}},
 		{"estimate<=3", []string{"KIRA-1"}},
 		{"estimate=5", []string{"KIRA-2"}},
+		{"estimate!=5", []string{"KIRA-1", "KIRA-100", "KIRA-3"}},
+		{"NOT estimate=5", []string{"KIRA-1", "KIRA-100", "KIRA-3"}},
 		{"priority<=P1", []string{"KIRA-1", "KIRA-2"}},
 		{"priority<P1", []string{"KIRA-2"}},
 		{"priority>=P1", []string{"KIRA-1"}},
@@ -116,6 +119,28 @@ func TestEval(t *testing.T) {
 		if strings.Join(got, ",") != strings.Join(tc.want, ",") {
 			t.Errorf("%q matched %v, want %v", tc.expr, got, tc.want)
 		}
+	}
+}
+
+func TestEvalDateFiltersUseRecordedCalendarDay(t *testing.T) {
+	_, opts, cfg := evalFixture()
+	// UTC instants 2025-12-31T20:30Z and 2026-01-02T11:30Z: no single host
+	// zone maps both to a local 2026-01-01, so any host-local rendering
+	// mismatches at least one recorded day.
+	east := &datamodel.Item{
+		ID: id.Mint().String(), Number: "KIRA-10", Type: datamodel.TypeTicket, Title: "east",
+		State: "TODO", Created: "2026-01-01T02:00:00+05:30", Updated: "2026-01-01T02:00:00+05:30",
+	}
+	west := &datamodel.Item{
+		ID: id.Mint().String(), Number: "KIRA-11", Type: datamodel.TypeTicket, Title: "west",
+		State: "TODO", Created: "2026-01-01T23:30:00-12:00", Updated: "2026-01-01T23:30:00-12:00",
+	}
+	items := []*datamodel.Item{east, west}
+	if got := matchNums(t, "created=2026-01-01", items, opts, cfg); strings.Join(got, ",") != "KIRA-10,KIRA-11" {
+		t.Errorf("created= must compare each item's recorded calendar day, matched %v", got)
+	}
+	if got := matchNums(t, "updated>2026-01-01", items, opts, cfg); got != nil {
+		t.Errorf("updated> must compare each item's recorded calendar day, matched %v", got)
 	}
 }
 
