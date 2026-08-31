@@ -29,7 +29,7 @@ func newStatsCmd(g *globalFlags) *cobra.Command {
 			renderStats),
 	}
 	f := cmd.Flags()
-	f.StringVar(&opts.Since, "since", "", "include only items created on or after this date (YYYY-MM-DD)")
+	f.StringVar(&opts.Since, "since", "", "include only items created on or after this date (YYYY-MM-DD, by each item's recorded calendar day)")
 	f.IntVar(&opts.Weeks, "weeks", 0, "trailing weeks in the throughput series (default 8)")
 	f.StringVar(&opts.Sprint, "sprint", "", "scope metrics to a sprint ('active' resolves the local active sprint)")
 	return cmd
