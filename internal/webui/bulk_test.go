@@ -139,9 +139,7 @@ func TestBulkResolutionReleasesLockWithoutMatches(t *testing.T) {
 	d := newDashboardTest(t, Options{})
 	s := &server{store: d.store}
 	for _, refs := range [][]string{{"WEB-99999", "WEB-99999"}, {" ", ""}} {
-		if _, err := s.resolveBulk(d.cfg, refs); err != nil {
-			t.Fatal(err)
-		}
+		_, _ = s.bulk(d.cfg, url.Values{"ids": refs, "operation": {"assign"}})
 		batch, err := d.store.BeginBatch(d.cfg)
 		if err != nil {
 			t.Fatalf("resolution retained its lock for refs %q: %v", refs, err)

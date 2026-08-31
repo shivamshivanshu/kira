@@ -12,6 +12,33 @@ type Relation struct {
 	Edges func(*Item) []string
 }
 
+// FindCycleFrom visits only nodes reachable from root and returns a cycle
+// containing root. An unrelated pre-existing cycle does not block a mutation.
+func FindCycleFrom(byID map[string]*Item, root string, edges func(*Item) []string) []string {
+	seen := map[string]bool{}
+	var path []string
+	var walk func(string) bool
+	walk = func(id string) bool {
+		it := byID[id]
+		if it == nil || seen[id] {
+			return false
+		}
+		seen[id] = true
+		path = append(path, id)
+		for _, target := range edges(it) {
+			if target == root || walk(target) {
+				return true
+			}
+		}
+		path = path[:len(path)-1]
+		return false
+	}
+	if walk(root) {
+		return path
+	}
+	return nil
+}
+
 func CycleRelations() []Relation {
 	return []Relation{
 		{Field: KeyBlockedBy, Edges: func(it *Item) []string { return it.BlockedBy }},

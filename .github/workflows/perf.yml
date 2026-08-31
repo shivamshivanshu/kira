@@ -52,16 +52,32 @@ jobs:
           git worktree add /tmp/base-tree "${{ steps.base.outputs.sha }}"
           (cd /tmp/base-tree && go build -o /tmp/kira-base ./cmd/kira)
 
-      # A/B benchmark: median-of-N (>=10) on each binary, then a ratio report.
-      # Fixtures are seeded per-process by HEAD's harness, so both binaries face
-      # the same workload shape. continue-on-error keeps the ratio non-gating.
-      - name: Benchmark merge-base
-        continue-on-error: true
-        run: KIRA_BIN=/tmp/kira-base go test -run '^$' -bench=BenchmarkCommands -count=10 ./tests/perf/ | tee base.txt
+      # Compile the same benchmark workloads against both revisions. Production
+      # code comes from each revision; benchmark-only files come from HEAD.
+      - name: Build package benchmarks
+        run: |
+          for pkg in core query entityschema webui; do
+            cp "internal/$pkg/performance_bench_test.go" "/tmp/base-tree/internal/$pkg/performance_bench_test.go"
+            go test -c -o "/tmp/kira-head-$pkg.test" "./internal/$pkg"
+            (cd /tmp/base-tree && go test -c -o "/tmp/kira-base-$pkg.test" "./internal/$pkg")
+          done
 
-      - name: Benchmark HEAD
-        continue-on-error: true
-        run: KIRA_BIN=/tmp/kira-head go test -run '^$' -bench=BenchmarkCommands -count=10 ./tests/perf/ | tee head.txt
+      - name: Interleaved A/B benchmarks
+        run: |
+          for sample in $(seq 1 10); do
+            # Alternate which revision goes first to reduce ordering effects.
+            revisions="base head"
+            if [ $((sample % 2)) -eq 0 ]; then revisions="head base"; fi
+            for revision in $revisions; do
+              KIRA_BIN="/tmp/kira-$revision" go test -run '^$' \
+                -bench='Benchmark(Commands|Mutations|StatsCache)$' -benchtime=3x -count=1 ./tests/perf/ >> "$revision.txt"
+              for pkg in core query entityschema webui; do
+                "/tmp/kira-$revision-$pkg.test" -test.run='^$' \
+                  -test.bench='Benchmark(EpicProgress|SelectiveQuery|ValidateExtras|RenderPage)$' \
+                  -test.benchtime=200ms -test.count=1 >> "$revision.txt"
+              done
+            done
+          done
 
       - name: A/B ratio (2x threshold, informational)
         continue-on-error: true
@@ -79,7 +95,7 @@ jobs:
           echo '## Deterministic proxies' >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           KIRA_BIN=/tmp/kira-head go test -count=1 -v \
-            -run 'TestSpawnCounts|TestScaling|TestColdStartSmoke' ./tests/perf/ \
+            -run 'TestSpawnCounts|TestScaling|TestColdStartSmoke|TestColdStatsSpawnScaling' ./tests/perf/ \
             | tee -a "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 

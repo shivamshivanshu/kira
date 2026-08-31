@@ -90,6 +90,7 @@ var pageTemplate = sync.OnceValue(func() *template.Template {
 })
 
 func renderPage(w io.Writer, p pageData) error {
+	p.prepare()
 	return pageTemplate().ExecuteTemplate(w, "page", p)
 }
 

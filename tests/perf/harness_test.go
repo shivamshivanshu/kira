@@ -28,6 +28,7 @@ var commands = []command{
 	{"tree", []string{"tree", "--json"}},
 	{"show", []string{"show", "KIRA-1", "--json"}},
 	{"query", []string{"list", "--query", "type = ticket", "--json"}},
+	{"board", []string{"board", "--plain"}},
 	{"stats", []string{"stats", "--json"}},
 }
 

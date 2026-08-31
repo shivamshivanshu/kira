@@ -1,10 +1,13 @@
 package webui
 
 import (
+	"encoding/json"
+	"maps"
 	"net/url"
 	"slices"
 	"strings"
 
+	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/showfmt"
 	"github.com/shivamshivanshu/kira/internal/timex"
@@ -25,7 +28,7 @@ type pageData struct {
 	Board                                             *datamodel.BoardResult
 	Stats                                             *datamodel.StatsResult
 	Detail                                            *datamodel.ShowResult
-	Active                                            *datamodel.NowResult
+	Active                                            *core.ActiveItemSummary
 	Sprints                                           []datamodel.SprintListRow
 	Progress                                          map[string]datamodel.EpicProgress
 	Targets                                           []string
@@ -33,6 +36,80 @@ type pageData struct {
 	Explain                                           *datamodel.ExplainResult
 	Bulk                                              []bulkOutcome
 	Commit                                            *commitView
+	cache                                             *pageCache
+}
+
+type pageCache struct {
+	query    url.Values
+	names    map[string]string
+	selected map[string]bool
+}
+
+func (p *pageData) prepare() {
+	c := &pageCache{query: pageQuery(p.URL), names: make(map[string]string, len(p.AllItems)*2), selected: make(map[string]bool, len(p.Form["ids"]))}
+	items := p.AllItems
+	if len(items) == 0 {
+		items = p.Items
+	}
+	for _, it := range items {
+		if _, exists := c.names[it.ID]; !exists {
+			c.names[it.ID] = it.Number
+		}
+		if _, exists := c.names[it.Number]; !exists {
+			c.names[it.Number] = it.Number
+		}
+	}
+	for _, id := range p.Form["ids"] {
+		c.selected[id] = true
+	}
+	p.cache = c
+}
+
+func pageQuery(raw string) url.Values {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return url.Values{}
+	}
+	q := u.Query()
+	q.Del("message")
+	q.Del("error")
+	q.Del("_notice")
+	return q
+}
+
+type pickerItem struct {
+	ID       string `json:"id"`
+	Number   string `json:"number"`
+	Title    string `json:"title"`
+	State    string `json:"state"`
+	Category string `json:"category"`
+}
+
+func (p pageData) PickerItems() []pickerItem {
+	items := make([]pickerItem, len(p.AllItems))
+	for i, it := range p.AllItems {
+		items[i] = pickerItem{it.ID, it.Number, it.Title, it.State, it.Category}
+	}
+	return items
+}
+
+// CopyValues keeps row data compact; format labels and buttons are shared.
+func (p pageData) CopyValues(id, number, title string) string {
+	forms := p.CopyForms(id, number, title)
+	values := make([]string, len(forms))
+	for i, form := range forms {
+		values[i] = form.Value
+	}
+	encoded, _ := json.Marshal(values)
+	return string(encoded)
+}
+
+func (p pageData) CopyLabels() []copyOption {
+	options := make([]copyOption, len(showfmt.Forms))
+	for i, form := range showfmt.Forms {
+		options[i] = copyOption{Name: string(form), Label: form.Label()}
+	}
+	return options
 }
 
 type commitView struct {
@@ -62,14 +139,12 @@ type itemSummary struct {
 }
 
 func (p pageData) Link(pairs ...string) string {
-	u, err := url.Parse(p.URL)
-	if err != nil {
-		u = &url.URL{}
+	var q url.Values
+	if p.cache != nil {
+		q = maps.Clone(p.cache.query)
+	} else {
+		q = pageQuery(p.URL)
 	}
-	q := u.Query()
-	q.Del("message")
-	q.Del("error")
-	q.Del("_notice")
 	for i := 0; i+1 < len(pairs); i += 2 {
 		if pairs[i] == "item" || pairs[i] == "view" {
 			q.Del("commit")
@@ -203,6 +278,12 @@ func (p pageData) Heading() string {
 }
 
 func (p pageData) ItemName(ref string) string {
+	if p.cache != nil {
+		if name, ok := p.cache.names[ref]; ok {
+			return name
+		}
+		return ref
+	}
 	items := p.AllItems
 	if len(items) == 0 {
 		items = p.Items
@@ -216,6 +297,9 @@ func (p pageData) ItemName(ref string) string {
 }
 
 func (p pageData) BulkSelected(ref string) bool {
+	if p.cache != nil {
+		return p.cache.selected[ref]
+	}
 	return slices.Contains(p.Form["ids"], ref)
 }
 

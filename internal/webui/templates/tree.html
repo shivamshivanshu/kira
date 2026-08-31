@@ -8,7 +8,7 @@
   </div>
   {{range .Tree}}
   {{$item := .Item}}
-  <div class="tree-row {{if or (eq $.Selected $item.ID) (eq $.Selected $item.Number)}}is-selected{{end}}" role="row" data-nav-item data-depth="{{.Depth}}" data-item="{{$item.ID}}" data-number="{{$item.Number}}" {{if $item.Epic}}data-parent-url="{{$.Link "item" (str $item.Epic)}}"{{end}} tabindex="-1">
+  <div class="tree-row {{if or (eq $.Selected $item.ID) (eq $.Selected $item.Number)}}is-selected{{end}}" role="row" data-nav-item data-depth="{{.Depth}}" data-item="{{$item.ID}}" data-number="{{$item.Number}}" data-copy-values="{{$.CopyValues $item.ID $item.Number $item.Title}}" {{if $item.Epic}}data-parent-url="{{$.Link "item" (str $item.Epic)}}"{{end}} tabindex="-1">
     <div class="tree-title depth-{{depth .Depth}}" role="cell">
       <label class="item-checkbox"><input type="checkbox" name="ids" value="{{$item.ID}}" form="bulk-form" {{if $.BulkSelected $item.ID}}checked{{end}} aria-label="Select {{$item.Number}} for bulk action"></label>
       <button type="button" class="tree-toggle" hidden aria-expanded="true" aria-label="Collapse children of {{$item.Number}}">⌄</button>
@@ -30,7 +30,7 @@
     <div role="cell"><span class="state category-{{$item.Category}}">{{label $item.State}}</span></div>
     <div role="cell" class="priority">{{if $item.Priority}}<span aria-hidden="true">⚑</span> {{str $item.Priority}}{{else}}<span class="muted">—</span>{{end}}</div>
     <div role="cell" class="owner">{{if $item.Owner}}<span class="avatar" aria-hidden="true">{{printf "%.1s" (str $item.Owner)}}</span><span>{{str $item.Owner}}</span>{{else}}<span class="muted">Unassigned</span>{{end}}</div>
-    {{template "item-copy" ($.CopyForms $item.ID $item.Number $item.Title)}}
+
   </div>
   {{else}}
   <div class="empty-state"><span class="empty-mark" aria-hidden="true">◇</span><h2>No matching items</h2><p>No items match this view. Adjust your filters or create something new.</p><a class="button primary" href="#create-item" data-open="create-dialog">+ Create an item</a></div>

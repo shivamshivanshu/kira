@@ -8,27 +8,31 @@ import (
 )
 
 func loadFilteredTree(store *core.Store, cfg *datamodel.Config, expr string) (treeData, error) {
-	tr, err := store.Tree(cfg, "", "")
+	snapshot, err := store.Snapshot(cfg)
+	if err != nil {
+		return treeData{}, err
+	}
+	tr, err := snapshot.Tree("")
 	if err != nil {
 		return treeData{}, err
 	}
 	nodes := tr.Nodes
 	var rows []datamodel.ListItem
 	if strings.TrimSpace(expr) == "" {
-		lr, err := store.List(cfg, core.ListOpts{})
+		lr, err := snapshot.List(core.ListOpts{})
 		if err != nil {
 			return treeData{}, err
 		}
 		rows = lr.Items
 	} else {
 		var matched map[string]bool
-		rows, matched, err = store.ListWithMatches(cfg, expr)
+		rows, matched, err = snapshot.ListWithMatches(expr)
 		if err != nil {
 			return treeData{}, err
 		}
 		nodes = pruneNodes(tr.Nodes, matched)
 	}
-	pr, err := store.EpicProgress(cfg)
+	pr, err := snapshot.EpicProgress()
 	if err != nil {
 		return treeData{}, err
 	}

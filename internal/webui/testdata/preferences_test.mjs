@@ -217,6 +217,29 @@ function withDocument(doc, run) {
   }
 }
 
+test("shared copy picker restores exact values as text for the selected item", () => {
+  const f = paletteFixture();
+  const values = ["immutable-id", "WEB-7", `WEB-7 A <script> & a "title"`];
+  const buttons = values.map(() => {
+    const code = {textContent: ""};
+    return {dataset: {}, querySelector: () => code, code};
+  });
+  const content = {querySelectorAll: () => buttons};
+  const template = {content: {cloneNode: () => content}};
+  const host = {replaceChildren(node) { this.child = node; }};
+  const dialog = {open: false, showModal() { this.open = true; }, querySelector: () => null};
+  const lookup = f.doc.getElementById;
+  f.doc.getElementById = (id) => ({"item-copy": template, "copy-options": host, "copy-dialog": dialog}[id] || lookup(id));
+  withDocument(f.doc, () => {
+    const dialogs = setupDialogs(() => ({dataset: {copyValues: JSON.stringify(values)}}), () => {});
+    dialogs.openCopy();
+    assert.equal(dialog.open, true);
+    assert.equal(host.child, content);
+    assert.deepEqual(buttons.map((button) => button.dataset.copy), values);
+    assert.deepEqual(buttons.map((button) => button.code.textContent), values);
+  });
+});
+
 test("queued palette close cannot steal focus from its chosen command action", () => {
   const f = paletteFixture();
   withDocument(f.doc, () => {

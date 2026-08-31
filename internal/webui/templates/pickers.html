@@ -3,11 +3,14 @@
   <div class="dialog-top"><h2 id="jump-heading">Jump to item</h2><button class="icon-button" type="button" data-close aria-label="Close item picker">×</button></div>
   <label for="jump-query" class="sr-only">Find item by number or title</label>
   <input type="search" id="jump-query" placeholder="Find by number or title…" autocomplete="off">
-  <div class="jump-results">{{range .AllItems}}<a href="{{$.Link "item" .ID}}" data-jump-item><code>{{.Number}}</code><span>{{.Title}}</span><span class="state category-{{.Category}}">{{label .State}}</span></a>{{else}}<p class="muted">No items yet.</p>{{end}}</div>
+  <div class="jump-results" data-item-url="{{.Link "item" "__selected_item__"}}"></div>
+  <p class="muted" id="jump-count" role="status"></p>
+  <script type="application/json" id="jump-items">{{.PickerItems}}</script>
 </dialog>
 <dialog id="copy-dialog" aria-labelledby="copy-heading">
   <div class="dialog-top"><h2 id="copy-heading">Copy item reference</h2><button class="icon-button" type="button" data-close aria-label="Close copy picker">×</button></div>
   <div id="copy-options" class="copy-options"></div>
+  {{template "item-copy" .CopyLabels}}
   <p class="muted">These formats match <code>kira show --format</code>.</p>
 </dialog>
 {{end}}
