@@ -65,7 +65,7 @@ func newBoardTestModel(w, h int, cfg *datamodel.Config, res *datamodel.BoardResu
 	m.width, m.height = w, h
 	m.view = viewBoard
 	bs := m.screens[viewBoard].(*boardScreen)
-	bs.loaded = true
+	bs.state = loadReady
 	bs.board.load(res)
 	return m, bs
 }
@@ -370,6 +370,58 @@ func boardStore(t *testing.T) (*core.Store, *datamodel.Config) {
 	return s, cfg
 }
 
+func drainBoardLoad(t *testing.T, m *model, bs *boardScreen) {
+	t.Helper()
+	cmd := bs.activate(m)
+	if cmd == nil {
+		t.Fatal("activate must dispatch a board load")
+	}
+	msg, ok := cmd().(boardLoadedMsg)
+	if !ok {
+		t.Fatalf("board load must resolve to boardLoadedMsg, got %T", cmd())
+	}
+	bs.applyLoaded(msg)
+	m.drain()
+}
+
+func TestBoardViewIsPureAndLoadsAsync(t *testing.T) {
+	t.Parallel()
+	s, cfg := boardStore(t)
+	cr, err := s.Create(cfg, core.CreateOpts{Type: datamodel.TypeTicket, Title: "A", NoEdit: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := newModel(s, cfg, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
+	m.width, m.height = 100, 12
+
+	u, cmd := m.Update(key("2"))
+	m = u.(model)
+	bs := m.screens[viewBoard].(*boardScreen)
+	if cmd == nil || bs.state != loadPending {
+		t.Fatal("switching to the board must dispatch an async load and mark pending")
+	}
+	view := bs.view(&m, 100, 10)
+	if strings.Contains(view, cr.Number) {
+		t.Fatalf("view must not read the store; card rendered before the load resolved:\n%s", view)
+	}
+	if !strings.Contains(view, "loading") {
+		t.Fatalf("pending board must render the loading placeholder, got:\n%s", view)
+	}
+	if again := bs.activate(&m); again != nil {
+		t.Fatal("activate must not dispatch a second load while one is pending")
+	}
+
+	msg, ok := cmd().(boardLoadedMsg)
+	if !ok {
+		t.Fatalf("board load must resolve to boardLoadedMsg, got %T", cmd())
+	}
+	u, _ = m.Update(msg)
+	m = u.(model)
+	if view := bs.view(&m, 100, 10); !strings.Contains(view, cr.Number) {
+		t.Fatalf("resolved load must render the card:\n%s", view)
+	}
+}
+
 func TestBoardMoveHitsCoreMovePath(t *testing.T) {
 	t.Parallel()
 	s, cfg := boardStore(t)
@@ -381,7 +433,7 @@ func TestBoardMoveHitsCoreMovePath(t *testing.T) {
 	m.width, m.height = 100, 12
 	m.view = viewBoard
 	bs := m.screens[viewBoard].(*boardScreen)
-	bs.ensureLoaded(&m)
+	drainBoardLoad(t, &m, bs)
 	bs.board.focusByID(cr.ID)
 
 	u, cmd := m.Update(key("L"))
@@ -416,7 +468,7 @@ func TestBoardMoveGreyedTargetDoesNotMutate(t *testing.T) {
 	m.width, m.height = 100, 12
 	m.view = viewBoard
 	bs := m.screens[viewBoard].(*boardScreen)
-	bs.ensureLoaded(&m)
+	drainBoardLoad(t, &m, bs)
 	bs.board.focusByID(cr.ID)
 
 	m.Update(key("L"))

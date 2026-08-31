@@ -27,7 +27,7 @@ func statsScreenWith(res *datamodel.StatsResult) (model, *statsScreen) {
 	m := newTestModel(100, 20, false)
 	ss := m.screens[viewStats].(*statsScreen)
 	if res != nil {
-		ss.res, ss.state = res, statsReady
+		ss.res, ss.state = res, loadReady
 	}
 	return m, ss
 }
@@ -76,7 +76,7 @@ func TestStatsCacheKeyedByResultPointer(t *testing.T) {
 
 	other := sampleStats()
 	other.Scope.Sprint = "a-distinctly-different-sprint"
-	ss.res, ss.state = other, statsReady
+	ss.res, ss.state = other, loadReady
 	fresh := strings.Join(ss.contentLines(m.theme, false), "\n")
 	if fresh == first {
 		t.Fatal("a fresh result pointer must invalidate the cache and rebuild, not reuse the first render")
@@ -124,7 +124,7 @@ func TestStatsActivateDispatchesAsyncLoadOnce(t *testing.T) {
 	// When activate is called, it dispatches a load and marks the screen
 	// pending instead of blocking on store IO.
 	cmd := ss.activate(&m)
-	if cmd == nil || ss.state != statsPending {
+	if cmd == nil || ss.state != loadPending {
 		t.Fatal("activate should dispatch a load and mark pending on first call")
 	}
 	if got := ss.view(&m, 40, 5); !strings.Contains(got, "loading") {
@@ -141,7 +141,7 @@ func TestStatsActivateDispatchesAsyncLoadOnce(t *testing.T) {
 		t.Fatalf("dispatched command should resolve to statsLoadedMsg, got %T", cmd())
 	}
 	ss.applyLoaded(msg)
-	if ss.state != statsReady || ss.res == nil {
+	if ss.state != loadReady || ss.res == nil {
 		t.Fatal("applyLoaded should mark ready and store the result")
 	}
 }
@@ -149,11 +149,11 @@ func TestStatsActivateDispatchesAsyncLoadOnce(t *testing.T) {
 func TestStatsInvalidateReloads(t *testing.T) {
 	t.Parallel()
 	_, ss := statsScreenWith(sampleStats())
-	if ss.state != statsReady {
+	if ss.state != loadReady {
 		t.Fatal("statsScreenWith should mark ready")
 	}
 	ss.invalidate()
-	if ss.state != statsNotLoaded {
+	if ss.state != loadNeeded {
 		t.Fatal("invalidate should reset state so the next view reloads")
 	}
 }

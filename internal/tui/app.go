@@ -56,6 +56,14 @@ type screen interface {
 	activate(m *model) tea.Cmd
 }
 
+type loadState int
+
+const (
+	loadNeeded loadState = iota
+	loadPending
+	loadReady
+)
+
 func buildScreens() map[view]screen {
 	return map[view]screen{
 		viewTree:  newTreeScreen(),
@@ -103,7 +111,7 @@ func (m model) Init() tea.Cmd {
 	if m.injectPanic {
 		return safeCmd(func() tea.Msg { panic("injected tui panic (tea.Cmd)") })
 	}
-	return m.scheduleRefresh()
+	return tea.Batch(m.scheduleRefresh(), func() tea.Msg { return activateMsg{} })
 }
 
 func (m model) scheduleRefresh() tea.Cmd {
@@ -135,10 +143,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.invalidate()
 		}
 		return m, m.afterDrain(tea.Batch(cmd, m.activateCurrent()))
+	case activateMsg:
+		return m, m.activateCurrent()
 	case statsLoadedMsg:
 		cmd := m.drain()
 		if ss, ok := m.statsScreen(); ok {
 			ss.applyLoaded(msg)
+		}
+		return m, m.afterDrain(cmd)
+	case boardLoadedMsg:
+		cmd := m.drain()
+		if bs, ok := m.boardScreen(); ok {
+			bs.applyLoaded(msg)
 		}
 		return m, m.afterDrain(cmd)
 	case commandResultMsg:

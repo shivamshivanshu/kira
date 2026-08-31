@@ -144,7 +144,7 @@ func TestBoardPeekDefersAndReplaysDetailSync(t *testing.T) {
 	m.width, m.height = 100, 12
 	m.view = viewBoard
 	bs := m.screens[viewBoard].(*boardScreen)
-	bs.ensureLoaded(&m)
+	drainBoardLoad(t, &m, bs)
 	bs.peek = peekDocked
 	bs.board.focusByID(a.ID)
 	bs.syncDetail(&m)
@@ -183,9 +183,9 @@ func TestBoardReloadsAfterTreeLoaded(t *testing.T) {
 	m.width, m.height = 100, 12
 	m.view = viewBoard
 	bs := m.screens[viewBoard].(*boardScreen)
-	bs.ensureLoaded(&m)
-	if !bs.loaded {
-		t.Fatal("board must latch loaded after the first ensureLoaded")
+	drainBoardLoad(t, &m, bs)
+	if bs.state != loadReady {
+		t.Fatal("board must be ready once the load resolves")
 	}
 	if got := boardCardCount(bs); got != 1 {
 		t.Fatalf("board must show the sole ticket, got %d", got)
@@ -195,13 +195,17 @@ func TestBoardReloadsAfterTreeLoaded(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	u, _ := m.Update(treeLoadedMsg{})
+	u, cmd := m.Update(treeLoadedMsg{})
 	m = u.(model)
-	if bs.loaded {
-		t.Fatal("a treeLoadedMsg must invalidate the board latch")
+	if cmd == nil || bs.state != loadPending {
+		t.Fatal("a treeLoadedMsg must invalidate the board and dispatch a reload")
 	}
-
-	bs.ensureLoaded(&m)
+	msg, ok := cmd().(boardLoadedMsg)
+	if !ok {
+		t.Fatalf("board reload must resolve to boardLoadedMsg, got %T", cmd())
+	}
+	u, _ = m.Update(msg)
+	m = u.(model)
 	if got := boardCardCount(bs); got != 2 {
 		t.Fatalf("board must re-read after invalidation and show both tickets, got %d", got)
 	}
