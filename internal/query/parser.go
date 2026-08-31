@@ -163,6 +163,10 @@ func (s extraSpec) allowsOrderedCmp(f string) bool {
 	return allowsOrderedCmp(f) || (ef.Ordered && !ef.List)
 }
 
+// FieldNames lists every field the grammar accepts given extras: the built-ins
+// plus the schema-declared frontmatter fields.
+func FieldNames(extras []ExtraField) []string { return specOf(extras).names() }
+
 func (s extraSpec) names() []string {
 	out := make([]string, 0, len(fields)+len(s))
 	for f := range fields {

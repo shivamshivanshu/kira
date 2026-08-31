@@ -88,6 +88,9 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 		"blocked-by": items,
 		"board":      activeBoards,
 	}
+	if c := subCmd(root, "list"); c != nil {
+		_ = c.RegisterFlagCompletionFunc("field", completeFieldFilter(g, flags))
+	}
 	walk(root, func(c *cobra.Command) {
 		for name, fn := range flags {
 			if _, bound := c.GetFlagCompletionFunc(name); bound || c.Flags().Lookup(name) == nil {
@@ -101,6 +104,44 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 			}
 		}
 	})
+}
+
+// completeFieldFilter completes `--field key=value` in two stages: the schema's
+// filterable field names before the '=', then that field's own vocabulary,
+// borrowed from the completer already bound to the equivalent native flag.
+func completeFieldFilter(g *globalFlags, values map[string]completer) completer {
+	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		key, value, hasValue := strings.Cut(toComplete, "=")
+		if !hasValue {
+			return completeFilterableFields(g, key)
+		}
+		fn, known := values[key]
+		if !known {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		vals, _ := fn(cmd, args, value)
+		return decorate(vals, key+"=", ""), cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+func completeFilterableFields(g *globalFlags, toComplete string) ([]string, cobra.ShellCompDirective) {
+	s, _, err := openStore(g)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	names, err := s.FilterableFields()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	return decorate(prefixed(names, toComplete), "", "="), cobra.ShellCompDirectiveNoSpace | cobra.ShellCompDirectiveNoFileComp
+}
+
+func decorate(values []string, prefix, suffix string) []string {
+	out := make([]string, len(values))
+	for i, v := range values {
+		out[i] = prefix + v + suffix
+	}
+	return out
 }
 
 func setArgs(parent *cobra.Command, name string, fn completer) {

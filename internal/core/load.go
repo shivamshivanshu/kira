@@ -27,7 +27,7 @@ type loaded struct {
 	cfg      *datamodel.Config
 	schemas  map[string]entityschema.Schema
 	notes    []datamodel.Warning
-	matches  map[ListOpts][]*datamodel.Item
+	matches  map[string][]*datamodel.Item
 }
 
 func (s *Store) read(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
