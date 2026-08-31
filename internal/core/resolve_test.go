@@ -16,13 +16,15 @@ import (
 type scriptedPrompter struct {
 	answers []string
 	pos     int
+	prompts []string
 }
 
 func (p *scriptedPrompter) Interactive() bool { return true }
 
 func (p *scriptedPrompter) Confirm(string) bool { return false }
 
-func (p *scriptedPrompter) ReadLine(_, def string) string {
+func (p *scriptedPrompter) ReadLine(prompt, def string) string {
+	p.prompts = append(p.prompts, prompt)
 	if p.pos >= len(p.answers) {
 		return def
 	}
@@ -188,6 +190,72 @@ func TestResolveClearsStaleResolutionAfterDivergentEdits(t *testing.T) {
 	}
 }
 
+func TestResolveInteractiveHonoursArbitratedExtraPick(t *testing.T) {
+	s := eventRepo(t)
+	cfg := config.Default()
+	repo := s.repo()
+
+	schemaDir := s.fs().SchemaDir()
+	if err := os.MkdirAll(schemaDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	schema := `{"name": "ticket", "fields": [{"name": "severity", "type": "string", "placement": "frontmatter"}]}`
+	if err := os.WriteFile(filepath.Join(schemaDir, "ticket.json"), []byte(schema), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	it := eventTicket()
+	commitSeverity := func(severity, date, msg string) {
+		it.Extras = map[string]datamodel.ExtraValue{"severity": {Scalar: new(severity)}}
+		it.Updated = date + "T10:00:00Z"
+		if _, err := s.fs().WriteItem(it); err != nil {
+			t.Fatal(err)
+		}
+		gitRun(t, s, it.Updated, "add", "-A")
+		gitRun(t, s, it.Updated, "commit", "-m", msg)
+	}
+	commitSeverity("low", "2026-01-05", "base severity")
+	base, err := repo.Output("branch", "--show-current")
+	if err != nil {
+		t.Fatalf("branch --show-current: %v", err)
+	}
+
+	gitRun(t, s, "2026-01-06T10:00:00Z", "checkout", "-b", "other")
+	commitSeverity("critical", "2026-01-07", "theirs severity")
+
+	gitRun(t, s, "2026-01-06T10:00:00Z", "checkout", base)
+	commitSeverity("high", "2026-01-08", "ours severity")
+
+	if _, err := repo.Output("merge", "other"); err == nil {
+		t.Fatal("expected a merge conflict (both sides touch the severity line)")
+	}
+
+	prompter := &scriptedPrompter{answers: []string{"t"}}
+	res, err := s.WithPrompter(prompter).Resolve(cfg, nil, true)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if len(res.Resolved) != 1 {
+		t.Fatalf("Resolved = %+v, want exactly 1", res.Resolved)
+	}
+	wantPrompt := "severity: [o]urs=high [t]heirs=critical (default: auto) "
+	if !slices.Contains(prompter.prompts, wantPrompt) {
+		t.Errorf("prompts = %q, want one equal to %q", prompter.prompts, wantPrompt)
+	}
+
+	data, err := os.ReadFile(s.fs().ItemPath(it.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	merged, err := codec.Parse(string(data))
+	if err != nil {
+		t.Fatalf("resolved file unparseable: %v", err)
+	}
+	if got := merged.Extras["severity"].Scalar; got == nil || *got != "critical" {
+		t.Errorf("severity = %v, want the interactive theirs pick %q over the auto winner", got, "critical")
+	}
+}
+
 func TestPickFieldsHonoursSideChoices(t *testing.T) {
 	s := &Store{prompter: &scriptedPrompter{answers: []string{"o", "t", ""}}}
 
@@ -201,7 +269,7 @@ func TestPickFieldsHonoursSideChoices(t *testing.T) {
 	theirs.Priority = new("P1")
 	theirs.Owner = new("theirs-owner")
 
-	s.pickFields(target, ours, theirs, []string{datamodel.KeyTitle, datamodel.KeyPriority, datamodel.KeyOwner})
+	s.pickFields(target, ours, theirs, []string{datamodel.KeyTitle, datamodel.KeyPriority, datamodel.KeyOwner}, nil)
 
 	if target.Title != "ours-title" {
 		t.Errorf("title = %q, want ours pick", target.Title)
