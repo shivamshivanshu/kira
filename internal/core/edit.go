@@ -36,11 +36,30 @@ func ItemRevision(content string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+func (s *Store) diskRevision(orig *datamodel.Item) (string, error) {
+	content, err := os.ReadFile(s.itemPath(orig.ID))
+	if err != nil {
+		return "", errx.User("reading %s: %v", orig.Number, err)
+	}
+	return ItemRevision(string(content)), nil
+}
+
+func (s *Store) requireRevision(orig *datamodel.Item, expected, hint string) error {
+	rev, err := s.diskRevision(orig)
+	if err != nil {
+		return err
+	}
+	if rev != expected {
+		return errx.Conflict("%s changed on disk during edit", orig.Number).WithHint("%s", hint)
+	}
+	return nil
+}
+
 func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamodel.MutationResult, error) {
 	var edited *datamodel.Item
 	var snapshot string
 	if len(opts.Fields) == 0 && opts.FromFile == "" && opts.Description == nil {
-		content, updatedAt, err := s.editorContent(cfg, ref, opts)
+		content, rev, err := s.editorContent(cfg, ref, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -49,7 +68,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		if len(errs) > 0 {
 			return nil, errx.Invalid(invalidItemPrefix, errs)
 		}
-		snapshot = updatedAt
+		snapshot = rev
 	}
 
 	release, orig, items, resolver, err := s.lockAndResolve(cfg, ref)
@@ -58,18 +77,15 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 	}
 	defer release()
 	if opts.ExpectedRevision != "" {
-		content, err := os.ReadFile(s.itemPath(orig.ID))
-		if err != nil {
-			return nil, errx.User("reading %s: %v", orig.Number, err)
-		}
-		if ItemRevision(string(content)) != opts.ExpectedRevision {
-			return nil, errx.Conflict("%s changed on disk during edit", orig.Number).
-				WithHint("refresh the item and reapply your changes")
+		if err := s.requireRevision(orig, opts.ExpectedRevision, "refresh the item and reapply your changes"); err != nil {
+			return nil, err
 		}
 	}
 
-	if edited != nil && orig.Updated != snapshot {
-		return nil, errx.Conflict("%s changed on disk during edit", orig.Number).WithHint("re-run the edit to start from the current version")
+	if edited != nil {
+		if err := s.requireRevision(orig, snapshot, "re-run the edit to start from the current version"); err != nil {
+			return nil, err
+		}
 	}
 
 	var updated *datamodel.Item
@@ -157,6 +173,11 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 	if err := s.guardWritable(orig); err != nil {
 		return "", "", err
 	}
+	// Snapshot raw bytes, not `updated`: comment appends deliberately never bump it.
+	snapshot, err := s.diskRevision(orig)
+	if err != nil {
+		return "", "", err
+	}
 	content, err := runEditor(cfg.UI.Editor, opts.Stdio, codec.Serialize(orig), func(c string) []error {
 		it, errs := parseFullItem(c)
 		if len(errs) > 0 {
@@ -169,7 +190,7 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 		hard, _ := s.validateMutation(cfg, orig, it, resolver, items, opts.Force)
 		return hard
 	})
-	return content, orig.Updated, err
+	return content, snapshot, err
 }
 
 func applyEditGuards(cfg *datamodel.Config, orig, it *datamodel.Item, force bool, resolver *id.Resolver, items []*datamodel.Item) (hard, warns []error) {
