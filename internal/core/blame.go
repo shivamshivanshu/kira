@@ -25,6 +25,10 @@ func (s *Store) Blame(cfg *datamodel.Config, ref string) (*datamodel.BlameResult
 	}
 	ulid := it.ID
 
+	fields, err := s.eventFields()
+	if err != nil {
+		return nil, err
+	}
 	events, _, err := s.cachedEvents(ulid, s.fileHead(ulid))
 	if err != nil {
 		return nil, err
@@ -40,13 +44,10 @@ func (s *Store) Blame(cfg *datamodel.Config, ref string) (*datamodel.BlameResult
 			latest[e.Field] = e
 		}
 	}
-	current := scalarFieldValues(it)
+	current := trackedFieldValues(it, fields)
 
 	res := &datamodel.BlameResult{ID: ulid, Number: it.Number, Fields: []datamodel.BlameField{}}
-	for _, field := range datamodel.FrontmatterKeys {
-		if !scalarFields[field] {
-			continue
-		}
+	for _, field := range fields.order {
 		val, hasVal := current[field]
 		ev, hasEv := latest[field]
 		switch {
@@ -93,14 +94,14 @@ func (s *Store) fileCommitMeta(ulid string) (bySHA map[string]commitMeta, newest
 	return bySHA, newest, creation, nil
 }
 
-func scalarFieldValues(it *datamodel.Item) map[string]string {
+func trackedFieldValues(it *datamodel.Item, fields eventFields) map[string]string {
 	front := strings.TrimPrefix(codec.Serialize(it), codec.FenceLine)
 	if i := strings.Index(front, codec.FenceLine); i >= 0 {
 		front = front[:i]
 	}
 	v := map[string]string{}
 	for line := range strings.SplitSeq(front, "\n") {
-		if k, val, ok := frontmatterField(line); ok {
+		if k, val, ok := frontmatterField(line, fields); ok {
 			v[k] = val
 		}
 	}
