@@ -74,3 +74,38 @@ func TestExtraDeletedOnOneSideStaysDeleted(t *testing.T) {
 		t.Fatalf("Extras = %+v, want one-sided deletion to hold", got.Extras)
 	}
 }
+
+func TestExtraUntouchedEmptyListSurvives(t *testing.T) {
+	t.Parallel()
+	emptyTags := func(it *datamodel.Item) {
+		it.Extras = map[string]datamodel.ExtraValue{"tags": {List: []string{}}}
+	}
+	b := base(emptyTags)
+	ours := base(func(it *datamodel.Item) { emptyTags(it); it.Title = "New title" })
+	theirs := base(func(it *datamodel.Item) { emptyTags(it); it.Owner = new("bob") })
+	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
+	v, ok := got.Extras["tags"]
+	if !ok || v.List == nil || len(v.List) != 0 {
+		t.Fatalf("Extras[tags] = %+v present=%v, want the untouched empty list kept", v, ok)
+	}
+}
+
+func TestExtraListUnchangedKeptVerbatim(t *testing.T) {
+	t.Parallel()
+	withDupes := func(it *datamodel.Item) { it.Extras = watchers("alice", "alice", "bob") }
+	got := merge.Merge(base(withDupes), base(withDupes), base(withDupes), merge.Theirs, conflictMerger).Item
+	if want := []string{"alice", "alice", "bob"}; !slices.Equal(got.Extras["watchers"].List, want) {
+		t.Fatalf("Extras[watchers] = %+v, want unchanged input back verbatim %v", got.Extras["watchers"], want)
+	}
+}
+
+func TestExtraListOneSidedReorderTaken(t *testing.T) {
+	t.Parallel()
+	b := base(func(it *datamodel.Item) { it.Extras = watchers("alice", "bob") })
+	ours := base(func(it *datamodel.Item) { it.Extras = watchers("alice", "bob") })
+	theirs := base(func(it *datamodel.Item) { it.Extras = watchers("bob", "alice") })
+	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
+	if want := []string{"bob", "alice"}; !slices.Equal(got.Extras["watchers"].List, want) {
+		t.Fatalf("Extras[watchers] = %+v, want theirs' reorder %v", got.Extras["watchers"], want)
+	}
+}
