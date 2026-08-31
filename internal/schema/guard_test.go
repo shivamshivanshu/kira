@@ -172,6 +172,9 @@ func TestReachableStringEnumsRegistered(t *testing.T) {
 	}
 }
 
+// collectNamedStringTypes mirrors the generator's descent (addFields +
+// schemaForType); notably map keys are skipped because the generator never
+// enum-constrains them, only additionalProperties values.
 func collectNamedStringTypes(t reflect.Type, seen, out map[reflect.Type]bool) {
 	if seen[t] {
 		return
@@ -185,7 +188,6 @@ func collectNamedStringTypes(t reflect.Type, seen, out map[reflect.Type]bool) {
 	case reflect.Pointer, reflect.Slice, reflect.Array:
 		collectNamedStringTypes(t.Elem(), seen, out)
 	case reflect.Map:
-		collectNamedStringTypes(t.Key(), seen, out)
 		collectNamedStringTypes(t.Elem(), seen, out)
 	case reflect.Struct:
 		for i := range t.NumField() {
