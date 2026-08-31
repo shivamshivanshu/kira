@@ -32,7 +32,9 @@ func newTUICmd(g *globalFlags) *cobra.Command {
 }
 
 func runTUI(cmd *cobra.Command, g *globalFlags, injectPanic, auto bool) error {
-	if g.json {
+	// Only the explicit `tui` command refuses --json. Bare `kira --json` names
+	// no command for --json to apply to, so it falls through to help below.
+	if g.json && !auto {
 		return errx.User("tui: --json is not supported").WithHint("the tui is interactive; script against `kira list --json` or `kira board --json` instead")
 	}
 	if g.nonInteractive && !auto {

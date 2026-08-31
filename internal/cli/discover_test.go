@@ -29,19 +29,35 @@ func TestDiscoverRejectedNonInteractive(t *testing.T) {
 // tui --json`) or printing human help with exit 0 (`kira --json`).
 func TestTUIRejectsJSON(t *testing.T) {
 	dir := initFixture(t)
-	for _, args := range [][]string{{"-C", dir, "--json", "tui"}, {"-C", dir, "--json"}} {
-		root, _ := newRootCmd()
-		var out bytes.Buffer
-		root.SetOut(&out)
-		root.SetErr(&out)
-		root.SetIn(strings.NewReader(""))
-		root.SetArgs(args)
-		err := root.Execute()
-		if err == nil {
-			t.Fatalf("kira %v succeeded, want a --json rejection\n%s", args, out.String())
-		}
-		if !strings.Contains(err.Error(), "--json is not supported") {
-			t.Errorf("kira %v: err = %v, want a --json rejection", args, err)
-		}
+	root, _ := newRootCmd()
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SetIn(strings.NewReader(""))
+	root.SetArgs([]string{"-C", dir, "--json", "tui"})
+	err := root.Execute()
+	if err == nil {
+		t.Fatalf("kira --json tui succeeded, want a --json rejection\n%s", out.String())
+	}
+	if !strings.Contains(err.Error(), "--json is not supported") {
+		t.Errorf("kira --json tui: err = %v, want a --json rejection", err)
+	}
+}
+
+// Bare `kira --json` names no command for --json to apply to, so it prints
+// help rather than blaming the tui it never tried to launch.
+func TestBareJSONPrintsHelp(t *testing.T) {
+	dir := initFixture(t)
+	root, _ := newRootCmd()
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SetIn(strings.NewReader(""))
+	root.SetArgs([]string{"-C", dir, "--json"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("kira --json: %v\n%s", err, out.String())
+	}
+	if !strings.Contains(out.String(), "Usage:") {
+		t.Errorf("kira --json printed %q, want help", out.String())
 	}
 }
