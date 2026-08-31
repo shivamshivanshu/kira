@@ -4,7 +4,7 @@ number: KIRA-112
 aliases: []
 type: ticket
 title: "Alias shadows a live display number in the trailer scan: Closes can auto-close the wrong ticket"
-state: REVIEW
+state: DONE
 priority: P1
 labels: []
 epic: null
