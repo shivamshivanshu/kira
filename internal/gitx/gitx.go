@@ -3,6 +3,7 @@ package gitx
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -41,7 +42,11 @@ func (r Repo) Output(args ...string) (string, error) {
 }
 
 func gitCommand(dir string, env []string, args ...string) *exec.Cmd {
-	cmd := exec.Command("git", args...)
+	return gitCommandContext(context.Background(), dir, env, args...)
+}
+
+func gitCommandContext(ctx context.Context, dir string, env []string, args ...string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = dir
 	cmd.Env = append(append(os.Environ(), "LC_ALL=C", "LANG=C"), env...)
 	return cmd

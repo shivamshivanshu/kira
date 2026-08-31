@@ -1,0 +1,30 @@
+{{define "bulk"}}
+<form id="bulk-form" action="/actions/bulk" method="post" class="bulk-bar">
+  {{template "csrf" .}}
+  <label class="checkbox-label"><input type="checkbox" id="select-all"> <span id="selection-count">Select items</span></label>
+  <label class="sr-only" for="bulk-operation">Bulk operation</label>
+  <select name="operation" id="bulk-operation">
+    <option value="move" {{if eq (.FormValue "bulk" "operation" "move") "move"}}selected{{end}}>Move to state</option>
+    <option value="assign" {{if eq (.FormValue "bulk" "operation" "") "assign"}}selected{{end}}>Assign owner</option>
+    <option value="label-add" {{if eq (.FormValue "bulk" "operation" "") "label-add"}}selected{{end}}>Add label</option>
+    <option value="label-rm" {{if eq (.FormValue "bulk" "operation" "") "label-rm"}}selected{{end}}>Remove label</option>
+    <option value="board-move" {{if eq (.FormValue "bulk" "operation" "") "board-move"}}selected{{end}}>Move to board</option>
+    <option value="sprint" {{if eq (.FormValue "bulk" "operation" "") "sprint"}}selected{{end}}>Set sprint</option>
+  </select>
+  <label class="sr-only" for="bulk-value">New value</label>
+  <input name="value" id="bulk-value" value="{{.FormValue "bulk" "value" ""}}" placeholder="State, owner, label, board, or sprint">
+  <label id="bulk-resolution">Resolution <input name="resolution" list="resolutions" value="{{.FormValue "bulk" "resolution" ""}}" placeholder="Optional"></label>
+  <button class="button" type="submit">Apply to selected</button>
+  <button class="text-button" type="button" data-clear-selection>Clear</button>
+</form>
+<form id="keyboard-move" action="/actions/move" method="post" hidden>
+  {{template "csrf" .}}
+  <input type="hidden" name="id">
+  <input type="hidden" name="state">
+</form>
+{{if .Config}}
+<datalist id="workflow-states">{{range .Config.Workflows}}{{range .States}}<option value="{{.Key}}">{{end}}{{end}}</datalist>
+<datalist id="known-labels">{{range .Config.Labels.Known}}<option value="{{.}}">{{end}}</datalist>
+<datalist id="board-keys">{{range .Config.ActiveBoards}}<option value="{{.Key}}">{{.Name}}</option>{{end}}</datalist>
+{{end}}
+{{end}}

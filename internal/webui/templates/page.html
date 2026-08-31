@@ -1,0 +1,78 @@
+{{define "page"}}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{{if .Detail}}{{.Detail.Number}} · {{end}}Kira{{if .Config}} · {{.Config.Project.Name}}{{end}}</title>
+  <script src="{{asset "js/appearance.js"}}"></script>
+  <link rel="stylesheet" href="{{asset "css/main.css"}}">
+  <script type="module" src="{{asset "js/main.mjs"}}"></script>
+</head>
+<body data-failed-action="{{if .Error}}{{.Action}}{{end}}" data-failed-id="{{if and .Error .Detail (.Form.Get "id")}}{{.Detail.ID}}{{else}}{{.Form.Get "id"}}{{end}}" data-failed-key="{{.Form.Get "key"}}" data-view-name="{{.View}}" data-selected="{{.Selected}}" data-workspace="{{.Root}}">
+<a class="skip-link" href="#workspace">Skip to workspace</a>
+<div class="shell">
+  {{template "sidebar" .}}
+  <main class="main" id="workspace">
+    {{template "topbar" .}}
+    {{template "active-work" .}}
+    <div class="workspace-content">
+      {{template "notices" .}}
+      {{template "overview" .}}
+      {{template "view-tabs" .}}
+      {{if ne .View "manage"}}{{template "filters" .}}{{end}}
+      {{template "bulk-results" .}}
+      {{template "commit" .}}
+      {{if or (eq .View "tree") (eq .View "board")}}
+      <div class="work-toolbar">
+        <button class="button small" type="button" data-open="jump-dialog">Jump to item <kbd>p</kbd></button>
+        {{if eq .View "tree"}}
+        <div>
+          <button class="text-button" type="button" data-tree-expand>Expand all</button>
+          <button class="text-button" type="button" data-tree-collapse>Collapse all</button>
+        </div>
+        {{end}}
+        <span class="muted">Navigate <kbd>j</kbd> <kbd>k</kbd> · open <kbd>Enter</kbd></span>
+      </div>
+      {{template "bulk" .}}
+      {{end}}
+      <div class="workspace-panes {{if .Detail}}with-detail{{end}}">
+        <section class="work-view" aria-label="{{.View}} view">
+          {{if eq .View "board"}}
+            {{template "board" .}}
+          {{else if eq .View "stats"}}
+            {{template "stats" .}}
+          {{else if eq .View "manage"}}
+            {{template "manage" .}}
+          {{else}}
+            {{template "tree" .}}
+          {{end}}
+        </section>
+        {{if .Detail}}{{template "detail" .}}{{end}}
+      </div>
+      {{template "command-bar" .}}
+      <footer class="workspace-footer">
+        <span>Git-native. Your work, in your repository.</span>
+        <span>{{if .Config}}Commit mode: {{.Config.Commit.Mode}} · {{end}}kira / local dashboard</span>
+      </footer>
+      <details id="create-item" class="create-fallback" {{if eq .Action "create"}}open{{end}}>
+        <summary>Create a new item</summary>
+        <div id="create-form-host">{{template "create" .}}</div>
+      </details>
+    </div>
+  </main>
+</div>
+<dialog id="create-dialog" aria-labelledby="create-heading">
+  <div class="dialog-top">
+    <span class="eyebrow">CREATE WORK</span>
+    <button class="icon-button" type="button" data-close aria-label="Close new item dialog">×</button>
+  </div>
+  <div id="create-dialog-content"></div>
+</dialog>
+{{template "help" .}}
+{{template "pickers" .}}
+{{template "command-palette" .}}
+{{template "datalists" .}}
+<div class="sr-only" id="live-status" role="status"></div>
+</body>
+</html>{{end}}

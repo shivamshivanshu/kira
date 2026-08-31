@@ -1,0 +1,138 @@
+{{define "detail"}}{{$p := .}}{{$item := .Detail}}
+<aside class="detail-pane" aria-labelledby="detail-title" data-detail-item data-item="{{$item.ID}}" data-number="{{$item.Number}}" {{if $item.Epic}}data-parent-url="{{.Link "item" (str $item.Epic)}}"{{end}}>
+  <header class="detail-top">
+    <div>
+      <span class="item-kind kind-{{$item.Type}}">{{if eq $item.Type "epic"}}◇{{else}}○{{end}}</span><code>{{$item.Number}}</code><span class="card-type">{{$item.Type}}</span>
+    </div>
+    <div>
+      <button class="icon-button" type="button" data-copy-picker aria-label="Choose item reference format to copy" title="Copy reference (Y)">⧉</button><a class="icon-button" href="{{.Link "item" ""}}" data-close-detail aria-label="Close item details">×</a>
+    </div>
+  </header>
+  <div class="detail-content">
+    <h2 id="detail-title">{{$item.Title}}</h2>
+    <div class="detail-state">
+      <span class="state category-{{$item.Category}}">{{label $item.State}}</span>{{if $item.Priority}}<span class="priority">⚑ {{str $item.Priority}}</span>{{end}}{{if overdue $item.Due $item.Category}}<span class="due overdue">Overdue</span>{{end}}
+    </div>
+    {{if .Targets}}
+    <form class="move-form" action="/actions/move" method="post">
+      {{template "csrf" .}}<input type="hidden" name="id" value="{{$item.ID}}">
+      <label for="move-state" class="sr-only">Move to state</label>
+      <select id="move-state" name="state" required><option value="">Move to…</option>{{range .Targets}}<option value="{{.}}" {{if eq . ($p.FormValue "move" "state" "")}}selected{{end}}>{{label .}}</option>{{end}}</select>
+      <label class="sr-only" for="move-resolution">Resolution for this move</label>
+      <input id="move-resolution" name="resolution" list="resolutions" value="{{.FormValue "move" "resolution" ""}}" placeholder="Resolution (optional)"><button class="button small" type="submit">Move →</button>
+    </form>
+    {{end}}
+    <details class="inline-details workon-controls">
+      <summary>Start work on this item</summary>
+      <form action="/actions/workon" method="post" class="stack-form">
+        {{template "csrf" .}}<input type="hidden" name="id" value="{{$item.ID}}"><p class="muted">Switch this checkout to the item branch and set it as active work.</p>
+        <label class="checkbox-label"><input type="checkbox" name="no_move" value="true" {{if eq (.FormValue "workon" "no_move" "") "true"}}checked{{end}}> Keep the current item state</label>
+        <button class="button" type="submit">Start work in this checkout</button>
+      </form>
+    </details>
+    <dl class="properties">
+      <dt>Owner</dt><dd>{{if $item.Owner}}{{str $item.Owner}}{{else}}<span class="muted">Unassigned</span>{{end}}</dd><dt>Board</dt><dd>{{$item.Board}}</dd>{{if $item.Subtype}}<dt>Subtype</dt><dd>{{str $item.Subtype}}</dd>{{end}}{{if $item.Sprint}}<dt>Sprint</dt><dd><a href="{{.Link "sprint" (str $item.Sprint)}}">{{str $item.Sprint}}</a></dd>{{end}}{{if $item.Due}}<dt>Due date</dt><dd>{{str $item.Due}}</dd>{{end}}{{if $item.Estimate}}<dt>Estimate</dt><dd>{{number $item.Estimate}}{{if .Config}} {{.Config.Estimate.Unit}}{{end}}</dd>{{end}}{{if $item.Resolution}}<dt>Resolution</dt><dd>{{str $item.Resolution}}</dd>{{end}}{{if $item.Reporter}}<dt>Reporter</dt><dd>{{str $item.Reporter}}</dd>{{end}}{{if $item.Labels}}<dt>Labels</dt><dd class="tags">{{range $item.Labels}}<span class="tag">{{.}}</span>{{end}}</dd>{{end}}
+    </dl>
+    <section class="detail-section">
+      <h3>Description</h3>{{if prose $item.Body}}
+      <div class="markdown">
+        {{markdown (prose $item.Body)}}
+      </div>
+      {{else}}<p class="muted">No description yet. Add context in Edit item below.</p>{{end}}
+    </section>
+    <details class="detail-section edit-section" {{if eq .Action "edit"}}open{{end}}>
+      <summary>Edit item</summary>
+      <form class="stack-form" action="/actions/edit" method="post">
+        {{template "csrf" .}}<input type="hidden" name="revision" value="{{.Revision}}"><input type="hidden" name="id" value="{{$item.ID}}">
+        <label>Title<input name="title" value="{{.FormValue "edit" "title" $item.Title}}" required></label>
+        <label>Description<textarea name="body" rows="8">{{.FormValue "edit" "body" (prose $item.Body)}}</textarea></label>
+        <div class="field-pair">
+          <label>Owner<input name="owner" list="people" value="{{.FormValue "edit" "owner" (str $item.Owner)}}"></label>
+          <label>Priority<input name="priority" list="priorities" value="{{.FormValue "edit" "priority" (str $item.Priority)}}"></label>
+        </div>
+        <div class="field-pair">
+          <label>Sprint<input name="sprint" list="sprints" value="{{.FormValue "edit" "sprint" (str $item.Sprint)}}"></label>
+          <label>Due date<input type="date" name="due" value="{{.FormValue "edit" "due" (str $item.Due)}}"></label>
+        </div>
+        <label>Labels <span class="optional">comma separated</span><input name="labels" value="{{.FormValue "edit" "labels" (join $item.Labels)}}"></label>
+        <div class="field-pair">
+          <label>Subtype<input name="subtype" list="subtypes" value="{{.FormValue "edit" "subtype" (str $item.Subtype)}}"></label>
+          <label>Resolution<input name="resolution" list="resolutions" value="{{.FormValue "edit" "resolution" (str $item.Resolution)}}"></label>
+        </div>
+        <label>Estimate<input type="number" step="any" min="0" name="estimate" value="{{.FormValue "edit" "estimate" (number $item.Estimate)}}"></label>
+        <div class="form-actions">
+          <button class="button primary" type="submit">Save changes</button>
+        </div>
+      </form>
+    </details>
+    <section class="detail-section">
+      <h3>Relationships</h3>{{if $item.Epic}}
+      <div class="relationship">
+        <span>Parent</span><a href="{{.Link "item" (str $item.Epic)}}">{{.ItemName (str $item.Epic)}} ↗</a>
+      </div>
+      {{end}}{{range $item.BlockedBy}}
+      <div class="relationship">
+        <span class="warning-text">Blocked by</span><a href="{{$p.Link "item" .}}">{{$p.ItemName .}} ↗</a>
+      </div>
+      {{end}}{{range $item.Blocks}}
+      <div class="relationship">
+        <span>Blocks</span><a href="{{$p.Link "item" .}}">{{$p.ItemName .}} ↗</a>
+      </div>
+      {{end}}{{range $kind, $targets := $item.Links}}{{range $targets}}
+      <div class="relationship">
+        <span>{{label $kind}}</span><a href="{{$p.Link "item" .}}">{{$p.ItemName .}} ↗</a>
+      </div>
+      {{end}}{{end}}{{if not .HasRelationships}}<p class="muted">No linked items.</p>{{end}}
+      <details class="inline-details" {{if eq .Action "link"}}open{{end}}>
+        <summary>Manage relationships</summary>
+        <form class="stack-form" action="/actions/link" method="post">
+          {{template "csrf" .}}<input type="hidden" name="id" value="{{$item.ID}}">
+          <label>Relationship<select name="kind"><option value="parent" {{if eq (.FormValue "link" "kind" "parent") "parent"}}selected{{end}}>Parent / epic</option><option value="blocked-by" {{if eq (.FormValue "link" "kind" "") "blocked-by"}}selected{{end}}>Blocked by</option><option value="relates" {{if eq (.FormValue "link" "kind" "") "relates"}}selected{{end}}>Relates to</option><option value="duplicate-of" {{if eq (.FormValue "link" "kind" "") "duplicate-of"}}selected{{end}}>Duplicate of</option></select></label>
+          <label>Target item<input name="target" value="{{.FormValue "link" "target" ""}}" placeholder="Item ID" required></label>
+          <label class="checkbox-label"><input type="checkbox" name="remove" value="true" {{if eq (.FormValue "link" "remove" "") "true"}}checked{{end}}> Remove this relationship</label>
+          <button class="button small" type="submit">Update relationship</button>
+        </form>
+      </details>
+    </section>
+    <section class="detail-section">
+      <h3>Discussion <span class="count">{{len $item.Comments}}</span></h3>
+      <div class="comments">
+        {{range $item.Comments}}
+        <article class="comment">
+          <header>
+            <strong>{{.Author}}</strong><time datetime="{{.Ts}}">{{date .Ts}}</time>
+          </header>
+          <div class="markdown">
+            {{markdown .Text}}
+          </div>
+        </article>{{else}}<p class="muted">Keep decisions close to the work.</p>{{end}}
+      </div>
+      <form class="stack-form comment-form" action="/actions/comment" method="post">
+        {{template "csrf" .}}<input type="hidden" name="id" value="{{$item.ID}}">
+        <label class="sr-only" for="comment-text">Add a comment</label>
+        <textarea id="comment-text" name="text" rows="3" placeholder="Add a comment… Markdown supported" required>{{.FormValue "comment" "text" ""}}</textarea>
+        <div class="form-actions">
+          <button class="button small" type="submit">Add comment</button>
+        </div>
+      </form>
+    </section>
+    <details class="detail-section">
+      <summary>Activity <span class="count">{{len $item.HistoryTail}}</span></summary>
+      <ol class="activity-list">
+        {{range $item.HistoryTail}}<li><span><strong>{{label .Field}}</strong>{{if .From}} <span class="muted">{{str .From}} →</span>{{end}} {{if .To}}{{str .To}}{{else}}cleared{{end}}</span><time datetime="{{.Ts}}">{{date .Ts}}</time></li>{{else}}<li class="muted">No recorded changes.</li>{{end}}
+      </ol>
+    </details>
+    <details class="detail-section">
+      <summary>Commits <span class="count">{{len $item.LinkedCommits}} linked · {{len $item.ReferencedBy}} references</span></summary>{{if $item.LinkedCommits}}<h4>Linked commits</h4>{{range $item.LinkedCommits}}
+      {{template "commit-card" ($p.CommitCard $item.ID .)}}
+      {{end}}{{end}}{{if $item.ReferencedBy}}<h4>Referenced by</h4>{{range $item.ReferencedBy}}
+      {{template "commit-card" ($p.CommitCard $item.ID .)}}
+      {{end}}{{end}}{{if not (or $item.LinkedCommits $item.ReferencedBy)}}<p class="muted">No commits linked to this item yet.</p>{{end}}
+    </details>
+    <div class="item-timestamps">
+      <span>Created {{date $item.Created}}</span><span>Updated {{date $item.Updated}}</span><button class="text-button" type="button" data-copy="{{$item.ID}}" title="{{$item.ID}}">Copy immutable ID</button>
+    </div>
+  </div>
+  {{template "item-copy" (copyForms $item.ID $item.Number $item.Title)}}
+</aside>
+{{end}}

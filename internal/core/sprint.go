@@ -74,11 +74,14 @@ func (s *Store) SprintList(cfg *datamodel.Config) (*datamodel.SprintListResult, 
 	if err != nil {
 		return nil, err
 	}
-	active := s.ActiveSprintKey()
+	return sprintList(cfg, ld.items, s.ActiveSprintKey()), nil
+}
+
+func sprintList(cfg *datamodel.Config, items []*datamodel.Item, active string) *datamodel.SprintListResult {
 	rows := make([]datamodel.SprintListRow, 0, len(cfg.Sprints))
 	for _, sp := range cfg.Sprints {
 		counts := datamodel.SprintItemCounts{}
-		for _, it := range ld.items {
+		for _, it := range items {
 			if !inSprint(it, sp.Key) {
 				continue
 			}
@@ -89,7 +92,7 @@ func (s *Store) SprintList(cfg *datamodel.Config) (*datamodel.SprintListResult, 
 		}
 		rows = append(rows, datamodel.SprintListRow{SprintView: sprintView(sp), Active: sp.Key == active, Items: counts})
 	}
-	return &datamodel.SprintListResult{Sprints: rows}, nil
+	return &datamodel.SprintListResult{Sprints: rows}
 }
 
 // SprintActivate sets key as the active sprint, returning the previously

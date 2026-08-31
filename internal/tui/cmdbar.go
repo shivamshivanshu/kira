@@ -5,6 +5,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/shivamshivanshu/kira/internal/commandline"
 )
 
 type barMode int
@@ -84,22 +86,27 @@ func (b *bar) setError(text string) {
 }
 
 func (m *model) barSubmit() tea.Cmd {
-	value := strings.TrimSpace(m.bar.input.Value())
+	value := m.bar.input.Value()
 	switch m.bar.mode {
 	case barCommand:
 		return m.request(m.runCommand(value))
 	case barFilter:
-		return m.applyFilter(value)
+		return m.applyFilter(strings.TrimSpace(value))
 	}
 	return nil
 }
 
 func (m *model) runCommand(line string) tea.Cmd {
 	m.bar.close()
-	argv := m.substituteFocused(tokenize(line))
+	argv, err := commandline.Parse(line)
+	if err != nil {
+		m.bar.setError(err.Error())
+		return nil
+	}
 	if len(argv) == 0 {
 		return nil
 	}
+	argv = m.substituteFocused(argv)
 	if argv[0] == "tui" {
 		m.bar.setError("cannot launch the tui from the command bar")
 		return nil
@@ -169,40 +176,6 @@ func (m model) footer() string {
 	default:
 		return m.renderHint()
 	}
-}
-
-func tokenize(line string) []string {
-	var tokens []string
-	var cur strings.Builder
-	inWord := false
-	quote := rune(0)
-	flush := func() {
-		if inWord {
-			tokens = append(tokens, cur.String())
-			cur.Reset()
-			inWord = false
-		}
-	}
-	for _, r := range line {
-		switch {
-		case quote != 0:
-			if r == quote {
-				quote = 0
-			} else {
-				cur.WriteRune(r)
-			}
-		case r == '\'' || r == '"':
-			quote = r
-			inWord = true
-		case r == ' ' || r == '\t':
-			flush()
-		default:
-			cur.WriteRune(r)
-			inWord = true
-		}
-	}
-	flush()
-	return tokens
 }
 
 func firstNonEmptyLine(s string) string {

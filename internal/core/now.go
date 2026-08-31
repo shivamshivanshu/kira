@@ -18,6 +18,10 @@ func (s *Store) Now(cfg *datamodel.Config) (*datamodel.NowResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	return s.now(cfg, ld)
+}
+
+func (s *Store) now(cfg *datamodel.Config, ld *loaded) (*datamodel.NowResult, error) {
 	branch, _ := s.repo().CurrentBranch()
 	it, activeBranch, source := s.activeItem(cfg, ld, branch)
 	if it == nil {

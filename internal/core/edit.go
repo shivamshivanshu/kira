@@ -1,7 +1,10 @@
 package core
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"os"
 	"slices"
 	"strings"
 
@@ -20,16 +23,23 @@ type FieldEdit struct {
 }
 
 type EditOpts struct {
-	Fields   []FieldEdit
-	FromFile string
-	Force    bool
-	Stdio    editorx.Stdio
+	Fields           []FieldEdit
+	FromFile         string
+	Force            bool
+	Stdio            editorx.Stdio
+	Description      *string
+	ExpectedRevision string
+}
+
+func ItemRevision(content string) string {
+	sum := sha256.Sum256([]byte(content))
+	return hex.EncodeToString(sum[:])
 }
 
 func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamodel.MutationResult, error) {
 	var edited *datamodel.Item
 	var snapshot string
-	if len(opts.Fields) == 0 && opts.FromFile == "" {
+	if len(opts.Fields) == 0 && opts.FromFile == "" && opts.Description == nil {
 		content, updatedAt, err := s.editorContent(cfg, ref, opts)
 		if err != nil {
 			return nil, err
@@ -47,6 +57,16 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		return nil, err
 	}
 	defer release()
+	if opts.ExpectedRevision != "" {
+		content, err := os.ReadFile(s.itemPath(orig.ID))
+		if err != nil {
+			return nil, errx.User("reading %s: %v", orig.Number, err)
+		}
+		if ItemRevision(string(content)) != opts.ExpectedRevision {
+			return nil, errx.Conflict("%s changed on disk during edit", orig.Number).
+				WithHint("refresh the item and reapply your changes")
+		}
+	}
 
 	if edited != nil && orig.Updated != snapshot {
 		return nil, errx.Conflict("%s changed on disk during edit", orig.Number).WithHint("re-run the edit to start from the current version")
@@ -69,7 +89,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 	}
 
 	switch {
-	case len(opts.Fields) > 0:
+	case len(opts.Fields) > 0 || opts.Description != nil:
 		it := cloneItem(orig)
 		var errs []error
 		for _, fe := range opts.Fields {
@@ -85,6 +105,19 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		}
 		if len(errs) > 0 {
 			return nil, errx.Invalid(invalidItemPrefix, errs)
+		}
+		if opts.Description != nil {
+			_, comments, canonical := codec.SplitComments(codec.CanonicalizeCommentBody(orig.Body))
+			if !canonical {
+				return nil, errx.User("%s has non-canonical comment blocks; edit its file to preserve them", orig.Number)
+			}
+			prose := normalizeEOL(*opts.Description)
+			if len(codec.LintComments(prose)) > 0 || len(codec.ParseComments(prose)) > 0 {
+				return nil, errx.User("description cannot contain kira comment markers")
+			}
+			if prose != codec.Description(orig.Body) {
+				it.Body = codec.JoinComments(prose, comments)
+			}
 		}
 		if err := finish(it); err != nil {
 			return nil, err
