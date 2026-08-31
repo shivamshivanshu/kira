@@ -28,7 +28,7 @@ func (s *Store) Reconcile(cfg *datamodel.Config) (*datamodel.ReconcileResult, er
 		if it == nil {
 			continue
 		}
-		if err := guardWritable(it); err != nil {
+		if err := s.guardWritable(it); err != nil {
 			return nil, err
 		}
 		it.Number = r.To

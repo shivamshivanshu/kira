@@ -144,7 +144,7 @@ func listField(key string, ref func(*Item) *[]string) FieldDescriptor {
 		Changed: func(a, b *Item) bool { return !slices.Equal(*ref(a), *ref(b)) },
 		Get:     func(it *Item) string { return listString(*ref(it)) },
 		Copy:    func(dst, src *Item) { *ref(dst) = slices.Clone(*ref(src)) },
-		Set:     func(it *Item, value string) error { *ref(it) = splitCSV(value); return nil },
+		Set:     func(it *Item, value string) error { *ref(it) = SplitCSV(value); return nil },
 		Present: func(it *Item) bool { return len(*ref(it)) > 0 },
 	}
 }
@@ -200,7 +200,53 @@ func bodyField() FieldDescriptor {
 	}
 }
 
-func splitCSV(value string) []string {
+func ExtraField(key string, list bool) FieldDescriptor {
+	d := FieldDescriptor{
+		Key:     key,
+		Changed: func(a, b *Item) bool { return !a.Extras[key].Equal(b.Extras[key]) },
+		Copy:    func(dst, src *Item) { copyExtra(dst, src, key) },
+	}
+	if list {
+		d.Get = func(it *Item) string { return listString(it.Extras[key].List) }
+		d.Set = func(it *Item, value string) error { putExtra(it, key, ExtraValue{List: SplitCSV(value)}); return nil }
+		d.Present = func(it *Item) bool { return len(it.Extras[key].List) > 0 }
+		return d
+	}
+	d.Get = func(it *Item) string {
+		if v := it.Extras[key].Scalar; v != nil {
+			return *v
+		}
+		return "-"
+	}
+	d.Set = func(it *Item, value string) error {
+		if value == "" {
+			delete(it.Extras, key)
+			return nil
+		}
+		putExtra(it, key, ExtraValue{Scalar: &value})
+		return nil
+	}
+	d.Present = func(it *Item) bool { return it.Extras[key].Scalar != nil }
+	return d
+}
+
+func putExtra(it *Item, key string, v ExtraValue) {
+	if it.Extras == nil {
+		it.Extras = map[string]ExtraValue{}
+	}
+	it.Extras[key] = v
+}
+
+func copyExtra(dst, src *Item, key string) {
+	v, ok := src.Extras[key]
+	if !ok {
+		delete(dst.Extras, key)
+		return
+	}
+	putExtra(dst, key, ExtraValue{Scalar: v.Scalar, List: slices.Clone(v.List)})
+}
+
+func SplitCSV(value string) []string {
 	if strings.TrimSpace(value) == "" {
 		return []string{}
 	}

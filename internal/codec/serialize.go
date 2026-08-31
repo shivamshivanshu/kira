@@ -138,6 +138,41 @@ func DecodeScalar(raw string) string {
 	return v
 }
 
+// RenderScalar is RenderScalarNode for plain text, giving `--field` writes the
+// same canonical form parsing produces: an untagged node resolves its implicit
+// tag from the text, so "42" stays an unquoted int rather than EmitScalar's
+// string-typed "42". The result is re-decoded and rendered once more so it is
+// a fixed point of parse-capture (a bare date, for example, re-renders quoted
+// under its implicit !!timestamp tag). Null forms are refused because
+// extraValue would drop them on the next parse.
+func RenderScalar(s string) (string, bool) {
+	out, node, ok := renderAndDecode(s, RenderScalarNode)
+	if !ok || isNull(node) {
+		return "", false
+	}
+	return out, true
+}
+
+// RenderFlowElem is RenderScalar inside a [] context (see renderFlowElem).
+// Nulls pass through: extraValue keeps null list elements.
+func RenderFlowElem(s string) (string, bool) {
+	out, _, ok := renderAndDecode(s, renderFlowElem)
+	return out, ok
+}
+
+func renderAndDecode(s string, render func(*yaml.Node) (string, bool)) (string, *yaml.Node, bool) {
+	out, ok := render(&yaml.Node{Kind: yaml.ScalarNode, Value: s})
+	if !ok {
+		return "", nil, false
+	}
+	var doc yaml.Node
+	if yaml.Unmarshal([]byte(out), &doc) != nil || len(doc.Content) == 0 {
+		return "", nil, false
+	}
+	out, ok = render(doc.Content[0])
+	return out, doc.Content[0], ok
+}
+
 func emitFlowScalar(s string) string {
 	if plainSafe(s) {
 		return s
