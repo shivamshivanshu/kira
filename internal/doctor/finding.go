@@ -32,13 +32,14 @@ const (
 	ClassStray         Class = "stray-file"
 	ClassRefKind       Class = "ref-kind"
 	ClassStateDrift    Class = "state-drift"
+	ClassWipLimit      Class = "wip-limit"
 )
 
 var Classes = []Class{
 	ClassSchema, ClassState, ClassVocab, ClassRef, ClassCollision,
 	ClassCycle, ClassRefCycle, ClassEpicKind, ClassComment, ClassFreshness,
 	ClassHooks, ClassEnv, ClassBoard, ClassNumberOutlier, ClassStray,
-	ClassRefKind, ClassStateDrift,
+	ClassRefKind, ClassStateDrift, ClassWipLimit,
 }
 
 type CollisionKind string
