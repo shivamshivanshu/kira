@@ -243,7 +243,7 @@ func copyExtra(dst, src *Item, key string) {
 		delete(dst.Extras, key)
 		return
 	}
-	putExtra(dst, key, ExtraValue{Scalar: v.Scalar, List: slices.Clone(v.List)})
+	putExtra(dst, key, v.clone())
 }
 
 func SplitCSV(value string) []string {
