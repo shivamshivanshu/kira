@@ -4,7 +4,7 @@ number: KIRA-144
 aliases: []
 type: ticket
 title: "DECISION: cross-schema field-name collisions resolve first-wins by alphabetical schema order"
-state: IN_PROGRESS
+state: REVIEW
 priority: P3
 labels: []
 epic: null
