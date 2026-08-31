@@ -65,7 +65,7 @@ func newBoardTestModel(w, h int, cfg *datamodel.Config, res *datamodel.BoardResu
 	m.width, m.height = w, h
 	m.view = viewBoard
 	bs := m.screens[viewBoard].(*boardScreen)
-	bs.loaded = true
+	bs.state = loadReady
 	bs.board.load(res)
 	return m, bs
 }
@@ -370,6 +370,58 @@ func boardStore(t *testing.T) (*core.Store, *datamodel.Config) {
 	return s, cfg
 }
 
+func drainBoardLoad(t *testing.T, m *model, bs *boardScreen) {
+	t.Helper()
+	cmd := bs.activate(m)
+	if cmd == nil {
+		t.Fatal("activate must dispatch a board load")
+	}
+	msg, ok := cmd().(boardLoadedMsg)
+	if !ok {
+		t.Fatalf("board load must resolve to boardLoadedMsg, got %T", cmd())
+	}
+	bs.applyLoaded(msg)
+	m.drain()
+}
+
+func TestBoardViewIsPureAndLoadsAsync(t *testing.T) {
+	t.Parallel()
+	s, cfg := boardStore(t)
+	cr, err := s.Create(cfg, core.CreateOpts{Type: datamodel.TypeTicket, Title: "A", NoEdit: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := newModel(s, cfg, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
+	m.width, m.height = 100, 12
+
+	u, cmd := m.Update(key("2"))
+	m = u.(model)
+	bs := m.screens[viewBoard].(*boardScreen)
+	if cmd == nil || bs.state != loadPending {
+		t.Fatal("switching to the board must dispatch an async load and mark pending")
+	}
+	view := bs.view(&m, 100, 10)
+	if strings.Contains(view, cr.Number) {
+		t.Fatalf("view must not read the store; card rendered before the load resolved:\n%s", view)
+	}
+	if !strings.Contains(view, "loading") {
+		t.Fatalf("pending board must render the loading placeholder, got:\n%s", view)
+	}
+	if again := bs.activate(&m); again != nil {
+		t.Fatal("activate must not dispatch a second load while one is pending")
+	}
+
+	msg, ok := cmd().(boardLoadedMsg)
+	if !ok {
+		t.Fatalf("board load must resolve to boardLoadedMsg, got %T", cmd())
+	}
+	u, _ = m.Update(msg)
+	m = u.(model)
+	if view := bs.view(&m, 100, 10); !strings.Contains(view, cr.Number) {
+		t.Fatalf("resolved load must render the card:\n%s", view)
+	}
+}
+
 func TestBoardMoveHitsCoreMovePath(t *testing.T) {
 	t.Parallel()
 	s, cfg := boardStore(t)
@@ -381,7 +433,7 @@ func TestBoardMoveHitsCoreMovePath(t *testing.T) {
 	m.width, m.height = 100, 12
 	m.view = viewBoard
 	bs := m.screens[viewBoard].(*boardScreen)
-	bs.ensureLoaded(&m)
+	drainBoardLoad(t, &m, bs)
 	bs.board.focusByID(cr.ID)
 
 	u, cmd := m.Update(key("L"))
@@ -416,7 +468,7 @@ func TestBoardMoveGreyedTargetDoesNotMutate(t *testing.T) {
 	m.width, m.height = 100, 12
 	m.view = viewBoard
 	bs := m.screens[viewBoard].(*boardScreen)
-	bs.ensureLoaded(&m)
+	drainBoardLoad(t, &m, bs)
 	bs.board.focusByID(cr.ID)
 
 	m.Update(key("L"))
@@ -505,5 +557,72 @@ func TestBoardCardPlumbsPriorityAndResolution(t *testing.T) {
 	}
 	if strings.Contains(out, "[x]") {
 		t.Errorf("dropped card must not render the done glyph:\n%s", out)
+	}
+}
+
+func TestBoardCardTruncatesInsteadOfWrapping(t *testing.T) {
+	t.Parallel()
+	card := bItem("a", "CORE-40", "Long enough title", "IN_PROGRESS", "doing")
+	card.Priority = new("P0")
+	res := &datamodel.BoardResult{Type: datamodel.TypeTicket, Columns: []datamodel.BoardColumn{
+		{State: "TODO", Category: "todo"},
+		{State: "IN_PROGRESS", Category: "doing", Count: 1, Items: []datamodel.ListItem{card}},
+		{State: "REVIEW", Category: "doing"},
+		{State: "DONE", Category: "done"},
+		{State: "WONT_DO", Category: "done"},
+	}}
+	ic := iconSet{mode: datamodel.IconText, priorities: []string{"P0", "P1", "P2"}}
+	out := renderBoard(asciiTheme(), ic, res, 80, 3, 1, 0)
+	lines := strings.Split(out, "\n")
+	if len(lines) != 3 {
+		t.Fatalf("a card must render as exactly one line; board of height 3 came out %d lines:\n%s", len(lines), out)
+	}
+	for i, l := range lines {
+		if w := lipgloss.Width(l); w > 80 {
+			t.Fatalf("line %d is %d cells wide, budget 80:\n%s", i, w, out)
+		}
+	}
+	if !strings.Contains(out, "CORE-") {
+		t.Fatalf("truncated card must keep the leading segments visible:\n%s", out)
+	}
+}
+
+func TestBoardMoveRefreshesTree(t *testing.T) {
+	t.Parallel()
+	s, cfg := boardStore(t)
+	cr, err := s.Create(cfg, core.CreateOpts{Type: datamodel.TypeTicket, Title: "M", NoEdit: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := newModel(s, cfg, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
+	m.width, m.height = 100, 12
+	m.view = viewBoard
+	bs := m.screens[viewBoard].(*boardScreen)
+	drainBoardLoad(t, &m, bs)
+	bs.board.focusByID(cr.ID)
+
+	u, mv := m.Update(key("L"))
+	m = u.(model)
+	if mv == nil {
+		t.Fatal("L on a TODO card must dispatch a move command")
+	}
+	u, cmd := m.Update(mv())
+	m = u.(model)
+	if cmd == nil {
+		t.Fatal("a successful board move must enqueue a tree refresh; without one the tree stays stale forever under the default no-auto-refresh config")
+	}
+	msg, ok := cmd().(treeLoadedMsg)
+	if !ok {
+		t.Fatalf("the enqueued refresh must resolve to treeLoadedMsg, got %T", cmd())
+	}
+	u, _ = m.Update(msg)
+	m = u.(model)
+	ts := m.screens[viewTree].(*treeScreen)
+	if got := ts.tree.fields[cr.ID].State; got != "IN_PROGRESS" {
+		t.Fatalf("tree must show the moved state after the refresh, got %q", got)
+	}
+
+	if _, cmd := m.Update(boardMovedMsg{err: errStub("boom"), cardID: cr.ID}); cmd != nil {
+		t.Fatal("a failed move must not enqueue a refresh")
 	}
 }

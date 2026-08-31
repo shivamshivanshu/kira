@@ -29,15 +29,16 @@ var boardKeys = []KeyBinding{
 }
 
 type boardScreen struct {
-	board     boardModel
-	host      detailHost
-	raw       *datamodel.BoardResult
-	scope     string
-	notice    string
-	noticeErr bool
-	loaded    bool
-	peek      peekMode
-	chord     chord
+	board        boardModel
+	host         detailHost
+	raw          *datamodel.BoardResult
+	scope        string
+	notice       string
+	noticeErr    bool
+	state        loadState
+	pendingFocus string
+	peek         peekMode
+	chord        chord
 }
 
 func newBoardScreen() *boardScreen {
@@ -55,26 +56,35 @@ func (s *boardScreen) keys() []KeyBinding {
 	}
 }
 
-func (s *boardScreen) invalidate() { s.loaded = false }
-
-func (s *boardScreen) activate(_ *model) tea.Cmd { return nil }
-
-func (s *boardScreen) ensureLoaded(m *model) {
-	if s.loaded || m.store == nil || m.busy {
+func (s *boardScreen) invalidate() {
+	if s.state == loadPending {
 		return
 	}
-	s.reload(m)
-	s.loaded = true
+	s.state = loadNeeded
 }
 
-func (s *boardScreen) reload(m *model) {
-	res, err := m.store.Board(m.cfg, core.BoardOpts{})
-	if err != nil {
-		s.setError(err.Error())
+// activate dispatches an async reload through the model's command queue at
+// most once per invalidation; the result lands later via boardLoadedMsg.
+func (s *boardScreen) activate(m *model) tea.Cmd {
+	if s.state != loadNeeded || m.store == nil {
+		return nil
+	}
+	s.state = loadPending
+	return m.request(boardLoadCmd(m.store, m.cfg))
+}
+
+func (s *boardScreen) applyLoaded(msg boardLoadedMsg) {
+	s.state = loadReady
+	if msg.err != nil {
+		s.setError(msg.err.Error())
 		return
 	}
-	s.raw = res
+	s.raw = msg.res
 	s.applyScope()
+	if s.pendingFocus != "" {
+		s.board.focusByID(s.pendingFocus)
+		s.pendingFocus = ""
+	}
 }
 
 func (s *boardScreen) setNotice(text string) {
@@ -91,7 +101,6 @@ func (s *boardScreen) applyScope() {
 }
 
 func (s *boardScreen) update(m *model, key string) tea.Cmd {
-	s.ensureLoaded(m)
 	if s.peek == peekOverlay {
 		cmd, _ := s.host.update(m, key)
 		return cmd
@@ -187,7 +196,7 @@ func (s *boardScreen) applyMove(m *model, msg boardMovedMsg) {
 		s.setNotice("Moved " + msg.res.Number + ": " + msg.res.From + " -> " + msg.res.To)
 	}
 	if msg.err != nil || msg.board == nil {
-		s.loaded = false
+		s.state = loadNeeded
 		return
 	}
 	s.raw = msg.board
@@ -211,8 +220,11 @@ func (s *boardScreen) back(_ *model) bool {
 	return false
 }
 
-func (s *boardScreen) focusItem(m *model, id string) {
-	s.ensureLoaded(m)
+func (s *boardScreen) focusItem(_ *model, id string) {
+	if s.state != loadReady {
+		s.pendingFocus = id
+		return
+	}
 	s.board.focusByID(id)
 }
 
@@ -225,7 +237,6 @@ func (s *boardScreen) focusedItem() (showfmt.Item, bool) {
 }
 
 func (s *boardScreen) view(m *model, width, height int) string {
-	s.ensureLoaded(m)
 	header := s.scopeHeader(m, width)
 	body := height
 	if header != "" {
@@ -258,7 +269,7 @@ func (s *boardScreen) scopeHeader(m *model, width int) string {
 }
 
 func (s *boardScreen) renderMain(m *model, width, height int) string {
-	if s.board.result == nil && m.busy {
+	if s.board.result == nil && s.state == loadPending {
 		return renderLoading(m.theme, width, height)
 	}
 	if s.peek == peekOverlay || (s.peek == peekDocked && !splitDetail(width)) {
