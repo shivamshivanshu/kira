@@ -30,6 +30,8 @@ type Config struct {
 
 	UserAutomation    []AutomationHook `yaml:"-"`
 	UserCommitSubject string           `yaml:"-"`
+	UIProvenance      Provenance       `yaml:"-"`
+	WorkonProvenance  Provenance       `yaml:"-"`
 }
 
 type Project struct {
