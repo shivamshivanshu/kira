@@ -12,6 +12,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/showfmt"
 	"github.com/shivamshivanshu/kira/internal/timex"
 	"github.com/yuin/goldmark"
@@ -57,12 +58,7 @@ var pageTemplate = template.Must(template.New("page").Funcs(template.FuncMap{
 		return p
 	},
 	"label": func(s string) string { return strings.ReplaceAll(s, "_", " ") },
-	"str": func(s *string) string {
-		if s == nil {
-			return ""
-		}
-		return *s
-	},
+	"str":   ptr.Deref[string],
 	"number": func(n *float64) string {
 		if n == nil {
 			return ""

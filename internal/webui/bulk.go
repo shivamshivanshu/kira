@@ -8,6 +8,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 type bulkOutcome struct {
@@ -59,23 +60,21 @@ func (s *server) resolveBulk(cfg *datamodel.Config, refs []string) ([]bulkOutcom
 		return nil, err
 	}
 	defer batch.Close()
-	seen := make(map[string]bool, len(refs))
+	seen := setx.NewDeduper[string]()
 	outcomes := make([]bulkOutcome, 0, len(refs))
 	for _, ref := range refs {
 		ref = strings.TrimSpace(ref)
-		if ref == "" || seen[ref] {
+		if ref == "" || !seen.Add(ref) {
 			continue
 		}
-		seen[ref] = true
 		it, err := batch.Resolve(ref)
 		if err != nil {
 			outcomes = append(outcomes, bulkOutcome{Ref: ref, Error: userError(err)})
 			continue
 		}
-		if it.ID != ref && seen[it.ID] {
+		if it.ID != ref && !seen.Add(it.ID) {
 			continue
 		}
-		seen[it.ID] = true
 		outcomes = append(outcomes, bulkOutcome{Ref: it.ID, Number: it.Number})
 	}
 	return outcomes, nil

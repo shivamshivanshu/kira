@@ -33,8 +33,7 @@ func BenchmarkLoadPage(b *testing.B) {
 				b.Fatal(err)
 			}
 			b.ReportAllocs()
-			b.ResetTimer()
-			for range b.N {
+			for b.Loop() {
 				if _, err := dashboard.loadPage(b.Context(), u); err != nil {
 					b.Fatal(err)
 				}
@@ -49,8 +48,7 @@ func BenchmarkMarkdown(b *testing.B) {
 		b.Fatal(err)
 	}
 	b.ReportAllocs()
-	b.ResetTimer()
-	for range b.N {
+	for b.Loop() {
 		if _, err := markdown(source); err != nil {
 			b.Fatal(err)
 		}

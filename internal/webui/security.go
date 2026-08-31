@@ -38,9 +38,8 @@ func (s *server) secure(next http.Handler) http.Handler {
 			}
 			r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 			if err := r.ParseForm(); err != nil {
-				var tooLarge *http.MaxBytesError
 				status := http.StatusBadRequest
-				if errors.As(err, &tooLarge) {
+				if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 					status = http.StatusRequestEntityTooLarge
 				}
 				http.Error(w, "invalid form: "+err.Error(), status)
