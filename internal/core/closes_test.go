@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/config"
@@ -138,5 +139,45 @@ func TestApplyClosesMultipleCandidates(t *testing.T) {
 	want := map[string]bool{a.Number: true, b.Number: true}
 	if len(closed) != 2 || !want[closed[0]] || !want[closed[1]] || closed[0] == closed[1] {
 		t.Fatalf("want both %v closed, got %v", want, closed)
+	}
+}
+
+func TestApplyClosesWatermarkWriteFailureKeepsReport(t *testing.T) {
+	s := eventRepo(t)
+	cfg := config.Default()
+	cfg.Commit.Mode = datamodel.CommitManual
+
+	created, err := s.Create(cfg, CreateOpts{Type: "ticket", Title: "closeme", NoEdit: true})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if _, err := index.Refresh(s.fs(), s.repo(), indexOptions(cfg), false); err != nil {
+		t.Fatalf("index refresh: %v", err)
+	}
+	if err := os.Chmod(s.fs().CacheDir(), 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(s.fs().CacheDir(), 0o755) })
+
+	scan := index.CloseScan{
+		LandedRef:  "main",
+		LandedHead: "cafef00dcafef00dcafef00dcafef00dcafef00d",
+		Candidates: []index.CloseCandidate{{ULID: created.ID, CommitterTs: "2999-01-01T00:00:00Z"}},
+	}
+	closed, notes, err := s.applyCloses(cfg, scan)
+	if err != nil {
+		t.Fatalf("a failed watermark write must not discard committed closes: %v", err)
+	}
+	if len(closed) != 1 || closed[0] != created.Number {
+		t.Fatalf("want closed=[%s], got %v", created.Number, closed)
+	}
+	found := false
+	for _, n := range notes {
+		if n.Code == datamodel.WarnLiteral && strings.Contains(n.Args[0], "watermark") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("want a watermark-failure note, got %v", notes)
 	}
 }
