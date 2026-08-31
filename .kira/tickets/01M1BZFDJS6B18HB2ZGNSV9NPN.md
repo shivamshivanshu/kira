@@ -4,7 +4,7 @@ number: KIRA-148
 aliases: []
 type: ticket
 title: "gitx: pass --end-of-options before user-supplied refs"
-state: IN_PROGRESS
+state: REVIEW
 priority: P3
 labels: []
 epic: null
