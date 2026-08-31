@@ -4,13 +4,13 @@ number: KIRA-143
 aliases: []
 type: ticket
 title: "DECISION: --field k=v filtering on kira list"
-state: TODO
+state: IN_PROGRESS
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:10:37+02:00
-updated: 2026-08-31T15:10:37+02:00
+updated: 2026-08-31T23:51:34+02:00
 ---
 
 ## Description
