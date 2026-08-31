@@ -380,6 +380,9 @@ func TestCommandArgs(t *testing.T) {
 			t.Errorf("%q should fail", line)
 		}
 	}
+	if _, err := commandArgs("comment . -m hi", "--from-file=/tmp/x"); err == nil {
+		t.Error("flag-shaped selected item should fail")
+	}
 }
 
 func TestLocalReturn(t *testing.T) {

@@ -35,7 +35,7 @@ func newShowCmd(g *globalFlags) *cobra.Command {
 			}
 			if format != "" {
 				emitShowNotes(cmd, res)
-				out, err := showfmt.Format(showfmt.Form(format), showfmt.Item{ID: res.ID, Number: res.Number, Title: res.Title})
+				out, err := showfmt.Format(showfmt.Form(format), showfmt.Item{ID: res.ID, Number: res.Number, Title: res.Title}, cfg.Workon)
 				if err != nil {
 					return err
 				}
