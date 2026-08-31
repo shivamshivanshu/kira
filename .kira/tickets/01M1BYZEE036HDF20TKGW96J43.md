@@ -4,7 +4,7 @@ number: KIRA-122
 aliases: []
 type: ticket
 title: "kira show dumps raw comment markers where the TUI renders them"
-state: IN_PROGRESS
+state: REVIEW
 priority: P2
 labels: []
 epic: null
