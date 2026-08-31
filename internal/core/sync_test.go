@@ -185,3 +185,48 @@ func TestPopStashManualConflictSurfaces(t *testing.T) {
 		t.Fatalf("err = %v, want manual-policy stash-pop conflict surfaced", err)
 	}
 }
+
+func TestPrepareTreeStashLeavesNonKiraWorkAlone(t *testing.T) {
+	s, repo := seededSyncRepo(t)
+	trackedPath := filepath.Join(s.root, "src.txt")
+	if err := os.WriteFile(trackedPath, []byte("v1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, s, "2026-02-01T11:00:00Z", "add", "src.txt")
+	gitRun(t, s, "2026-02-01T11:00:00Z", "commit", "-m", "add src")
+	if err := os.WriteFile(trackedPath, []byte("v2 wip\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	untrackedPath := filepath.Join(s.root, "notes.txt")
+	if err := os.WriteFile(untrackedPath, []byte("scratch\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dirtyKira(t, s, "IN_PROGRESS")
+
+	stashed, err := s.prepareTree(config.Default(), repo, SyncOpts{Dirty: syncx.DirtyStash}, &syncx.Report{})
+	if err != nil {
+		t.Fatalf("prepareTree stash: %v", err)
+	}
+	if !stashed {
+		t.Fatal("dirty .kira with stash policy must report stashed")
+	}
+	if dirty, _ := repo.DirtyPaths(".kira"); len(dirty) != 0 {
+		t.Fatalf("stash left .kira dirty: %v", dirty)
+	}
+	if got, err := os.ReadFile(trackedPath); err != nil || string(got) != "v2 wip\n" {
+		t.Fatalf("tracked non-kira edit swept into stash: content=%q err=%v", got, err)
+	}
+	if got, err := os.ReadFile(untrackedPath); err != nil || string(got) != "scratch\n" {
+		t.Fatalf("untracked non-kira file swept into stash: content=%q err=%v", got, err)
+	}
+
+	if err := s.popStash(config.Default(), repo, &syncx.Report{}); err != nil {
+		t.Fatalf("popStash scoped stash: %v", err)
+	}
+	if dirty, _ := repo.DirtyPaths(".kira"); len(dirty) == 0 {
+		t.Fatal("popStash must restore the stashed .kira edit")
+	}
+	if got, _ := os.ReadFile(trackedPath); string(got) != "v2 wip\n" {
+		t.Fatalf("pop clobbered non-kira edit: %q", got)
+	}
+}

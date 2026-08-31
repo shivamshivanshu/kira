@@ -8,6 +8,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/index"
+	"github.com/shivamshivanshu/kira/internal/storage"
 	"github.com/shivamshivanshu/kira/internal/syncx"
 )
 
@@ -119,7 +120,7 @@ func dirtyPolicyFor(cfg *datamodel.Config) syncx.DirtyPolicy {
 }
 
 func (s *Store) prepareTree(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts, report *syncx.Report) (bool, error) {
-	dirty, err := repo.DirtyPaths(".kira")
+	dirty, err := repo.DirtyPaths(storage.DirName)
 	if err != nil {
 		return false, errx.User("%v", err)
 	}
@@ -135,7 +136,7 @@ func (s *Store) prepareTree(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts
 	case syncx.DirtyFail:
 		return false, errx.User("uncommitted kira changes; re-run with --commit or --stash")
 	case syncx.DirtyStash:
-		if err := repo.Stash(); err != nil {
+		if err := repo.Stash(storage.DirName); err != nil {
 			return false, errx.User("%v", err)
 		}
 		report.Add("prepare", syncx.StepDone, fmt.Sprintf("stashed %d paths", len(dirty)))
