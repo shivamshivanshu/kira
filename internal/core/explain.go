@@ -27,8 +27,62 @@ func Explain(cfg *datamodel.Config) *datamodel.ExplainResult {
 		explainWorkon(cfg, def),
 		explainMerge(cfg, def),
 		explainSync(cfg, def),
+		explainGit(cfg, def),
+		explainEstimate(cfg, def),
+		explainFilters(cfg, def),
+		explainAutomation(cfg, def),
 	)
 	return &datamodel.ExplainResult{Sections: sections}
+}
+
+func explainGit(cfg, def *datamodel.Config) datamodel.ExplainSection {
+	lines := []string{
+		"landed_ref: " + orUnset(cfg.Git.LandedRef),
+		"scan_since: " + orUnset(cfg.Git.ScanSince),
+	}
+	return datamodel.ExplainSection{Name: "git", Provenance: tierOf(changed(cfg.Git, def.Git), datamodel.ProvenanceRepo), Lines: lines}
+}
+
+func explainEstimate(cfg, def *datamodel.Config) datamodel.ExplainSection {
+	lines := []string{"unit: " + string(cfg.Estimate.Unit)}
+	return datamodel.ExplainSection{Name: "estimate", Provenance: tierOf(changed(cfg.Estimate, def.Estimate), datamodel.ProvenanceRepo), Lines: lines}
+}
+
+func explainFilters(cfg, def *datamodel.Config) datamodel.ExplainSection {
+	lines := make([]string, 0, len(cfg.Filters))
+	for _, name := range slices.Sorted(maps.Keys(cfg.Filters)) {
+		lines = append(lines, name+": "+cfg.Filters[name])
+	}
+	if len(lines) == 0 {
+		lines = []string{"none defined"}
+	}
+	return datamodel.ExplainSection{Name: "filters", Provenance: tierOf(changed(cfg.Filters, def.Filters), datamodel.ProvenanceRepo), Lines: lines}
+}
+
+// Automation hooks run shell commands, so the explain output names what would
+// run rather than only counting them.
+func explainAutomation(cfg, def *datamodel.Config) datamodel.ExplainSection {
+	hooks := slices.Concat(cfg.Automation, cfg.UserAutomation)
+	lines := make([]string, 0, len(hooks))
+	for _, h := range hooks {
+		state := ""
+		if h.Enabled != nil && !*h.Enabled {
+			state = " (disabled)"
+		}
+		lines = append(lines, string(h.On)+" -> "+h.Run+state)
+	}
+	if len(lines) == 0 {
+		lines = []string{"none defined"}
+	}
+	differs := changed(cfg.Automation, def.Automation) || len(cfg.UserAutomation) > 0
+	return datamodel.ExplainSection{Name: "automation", Provenance: tierOf(differs, datamodel.ProvenanceRepo), Lines: lines}
+}
+
+func orUnset(s string) string {
+	if s == "" {
+		return "(unset)"
+	}
+	return s
 }
 
 // changed reports whether a is not deeply equal to its default counterpart b.

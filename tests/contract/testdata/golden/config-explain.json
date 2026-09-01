@@ -92,6 +92,35 @@
         "push: false",
         "dirty: auto"
       ]
+    },
+    {
+      "name": "git",
+      "provenance": "default",
+      "lines": [
+        "landed_ref: (unset)",
+        "scan_since: (unset)"
+      ]
+    },
+    {
+      "name": "estimate",
+      "provenance": "default",
+      "lines": [
+        "unit: points"
+      ]
+    },
+    {
+      "name": "filters",
+      "provenance": "repo",
+      "lines": [
+        "next: state = TODO AND NOT blocked ORDER BY priority"
+      ]
+    },
+    {
+      "name": "automation",
+      "provenance": "default",
+      "lines": [
+        "none defined"
+      ]
     }
   ]
 }
