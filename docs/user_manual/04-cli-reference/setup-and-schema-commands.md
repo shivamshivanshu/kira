@@ -256,21 +256,19 @@ identity (repo)
 
 workflow: epic (default)
   initial: PLANNED
-  enforce_transitions: false
   wip_policy: warn
-  PLANNED (todo): suggested ACTIVE; any state allowed (transitions not enforced)
-  ACTIVE (doing): suggested DONE; any state allowed (transitions not enforced)
-  DONE (done): any state (transitions not enforced)
+  PLANNED (todo)
+  ACTIVE (doing)
+  DONE (done), resolution=done; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)
 
 workflow: ticket (default)
   initial: TODO
-  enforce_transitions: true
   wip_policy: warn
-  TODO (todo): allowed from TODO: IN_PROGRESS, WONT_DO (or `--force` to override)
-  IN_PROGRESS (doing), wip 3/warn: allowed from IN_PROGRESS: REVIEW, TODO, WONT_DO (or `--force` to override)
-  REVIEW (doing), wip 2/warn: allowed from REVIEW: DONE, IN_PROGRESS (or `--force` to override)
-  DONE (done): no transitions out of DONE; use `--force` to override
-  WONT_DO (done), resolution=dropped: no transitions out of WONT_DO; use `--force` to override
+  TODO (todo)
+  IN_PROGRESS (doing), wip 3/warn
+  REVIEW (doing), wip 2/warn
+  DONE (done), resolution=done; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)
+  WONT_DO (done), resolution=dropped; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)
 
 commit (default)
   mode: auto
@@ -917,8 +915,8 @@ effect.
 
 The scripts do more than complete subcommand names. kira registers dynamic
 completers that read your project, so tab-completion offers real ticket
-numbers, the configured vocabularies, and the transitions actually available
-from an item's current state.
+numbers, the configured vocabularies, and the states declared by an item's
+workflow.
 
 - Item references for `show`, `edit`, `comment`, `log`, `blame`, `workon`,
   `link`, `move`, `assign`, and `label add`/`rm`, annotated with the item

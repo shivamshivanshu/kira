@@ -59,12 +59,11 @@ timeout, and receive a versioned JSON payload on stdin (plus env-var mirrors).
 `automation trust` hashes and trusts the current hook config; `automation
 list` shows defined hooks and trust status.
 
-**Configuration** — per-type workflows (states, categories, WIP limits,
-transition graphs with `require`/`set` guards), label/people vocab, priorities,
-subtypes, resolutions, commit mode (auto/manual/prompt), merge policy, sprints,
-saved filters, and a personal overlay (`~/.config/kira/config.yaml` via `config
-init`) for editor/UI/worktree preferences that never touches the shared repo
-config.
+**Configuration** — per-type workflows (states, categories, WIP limits),
+label/people vocab, priorities, subtypes, resolutions, commit mode
+(auto/manual/prompt), merge policy, sprints, saved filters, and a personal
+overlay (`~/.config/kira/config.yaml` via `config init`) for editor/UI/worktree
+preferences that never touches the shared repo config.
 
 **Two-tier identity** — sequential or hash-derived display numbers (`KIRA-42`)
 for humans, ULIDs for stable identity across renumbering.

@@ -2,12 +2,9 @@ package core
 
 import (
 	"fmt"
-	"maps"
-	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/query"
@@ -79,30 +76,22 @@ func applyStateChange(cfg *datamodel.Config, it *datamodel.Item, from string, op
 	if !ok {
 		return []error{errx.User("%q is not a state in the %s workflow", state, it.Type).WithHint("%s", stateHint(wf, state))}, nil, nil
 	}
-	tr := matchedTransition(wf, from, state)
-	if wf.EnforceTransitions && from != state && tr == nil {
-		if !opts.Force {
-			return []error{errx.User("%s -> %s is not an allowed transition", from, state).WithHint("%s", transitionHint(wf, from))}, nil, nil
-		}
-		warns = append(warns, fmt.Errorf("forced off-graph transition %s -> %s", from, state))
-	}
 	if opts.Resolution != "" {
 		if target.Category != datamodel.CategoryDone {
 			return []error{fmt.Errorf("field %q: cannot be set because %s is not a done-category state", datamodel.KeyResolution, state)}, nil, nil
 		}
 		it.Resolution = &opts.Resolution
 	}
-	if tr != nil {
-		h, w := applyTransitionEffects(cfg, it, tr, from, state, opts, edited, items)
-		if len(h) > 0 {
-			return h, nil, nil
-		}
-		warns = append(warns, w...)
-	}
 
 	if target.Category == datamodel.CategoryDone {
-		explicit := opts.Resolution != "" || edited[datamodel.KeyResolution] || (tr != nil && tr.Set[datamodel.KeyResolution] != "")
-		if !explicit && target.Resolution != "" {
+		if from != state {
+			h, w := blockersClosedGuard(cfg, it, items, from, state, opts.Force)
+			if len(h) > 0 {
+				return h, nil, nil
+			}
+			warns = append(warns, w...)
+		}
+		if opts.Resolution == "" && !edited[datamodel.KeyResolution] && target.Resolution != "" {
 			it.Resolution = &target.Resolution
 		}
 	} else {
@@ -114,43 +103,6 @@ func applyStateChange(cfg *datamodel.Config, it *datamodel.Item, from string, op
 		return h, nil, nil
 	}
 	return nil, warns, w
-}
-
-func applyTransitionEffects(cfg *datamodel.Config, it *datamodel.Item, tr *datamodel.Transition, from, state string, opts MoveOpts, edited map[string]bool, items []*datamodel.Item) (hard, warns []error) {
-	var missing []string
-	for _, f := range tr.Require {
-		if f == datamodel.RequireBlockersClosed {
-			continue
-		}
-		if !fieldPresent(it, f) {
-			missing = append(missing, f)
-		}
-	}
-	if len(missing) > 0 {
-		fields := strings.Join(missing, ", ")
-		if !opts.Force {
-			return []error{errx.User("%s -> %s requires %s to be set", from, state, fields).WithHint("set %s first, or use `--force` to override", fields)}, nil
-		}
-		warns = append(warns, fmt.Errorf("forced past require guard: %s not set", fields))
-	}
-	if slices.Contains(tr.Require, datamodel.RequireBlockersClosed) {
-		h, w := blockersClosedGuard(cfg, it, items, from, state, opts.Force)
-		if len(h) > 0 {
-			return h, nil
-		}
-		warns = append(warns, w...)
-	}
-	for _, f := range slices.Sorted(maps.Keys(tr.Set)) {
-		if edited[f] || (f == datamodel.KeyResolution && opts.Resolution != "") {
-			continue
-		}
-		// config validation restricts transition Set keys to datamodel.MutableFields,
-		// so the schema-extras fallback in applyFieldEdit is unreachable here.
-		if err := applyFieldEdit(it, f, tr.Set[f], entityschema.Schema{}); err != nil {
-			return []error{err}, nil
-		}
-	}
-	return nil, warns
 }
 
 func wipGuard(wf datamodel.Workflow, it *datamodel.Item, items []*datamodel.Item, from, state string, wip int, force bool) (hard, warns []error) {

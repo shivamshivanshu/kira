@@ -1,6 +1,6 @@
 # Dynamic shell completion: __complete serves item IDs with titles, move targets
-# from the item's cached current state, and flag vocab -- all from a read-only
-# index that is never reindexed on the completion path.
+# from the item's workflow, and flag vocab -- all from a read-only index that is
+# never reindexed on the completion path.
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
@@ -24,18 +24,25 @@ exec kira __complete show 'KIRA-2'
 stdout 'KIRA-2\tAdd snapshot merge'
 ! stdout 'KIRA-1'
 
-# move targets derive from the item's CURRENT cached state: TODO -> IN_PROGRESS, WONT_DO
+# move targets are every state the item's workflow declares (KIRA-140: any
+# state reaches any other), so they do not narrow with the item's current state
 exec kira __complete move KIRA-1 ''
+stdout 'TODO'
 stdout 'IN_PROGRESS'
+stdout 'REVIEW'
+stdout 'DONE'
 stdout 'WONT_DO'
-! stdout 'REVIEW'
-
-# advance the item and reindex; the same position now reflects IN_PROGRESS
 exec kira move KIRA-1 IN_PROGRESS
 exec kira index
 exec kira __complete move KIRA-1 ''
-stdout 'REVIEW'
 stdout 'TODO'
+stdout 'REVIEW'
+
+# the target list follows the item's entity type: an epic offers the epic workflow
+exec kira __complete move KIRA-3 ''
+stdout 'PLANNED'
+stdout 'ACTIVE'
+! stdout 'IN_PROGRESS'
 
 # `config set` first arg completes from SetKeys()
 exec kira __complete config set ''

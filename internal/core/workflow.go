@@ -2,24 +2,6 @@ package core
 
 import "github.com/shivamshivanshu/kira/internal/datamodel"
 
-func matchedTransition(wf datamodel.Workflow, from, to string) *datamodel.Transition {
-	for i, t := range wf.Transitions[from] {
-		if t.To == to {
-			return &wf.Transitions[from][i]
-		}
-	}
-	return nil
-}
-
-func allowedTargets(wf datamodel.Workflow, from string) []string {
-	ts := wf.Transitions[from]
-	out := make([]string, 0, len(ts))
-	for _, t := range ts {
-		out = append(out, t.To)
-	}
-	return out
-}
-
 func firstStateInCategory(wf datamodel.Workflow, cat datamodel.Category) (string, bool) {
 	for _, st := range wf.States {
 		if st.Category == cat {
@@ -37,19 +19,12 @@ func stateKeys(wf datamodel.Workflow) []string {
 	return out
 }
 
-func transitionAllowed(wf datamodel.Workflow, from, to string) bool {
-	return matchedTransition(wf, from, to) != nil
-}
-
-func MoveTargets(cfg *datamodel.Config, typ, from string) []string {
+func MoveTargets(cfg *datamodel.Config, typ, _ string) []string {
 	wf, ok := cfg.Workflows[typ]
 	if !ok {
 		return nil
 	}
-	if !wf.EnforceTransitions {
-		return stateKeys(wf)
-	}
-	return allowedTargets(wf, from)
+	return stateKeys(wf)
 }
 
 func isDoneState(cfg *datamodel.Config, typ, state string) bool {

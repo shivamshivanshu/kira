@@ -98,14 +98,13 @@ things, which is faster here than anywhere else.
 | `esc` or `q` | Close the peek or detail pane (otherwise quits) |
 
 `H` and `L` are real mutations, not navigation. Moving a card left or right
-transitions the item's state exactly as `kira move` would — writing the file and
-committing it under `commit.mode: auto`. The move is checked against the
-configured workflow graph first: if the target column is not reachable from the
-item's current state in one step, nothing changes and a message appears under
-the board, for example
-`DEMO-1: TODO -> DONE is not an allowed transition`. A successful move reports
-`Moved DEMO-1: TODO -> IN_PROGRESS` and keeps the card selected in its new
-column.
+changes the item's state exactly as `kira move` would — writing the file and
+committing it under `commit.mode: auto`. Every column is a reachable target, so
+the move only fails on the same checks `kira move` applies: nothing changes and
+a message appears under the board, for example
+`invalid item: REVIEW -> DONE is blocked by open items: DEMO-4`. A successful
+move reports `Moved DEMO-1: TODO -> IN_PROGRESS` and keeps the card selected in
+its new column.
 
 `p` and `enter` differ in how much room the detail gets. `p` docks a peek pane
 beside the board and tracks the selection as you move — the board keys stay

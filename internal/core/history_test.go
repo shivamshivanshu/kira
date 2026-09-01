@@ -70,29 +70,10 @@ func TestItemMetricsCleanHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 	if di.degraded {
-		t.Error("on-graph history flagged degraded")
+		t.Error("fully observed history flagged degraded")
 	}
 	if want := time.Date(2026, 1, 8, 10, 0, 0, 0, time.UTC); !di.doneAt.Equal(want) {
 		t.Errorf("doneAt = %v, want %v", di.doneAt, want)
-	}
-}
-
-func TestItemMetricsSquashedHistoryDegrades(t *testing.T) {
-	s := eventRepo(t)
-	cfg := config.Default()
-	it := eventTicket()
-	commitState(t, s, it, "TODO", "2026-01-05")
-	commitState(t, s, it, "DONE", "2026-01-08")
-
-	di, err := itemMetric(s, cfg, it)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !di.degraded {
-		t.Error("off-graph jump not flagged degraded")
-	}
-	if !di.hasDone {
-		t.Error("hasDone false, want done recorded from the squash commit")
 	}
 }
 

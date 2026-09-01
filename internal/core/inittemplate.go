@@ -17,28 +17,15 @@ workflows:
       - { key: TODO,        category: todo }
       - { key: IN_PROGRESS, category: doing, wip: 3 }   # advisory column cap (0/absent = unlimited)
       - { key: REVIEW,      category: doing, wip: 2 }
-      - { key: DONE,        category: done }
+      - { key: DONE,        category: done, resolution: done }
       - { key: WONT_DO,     category: done, resolution: dropped }
     initial: TODO
-    transitions:
-      TODO:        [IN_PROGRESS, WONT_DO]
-      IN_PROGRESS: [REVIEW, TODO, WONT_DO]
-      REVIEW:                                            # bare strings and guard maps may mix
-        - { to: DONE, require: [resolution], set: { resolution: done } }
-        - IN_PROGRESS
-      DONE:        []
-      WONT_DO:     []
-    enforce_transitions: true
   epic:
     states:
       - { key: PLANNED, category: todo }
       - { key: ACTIVE,  category: doing }
-      - { key: DONE,    category: done }
+      - { key: DONE,    category: done, resolution: done }
     initial: PLANNED
-    transitions:
-      PLANNED: [ACTIVE]
-      ACTIVE:  [DONE]
-      DONE:    []
 
 labels:
   known: []                   # add project labels; strict rejects unknown ones (--force overrides)

@@ -55,10 +55,12 @@ stderr 'from-file cannot be combined with multiple ids'
 ! exec kira edit KIRA-1 KIRA-2
 stderr 'editor mode is single-id only'
 
-# a state edit routes through move guards: off-graph is rejected, --force warns
+# a state edit routes through move guards: an open blocker is rejected, --force warns
+exec kira link KIRA-1 --blocked-by KIRA-2
 ! exec kira edit KIRA-1 --field state=DONE
-stderr 'not an allowed transition'
+stderr 'IN_PROGRESS -> DONE is blocked by open items: KIRA-2'
 exec kira edit KIRA-1 --field state=DONE --force
-stderr 'forced off-graph transition IN_PROGRESS -> DONE'
+stderr 'forced past blocker guard: KIRA-2 still open'
 exec kira show KIRA-1 --json
 stdout '"state": "DONE"'
+stdout '"resolution": "done"'

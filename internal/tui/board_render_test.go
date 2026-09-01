@@ -82,17 +82,6 @@ func TestBoardEmptyState(t *testing.T) {
 	golden.RequireEqual(t, []byte(m.View()))
 }
 
-func TestBoardGreyedTargetIsNoOp(t *testing.T) {
-	t.Parallel()
-	m, bs := newBoardTestModel(100, 12, config.Default(), buildBoardResult())
-	bs.board.focusByID("t7")
-	updated, _ := m.Update(key("L"))
-	if !strings.Contains(bs.notice, "not an allowed transition") {
-		t.Fatalf("greyed move should set a notice, got %q", bs.notice)
-	}
-	golden.RequireEqual(t, []byte(updated.(model).View()))
-}
-
 func TestBoardTeatestSnapshot(t *testing.T) {
 	t.Parallel()
 	m, _ := newBoardTestModel(100, 12, config.Default(), buildBoardResult())
@@ -454,7 +443,7 @@ func TestBoardMoveHitsCoreMovePath(t *testing.T) {
 	}
 }
 
-func TestBoardMoveGreyedTargetDoesNotMutate(t *testing.T) {
+func TestBoardMoveOutOfDoneLandsInNextColumn(t *testing.T) {
 	t.Parallel()
 	s, cfg := boardStore(t)
 	cr, err := s.Create(cfg, core.CreateOpts{Type: datamodel.TypeTicket, Title: "D", NoEdit: true})
@@ -471,9 +460,13 @@ func TestBoardMoveGreyedTargetDoesNotMutate(t *testing.T) {
 	drainBoardLoad(t, &m, bs)
 	bs.board.focusByID(cr.ID)
 
-	m.Update(key("L"))
-	if state := stateOnDisk(t, s, cfg, cr.ID); state != "DONE" {
-		t.Fatalf("greyed move (DONE has no outgoing transition) mutated the store: state = %s", state)
+	_, cmd := m.Update(key("L"))
+	if cmd == nil {
+		t.Fatal("moving out of DONE must dispatch a move, not be greyed out")
+	}
+	cmd()
+	if state := stateOnDisk(t, s, cfg, cr.ID); state != "WONT_DO" {
+		t.Fatalf("state = %s, want WONT_DO: every declared state is reachable now", state)
 	}
 }
 

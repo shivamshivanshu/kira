@@ -59,17 +59,17 @@ user-defined types.
    `kira init` **materializes the shipped defaults** into `.kira/schema/` so a
    new repo has editable starting schemas. User-tier `~/.config` may later hold
    personal *representation* prefs only, never the data contract.
-5. **Free transitions.** `state` is a plain enum; any value → any value is
-   allowed. The transition **graph** (`transitions`, `enforce_transitions`,
-   allowed edges) is dropped in the schema model — membership is the only
-   check. Consequence: the `blockers_closed` require-guard becomes a
-   state-independent close check (warn/block when entering a `done`-category
-   state with open blockers, regardless of path), not a per-edge require.
-   This is a deliberate *behavior* change, so it lands in Phase 2+ (when
-   schema-driven `state` replaces workflow enforcement) and will update the
-   existing transition-enforcement tests — the characterization guarantee
-   covers data *shape*, not transition *policy*. Phase 1 is unaffected
-   (validation-only, no move enforcement).
+5. **Free transitions** (adopted; landed as KIRA-140). `state` is a plain
+   enum; any value → any value is allowed. The transition **graph**
+   (`transitions`, `enforce_transitions`, allowed edges) is gone — membership
+   in the workflow's declared states is the only check. The `blockers_closed`
+   require-guard became a state-independent close check (refuse, or warn under
+   `--force`, when entering a `done`-category state with open blockers,
+   regardless of path) rather than a per-edge require, and `resolution` is now
+   auto-set from the target state's own `resolution:` field on entering a done
+   state and cleared on leaving one. This was a deliberate *behavior* change
+   and it updated the existing transition-enforcement tests — the
+   characterization guarantee covers data *shape*, not transition *policy*.
 
 ## Type system
 
@@ -149,7 +149,7 @@ Named enums resolve, in order: inline `enum` map in a schema file, then
 
 A schema file alone does not create an entity type. A type is defined by its
 **schema** (`.kira/schema/<type>.json` — the shape) *and* a **`workflows:`
-entry** in `.kira/config.yaml` (the state set and transition policy). `kira
+entry** in `.kira/config.yaml` (the state set). `kira
 create` refuses a type with no workflow (`no workflow configured for type
 "foo"`, hinting at the missing half), and existing items of a workflow-less
 type load read-only with an orphan warning. States are deliberately not

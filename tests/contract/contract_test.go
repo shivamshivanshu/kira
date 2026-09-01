@@ -270,13 +270,6 @@ func automationRepo(t *testing.T) string {
 	return dir
 }
 
-func reviewTicket(t *testing.T) string {
-	t.Helper()
-	dir := oneInProgressTicket(t)
-	mustKira(t, dir, "move", "KIRA-1", "REVIEW")
-	return dir
-}
-
 func wipLoaded(t *testing.T) string {
 	t.Helper()
 	dir := kiraRepo(t)
@@ -462,8 +455,6 @@ func TestJSONErrors(t *testing.T) {
 	}{
 		{"err-unknown-id", seededRepo, []string{"show", "KIRA-999"}, 1},
 		{"err-unknown-id-suggest", seededRepo, []string{"show", "KIRA-1X"}, 1},
-		{"err-bad-transition", oneTicket, []string{"move", "KIRA-1", "DONE"}, 1},
-		{"err-require-guard", reviewTicket, []string{"move", "KIRA-1", "DONE"}, 1},
 		{"err-bad-field", oneTicket, []string{"edit", "KIRA-1", "--field", "nope=x"}, 1},
 		{"err-unknown-sprint", oneTicket, []string{"edit", "KIRA-1", "--sprint", "2099-S1"}, 1},
 		{"err-init-exists", kiraRepo, []string{"init", "--key", "KIRA"}, 1},

@@ -6,8 +6,8 @@ server, no database. See `README.md` for the full CLI surface.
 
 This repo dogfoods itself: its own tickets live in `.kira/tickets/`, config in
 `.kira/config.yaml`. Boards: `KIRA` (default), `CORE`, `TUI`, `CLI`, `DATA`,
-`INFRA`, `DX`. Ticket states: `TODO -> IN_PROGRESS -> REVIEW -> DONE` (or
-`WONT_DO`), enforced transition graph. `commit.mode: auto` — most `kira`
+`INFRA`, `DX`. Ticket states: `TODO`, `IN_PROGRESS`, `REVIEW`, `DONE`,
+`WONT_DO` — a plain enum, any state to any state. `commit.mode: auto` — most `kira`
 mutations (create/edit/move/...) auto-commit to `.kira/` immediately; `kira
 commit` only exists for `manual`/`prompt` modes.
 

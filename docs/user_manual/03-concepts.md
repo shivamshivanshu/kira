@@ -2,7 +2,7 @@
 
 The mental model behind kira. Examples throughout are taken from this
 repository's own `.kira/config.yaml`, which is a real, working configuration
-with multiple boards, sprints, saved filters, and a guarded transition.
+with multiple boards, sprints, and saved filters.
 
 A useful companion to this page is `kira config explain`, which prints your
 repository's effective rules with provenance:
@@ -16,13 +16,12 @@ identity (repo)
 
 workflow: ticket (default)
   initial: TODO
-  enforce_transitions: true
   wip_policy: warn
-  TODO (todo): allowed from TODO: IN_PROGRESS, WONT_DO (or `--force` to override)
-  IN_PROGRESS (doing), wip 3/warn: allowed from IN_PROGRESS: REVIEW, TODO, WONT_DO (or `--force` to override)
-  REVIEW (doing), wip 2/warn: allowed from REVIEW: DONE, IN_PROGRESS (or `--force` to override)
-  DONE (done): no transitions out of DONE; use `--force` to override
-  WONT_DO (done), resolution=dropped: no transitions out of WONT_DO; use `--force` to override
+  TODO (todo)
+  IN_PROGRESS (doing), wip 3/warn
+  REVIEW (doing), wip 2/warn
+  DONE (done), resolution=done; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)
+  WONT_DO (done), resolution=dropped; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)
 ...
 ```
 
@@ -124,19 +123,16 @@ workflows:
   ticket:
     states:
       - { key: TODO,        category: todo }
-      - { key: IN_PROGRESS, category: doing }
-      - { key: REVIEW,      category: doing }
-      - { key: DONE,        category: done }
+      - { key: IN_PROGRESS, category: doing, wip: 3 }
+      - { key: REVIEW,      category: doing, wip: 2 }
+      - { key: DONE,        category: done, resolution: done }
       - { key: WONT_DO,     category: done, resolution: dropped }
     initial: TODO
-    transitions:
-      TODO:        [IN_PROGRESS, WONT_DO]
-      IN_PROGRESS: [REVIEW, TODO, WONT_DO]
-      REVIEW:      [{ to: DONE, require: [blockers_closed] }, IN_PROGRESS]
-      DONE:        []
-      WONT_DO:     []
-    enforce_transitions: true
 ```
+
+That is the whole workflow: a set of states and the one an item starts in.
+`state` is a plain enum — any state may move to any other declared state, in
+either direction. There is no transition graph to declare or maintain.
 
 ### Categories
 
@@ -154,59 +150,40 @@ without breaking reports:
 Note that `done` means "no longer open", not "successfully completed" — which
 is what `resolutions_dropped` exists to disambiguate.
 
-A state may also carry `resolution: dropped`, which records a default
-resolution when an item lands there.
+A state may also carry `resolution:`, which records a default resolution when
+an item lands there — `resolution: done` on `DONE`, `resolution: dropped` on
+`WONT_DO`.
 
-### Transitions
+### Moving between states
 
-`transitions:` maps each state to the states reachable from it. An entry is
-either a bare state name or a map, and the two forms may be mixed in one list:
-
-```yaml
-REVIEW:
-  - { to: DONE, require: [blockers_closed], set: { resolution: done } }
-  - IN_PROGRESS
-```
-
-| Key | Effect |
-| --- | --- |
-| `to` | Destination state. |
-| `require` | Guards that must pass before the move is allowed. |
-| `set` | Fields written automatically when the move succeeds. |
-
-The two guards you will meet in practice:
-
-| Guard | Blocks the move unless |
-| --- | --- |
-| `resolution` | The item's `resolution` field is set. This is what a fresh `kira init` puts on `REVIEW -> DONE`. |
-| `blockers_closed` | Every item in `blocked_by` is in a `done`-category state. This is what this repository uses. |
-
-A guard failure is a clear error, not a silent no-op:
+Any state may move to any other state declared in that workflow, in either
+direction. Reopening a closed ticket, jumping `TODO` straight to `DONE`, or
+skipping `REVIEW` are all ordinary moves, not overrides. The only membership
+rule is that the target has to be a state the workflow declares:
 
 ```console
-$ kira move DEMO-2 DONE
-kira: invalid item: REVIEW -> DONE requires resolution to be set
-  hint: set resolution first, or use `--force` to override
+$ kira move DEMO-2 SHIPPED
+kira: invalid item: "SHIPPED" is not a state in the ticket workflow
+  hint: valid states: TODO, IN_PROGRESS, REVIEW, DONE, WONT_DO
 ```
 
-### `enforce_transitions`
+Two things happen automatically around the `done` category, whatever the state
+you came from:
 
-With `enforce_transitions: true`, only edges present in the graph are allowed:
+- **Entering a `done` state refuses while the item has open blockers.** Every
+  item in `blocked_by` must be in a `done`-category state (a dangling or
+  unknown blocker counts as satisfied and only warns).
 
-```console
-$ kira move DEMO-2 DONE
-kira: invalid item: IN_PROGRESS -> DONE is not an allowed transition
-  hint: allowed from IN_PROGRESS: REVIEW, TODO, WONT_DO (or `--force` to override)
-```
+  ```console
+  $ kira move DEMO-2 DONE
+  kira: invalid item: REVIEW -> DONE is blocked by open items: DEMO-4
+    hint: close the blockers first, or use `--force` to override
+  ```
 
-With `false` — the epic workflow's default — the graph becomes advisory. kira
-still suggests the declared next states in pickers and the TUI, but any state
-is accepted. `kira config explain` spells out which mode you are in per
-workflow:
-
-```
-PLANNED (todo): suggested ACTIVE; any state allowed (transitions not enforced)
-```
+- **`resolution` follows the category.** Entering a `done` state stamps that
+  state's declared `resolution:` on the item if it has none; leaving the `done`
+  category for a `todo` or `doing` state clears `resolution` again. Pass
+  `--resolution` to record something other than the state's default.
 
 ### WIP limits
 
@@ -234,27 +211,25 @@ a real rule.
 
 ### `--force`
 
-`--force` on `move` bypasses both the adjacency check and `require:` guards.
-On `edit` and `create` it additionally accepts out-of-vocabulary field values.
-It is loud about it:
+`--force` on `move` bypasses the blockers-closed check and a `block` WIP
+policy. On `edit` and `create` it additionally accepts out-of-vocabulary field
+values. It is loud about it:
 
 ```console
 $ kira move DEMO-5 DONE --force
-kira: warning: forced off-graph transition IN_PROGRESS -> DONE
+kira: warning: forced past blocker guard: DEMO-4 still open
 Moved DEMO-5: IN_PROGRESS -> DONE
 ```
 
-Note what that example did: it landed a ticket in `DONE` without satisfying the
-guard, so the ticket is closed with no resolution and possibly with open
-blockers. That is exactly the danger — `--force` does not just skip a
-formality, it can leave an item in a state your reports and guards were
-designed to make impossible.
+Note what that example did: it closed a ticket whose blocker is still open, so
+`blocked` reports and any query that assumed a closed item had nothing left
+under it are now wrong. That is the danger — `--force` does not skip a
+formality, it lands the item in a state the guard existed to prevent.
 
-Appropriate uses are narrow and mostly retrospective: importing history from
-another tracker, repairing an item that a bad merge left in an unreachable
-state, or recording work that genuinely happened out of order. If you find
-yourself reaching for `--force` in the normal course of work, the workflow is
-wrong and the fix belongs in `.kira/config.yaml`.
+Appropriate uses are narrow: closing work whose blocker is tracked somewhere
+else, importing history from another tracker, or exceeding a WIP cap you have
+agreed to exceed. It is not needed to move backwards or to skip a state —
+those are ordinary moves.
 
 ## Labels, priorities, subtypes, and resolutions
 
@@ -399,8 +374,8 @@ kira: invalid item: field "blocked_by": DEMO-4 is type epic, expected ticket
 
 The reason is that "blocked by" is a scheduling relationship between peers,
 while an epic's relationship to its tickets is containment. Mixing them makes
-`blockers_closed` incoherent: an epic is closed only when its tickets are, so a
-ticket blocked by its own epic can never be unblocked.
+the blockers check on a close incoherent: an epic is closed only when its
+tickets are, so a ticket blocked by its own epic can never be unblocked.
 
 ### References are stored as ULIDs
 

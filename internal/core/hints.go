@@ -55,14 +55,6 @@ func sprintHint(cfg *datamodel.Config, key string) string {
 	return "configured sprints: " + strings.Join(keys, ", ")
 }
 
-func transitionHint(wf datamodel.Workflow, from string) string {
-	targets := allowedTargets(wf, from)
-	if len(targets) == 0 {
-		return "no transitions out of " + from + "; use `--force` to override"
-	}
-	return "allowed from " + from + ": " + strings.Join(targets, ", ") + " (or `--force` to override)"
-}
-
 func stateHint(wf datamodel.Workflow, state string) string {
 	keys := stateKeys(wf)
 	if n := errx.Nearest(state, keys); n != "" {

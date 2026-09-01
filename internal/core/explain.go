@@ -79,7 +79,6 @@ func explainWorkflow(cfg, def *datamodel.Config, typ string) datamodel.ExplainSe
 	wf := cfg.Workflows[typ]
 	lines := []string{
 		"initial: " + wf.Initial,
-		fmt.Sprintf("enforce_transitions: %t", wf.EnforceTransitions),
 		"wip_policy: " + string(wf.EffectiveWipPolicy()),
 	}
 	if wf.CloseTarget != "" {
@@ -104,31 +103,10 @@ func describeState(wf datamodel.Workflow, st datamodel.State) string {
 	if st.Resolution != "" {
 		line += ", resolution=" + st.Resolution
 	}
-	line += ": " + transitionDescription(wf, st.Key)
-	if requiresBlockersClosed(wf, st.Key) {
-		line += "; blockers_closed: a dangling or unknown blocker counts as satisfied (warns, doesn't block)"
+	if st.Category == datamodel.CategoryDone {
+		line += "; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)"
 	}
 	return line
-}
-
-func transitionDescription(wf datamodel.Workflow, from string) string {
-	if wf.EnforceTransitions {
-		return transitionHint(wf, from)
-	}
-	targets := allowedTargets(wf, from)
-	if len(targets) == 0 {
-		return "any state (transitions not enforced)"
-	}
-	return "suggested " + strings.Join(targets, ", ") + "; any state allowed (transitions not enforced)"
-}
-
-func requiresBlockersClosed(wf datamodel.Workflow, from string) bool {
-	for _, t := range wf.Transitions[from] {
-		if slices.Contains(t.Require, datamodel.RequireBlockersClosed) {
-			return true
-		}
-	}
-	return false
 }
 
 func explainCommit(cfg, def *datamodel.Config) datamodel.ExplainSection {
