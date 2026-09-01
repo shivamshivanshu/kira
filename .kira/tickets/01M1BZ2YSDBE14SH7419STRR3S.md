@@ -25,3 +25,11 @@ An extra declared 'type: int' with value 8 appears in list --json and show --jso
 Consequence: a --json consumer must read the schema to know how to interpret an extra. Defensible - typing is by schema, not by JSON shape, matching how kira treats due and priority - but worth a deliberate call rather than an accident of the storage format.
 Decide: keep strings and document, or type the JSON per FieldDef (which makes the generated output schema per-field rather than static).
 <!-- /kira:comment -->
+
+<!-- kira:comment id=01M1EACENDXPPRN6RPWG5M26HP author=Shivam-Shivanshu ts=2026-09-01T13:06:33+02:00 -->
+Reversed by the origin/main reconciliation merge (cfd7e19). This ticket documented typed extras as serializing to strings in --json, arguing that typing them per-FieldDef would make the generated output schema per-field rather than static.
+
+Origin solved it better: Fields map[string]any on ListItem/ShowResult, decoded through codec.DecodeExtraScalar, so a schema-typed int emits 8 rather than "8". The static additionalProperties:false contract survives because 'fields' degrades to {"type":"object","additionalProperties":{}} in the generated schema.
+
+datamodel.ExtraJSON is deleted. The design doc's phase-3 wire-shape paragraph records the new decision.
+<!-- /kira:comment -->
