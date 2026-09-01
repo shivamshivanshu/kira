@@ -52,6 +52,65 @@ func randLinks(r *rand.Rand) map[string][]string {
 	return out
 }
 
+// Extras arbitrate through the same three-way machinery as the built-in fields
+// but via separate maps, so side-swap symmetry has to be exercised over them
+// too. Empty and absent are distinct here: an untouched empty list is a value
+// merge must preserve, not a missing key.
+func randExtraScalars(r *rand.Rand) map[string]string {
+	var out map[string]string
+	for _, k := range []string{"severity", "team"} {
+		v := pickPtr(r, []string{"high", "low", "null"})
+		if v == nil {
+			continue
+		}
+		if out == nil {
+			out = map[string]string{}
+		}
+		out[k] = *v
+	}
+	return out
+}
+
+func randExtraLists(r *rand.Rand) map[string][]string {
+	var out map[string][]string
+	for _, k := range []string{"watchers", "tags"} {
+		if r.Intn(3) == 0 {
+			continue
+		}
+		if out == nil {
+			out = map[string][]string{}
+		}
+		out[k] = pickSubset(r, []string{"alice", "bob", "carol"})
+	}
+	return out
+}
+
+func randExtraLinks(r *rand.Rand) map[string][]string {
+	var out map[string][]string
+	for _, typ := range []string{"supersedes", "tracks"} {
+		targets := pickSubset(r, []string{"K1", "K2"})
+		if len(targets) == 0 {
+			continue
+		}
+		if out == nil {
+			out = map[string][]string{}
+		}
+		out[typ] = targets
+	}
+	return out
+}
+
+func sortedListMap(m map[string][]string) map[string][]string {
+	if m == nil {
+		return nil
+	}
+	out := make(map[string][]string, len(m))
+	for k, v := range m {
+		out[k] = sortedCopy(v)
+	}
+	return out
+}
+
 func randSide(r *rand.Rand) *datamodel.Item {
 	it := base(nil)
 	it.Title = pickStr(r, []string{"Base title", "A title", "B title"})
@@ -73,6 +132,9 @@ func randSide(r *rand.Rand) *datamodel.Item {
 	it.BlockedBy = pickSubset(r, []string{"X", "Y", "Z"})
 	it.Aliases = pickSubset(r, []string{"KIRA-90", "KIRA-91"})
 	it.Links = randLinks(r)
+	it.ExtraScalars = randExtraScalars(r)
+	it.ExtraLists = randExtraLists(r)
+	it.ExtraLinks = randExtraLinks(r)
 	it.Body = pickStr(r, []string{"## Description\n\nbody\n", "## Description\n\nours prose\n", "## Description\n\ntheirs prose\n"})
 	it.Updated = pickStr(r, []string{"2026-02-01T00:00:00Z", "2026-02-02T00:00:00Z", "2026-02-03T00:00:00Z"})
 	return it
@@ -89,13 +151,9 @@ func canonItem(it *datamodel.Item) *datamodel.Item {
 	c.Labels = sortedCopy(it.Labels)
 	c.BlockedBy = sortedCopy(it.BlockedBy)
 	c.Aliases = sortedCopy(it.Aliases)
-	if it.Links != nil {
-		links := make(map[string][]string, len(it.Links))
-		for k, v := range it.Links {
-			links[k] = sortedCopy(v)
-		}
-		c.Links = links
-	}
+	c.Links = sortedListMap(it.Links)
+	c.ExtraLists = sortedListMap(it.ExtraLists)
+	c.ExtraLinks = sortedListMap(it.ExtraLinks)
 	return &c
 }
 
