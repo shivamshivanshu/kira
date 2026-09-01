@@ -5,13 +5,13 @@ aliases: []
 type: ticket
 subtype: feature
 title: "No way to materialize schemas or refresh config in an existing repo"
-state: TODO
+state: IN_PROGRESS
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-28T14:06:21+05:30
-updated: 2026-07-28T14:06:21+05:30
+updated: 2026-09-01T16:18:50+02:00
 ---
 
 An existing repo cannot adopt newly-shipped config keys or get its schema
