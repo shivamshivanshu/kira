@@ -4,13 +4,14 @@ number: KIRA-159
 aliases: []
 type: ticket
 title: "Refresh config.yaml with scaffold keys a repo lacks, preserving set values"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-09-01T16:23:37+02:00
-updated: 2026-09-01T16:38:27+02:00
+updated: 2026-09-01T16:38:28+02:00
 ---
 
 ## Description
