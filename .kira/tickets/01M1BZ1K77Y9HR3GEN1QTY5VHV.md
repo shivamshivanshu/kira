@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "Correct the package-layering documentation to match reality"
 state: DONE
+resolution: done
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:09:54+02:00
-updated: 2026-08-31T23:51:31+02:00
+updated: 2026-09-01T10:25:59+02:00
 ---
 
 ## Description
