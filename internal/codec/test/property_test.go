@@ -103,7 +103,22 @@ func randExtraLists(r *rand.Rand) map[string][]string {
 		if out == nil {
 			out = map[string][]string{}
 		}
-		out[k] = randList(r)
+		out[k] = randExtraList(r)
+	}
+	return out
+}
+
+// a list extra stores each element's rendered YAML, the same as a scalar extra
+// stores its own, so generate elements in that form rather than raw.
+func randExtraList(r *rand.Rand) []string {
+	n := r.Intn(4)
+	out := make([]string, 0, n)
+	for range n {
+		if r.Intn(3) == 0 {
+			out = append(out, typedBareTokens[r.Intn(len(typedBareTokens))])
+			continue
+		}
+		out = append(out, codec.EncodeExtraListElement(pick(r)))
 	}
 	return out
 }

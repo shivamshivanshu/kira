@@ -51,7 +51,12 @@ func setExtraList(it *datamodel.Item, f entityschema.FieldDef, value string) err
 	if it.ExtraLists == nil {
 		it.ExtraLists = map[string][]string{}
 	}
-	it.ExtraLists[f.Name] = datamodel.SplitCSV(value)
+	elements := datamodel.SplitCSV(value)
+	rendered := make([]string, len(elements))
+	for i, elem := range elements {
+		rendered[i] = codec.EncodeExtraListElement(elem)
+	}
+	it.ExtraLists[f.Name] = rendered
 	return nil
 }
 

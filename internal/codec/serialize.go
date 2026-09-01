@@ -85,7 +85,7 @@ func writeExtras(b *strings.Builder, it *datamodel.Item) {
 			writeLine(b, k, v)
 			continue
 		}
-		writeLine(b, k, EmitList(it.ExtraLists[k]))
+		writeLine(b, k, emitRenderedList(it.ExtraLists[k]))
 	}
 }
 
@@ -114,6 +114,19 @@ func writeLinks(b *strings.Builder, links, extraLinks map[string][]string) {
 }
 
 func EmitFloat(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
+
+// emitRenderedList joins list-extra elements verbatim: each already holds its
+// faithful YAML text, which EmitList would quote a second time.
+func emitRenderedList(xs []string) string {
+	if len(xs) == 0 {
+		return "[]"
+	}
+	return "[" + strings.Join(xs, ", ") + "]"
+}
+
+// EncodeExtraListElement renders a string to the on-disk form a list extra
+// stores, quoting it where a plain scalar would not survive the flow list.
+func EncodeExtraListElement(s string) string { return emitFlowScalar(s) }
 
 func EmitList(xs []string) string {
 	if len(xs) == 0 {

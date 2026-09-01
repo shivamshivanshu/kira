@@ -167,3 +167,22 @@ func TestExtraFrontmatterReadsDraftFields(t *testing.T) {
 		t.Fatal("a nested mapping must be reported rather than silently dropped")
 	}
 }
+
+func TestExtraListElementsKeepTheirYAMLType(t *testing.T) {
+	const line = "history: [1, \"2\", true, null, plain]\n"
+	it, err := codec.Parse(docWithExtras(line))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	out := codec.Serialize(it)
+	if !strings.Contains(out, line) {
+		t.Fatalf("want %q emitted verbatim, got:\n%s", line, out)
+	}
+	again, err := codec.Parse(out)
+	if err != nil {
+		t.Fatalf("re-parse: %v", err)
+	}
+	if out2 := codec.Serialize(again); out2 != out {
+		t.Fatalf("serialize not idempotent\n--- first ---\n%s\n--- second ---\n%s", out, out2)
+	}
+}
