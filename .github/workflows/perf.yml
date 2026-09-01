@@ -54,13 +54,32 @@ jobs:
 
       # Compile the same benchmark workloads against both revisions. Production
       # code comes from each revision; benchmark-only files come from HEAD.
+      #
+      # HEAD's benchmark only compiles against the merge-base while it uses no
+      # API and no language version newer than the base. A merge-base older
+      # than a go.mod bump or an API rename legitimately fails that, so the
+      # base side is best-effort: a package that will not build there drops out
+      # of the A/B rather than reddening a job whose only real signals are the
+      # HEAD-side tripwires below.
       - name: Build package benchmarks
         run: |
+          ab_pkgs=""
           for pkg in core query entityschema webui; do
-            cp "internal/$pkg/performance_bench_test.go" "/tmp/base-tree/internal/$pkg/performance_bench_test.go"
             go test -c -o "/tmp/kira-head-$pkg.test" "./internal/$pkg"
-            (cd /tmp/base-tree && go test -c -o "/tmp/kira-base-$pkg.test" "./internal/$pkg")
+            if [ ! -d "/tmp/base-tree/internal/$pkg" ]; then
+              echo "::notice title=Perf A/B skipped::$pkg — the package does not exist at the merge-base"
+              continue
+            fi
+            cp "internal/$pkg/performance_bench_test.go" "/tmp/base-tree/internal/$pkg/performance_bench_test.go"
+            if (cd /tmp/base-tree && go test -c -o "/tmp/kira-base-$pkg.test" "./internal/$pkg") 2>"/tmp/base-$pkg.err"; then
+              ab_pkgs="$ab_pkgs $pkg"
+            else
+              echo "::notice title=Perf A/B skipped::$pkg — HEAD's benchmark does not compile against the merge-base"
+              head -5 "/tmp/base-$pkg.err" | sed 's/^/    /'
+              rm -f "/tmp/base-tree/internal/$pkg/performance_bench_test.go"
+            fi
           done
+          echo "ab_pkgs=$ab_pkgs" >> "$GITHUB_ENV"
 
       - name: Interleaved A/B benchmarks
         run: |
@@ -71,7 +90,7 @@ jobs:
             for revision in $revisions; do
               KIRA_BIN="/tmp/kira-$revision" go test -run '^$' \
                 -bench='Benchmark(Commands|Mutations|StatsCache)$' -benchtime=3x -count=1 ./tests/perf/ >> "$revision.txt"
-              for pkg in core query entityschema webui; do
+              for pkg in $ab_pkgs; do
                 "/tmp/kira-$revision-$pkg.test" -test.run='^$' \
                   -test.bench='Benchmark(EpicProgress|SelectiveQuery|ValidateExtras|RenderPage)$' \
                   -test.benchtime=200ms -test.count=1 >> "$revision.txt"
