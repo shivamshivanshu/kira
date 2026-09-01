@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "TUI board screen performs store IO inside View(), against its own DONE ticket"
 state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:08:41+02:00
-updated: 2026-08-31T16:12:07+02:00
+updated: 2026-09-01T10:25:58+02:00
 ---
 
 ## Description
