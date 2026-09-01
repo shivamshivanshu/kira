@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "gitx: pass --end-of-options before user-supplied refs"
 state: DONE
+resolution: done
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:17:27+02:00
-updated: 2026-08-31T16:12:19+02:00
+updated: 2026-09-01T10:26:00+02:00
 ---
 
 ## Description
