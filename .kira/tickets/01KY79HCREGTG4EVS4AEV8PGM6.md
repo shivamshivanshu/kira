@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "DRY: extract generic dedup/index-by-id/set-from-slice helpers found by generics survey"
 state: DONE
+resolution: done
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-23T16:19:59+05:30
-updated: 2026-08-30T22:18:14+02:00
+updated: 2026-09-01T10:25:56+02:00
 ---
 
 ## Description
