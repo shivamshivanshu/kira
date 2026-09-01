@@ -78,7 +78,7 @@ func Init(startDir, key string, force bool, prompter ...Prompter) (*datamodel.In
 	// Unlike files above, WriteDefaults never overwrites an existing schema
 	// file: schemas are meant to be user-edited, so even a --force
 	// reinitialize must not clobber someone's customization.
-	if err := entityschema.WriteDefaults(fs.SchemaDir()); err != nil {
+	if _, err := entityschema.WriteDefaults(fs.SchemaDir()); err != nil {
 		return nil, errx.Env("writing %s: %v", fs.RelToRoot(fs.SchemaDir()), err)
 	}
 

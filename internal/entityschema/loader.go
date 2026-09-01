@@ -125,30 +125,32 @@ func BuiltinNames() ([]string, error) {
 
 // WriteDefaults materializes the embedded built-in schemas into dir, never
 // overwriting an existing file so re-running it never clobbers a user edit.
-func WriteDefaults(dir string) error {
+func WriteDefaults(dir string) ([]string, error) {
 	entries, err := builtinFiles.ReadDir(builtinDir)
 	if err != nil {
-		return fmt.Errorf("reading embedded schemas: %w", err)
+		return nil, fmt.Errorf("reading embedded schemas: %w", err)
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("creating %s: %w", dir, err)
+		return nil, fmt.Errorf("creating %s: %w", dir, err)
 	}
+	var written []string
 	for _, e := range entries {
 		dst := filepath.Join(dir, e.Name())
 		if _, err := os.Stat(dst); err == nil {
 			continue // don't clobber a user-edited schema
 		} else if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("checking %s: %w", dst, err)
+			return nil, fmt.Errorf("checking %s: %w", dst, err)
 		}
 		data, err := builtinFiles.ReadFile(filepath.Join(builtinDir, e.Name()))
 		if err != nil {
-			return fmt.Errorf("reading embedded %s: %w", e.Name(), err)
+			return nil, fmt.Errorf("reading embedded %s: %w", e.Name(), err)
 		}
 		if err := os.WriteFile(dst, data, 0o644); err != nil {
-			return fmt.Errorf("writing %s: %w", dst, err)
+			return nil, fmt.Errorf("writing %s: %w", dst, err)
 		}
+		written = append(written, e.Name())
 	}
-	return nil
+	return written, nil
 }
 
 func loadBuiltins() (map[string]Schema, error) {
