@@ -4,13 +4,14 @@ number: KIRA-146
 aliases: []
 type: ticket
 title: "webui has no user-level auth: any local account on the host has full dashboard control"
-state: TODO
+state: WONT_DO
+resolution: dropped
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:17:25+02:00
-updated: 2026-08-31T15:17:25+02:00
+updated: 2026-09-01T13:07:40+02:00
 ---
 
 ## Description
