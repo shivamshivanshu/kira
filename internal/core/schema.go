@@ -24,7 +24,7 @@ func (s *Store) MaterializeSchemas(cfg *datamodel.Config) ([]string, error) {
 		return nil, errx.Env("writing %s: %v", fs.RelToRoot(fs.SchemaDir()), err)
 	}
 	if len(names) == 0 {
-		return nil, nil
+		return []string{}, nil
 	}
 	paths := make([]string, len(names))
 	for i, n := range names {
@@ -32,13 +32,15 @@ func (s *Store) MaterializeSchemas(cfg *datamodel.Config) ([]string, error) {
 	}
 	// Restoring a file that was deleted from the worktree but is still in HEAD
 	// writes it back byte-identical, leaving nothing to commit. Stage first and
-	// check, so that case reports the write without a failed empty commit.
+	// check these paths specifically -- an unscoped index check would see a
+	// user's unrelated staged work and commit anyway. finalize stages these
+	// paths again, which is why staging here costs nothing.
 	if err := s.repo().Stage(paths...); err != nil {
 		return nil, errx.User("%s", err)
 	}
-	staged, err := s.repo().HasStagedChanges()
+	staged, err := s.repo().HasStagedChangesIn(paths...)
 	if err != nil {
-		return nil, err
+		return nil, errx.User("%s", err)
 	}
 	if !staged {
 		return paths, nil

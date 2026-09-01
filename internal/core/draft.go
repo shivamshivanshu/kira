@@ -78,15 +78,11 @@ func serializeDraft(d draft) string {
 // buffer to fill in, so "severity:" invites a value where "severity: null"
 // looks like one. Items are written by codec.Serialize, which is unaffected.
 func writeDraftExtras(b *strings.Builder, d draft) {
-	scalars := d.ExtraScalars
+	scalars := maps.Clone(d.ExtraScalars)
 	for name, v := range scalars {
-		if v != "null" {
-			continue
+		if v == "null" {
+			scalars[name] = ""
 		}
-		if scalars = maps.Clone(scalars); scalars == nil {
-			scalars = map[string]string{}
-		}
-		scalars[name] = ""
 	}
 	codec.WriteExtras(b, scalars, d.ExtraLists)
 }
@@ -200,6 +196,11 @@ func offerExtra(d *draft, f entityschema.FieldDef) {
 // that an empty YAML scalar parses to. Undeclared keys are never dropped --
 // they round-trip verbatim so a newer kira's fields survive an older one.
 func dropUnsetDeclaredExtras(d draft, schema entityschema.Schema) draft {
+	// Taking d by value copies the map headers, not the maps, so deleting
+	// in place would reach back into the caller's draft. Clone to keep the
+	// value-in/value-out shape honest.
+	d.ExtraScalars = maps.Clone(d.ExtraScalars)
+	d.ExtraLists = maps.Clone(d.ExtraLists)
 	for name, v := range d.ExtraScalars {
 		if v != "" && v != "null" {
 			continue

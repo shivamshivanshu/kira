@@ -18,6 +18,20 @@ func (r Repo) HasStagedChanges() (bool, error) {
 	return len(lines) > 0, nil
 }
 
+// HasStagedChangesIn reports whether the index differs from HEAD for the given
+// paths only, so a caller can tell "my write changed nothing" from "someone
+// else has unrelated work staged".
+func (r Repo) HasStagedChangesIn(paths ...string) (bool, error) {
+	if len(paths) == 0 {
+		return false, nil
+	}
+	lines, err := r.splitLines(append([]string{"diff", "--cached", "--name-only", "--"}, paths...)...)
+	if err != nil {
+		return false, err
+	}
+	return len(lines) > 0, nil
+}
+
 func (r Repo) ShowStaged(path string) (string, error) {
 	return r.OutputRaw("show", RevPath("", path))
 }

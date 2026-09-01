@@ -117,22 +117,18 @@ func TestBoardAtRendersHistoricalState(t *testing.T) {
 	}
 }
 
-func TestAdjacentAllowedAcceptsAnyDeclaredState(t *testing.T) {
+func TestStateDeclaredAcceptsEveryWorkflowState(t *testing.T) {
 	t.Parallel()
 	_, cfg := newStore(t)
-	cases := []struct {
-		from, to string
-		want     bool
-	}{
-		{"TODO", "IN_PROGRESS", true},
-		{"DONE", "WONT_DO", true},
-		{"TODO", "DONE", true},
-		{"DONE", "TODO", true},
-		{"TODO", "NOPE", false},
-	}
-	for _, c := range cases {
-		if got := core.AdjacentAllowed(cfg, datamodel.TypeTicket, c.from, c.to); got != c.want {
-			t.Errorf("AdjacentAllowed(%s->%s) = %v, want %v", c.from, c.to, got, c.want)
+	for _, state := range []string{"TODO", "IN_PROGRESS", "REVIEW", "DONE", "WONT_DO"} {
+		if !core.StateDeclared(cfg, datamodel.TypeTicket, state) {
+			t.Errorf("StateDeclared(%s) = false, want true", state)
 		}
+	}
+	if core.StateDeclared(cfg, datamodel.TypeTicket, "NOPE") {
+		t.Error("StateDeclared(NOPE) = true, want false")
+	}
+	if core.StateDeclared(cfg, "nosuchtype", "TODO") {
+		t.Error("StateDeclared on an unknown type = true, want false")
 	}
 }

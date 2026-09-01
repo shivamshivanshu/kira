@@ -33,7 +33,13 @@ type Item struct {
 
 	Body string
 
-	Activity     string
+	Activity string
+
+	// ExtraScalars and ExtraLists hold frontmatter as it sits on disk -- the
+	// rendered YAML text, quoting and type intact, so `points: 42` survives a
+	// rewrite unquoted. Read them through codec.Decode*, write them through
+	// codec.Encode*; comparing one against a raw value silently mismatches.
+	// ExtraLinks is the exception: link targets are bare refs, stored raw.
 	ExtraScalars map[string]string
 	ExtraLists   map[string][]string
 	ExtraLinks   map[string][]string

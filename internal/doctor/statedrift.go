@@ -11,8 +11,8 @@ import (
 )
 
 // StateDrift reports schemas whose declared state values diverge from the
-// configured workflow — two sources of truth until the transition graph is
-// dropped, so the schema copy must not rot silently.
+// configured workflow — two sources of truth, so the schema copy must not rot
+// silently.
 func StateDrift(cfg *datamodel.Config, schemas map[string]entityschema.Schema) []Finding {
 	var out []Finding
 	for _, name := range slices.Sorted(maps.Keys(schemas)) {

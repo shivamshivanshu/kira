@@ -169,7 +169,7 @@ func (s *boardScreen) moveCard(m *model, dir int) tea.Cmd {
 		return nil
 	}
 	to := cols[target].State
-	if m.cfg == nil || !core.AdjacentAllowed(m.cfg, s.board.result.Type, card.State, to) {
+	if m.cfg == nil || !core.StateDeclared(m.cfg, s.board.result.Type, to) {
 		s.setNotice(card.Number + ": " + to + " is not a state in the " + s.board.result.Type + " workflow")
 		return nil
 	}

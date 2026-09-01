@@ -117,6 +117,10 @@ func EmitFloat(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
 
 // emitRenderedList joins list-extra elements verbatim: each already holds its
 // faithful YAML text, which EmitList would quote a second time.
+// EmitRenderedList renders already-rendered elements verbatim, for callers that
+// need the on-disk form of a stored list.
+func EmitRenderedList(xs []string) string { return emitRenderedList(xs) }
+
 func emitRenderedList(xs []string) string {
 	if len(xs) == 0 {
 		return "[]"
@@ -128,15 +132,16 @@ func emitRenderedList(xs []string) string {
 // stores, quoting it where a plain scalar would not survive the flow list.
 func EncodeExtraListElement(s string) string { return emitFlowScalar(s) }
 
-func EmitList(xs []string) string {
-	if len(xs) == 0 {
-		return "[]"
+func EmitList(xs []string) string { return emitRenderedList(EncodeExtraList(xs)) }
+
+// EncodeExtraList renders raw values into the flow-safe form a stored extra
+// list holds; DecodeExtraList is its inverse.
+func EncodeExtraList(values []string) []string {
+	out := make([]string, len(values))
+	for i, v := range values {
+		out[i] = emitFlowScalar(v)
 	}
-	parts := make([]string, len(xs))
-	for i, x := range xs {
-		parts[i] = emitFlowScalar(x)
-	}
-	return "[" + strings.Join(parts, ", ") + "]"
+	return out
 }
 
 func EmitScalar(s string) string {

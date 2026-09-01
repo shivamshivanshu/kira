@@ -273,13 +273,14 @@ func (s *Store) BoardList(cfg *datamodel.Config) (*datamodel.BoardListResult, er
 	return &datamodel.BoardListResult{Boards: views}, nil
 }
 
-// AdjacentAllowed reports whether the workflow for typ allows moving from
-// state from to state to.
-func AdjacentAllowed(cfg *datamodel.Config, typ, _, to string) bool {
+// StateDeclared reports whether typ's workflow declares state. Every declared
+// state is reachable from every other, so a board column naming an undeclared
+// state is the only thing left to reject.
+func StateDeclared(cfg *datamodel.Config, typ, state string) bool {
 	wf, ok := cfg.Workflows[typ]
 	if !ok {
 		return false
 	}
-	_, defined := wf.StateByKey(to)
+	_, defined := wf.StateByKey(state)
 	return defined
 }
