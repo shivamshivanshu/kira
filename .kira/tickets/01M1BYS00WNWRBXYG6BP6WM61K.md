@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "kira discover ignores --non-interactive; :discover from the TUI command bar hijacks or hangs the UI"
 state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:05:12+02:00
-updated: 2026-08-31T16:12:05+02:00
+updated: 2026-09-01T10:25:57+02:00
 ---
 
 ## Description
