@@ -4,7 +4,8 @@ number: KIRA-155
 aliases: []
 type: ticket
 title: "Restore the render-time unknown ui.list.columns warning"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
