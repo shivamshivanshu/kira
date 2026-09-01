@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "Alias shadows a live display number in the trailer scan: Closes can auto-close the wrong ticket"
 state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:05:11+02:00
-updated: 2026-08-31T15:48:07+02:00
+updated: 2026-09-01T10:25:57+02:00
 ---
 
 ## Description
