@@ -4,7 +4,8 @@ number: KIRA-151
 aliases: []
 type: ticket
 title: "Fix two docs/user_manual pages stale against CORE-54"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P3
 labels: []
 epic: null
