@@ -608,3 +608,7 @@ type ExplainSection struct {
 type ExplainResult struct {
 	Sections []ExplainSection `json:"sections"`
 }
+
+type SchemaInitResult struct {
+	Written []string `json:"written"`
+}

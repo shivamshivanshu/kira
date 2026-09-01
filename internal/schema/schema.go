@@ -21,6 +21,7 @@ import (
 func topLevelTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeFor[datamodel.CreateResult](),
+		reflect.TypeFor[datamodel.SchemaInitResult](),
 		reflect.TypeFor[datamodel.ListResult](),
 		reflect.TypeFor[datamodel.TreeResult](),
 		reflect.TypeFor[datamodel.ShowResult](),

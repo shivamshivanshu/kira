@@ -122,16 +122,24 @@ func TestValidateSchemaRejectsMalformedDefinitions(t *testing.T) {
 func TestWriteDefaultsIsIdempotentAndPreservesEdits(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "schema")
 
-	if err := WriteDefaults(dir); err != nil {
+	written, err := WriteDefaults(dir)
+	if err != nil {
 		t.Fatalf("WriteDefaults: %v", err)
+	}
+	if len(written) == 0 {
+		t.Fatal("WriteDefaults reported nothing written into an empty dir")
 	}
 	edited := []byte(`{"name": "ticket", "fields": []}`)
 	if err := os.WriteFile(filepath.Join(dir, "ticket.json"), edited, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := WriteDefaults(dir); err != nil {
+	again, err := WriteDefaults(dir)
+	if err != nil {
 		t.Fatalf("second WriteDefaults: %v", err)
+	}
+	if len(again) != 0 {
+		t.Fatalf("second run rewrote %v, want nothing", again)
 	}
 
 	got, err := os.ReadFile(filepath.Join(dir, "ticket.json"))

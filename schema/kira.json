@@ -1835,6 +1835,21 @@
       ],
       "type": "object"
     },
+    "SchemaInitResult": {
+      "additionalProperties": false,
+      "properties": {
+        "written": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "written"
+      ],
+      "type": "object"
+    },
     "ShowResult": {
       "additionalProperties": false,
       "properties": {
@@ -2478,6 +2493,9 @@
   "oneOf": [
     {
       "$ref": "#/$defs/CreateResult"
+    },
+    {
+      "$ref": "#/$defs/SchemaInitResult"
     },
     {
       "$ref": "#/$defs/ListResult"
