@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "Document the fragile cross-file invariants the blind reviewers had to reverse-engineer"
 state: DONE
+resolution: done
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:09:53+02:00
-updated: 2026-08-31T23:51:30+02:00
+updated: 2026-09-01T10:25:59+02:00
 ---
 
 ## Description
