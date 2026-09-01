@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "TestSeedProducesItems flakes on TempDir cleanup: .git directory not empty"
 state: DONE
+resolution: done
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T10:04:05+02:00
-updated: 2026-08-31T12:30:05+02:00
+updated: 2026-09-01T10:25:57+02:00
 ---
 
 ## Description
