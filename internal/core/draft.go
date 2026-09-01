@@ -1,6 +1,7 @@
 package core
 
 import (
+	"maps"
 	"os"
 	"strings"
 
@@ -66,10 +67,28 @@ func serializeDraft(d draft) string {
 		estimate = codec.EmitFloat(*d.Estimate)
 	}
 	b.WriteString("estimate: " + estimate + "\n")
-	codec.WriteExtras(&b, d.ExtraScalars, d.ExtraLists)
+	writeDraftExtras(&b, d)
 	b.WriteString(codec.FenceLine)
 	b.WriteString(d.Body)
 	return b.String()
+}
+
+// writeDraftExtras renders an offered-but-unset field as a blank key rather
+// than the literal null an empty YAML scalar parses back to. A draft is a
+// buffer to fill in, so "severity:" invites a value where "severity: null"
+// looks like one. Items are written by codec.Serialize, which is unaffected.
+func writeDraftExtras(b *strings.Builder, d draft) {
+	scalars := d.ExtraScalars
+	for name, v := range scalars {
+		if v != "null" {
+			continue
+		}
+		if scalars = maps.Clone(scalars); scalars == nil {
+			scalars = map[string]string{}
+		}
+		scalars[name] = ""
+	}
+	codec.WriteExtras(b, scalars, d.ExtraLists)
 }
 
 func draftScalar(s string) string {
@@ -146,10 +165,56 @@ func runEditor(editor string, stdio editorx.Stdio, initial string, validate func
 
 func defaultTemplate(typ string, schema entityschema.Schema) string {
 	var body strings.Builder
+	d := draft{Type: typ}
 	for _, f := range schema.Fields {
-		if f.Placement == entityschema.PlacementBody && f.Section != "" {
+		switch {
+		case f.Placement == entityschema.PlacementBody && f.Section != "":
 			body.WriteString("\n## " + f.Section + "\n")
+		case f.IsCustomFrontmatter():
+			offerExtra(&d, f)
 		}
 	}
-	return serializeDraft(draft{Type: typ, Body: body.String()})
+	d.Body = body.String()
+	return serializeDraft(d)
+}
+
+// offerExtra puts a declared field in the draft empty, so the editor buffer and
+// --print-template show every key the type accepts. Left empty it reads back as
+// unset, the same as an untouched builtin key.
+func offerExtra(d *draft, f entityschema.FieldDef) {
+	if f.List {
+		if d.ExtraLists == nil {
+			d.ExtraLists = map[string][]string{}
+		}
+		d.ExtraLists[f.Name] = nil
+		return
+	}
+	if d.ExtraScalars == nil {
+		d.ExtraScalars = map[string]string{}
+	}
+	d.ExtraScalars[f.Name] = ""
+}
+
+// dropUnsetDeclaredExtras removes a declared field the draft carries with no
+// value. An offered key left untouched must mean unset, not the literal null
+// that an empty YAML scalar parses to. Undeclared keys are never dropped --
+// they round-trip verbatim so a newer kira's fields survive an older one.
+func dropUnsetDeclaredExtras(d draft, schema entityschema.Schema) draft {
+	for name, v := range d.ExtraScalars {
+		if v != "" && v != "null" {
+			continue
+		}
+		if f, ok := schema.Field(name); ok && f.IsCustomFrontmatter() {
+			delete(d.ExtraScalars, name)
+		}
+	}
+	for name, v := range d.ExtraLists {
+		if len(v) > 0 {
+			continue
+		}
+		if f, ok := schema.Field(name); ok && f.IsCustomFrontmatter() {
+			delete(d.ExtraLists, name)
+		}
+	}
+	return d
 }

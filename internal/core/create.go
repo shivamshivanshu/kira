@@ -171,7 +171,7 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 	}
 
 	sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, wf.Initial)
-	finalItem := itemFromDraft(d, sys)
+	finalItem := itemFromDraft(dropUnsetDeclaredExtras(d, schemas[opts.Type]), sys)
 	if errs := s.applyFieldEdits(cfg, finalItem, opts.Fields, schemas[finalItem.Type]); len(errs) > 0 {
 		return nil, errx.Invalid(invalidItemPrefix, errs)
 	}
@@ -251,7 +251,7 @@ func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, boardKey,
 			if perr != nil {
 				return nil, []error{perr}
 			}
-			return itemFromDraft(d, sys), nil
+			return itemFromDraft(dropUnsetDeclaredExtras(d, schemas[opts.Type]), sys), nil
 		}))
 		if err != nil {
 			return draft{}, err
