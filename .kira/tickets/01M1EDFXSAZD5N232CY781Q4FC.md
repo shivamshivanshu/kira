@@ -4,7 +4,8 @@ number: KIRA-158
 aliases: []
 type: ticket
 title: "Perf A/B dies when HEAD benchmarks cannot build at the merge-base"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
