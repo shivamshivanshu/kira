@@ -127,7 +127,10 @@ func fieldString(it *datamodel.Item, field string) string {
 	if v, ok := it.ExtraScalars[field]; ok {
 		return v
 	}
-	return strings.Join(it.ExtraLists[field], ", ")
+	if v, ok := it.ExtraLists[field]; ok {
+		return strings.Join(v, ", ")
+	}
+	return "-"
 }
 
 func (s *Store) pickFields(target, ours, theirs *datamodel.Item, fields []string) {

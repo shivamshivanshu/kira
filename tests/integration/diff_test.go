@@ -182,3 +182,65 @@ func TestChangesSinceAcceptsDatesLikeDiff(t *testing.T) {
 			date, changesRes.Since, diffRes.From)
 	}
 }
+
+// A schema-declared field and an undeclared one both live in the extras maps,
+// which ChangedFields does not cover -- diff reported neither before KIRA-156.
+func TestDiffReportsExtraFieldChanges(t *testing.T) {
+	t.Parallel()
+	root := initGitRepo(t)
+	initStore(t, root)
+	repo := gitx.Repo{Dir: root}
+
+	schemaPath := filepath.Join(root, ".kira", "schema", "ticket.json")
+	raw, err := os.ReadFile(schemaPath)
+	if err != nil {
+		t.Fatalf("read ticket schema: %v", err)
+	}
+	declared := strings.Replace(string(raw), `"fields": [`,
+		`"fields": [`+"\n"+`    { "name": "severity", "type": "string", "placement": "frontmatter" },`, 1)
+	if declared == string(raw) {
+		t.Fatal("could not splice a declared field into the ticket schema")
+	}
+	if err := os.WriteFile(schemaPath, []byte(declared), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	s, _ := core.Discover(root)
+	cfg, _ := s.Config()
+	created, err := s.Create(cfg, core.CreateOpts{Type: datamodel.TypeTicket, Title: "Extras", NoEdit: true,
+		Fields: []core.FieldEdit{{Key: "severity", Value: "low"}}})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if _, err := repo.Output("add", "-A"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.Output("commit", "-m", "baseline"); err != nil {
+		t.Fatal(err)
+	}
+	base, _ := repo.Output("rev-parse", "HEAD")
+
+	if _, err := s.Edit(cfg, created.Number, core.EditOpts{
+		Fields: []core.FieldEdit{{Key: "severity", Value: "high"}}}); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
+
+	res, err := s.Diff("", strings.TrimSpace(base), false)
+	if err != nil {
+		t.Fatalf("Diff: %v", err)
+	}
+	var got *datamodel.FieldChange
+	for _, it := range res.Items {
+		for i, c := range it.Changes {
+			if c.Field == "severity" {
+				got = &it.Changes[i]
+			}
+		}
+	}
+	if got == nil {
+		t.Fatalf("severity change not reported: %+v", res.Items)
+	}
+	if got.From != "low" || got.To != "high" {
+		t.Fatalf("severity change = %q -> %q, want low -> high", got.From, got.To)
+	}
+}
