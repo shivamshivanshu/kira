@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "DECISION: per-type identity is declared in schemas but inert"
 state: DONE
+resolution: done
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:10:36+02:00
-updated: 2026-08-31T23:51:32+02:00
+updated: 2026-09-01T10:26:00+02:00
 ---
 
 ## Description
