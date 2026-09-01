@@ -33,8 +33,8 @@ line. `create`, `link`, and `comment` are single-item commands.
 it always means *accept a value the configuration would otherwise reject* —
 a label, owner, priority, subtype, or resolution outside the configured
 vocabulary. On `move` (and on `edit` when it changes state) it additionally
-bypasses the workflow transition graph and `require:` guards. It never lets you
-invent a new *field name*.
+closes an item whose blockers are still open, and exceeds a `block` WIP cap. It
+never lets you invent a new *field name*.
 
 **Vocabulary: warning or error.** With `strict: false` (the default for both
 labels and people) an out-of-vocabulary value is accepted with a warning on
@@ -406,16 +406,16 @@ the target state; everything before it is an id.
 kira move <id>... <state> [flags]
 ```
 
-Moves are validated against the workflow declared in the project configuration:
-the transition must be adjacent in the graph, and any `require:` guard on that
-edge must be satisfied.
+`state` is a plain enum: any state declared in the type's workflow is a legal
+target from any other, in either direction. The only membership check is that
+the target is declared at all.
 
 ### Flags
 
 | Flag | Type | Description |
 | --- | --- | --- |
 | `--activate` | bool | Set this item as the active ticket — what `kira now` reports and what `create --here` inherits from. |
-| `--force` | bool | Bypass the transition adjacency check and `require:` guards. |
+| `--force` | bool | Close an item with open blockers, and exceed a `block` WIP cap. |
 | `--resolution` | string | Resolution to record, validated against the configured resolutions. |
 
 ### A full transition sequence
@@ -426,29 +426,26 @@ Moved KIRA-1: TODO -> IN_PROGRESS
 Activated KIRA-1
 ```
 
-An off-graph jump is refused, and the error tells you what *is* reachable:
+Skipping a state, or moving back out of one, is an ordinary move. Only an
+undeclared state is refused, and the error lists the ones that exist:
 
 ```console
-$ kira move KIRA-1 DONE
-kira: invalid item: IN_PROGRESS -> DONE is not an allowed transition
-  hint: allowed from IN_PROGRESS: REVIEW, TODO, WONT_DO (or `--force` to override)
+$ kira move KIRA-1 SHIPPED
+kira: invalid item: "SHIPPED" is not a state in the ticket workflow
+  hint: valid states: TODO, IN_PROGRESS, REVIEW, DONE, WONT_DO
 ```
 
-### Hitting a `require:` guard
+### Landing in a done state
 
-The demo project's workflow declares `REVIEW -> DONE` as
-`{ to: DONE, require: [resolution] }`. Taking that edge without a resolution
-fails:
+Moving into a `done`-category state applies that state's declared
+`resolution:` when the item has none — `--resolution` overrides it — and
+moving back out to a `todo` or `doing` state clears `resolution` again:
 
 ```console
 $ kira move KIRA-1 REVIEW
 Moved KIRA-1: IN_PROGRESS -> REVIEW
 
 $ kira move KIRA-1 DONE
-kira: invalid item: REVIEW -> DONE requires resolution to be set
-  hint: set resolution first, or use `--force` to override
-
-$ kira move KIRA-1 DONE --resolution done
 Moved KIRA-1: REVIEW -> DONE
 ```
 
@@ -459,6 +456,14 @@ state: DONE
 resolution: done
 ```
 
+A close is refused while the item still has an open `blocked_by`:
+
+```console
+$ kira move KIRA-1 DONE
+kira: invalid item: REVIEW -> DONE is blocked by open items: KIRA-8
+  hint: close the blockers first, or use `--force` to override
+```
+
 ### Bulk moves and `--force`
 
 ```console
@@ -467,12 +472,12 @@ Moved KIRA-8: TODO -> IN_PROGRESS
 Moved KIRA-9: TODO -> IN_PROGRESS
 ```
 
-`--force` takes an edge the graph does not contain. It succeeds, but warns, so
-the override is visible in the terminal and in review:
+`--force` closes an item whose blockers are still open. It succeeds, but warns,
+so the override is visible in the terminal and in review:
 
 ```console
 $ kira move KIRA-11 DONE --force
-kira: warning: forced off-graph transition TODO -> DONE
+kira: warning: forced past blocker guard: KIRA-8 still open
 Moved KIRA-11: TODO -> DONE
 ```
 

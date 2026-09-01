@@ -62,10 +62,6 @@ func positionTo(t *testing.T, s *core.Store, cfg *datamodel.Config, ref, state s
 	}
 }
 
-func withTicketTransitions(cfg *datamodel.Config, from string, ts []datamodel.Transition) {
-	cfg.Workflows[datamodel.TypeTicket].Transitions[from] = ts
-}
-
 func mustReadItem(t *testing.T, s *core.Store, ulid string) string {
 	t.Helper()
 	data, err := os.ReadFile(storage.New(s.Root()).ItemPath(ulid))

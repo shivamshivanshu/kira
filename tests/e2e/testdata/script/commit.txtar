@@ -90,23 +90,12 @@ workflows:
       - { key: DONE,        category: done }
       - { key: WONT_DO,     category: done, resolution: dropped }
     initial: TODO
-    transitions:
-      TODO:        [IN_PROGRESS, WONT_DO]
-      IN_PROGRESS: [REVIEW, TODO, WONT_DO]
-      REVIEW:      [DONE, IN_PROGRESS]
-      DONE:        []
-      WONT_DO:     []
-    enforce_transitions: true
   epic:
     states:
       - { key: PLANNED, category: todo }
       - { key: ACTIVE,  category: doing }
       - { key: DONE,    category: done }
     initial: PLANNED
-    transitions:
-      PLANNED: [ACTIVE]
-      ACTIVE:  [DONE]
-      DONE:    []
 
 labels:
   known: []

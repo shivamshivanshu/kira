@@ -1,5 +1,6 @@
-# Workflow enforcement (KIRA-6): require:/set: transition guards, the
-# resolution done-entry/exit lifecycle, and advisory WIP warnings
+# Workflow semantics (KIRA-140): state is a plain enum -- any declared state
+# reaches any other -- with the resolution done-entry/exit lifecycle and
+# advisory WIP warnings layered on top
 # (docs/design/02-data-model.md §6; docs/design/04-cli.md move).
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
@@ -12,19 +13,14 @@ exec kira create ticket --title 'G' --no-edit
 exec kira move KIRA-1 IN_PROGRESS
 exec kira move KIRA-1 REVIEW
 
-# REVIEW -> DONE carries require: [resolution] in the default config
-! exec kira move KIRA-1 DONE
-stderr 'requires resolution'
-exec kira show KIRA-1 --json
-stdout '"state": "REVIEW"'
-
-# --resolution satisfies the guard and outranks the transition's set:
+# --resolution outranks the target state's own resolution: field
 exec kira move KIRA-1 DONE --resolution duplicate
 exec kira show KIRA-1 --json
+stdout '"state": "DONE"'
 stdout '"resolution": "duplicate"'
 
-# leaving done-category clears resolution (forced reopen)
-exec kira move KIRA-1 TODO --force
+# leaving done-category clears resolution, and needs no --force: DONE is not terminal
+exec kira move KIRA-1 TODO
 exec kira show KIRA-1 --json
 stdout '"resolution": null'
 
@@ -33,12 +29,9 @@ exec kira move KIRA-1 WONT_DO
 exec kira show KIRA-1 --json
 stdout '"resolution": "dropped"'
 
-# --force bypasses the require guard with a warning; set: still stamps
+# entering DONE with no resolution set stamps the state's own resolution: done
 exec kira create ticket --title 'F' --no-edit
-exec kira move KIRA-2 IN_PROGRESS
-exec kira move KIRA-2 REVIEW
-exec kira move KIRA-2 DONE --force
-stderr 'forced past require guard: resolution not set'
+exec kira move KIRA-2 DONE
 exec kira show KIRA-2 --json
 stdout '"resolution": "done"'
 

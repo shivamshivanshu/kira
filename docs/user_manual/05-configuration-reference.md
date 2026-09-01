@@ -79,9 +79,8 @@ Each section carries a provenance tag saying where its values came from:
 ```
 workflow: ticket (repo)
   initial: TODO
-  enforce_transitions: true
   wip_policy: warn
-  TODO (todo): allowed from TODO: IN_PROGRESS, WONT_DO (or `--force` to override)
+  TODO (todo)
   ...
 
 merge (default)
@@ -223,7 +222,7 @@ permanently mixed set of numbers. Treat it as a decision to make once, at
 
 This is the largest and most consequential key. It defines your item *types* —
 each top-level key under `workflows` is a type name — and for each one, its
-states, its legal transitions, and the guards on them.
+states, their categories, and their WIP caps.
 
 `kira init` scaffolds two types, `ticket` and `epic`. Referring to a type that
 is not configured is an error:
@@ -240,39 +239,30 @@ workflows:
   ticket:
     states:
       - { key: TODO,        category: todo }
-      - { key: IN_PROGRESS, category: doing }
-      - { key: REVIEW,      category: doing }
-      - { key: DONE,        category: done }
+      - { key: IN_PROGRESS, category: doing, wip: 3 }
+      - { key: REVIEW,      category: doing, wip: 2 }
+      - { key: DONE,        category: done, resolution: done }
       - { key: WONT_DO,     category: done, resolution: dropped }
     initial: TODO
-    transitions:
-      TODO:        [IN_PROGRESS, WONT_DO]
-      IN_PROGRESS: [REVIEW, TODO, WONT_DO]
-      REVIEW:      [{ to: DONE, require: [blockers_closed] }, IN_PROGRESS]
-      DONE:        []
-      WONT_DO:     []
-    enforce_transitions: true
   epic:
     states:
       - { key: PLANNED, category: todo }
       - { key: ACTIVE,  category: doing }
-      - { key: DONE,    category: done }
+      - { key: DONE,    category: done, resolution: done }
     initial: PLANNED
-    transitions:
-      PLANNED: [ACTIVE]
-      ACTIVE:  [DONE]
-      DONE:    []
 ```
 
-Note that `epic` omits `enforce_transitions`, so it defaults to `false` — its
-arrows are advisory. `kira config explain` makes the difference visible:
+`states` and `initial` are the whole of it. There is no transition graph:
+`state` is a plain enum, and any state may move to any other state the
+workflow declares. `kira config explain` prints what each state means:
 
 ```
 workflow: epic (default)
-  PLANNED (todo): suggested ACTIVE; any state allowed (transitions not enforced)
-
-workflow: ticket (repo)
-  TODO (todo): allowed from TODO: IN_PROGRESS, WONT_DO (or `--force` to override)
+  initial: PLANNED
+  wip_policy: warn
+  PLANNED (todo)
+  ACTIVE (doing)
+  DONE (done), resolution=done; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)
 ```
 
 ### `states`
@@ -292,8 +282,8 @@ it does a lot of work:
 - `--category todo|doing|done` filtering, and `category=` in query expressions
 - board column grouping and the TUI's colouring
 - "is this item finished?" — an item is closed when its state's category is
-  `done`, which is what epic progress counts and what the `blockers_closed`
-  guard checks
+  `done`, which is what epic progress counts and what the blockers check on a
+  close tests
 - stats: cycle time measures first entry into a `doing` state through first
   entry into a `done` state; a move back into `doing` after `done` counts as a
   reopen
@@ -308,15 +298,14 @@ or a hard error depending on [`wip_policy`](#wip_policy). Board columns render
 the count as `IN_PROGRESS 3/3` and colour it as it approaches and exceeds the
 cap.
 
-The default config ships `wip: 3` on `IN_PROGRESS` and `wip: 2` on `REVIEW`.
-This repo's own config removes them.
+The default config ships `wip: 3` on `IN_PROGRESS` and `wip: 2` on `REVIEW`;
+this repo keeps both.
 
 **`resolution`** is a *default resolution applied on arrival*, not a
 requirement. When an item moves into this state and no resolution was set
-explicitly — not on the command line, not by the transition's `set:`, not by an
-edit in the same operation — kira fills in this value. That is how
-`WONT_DO`'s `resolution: dropped` works: moving anything to `WONT_DO` marks it
-dropped without you saying so.
+explicitly — not on the command line, not by an edit in the same operation —
+kira fills in this value. That is how `WONT_DO`'s `resolution: dropped` works:
+moving anything to `WONT_DO` marks it dropped without you saying so.
 
 It only means anything on a `done`-category state. Moving into any state whose
 category is not `done` clears the resolution outright, and trying to set a
@@ -331,54 +320,21 @@ initial: TODO
 The state new items of this type are created in. Required, and must be one of
 the declared state keys.
 
-### `transitions`
+### Moving between states
 
-An adjacency map: for each state, the list of states you may move to from it.
-A state with an empty list is terminal.
-
-Each entry in a list is written one of two ways, and both forms may mix freely
-inside the same list:
-
-```yaml
-transitions:
-  # bare string — a plain, unguarded edge
-  TODO: [IN_PROGRESS, WONT_DO]
-
-  # mapping — an edge with guards and/or side effects
-  REVIEW:
-    - { to: DONE, require: [blockers_closed], set: { resolution: done } }
-    - IN_PROGRESS
-```
-
-| Key | Type | Meaning |
-|---|---|---|
-| `to` | string | target state (required) |
-| `require` | list of guard names | conditions that must hold before the move |
-| `set` | map field → value | fields auto-set as a side effect of the move |
-
-**`require`** names guards. There are two kinds.
-
-A *field guard* is any mutable field name, and it holds when that field is
-non-empty on the item. The default config uses this on the `REVIEW -> DONE`
-edge as `require: [resolution]`, forcing you to say *how* it was done:
+There is no adjacency map and no per-edge guard. Any declared state is a legal
+target from any other, in either direction; a state that the workflow does not
+declare is refused:
 
 ```
-kira: REVIEW -> DONE requires resolution to be set
-  hint: set resolution first, or use `--force` to override
+kira: "SHIPPED" is not a state in the ticket workflow
+  hint: valid states: TODO, IN_PROGRESS, REVIEW, DONE, WONT_DO
 ```
 
-The field names accepted here are: `subtype`, `title`, `resolution`,
-`priority`, `rank`, `owner`, `reporter`, `labels`, `epic`, `sprint`, `due`,
-`estimate`. Naming anything else is a config error caught at load.
+Two rules hang off the `done` category rather than off any particular edge.
 
-The other kind is the special guard **`blockers_closed`**, which this repo uses:
-
-```yaml
-REVIEW: [{ to: DONE, require: [blockers_closed] }, IN_PROGRESS]
-```
-
-It holds when every item in this one's `blocked_by` list is in a
-`done`-category state:
+**Closing checks blockers.** Entering a `done`-category state is refused while
+any item in this one's `blocked_by` list is still open:
 
 ```
 kira: REVIEW -> DONE is blocked by open items: KIRA-8, KIRA-12
@@ -387,46 +343,18 @@ kira: REVIEW -> DONE is blocked by open items: KIRA-8, KIRA-12
 
 A blocker that cannot be resolved — a dangling reference to an item that no
 longer exists, or an unknown ref — warns and counts as satisfied rather than
-wedging the transition, as `kira config explain` spells out:
+wedging the close, as `kira config explain` spells out:
 
 ```
-REVIEW (doing): allowed from REVIEW: DONE, IN_PROGRESS (or `--force` to override);
-  blockers_closed: a dangling or unknown blocker counts as satisfied (warns, doesn't block)
+DONE (done), resolution=done; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)
 ```
 
-`--force` overrides any guard, downgrading the hard error to a warning recorded
-on the move.
+`--force` downgrades the refusal to a warning recorded on the move.
 
-**`set`** applies field values as a side effect of taking the edge — the
-mechanism behind "closing a ticket marks it done" without you typing it:
+**Closing stamps a resolution.** Entering a `done` state applies that state's
+[`resolution`](#states) if the item has none; leaving the `done` category for a
+`todo` or `doing` state clears `resolution` again.
 
-```yaml
-- { to: DONE, require: [resolution], set: { resolution: done } }
-```
-
-If you set the same field yourself in the same operation, your value wins and
-the `set` is skipped. Field names are restricted to the same mutable list as
-`require`, and values are validated against that field's configured
-vocabulary — `set: { priority: URGENT }` fails at config load if `URGENT` is
-not in your `priorities`.
-
-### `enforce_transitions`
-
-```yaml
-enforce_transitions: true
-```
-
-| Type | Default |
-|---|---|
-| bool | `false` |
-
-When `true`, a move to a state not listed as reachable from the current one is
-rejected (`--force` overrides). When `false`, the adjacency map is advisory:
-kira shows the listed states as suggestions but permits any move.
-
-Leaving it off is reasonable for a loose type like `epic`. Turning it on is
-what makes the graph an actual contract — and what lets `kira stats` flag
-historical moves that broke it.
 
 ### `close_target`
 
@@ -1328,28 +1256,17 @@ workflows:
   ticket:
     states:
       - { key: TODO,        category: todo }
-      - { key: IN_PROGRESS, category: doing }
-      - { key: REVIEW,      category: doing }
-      - { key: DONE,        category: done }
+      - { key: IN_PROGRESS, category: doing, wip: 3 }
+      - { key: REVIEW,      category: doing, wip: 2 }
+      - { key: DONE,        category: done, resolution: done }
       - { key: WONT_DO,     category: done, resolution: dropped }
     initial: TODO
-    transitions:
-      TODO:        [IN_PROGRESS, WONT_DO]
-      IN_PROGRESS: [REVIEW, TODO, WONT_DO]
-      REVIEW:      [{ to: DONE, require: [blockers_closed] }, IN_PROGRESS]
-      DONE:        []
-      WONT_DO:     []
-    enforce_transitions: true
   epic:
     states:
       - { key: PLANNED, category: todo }
       - { key: ACTIVE,  category: doing }
-      - { key: DONE,    category: done }
+      - { key: DONE,    category: done, resolution: done }
     initial: PLANNED
-    transitions:
-      PLANNED: [ACTIVE]
-      ACTIVE:  [DONE]
-      DONE:    []
 
 filters:
   backlog: "state = TODO ORDER BY priority"

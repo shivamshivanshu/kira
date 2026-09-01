@@ -275,10 +275,11 @@ func (s *Store) BoardList(cfg *datamodel.Config) (*datamodel.BoardListResult, er
 
 // AdjacentAllowed reports whether the workflow for typ allows moving from
 // state from to state to.
-func AdjacentAllowed(cfg *datamodel.Config, typ, from, to string) bool {
+func AdjacentAllowed(cfg *datamodel.Config, typ, _, to string) bool {
 	wf, ok := cfg.Workflows[typ]
 	if !ok {
 		return false
 	}
-	return !wf.EnforceTransitions || transitionAllowed(wf, from, to)
+	_, defined := wf.StateByKey(to)
+	return defined
 }

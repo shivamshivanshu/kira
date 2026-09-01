@@ -105,7 +105,6 @@ func metricsFrom(cfg *datamodel.Config, it *datamodel.Item, evs []stateTransitio
 	if c, cerr := it.CreatedTime(); cerr == nil {
 		mi.created = c
 	}
-	wf, hasWorkflow := cfg.Workflows[it.Type]
 	doneSeen := false
 	for _, ev := range evs {
 		cat, _ := cfg.CategoryOf(it.Type, ev.to)
@@ -124,9 +123,6 @@ func metricsFrom(cfg *datamodel.Config, it *datamodel.Item, evs []stateTransitio
 				mi.hasDone = true
 				mi.doneAt = ev.ts
 			}
-		}
-		if ev.from != "" && hasWorkflow && wf.EnforceTransitions && !transitionAllowed(wf, ev.from, ev.to) {
-			mi.degraded = true
 		}
 	}
 	if !mi.hasDone && isDoneState(cfg, it.Type, it.State) {

@@ -14,25 +14,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/workon"
 )
 
-func wfAllows(wf datamodel.Workflow, from, to string) bool {
-	for _, tr := range wf.Transitions[from] {
-		if tr.To == to {
-			return true
-		}
-	}
-	return false
-}
-
-func wfDoneState(wf datamodel.Workflow, state string) bool {
-	for _, st := range wf.States {
-		if st.Key == state && st.Category == datamodel.CategoryDone {
-			return true
-		}
-	}
-	return false
-}
-
-func TestMoveTransitionMatrix(t *testing.T) {
+func TestMoveStateMatrixIsUnrestricted(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
 	wf := cfg.Workflows[datamodel.TypeTicket]
@@ -45,26 +27,10 @@ func TestMoveTransitionMatrix(t *testing.T) {
 	for _, from := range states {
 		for _, to := range states {
 			positionTo(t, s, cfg, res.Number, from)
-			allowed := from == to || wfAllows(wf, from, to)
-			opts := core.MoveOpts{}
-			if wfDoneState(wf, to) {
-				opts.Resolution = "done"
-			}
-			_, err := s.Move(cfg, res.Number, to, opts)
-			if allowed {
-				if err != nil {
-					t.Errorf("move %s -> %s: unexpected error %v", from, to, err)
-				}
-				continue
-			}
-			if err == nil {
-				t.Errorf("move %s -> %s: expected rejection, got success", from, to)
-			}
-			opts.Force = true
-			if _, ferr := s.Move(cfg, res.Number, to, opts); ferr != nil {
-				t.Errorf("forced move %s -> %s: %v", from, to, ferr)
+			if _, err := s.Move(cfg, res.Number, to, core.MoveOpts{}); err != nil {
+				t.Errorf("move %s -> %s: unexpected error %v", from, to, err)
 			} else if got := stateOf(t, s, cfg, res.Number); got != to {
-				t.Errorf("forced move %s -> %s: state = %s", from, to, got)
+				t.Errorf("move %s -> %s: state = %s", from, to, got)
 			}
 		}
 	}
@@ -75,8 +41,9 @@ func TestMoveInvalidStateAlwaysErrors(t *testing.T) {
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "bogus")
 	for _, force := range []bool{false, true} {
-		if _, err := s.Move(cfg, res.Number, "NOPE", core.MoveOpts{Force: force}); err == nil {
-			t.Fatalf("move to invalid state (force=%v): expected error", force)
+		_, err := s.Move(cfg, res.Number, "NOPE", core.MoveOpts{Force: force})
+		if err == nil || !strings.Contains(err.Error(), `"NOPE" is not a state in the ticket workflow`) {
+			t.Fatalf("move to invalid state (force=%v): err = %v, want an undeclared-state rejection", force, err)
 		}
 	}
 }
@@ -410,115 +377,36 @@ func TestMoveRecordsResolution(t *testing.T) {
 	}
 }
 
-func TestMoveRequireGuard(t *testing.T) {
+func TestMoveToDoneAdoptsStateResolution(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "guarded")
-	positionTo(t, s, cfg, res.Number, "REVIEW")
+	res := mustCreate(t, s, cfg, "straight to done")
 
-	_, err := s.Move(cfg, res.Number, "DONE", core.MoveOpts{})
-	if err == nil || !strings.Contains(err.Error(), "requires resolution") {
-		t.Fatalf("REVIEW -> DONE without resolution: err = %v, want missing-field rejection", err)
-	}
-	if got := stateOf(t, s, cfg, res.Number); got != "REVIEW" {
-		t.Fatalf("state after rejected move = %s, want REVIEW", got)
-	}
-
-	if _, err := s.Move(cfg, res.Number, "DONE", core.MoveOpts{Resolution: "duplicate"}); err != nil {
-		t.Fatalf("REVIEW -> DONE --resolution: %v", err)
-	}
-	show, _ := s.Show(cfg, res.Number, "")
-	if show.Resolution == nil || *show.Resolution != "duplicate" {
-		t.Fatalf("resolution = %v, want duplicate (--resolution outranks set:)", show.Resolution)
-	}
-}
-
-func TestMoveRequireForceBypass(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "forced")
-	positionTo(t, s, cfg, res.Number, "REVIEW")
-
-	if _, err := s.Move(cfg, res.Number, "DONE", core.MoveOpts{Force: true}); err != nil {
-		t.Fatalf("forced REVIEW -> DONE: %v", err)
+	if _, err := s.Move(cfg, res.Number, "DONE", core.MoveOpts{}); err != nil {
+		t.Fatalf("TODO -> DONE: %v", err)
 	}
 	show, _ := s.Show(cfg, res.Number, "")
 	if show.State != "DONE" {
 		t.Fatalf("state = %s, want DONE", show.State)
 	}
 	if show.Resolution == nil || *show.Resolution != "done" {
-		t.Fatalf("resolution = %v, want done (set: applies under --force)", show.Resolution)
-	}
-}
-
-func TestMoveRequireMultiMissing(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	withTicketTransitions(cfg, "TODO", []datamodel.Transition{
-		{To: "IN_PROGRESS", Require: []string{"owner", "due"}},
-	})
-	res := mustCreate(t, s, cfg, "multi")
-
-	_, err := s.Move(cfg, res.Number, "IN_PROGRESS", core.MoveOpts{})
-	if err == nil || !strings.Contains(err.Error(), "requires") ||
-		!strings.Contains(err.Error(), "owner") || !strings.Contains(err.Error(), "due") {
-		t.Fatalf("err = %v, want both missing fields listed", err)
+		t.Fatalf("resolution = %v, want done (adopted from the DONE state)", show.Resolution)
 	}
 
-	if _, err := s.Edit(cfg, res.Number, core.EditOpts{Fields: []core.FieldEdit{{Key: "owner", Value: "shivam"}}}); err != nil {
-		t.Fatalf("set owner: %v", err)
+	if _, err := s.Move(cfg, res.Number, "DONE", core.MoveOpts{Resolution: "duplicate"}); err != nil {
+		t.Fatalf("DONE -> DONE --resolution: %v", err)
 	}
-	_, err = s.Move(cfg, res.Number, "IN_PROGRESS", core.MoveOpts{})
-	if err == nil || !strings.Contains(err.Error(), "requires due") || strings.Contains(err.Error(), "owner") {
-		t.Fatalf("err = %v, want only due listed", err)
+	show, _ = s.Show(cfg, res.Number, "")
+	if show.Resolution == nil || *show.Resolution != "duplicate" {
+		t.Fatalf("resolution = %v, want duplicate (--resolution outranks the state default)", show.Resolution)
 	}
 
-	if _, err := s.Edit(cfg, res.Number, core.EditOpts{Fields: []core.FieldEdit{{Key: "due", Value: "2026-07-20"}}}); err != nil {
-		t.Fatalf("set due: %v", err)
+	if _, err := s.Move(cfg, res.Number, "TODO", core.MoveOpts{}); err != nil {
+		t.Fatalf("DONE -> TODO: %v", err)
 	}
-	if _, err := s.Move(cfg, res.Number, "IN_PROGRESS", core.MoveOpts{}); err != nil {
-		t.Fatalf("move with all required fields set: %v", err)
-	}
-}
-
-func TestMoveSetApplied(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	withTicketTransitions(cfg, "TODO", []datamodel.Transition{
-		{To: "IN_PROGRESS", Set: map[string]string{"owner": "alice", "priority": "P1", "estimate": "5"}},
-	})
-	res := mustCreate(t, s, cfg, "stamped")
-
-	if _, err := s.Move(cfg, res.Number, "IN_PROGRESS", core.MoveOpts{}); err != nil {
-		t.Fatalf("move with set:: %v", err)
-	}
-	show, _ := s.Show(cfg, res.Number, "")
-	if show.Owner == nil || *show.Owner != "alice" {
-		t.Errorf("owner = %v, want alice", show.Owner)
-	}
-	if show.Priority == nil || *show.Priority != "P1" {
-		t.Errorf("priority = %v, want P1", show.Priority)
-	}
-	if show.Estimate == nil || *show.Estimate != 5 {
-		t.Errorf("estimate = %v, want 5", show.Estimate)
-	}
-}
-
-func TestMoveSetVocabViolation(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	cfg.Labels.Strict = true
-	withTicketTransitions(cfg, "TODO", []datamodel.Transition{
-		{To: "IN_PROGRESS", Set: map[string]string{"priority": "P9"}},
-	})
-	res := mustCreate(t, s, cfg, "badset")
-
-	_, err := s.Move(cfg, res.Number, "IN_PROGRESS", core.MoveOpts{})
-	if err == nil || !strings.Contains(err.Error(), "priority") {
-		t.Fatalf("err = %v, want priority vocabulary rejection", err)
-	}
-	if got := stateOf(t, s, cfg, res.Number); got != "TODO" {
-		t.Fatalf("state after rejected set: = %s, want TODO", got)
+	show, _ = s.Show(cfg, res.Number, "")
+	if show.Resolution != nil {
+		t.Fatalf("resolution = %q, want cleared on leaving a done state", *show.Resolution)
 	}
 }
 
@@ -550,7 +438,7 @@ func TestMoveResolutionLifecycle(t *testing.T) {
 	}
 	wantResolution("tagged done entry", "dropped")
 
-	if _, err := s.Move(cfg, res.Number, "TODO", core.MoveOpts{Force: true}); err != nil {
+	if _, err := s.Move(cfg, res.Number, "TODO", core.MoveOpts{}); err != nil {
 		t.Fatalf("WONT_DO -> TODO: %v", err)
 	}
 	wantResolution("reopen", "")
@@ -559,7 +447,7 @@ func TestMoveResolutionLifecycle(t *testing.T) {
 	if _, err := s.Move(cfg, res.Number, "DONE", core.MoveOpts{Resolution: "done"}); err != nil {
 		t.Fatalf("REVIEW -> DONE: %v", err)
 	}
-	if _, err := s.Move(cfg, res.Number, "WONT_DO", core.MoveOpts{Force: true}); err != nil {
+	if _, err := s.Move(cfg, res.Number, "WONT_DO", core.MoveOpts{}); err != nil {
 		t.Fatalf("DONE -> WONT_DO: %v", err)
 	}
 	wantResolution("done -> done retag", "dropped")
@@ -703,31 +591,35 @@ func TestAssignStrictBypass(t *testing.T) {
 func TestMoveBlockersClosedGuard(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
-	withTicketTransitions(cfg, "TODO", []datamodel.Transition{
-		{To: "IN_PROGRESS", Require: []string{datamodel.RequireBlockersClosed}},
-		{To: "WONT_DO"},
-	})
 	a := mustCreate(t, s, cfg, "A")
 	b := mustCreate(t, s, cfg, "B")
 	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkBlockedBy, Ref: b.Number}); err != nil {
 		t.Fatalf("Link: %v", err)
 	}
 
-	if _, err := s.Move(cfg, a.Number, "IN_PROGRESS", core.MoveOpts{}); err == nil {
-		t.Fatal("move with an open blocker: expected refusal")
+	_, err := s.Move(cfg, a.Number, "DONE", core.MoveOpts{})
+	if err == nil || !strings.Contains(err.Error(), "blocked by open items") || !strings.Contains(err.Error(), b.Number) {
+		t.Fatalf("move to a done state with an open blocker: err = %v, want a refusal naming %s", err, b.Number)
+	}
+	if got := stateOf(t, s, cfg, a.Number); got != "TODO" {
+		t.Fatalf("state after refused move = %q, want TODO", got)
 	}
 
-	if _, err := s.Move(cfg, a.Number, "IN_PROGRESS", core.MoveOpts{Force: true}); err != nil {
+	if _, err := s.Move(cfg, a.Number, "IN_PROGRESS", core.MoveOpts{}); err != nil {
+		t.Fatalf("non-done target must not consult blockers: %v", err)
+	}
+
+	if _, err := s.Move(cfg, a.Number, "DONE", core.MoveOpts{Force: true}); err != nil {
 		t.Fatalf("forced move past an open blocker: %v", err)
 	}
 	positionTo(t, s, cfg, a.Number, "TODO")
 
 	positionTo(t, s, cfg, b.Number, "DONE")
-	if _, err := s.Move(cfg, a.Number, "IN_PROGRESS", core.MoveOpts{}); err != nil {
+	if _, err := s.Move(cfg, a.Number, "DONE", core.MoveOpts{}); err != nil {
 		t.Fatalf("move with a closed blocker: %v", err)
 	}
-	if got := stateOf(t, s, cfg, a.Number); got != "IN_PROGRESS" {
-		t.Fatalf("state after unblocked move = %q, want IN_PROGRESS", got)
+	if got := stateOf(t, s, cfg, a.Number); got != "DONE" {
+		t.Fatalf("state after unblocked move = %q, want DONE", got)
 	}
 }
 
@@ -741,27 +633,24 @@ func TestEditStateRoutesThroughMoveGuards(t *testing.T) {
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "guarded edit")
 
-	err := editState(s, cfg, res.Number, "DONE", false)
-	if err == nil || !strings.Contains(err.Error(), "not an allowed transition") {
-		t.Fatalf("edit --field state off-graph: err = %v, want transition rejection", err)
+	err := editState(s, cfg, res.Number, "NOPE", false)
+	if err == nil || !strings.Contains(err.Error(), "is not a state") {
+		t.Fatalf("edit --field state to an undeclared state: err = %v, want rejection", err)
 	}
 	if got := stateOf(t, s, cfg, res.Number); got != "TODO" {
 		t.Fatalf("state after rejected edit = %s, want TODO", got)
 	}
 
 	if err := editState(s, cfg, res.Number, "WONT_DO", false); err != nil {
-		t.Fatalf("edit along legal TODO -> WONT_DO: %v", err)
+		t.Fatalf("edit TODO -> WONT_DO: %v", err)
 	}
 	show, _ := s.Show(cfg, res.Number, "")
 	if show.Resolution == nil || *show.Resolution != "dropped" {
 		t.Fatalf("resolution = %v, want dropped (target default applies via edit)", show.Resolution)
 	}
 
-	if err := editState(s, cfg, res.Number, "TODO", false); err == nil {
-		t.Fatal("edit WONT_DO -> TODO without force: expected rejection")
-	}
-	if err := editState(s, cfg, res.Number, "TODO", true); err != nil {
-		t.Fatalf("forced edit WONT_DO -> TODO: %v", err)
+	if err := editState(s, cfg, res.Number, "TODO", false); err != nil {
+		t.Fatalf("edit WONT_DO -> TODO: %v", err)
 	}
 	show, _ = s.Show(cfg, res.Number, "")
 	if show.Resolution != nil {
@@ -769,18 +658,13 @@ func TestEditStateRoutesThroughMoveGuards(t *testing.T) {
 	}
 }
 
-func TestEditStateRequireGuardAndExplicitResolution(t *testing.T) {
+func TestEditStateExplicitResolutionOutranksStateDefault(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "edit require")
+	res := mustCreate(t, s, cfg, "edit resolution")
 	positionTo(t, s, cfg, res.Number, "REVIEW")
 
-	err := editState(s, cfg, res.Number, "DONE", false)
-	if err == nil || !strings.Contains(err.Error(), "requires resolution") {
-		t.Fatalf("edit REVIEW -> DONE without resolution: err = %v, want require rejection", err)
-	}
-
-	_, err = s.Edit(cfg, res.Number, core.EditOpts{Fields: []core.FieldEdit{
+	_, err := s.Edit(cfg, res.Number, core.EditOpts{Fields: []core.FieldEdit{
 		{Key: "state", Value: "DONE"}, {Key: "resolution", Value: "duplicate"},
 	}})
 	if err != nil {
@@ -788,7 +672,7 @@ func TestEditStateRequireGuardAndExplicitResolution(t *testing.T) {
 	}
 	show, _ := s.Show(cfg, res.Number, "")
 	if show.Resolution == nil || *show.Resolution != "duplicate" {
-		t.Fatalf("resolution = %v, want duplicate (explicit edit outranks set:)", show.Resolution)
+		t.Fatalf("resolution = %v, want duplicate (explicit edit outranks the DONE state default)", show.Resolution)
 	}
 }
 
@@ -810,43 +694,11 @@ func TestEditResolutionOnlyOnDoneStates(t *testing.T) {
 	}
 }
 
-func TestEditStateSetEffectSkipsExplicitEdits(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	withTicketTransitions(cfg, "TODO", []datamodel.Transition{
-		{To: "IN_PROGRESS", Set: map[string]string{"owner": "auto"}},
-	})
-
-	plain := mustCreate(t, s, cfg, "set applies")
-	if err := editState(s, cfg, plain.Number, "IN_PROGRESS", false); err != nil {
-		t.Fatalf("edit without owner: %v", err)
-	}
-	show, _ := s.Show(cfg, plain.Number, "")
-	if show.Owner == nil || *show.Owner != "auto" {
-		t.Fatalf("owner = %v, want auto (set: applies when not edited)", show.Owner)
-	}
-
-	explicit := mustCreate(t, s, cfg, "edit wins")
-	_, err := s.Edit(cfg, explicit.Number, core.EditOpts{Fields: []core.FieldEdit{
-		{Key: "state", Value: "IN_PROGRESS"}, {Key: "owner", Value: "bob"},
-	}})
-	if err != nil {
-		t.Fatalf("edit state+owner: %v", err)
-	}
-	show, _ = s.Show(cfg, explicit.Number, "")
-	if show.Owner == nil || *show.Owner != "bob" {
-		t.Fatalf("owner = %v, want bob (explicit edit outranks set:)", show.Owner)
-	}
-}
-
 func TestEditFromFileNormalizesBlockersBeforeGuard(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
 	blocker := mustCreate(t, s, cfg, "open blocker")
 	res := mustCreate(t, s, cfg, "guarded")
-	withTicketTransitions(cfg, "TODO", []datamodel.Transition{
-		{To: "DONE", Require: []string{datamodel.RequireBlockersClosed}},
-	})
 
 	content := mustReadItem(t, s, res.ID)
 	content = strings.Replace(content, "state: TODO", "state: DONE", 1)

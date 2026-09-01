@@ -13,23 +13,26 @@ import (
 
 func TestBulkPartialWorkflowResultsAndDeduplication(t *testing.T) {
 	d := newDashboardTest(t, Options{})
-	allowed := d.create(t, core.CreateOpts{Title: "Ready for review"})
+	allowed := d.create(t, core.CreateOpts{Title: "Ready to close"})
 	blocked := d.create(t, core.CreateOpts{Title: "Still TODO"})
 	unselected := d.create(t, core.CreateOpts{Title: "Leave alone"})
-	if _, err := d.store.Move(d.cfg, allowed.ID, "IN_PROGRESS", core.MoveOpts{}); err != nil {
-		t.Fatal(err)
+	blocker := d.create(t, core.CreateOpts{Title: "Open blocker"})
+	// states are a free enum, so an open blocker on a done-category move is
+	// what makes one item of the batch fail.
+	if res := d.post("link", url.Values{"id": {blocked.ID}, "kind": {"blocked-by"}, "target": {blocker.Number}}); res.Code >= 400 {
+		t.Fatalf("link blocked-by: %d %s", res.Code, res.Body.String())
 	}
 	s := &server{store: d.store}
-	form := url.Values{"ids": {allowed.Number, allowed.ID, blocked.ID}, "operation": {"move"}, "value": {"REVIEW"}}
+	form := url.Values{"ids": {allowed.Number, allowed.ID, blocked.ID}, "operation": {"move"}, "value": {"DONE"}}
 	outcomes, err := s.bulk(d.cfg, form)
 	if err != nil || len(outcomes) != 2 || outcomes[0].Error != "" || outcomes[1].Error == "" {
 		t.Fatalf("expected one success and one failure: %+v %v", outcomes, err)
 	}
 	retry := bulkRetry(form, outcomes)
-	if !slices.Equal(retry["ids"], []string{blocked.ID}) || retry.Get("operation") != "move" || retry.Get("value") != "REVIEW" {
+	if !slices.Equal(retry["ids"], []string{blocked.ID}) || retry.Get("operation") != "move" || retry.Get("value") != "DONE" {
 		t.Fatalf("retry included successful items: %v", retry)
 	}
-	for ref, state := range map[string]string{allowed.ID: "REVIEW", blocked.ID: "TODO", unselected.ID: "TODO"} {
+	for ref, state := range map[string]string{allowed.ID: "DONE", blocked.ID: "TODO", unselected.ID: "TODO"} {
 		it, err := d.store.Show(d.cfg, ref, "")
 		if err != nil || it.State != state {
 			t.Errorf("%s: state=%+v err=%v, want %s", ref, it, err, state)

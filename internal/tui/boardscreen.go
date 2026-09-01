@@ -170,7 +170,7 @@ func (s *boardScreen) moveCard(m *model, dir int) tea.Cmd {
 	}
 	to := cols[target].State
 	if m.cfg == nil || !core.AdjacentAllowed(m.cfg, s.board.result.Type, card.State, to) {
-		s.setNotice(card.Number + ": " + card.State + " -> " + to + " is not an allowed transition")
+		s.setNotice(card.Number + ": " + to + " is not a state in the " + s.board.result.Type + " workflow")
 		return nil
 	}
 	if m.store == nil {

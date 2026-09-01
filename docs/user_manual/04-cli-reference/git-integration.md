@@ -906,16 +906,17 @@ ticket to its done state:
 
 ```console
 $ kira index --closes
-kira: forced off-graph transition TODO -> DONE
 index incremental (head-advanced): 6 items
 closed ACME-6 (Kira-Closes)
 ```
 
-The transition is forced, so it bypasses the workflow graph — a ticket in
-`TODO` goes straight to `DONE` without walking `IN_PROGRESS` and `REVIEW`, and
-kira says so. Tickets already done are skipped, as are tickets edited *after*
-the closing commit was made, on the assumption you reopened them deliberately.
-A watermark is recorded so the same commits are never scanned twice.
+A ticket in `TODO` goes straight to `DONE` without walking `IN_PROGRESS` and
+`REVIEW` — an ordinary move, since any state may reach any other. The move is
+forced, so it also closes a ticket whose blockers are still open, and kira
+warns when that happens. Tickets already done are skipped, as are tickets
+edited *after* the closing commit was made, on the assumption you reopened them
+deliberately. A watermark is recorded so the same commits are never scanned
+twice.
 
 **You rarely run this yourself.** `kira sync` runs it as its `closes` step, and
 so does the `post-merge` hook. Both are how a ticket closes itself when the

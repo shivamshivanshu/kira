@@ -48,20 +48,12 @@ workflows:
       - { key: IN_PROGRESS, category: doing }
       - { key: DONE,        category: done }
     initial: TODO
-    transitions:
-      TODO:        [IN_PROGRESS]
-      IN_PROGRESS: [DONE]
-      DONE:        []
   epic:
     states:
       - { key: PLANNED, category: todo }
       - { key: ACTIVE,  category: doing }
       - { key: DONE,    category: done }
     initial: PLANNED
-    transitions:
-      PLANNED: [ACTIVE]
-      ACTIVE:  [DONE]
-      DONE:    []
 
 commit:
   mode: prompt

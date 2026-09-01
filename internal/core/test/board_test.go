@@ -117,7 +117,7 @@ func TestBoardAtRendersHistoricalState(t *testing.T) {
 	}
 }
 
-func TestAdjacentAllowedMirrorsTransitionGraph(t *testing.T) {
+func TestAdjacentAllowedAcceptsAnyDeclaredState(t *testing.T) {
 	t.Parallel()
 	_, cfg := newStore(t)
 	cases := []struct {
@@ -125,20 +125,14 @@ func TestAdjacentAllowedMirrorsTransitionGraph(t *testing.T) {
 		want     bool
 	}{
 		{"TODO", "IN_PROGRESS", true},
-		{"IN_PROGRESS", "REVIEW", true},
-		{"DONE", "WONT_DO", false},
-		{"TODO", "DONE", false},
+		{"DONE", "WONT_DO", true},
+		{"TODO", "DONE", true},
+		{"DONE", "TODO", true},
+		{"TODO", "NOPE", false},
 	}
 	for _, c := range cases {
 		if got := core.AdjacentAllowed(cfg, datamodel.TypeTicket, c.from, c.to); got != c.want {
 			t.Errorf("AdjacentAllowed(%s->%s) = %v, want %v", c.from, c.to, got, c.want)
 		}
-	}
-
-	wf := cfg.Workflows[datamodel.TypeTicket]
-	wf.EnforceTransitions = false
-	cfg.Workflows[datamodel.TypeTicket] = wf
-	if !core.AdjacentAllowed(cfg, datamodel.TypeTicket, "TODO", "DONE") {
-		t.Error("EnforceTransitions=false must bypass the adjacency graph and allow TODO->DONE")
 	}
 }

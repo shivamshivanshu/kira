@@ -1,7 +1,7 @@
-# The reserved require token `blockers_closed` gates a transition on every
-# blocked_by target being in a done-category state: refuse by default, --force
-# downgrades to a warning, and an undeterminable blocker degrades to warn+pass
-# rather than bricking the move.
+# The blockers-closed guard gates every move into a done-category state on each
+# blocked_by target being done itself: refuse by default, --force downgrades to
+# a warning, and an undeterminable blocker degrades to warn+pass rather than
+# bricking the move.
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
@@ -11,19 +11,22 @@ exec git config user.name tester
 exec kira init --key KIRA
 cp config.yaml .kira/config.yaml
 exec git add -A
-exec git commit -m 'gate IN_PROGRESS on closed blockers'
+exec git commit -m 'a three-state ticket workflow'
 
 exec kira create ticket --title 'A' --no-edit
 exec kira create ticket --title 'B' --no-edit
 exec kira create ticket --title 'C' --no-edit
 exec kira link KIRA-1 --blocked-by KIRA-2
 
-# an open blocker refuses the move by default
-! exec kira move KIRA-1 IN_PROGRESS
+# a move to a state outside the done category is never gated
+exec kira move KIRA-1 IN_PROGRESS
+
+# an open blocker refuses a done-category move by default
+! exec kira move KIRA-1 DONE
 stderr 'blocked by open items'
 
 # --force downgrades the guard to a warning and still moves
-exec kira move KIRA-1 IN_PROGRESS --force
+exec kira move KIRA-1 DONE --force
 stderr 'forced past blocker guard'
 
 # a blocker in a state the workflow no longer declares (no known state
@@ -32,7 +35,7 @@ stderr 'forced past blocker guard'
 # the wrong entity type on write), just with a state config.yaml doesn't list.
 cp legacy-state.md .kira/tickets/01HXAGA0000000000000000000.md
 exec kira link KIRA-3 --blocked-by KIRA-77
-exec kira move KIRA-3 IN_PROGRESS
+exec kira move KIRA-3 DONE
 stderr 'no known state category'
 
 -- config.yaml --
@@ -47,11 +50,6 @@ workflows:
       - { key: IN_PROGRESS, category: doing }
       - { key: DONE,        category: done }
     initial: TODO
-    transitions:
-      TODO:        [{ to: IN_PROGRESS, require: [blockers_closed] }, DONE]
-      IN_PROGRESS: [DONE]
-      DONE:        []
-    enforce_transitions: true
 
 -- legacy-state.md --
 ---

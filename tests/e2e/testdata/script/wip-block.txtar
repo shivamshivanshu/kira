@@ -36,9 +36,4 @@ workflows:
       - {key: DOING, category: doing, wip: 1}
       - {key: DONE, category: done}
     initial: TODO
-    transitions:
-      TODO: [DOING]
-      DOING: [DONE, TODO]
-      DONE: []
-    enforce_transitions: true
     wip_policy: block

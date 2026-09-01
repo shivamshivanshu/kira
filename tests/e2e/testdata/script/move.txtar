@@ -1,4 +1,4 @@
-# move validates transitions, honors --force, and records the active pointer.
+# move validates the target state, honors --force, and records the active pointer.
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
@@ -8,21 +8,25 @@ exec git config user.name tester
 exec kira init --key KIRA
 exec kira create ticket --title 'M' --no-edit
 
-# an allowed transition commits a structured subject
+# a state change commits a structured subject
 exec kira move KIRA-1 IN_PROGRESS --json
 stdout '"from": "TODO"'
 stdout '"to": "IN_PROGRESS"'
 exec git log --oneline
 stdout 'kira: KIRA-1 state TODO -> IN_PROGRESS'
 
-# an off-graph move is rejected under enforce_transitions
-! exec kira move KIRA-1 DONE
-stderr 'not an allowed transition'
-
-# --force overrides the adjacency check, still an ordinary audited commit
-exec kira move KIRA-1 DONE --force
+# any declared state is reachable from any other: a direct jump to DONE lands
+# and stamps the target state's resolution
+exec kira move KIRA-1 DONE
 exec kira show KIRA-1 --json
 stdout '"state": "DONE"'
+stdout '"resolution": "done"'
+
+# and DONE is no longer terminal: moving back out clears the resolution
+exec kira move KIRA-1 IN_PROGRESS
+exec kira show KIRA-1 --json
+stdout '"state": "IN_PROGRESS"'
+stdout '"resolution": null'
 
 # an invalid state name is always an error, even under --force
 ! exec kira move KIRA-1 BOGUS --force
@@ -34,9 +38,9 @@ exec kira move KIRA-2 IN_PROGRESS --activate
 exists .kira/.cache/active
 grep '[0-9A-Z]{26}' .kira/.cache/active
 
-# init + 2 creates + 3 successful moves = 6 commits (rejected moves never commit)
+# init + 2 creates + 4 successful moves = 7 commits (rejected moves never commit)
 exec git rev-list --count HEAD
-stdout '^6$'
+stdout '^7$'
 
 # bulk: the last positional is the state, the rest are ids
 exec kira create ticket --title 'C' --no-edit

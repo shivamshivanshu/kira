@@ -173,7 +173,7 @@ The three differ only in *why* the field is off-limits, and that distinction is
 live for the built-in fields, where kira implements the real semantics behind
 each: `created` is `immutable` and is restored from the previous version on
 every write; `state` is `guarded` and changes only through `kira move`'s
-workflow transition check; `updated` and `aliases` are `system` and are
+workflow checks; `updated` and `aliases` are `system` and are
 recomputed by kira. Use the attribute that describes your intent, but treat all
 three as "read-only to `--field`" for a field of your own.
 
@@ -226,9 +226,8 @@ example below.
 #### `states` and its relationship to `workflows:`
 
 `states` is an inline list of `{key, category}` pairs on a `type: state` field.
-It is **descriptive**. The list of states an item may actually occupy, and the
-transitions between them, come from the `workflows:` block in
-`.kira/config.yaml` — not from the schema. kira validates an item's state
+It is **descriptive**. The list of states an item may actually occupy comes
+from the `workflows:` block in `.kira/config.yaml` — not from the schema. kira validates an item's state
 against `workflows.<type>` and deliberately ignores the schema's `states` array
 when doing so. Editing the schema's `states` to nonsense changes nothing:
 

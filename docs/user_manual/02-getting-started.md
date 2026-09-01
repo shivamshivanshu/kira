@@ -304,41 +304,37 @@ $ kira move DEMO-2 IN_PROGRESS
 Moved DEMO-2: TODO -> IN_PROGRESS
 ```
 
-The default workflow enforces its transition graph, so you cannot skip states:
+`state` is a plain enum: any state may move to any other state the workflow
+declares, forwards or backwards. Only an undeclared state is refused:
 
 ```console
-$ kira move DEMO-2 DONE
-kira: invalid item: IN_PROGRESS -> DONE is not an allowed transition
-  hint: allowed from IN_PROGRESS: REVIEW, TODO, WONT_DO (or `--force` to override)
+$ kira move DEMO-2 SHIPPED
+kira: invalid item: "SHIPPED" is not a state in the ticket workflow
+  hint: valid states: TODO, IN_PROGRESS, REVIEW, DONE, WONT_DO
 ```
 
-Go the legal way:
+So take the next step, or skip straight to the end — both work:
 
 ```console
 $ kira move DEMO-2 REVIEW
 Moved DEMO-2: IN_PROGRESS -> REVIEW
-```
 
-`REVIEW -> DONE` in the shipped default config carries a guard — it requires
-`resolution` to be set:
-
-```console
 $ kira move DEMO-2 DONE
-kira: invalid item: REVIEW -> DONE requires resolution to be set
-  hint: set resolution first, or use `--force` to override
-```
-
-Supply one and the move succeeds:
-
-```console
-$ kira move DEMO-2 DONE --resolution done
 Moved DEMO-2: REVIEW -> DONE
 ```
 
-> Note: this repository's own `.kira/config.yaml` uses a different guard on the
-> same edge — `require: [blockers_closed]`, which demands that every
-> `blocked_by` dependency is closed rather than that a resolution is set. The
-> guard is configuration; check your repo's with `kira config explain`.
+Landing in a `done` state stamps that state's declared `resolution:` — `done`
+for `DONE`, `dropped` for `WONT_DO` — unless you pass `--resolution` to record
+something else. Moving back out of `done` clears it again.
+
+The one thing a close does check is dependencies: a ticket with an open
+`blocked_by` cannot enter a `done` state.
+
+```console
+$ kira move DEMO-2 DONE
+kira: invalid item: REVIEW -> DONE is blocked by open items: DEMO-1
+  hint: close the blockers first, or use `--force` to override
+```
 
 States can also carry advisory WIP limits. The default gives `IN_PROGRESS` a
 limit of 3 under `wip_policy: warn`, so a fourth item warns but proceeds:

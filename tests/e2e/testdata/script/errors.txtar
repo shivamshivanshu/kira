@@ -50,17 +50,12 @@ stderr 'hint: valid states:'
 stderr 'is not a key in the configured sprints'
 stderr 'hint: no sprints are configured'
 
-# off-graph transition (DONE exists, but TODO->DONE is not allowed): lists allowed targets, not a typo suggestion
+# a done-category move with an open blocker: names the blockers it is waiting on
+exec kira create ticket --title 'Blocker' --no-edit
+exec kira link KIRA-1 --blocked-by KIRA-2
 ! exec kira move KIRA-1 DONE
-stderr 'is not an allowed transition'
-stderr 'hint: allowed from TODO: IN_PROGRESS, WONT_DO'
-
-# require guard on REVIEW -> DONE
-exec kira move KIRA-1 IN_PROGRESS
-exec kira move KIRA-1 REVIEW
-! exec kira move KIRA-1 DONE
-stderr 'requires resolution to be set'
-stderr 'hint: set resolution first'
+stderr 'is blocked by open items: KIRA-2'
+stderr 'hint: close the blockers first'
 
 # editor needed but ui.editor/$EDITOR/$VISUAL unset
 env EDITOR=

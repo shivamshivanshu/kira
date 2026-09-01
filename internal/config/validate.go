@@ -315,6 +315,9 @@ func validateWorkflow(name string, w datamodel.Workflow, c *datamodel.Config) er
 		if s.Wip < 0 {
 			return errx.User("config: workflows.%s.states[%s].wip: must be >= 0, got %d", name, s.Key, s.Wip)
 		}
+		if err := validateStateResolution(name, s, c); err != nil {
+			return err
+		}
 	}
 	if w.WipPolicy != "" {
 		if err := validateEnum(fmt.Sprintf("workflows.%s.wip_policy", name), w.WipPolicy, datamodel.WipPolicies...); err != nil {
@@ -327,41 +330,22 @@ func validateWorkflow(name string, w datamodel.Workflow, c *datamodel.Config) er
 	if !defined[w.Initial] {
 		return errx.User("config: workflows.%s.initial: %q is not a defined state", name, w.Initial)
 	}
-	for from, targets := range w.Transitions {
-		if !defined[from] {
-			return errx.User("config: workflows.%s.transitions: unknown state %q", name, from)
-		}
-		for _, t := range targets {
-			if t.To == "" {
-				return errx.User("config: workflows.%s.transitions.%s: transition without a target state", name, from)
-			}
-			if !defined[t.To] {
-				return errx.User("config: workflows.%s.transitions.%s: unknown target state %q", name, from, t.To)
-			}
-			if err := validateGuards(t, fmt.Sprintf("workflows.%s.transitions.%s", name, from), c); err != nil {
-				return err
-			}
-		}
-	}
 	return nil
 }
 
-func validateGuards(t datamodel.Transition, where string, c *datamodel.Config) error {
-	for _, f := range t.Require {
-		if f == datamodel.RequireBlockersClosed {
-			continue
-		}
-		if !slices.Contains(datamodel.MutableFields, f) {
-			return errx.User("config: %s: require names unknown field %q", where, f)
-		}
+// A state's resolution is what a move into it stamps on the item, so it has to
+// satisfy the same rules the item would: done-category only, and inside the
+// configured vocabulary.
+func validateStateResolution(name string, s datamodel.State, c *datamodel.Config) error {
+	if s.Resolution == "" {
+		return nil
 	}
-	for f, v := range t.Set {
-		if !slices.Contains(datamodel.MutableFields, f) {
-			return errx.User("config: %s: set names unknown field %q", where, f)
-		}
-		if vocab, ok := c.VocabFor(f); ok && len(vocab) > 0 && !slices.Contains(vocab, v) {
-			return errx.User("config: %s: set.%s: %q is not in the configured %s vocabulary", where, f, v, f)
-		}
+	where := fmt.Sprintf("config: workflows.%s.states[%s].resolution", name, s.Key)
+	if s.Category != datamodel.CategoryDone {
+		return errx.User("%s: only a done-category state may declare one, %s is %s", where, s.Key, s.Category)
+	}
+	if vocab, ok := c.VocabFor(datamodel.KeyResolution); ok && len(vocab) > 0 && !slices.Contains(vocab, s.Resolution) {
+		return errx.User("%s: %q is not in the configured resolutions vocabulary %v", where, s.Resolution, vocab)
 	}
 	return nil
 }

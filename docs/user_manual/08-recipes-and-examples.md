@@ -504,17 +504,16 @@ identity (repo)
 
 workflow: ticket (default)
   initial: TODO
-  enforce_transitions: true
   wip_policy: warn
-  TODO (todo): allowed from TODO: IN_PROGRESS, WONT_DO (or `--force` to override)
-  IN_PROGRESS (doing), wip 3/warn: allowed from IN_PROGRESS: REVIEW, TODO, WONT_DO (or `--force` to override)
+  TODO (todo)
+  IN_PROGRESS (doing), wip 3/warn
   ...
 ```
 
 `kira config explain` renders your repository's effective rules in prose, with
-the provenance of each one — so when a move is rejected as "not an allowed
-transition", this tells you which transitions *are* allowed and whether the rule
-came from the repository config, your user config, or the built-in default.
+the provenance of each one — so when a move is rejected over a WIP cap or an
+open blocker, this tells you the rule that stopped it and whether it came from
+the repository config, your user config, or the built-in default.
 It is the fastest answer to "why did that not work".
 
 ---

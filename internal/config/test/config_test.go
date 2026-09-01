@@ -102,22 +102,6 @@ func TestFilterSprintOverrides(t *testing.T) {
 	}
 }
 
-func TestEmptyVocabIsFreeForm(t *testing.T) {
-	t.Parallel()
-	yaml := "version: 1\nresolutions: []\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: A\n    transitions:\n      A: [{to: A, set: {resolution: bogus}}]\n"
-	if _, err := config.Parse([]byte(yaml)); err != nil {
-		t.Errorf("set with empty resolutions vocabulary must be free-form, got %v", err)
-	}
-}
-
-func TestRequireBlockersClosedAccepted(t *testing.T) {
-	t.Parallel()
-	yaml := "version: 1\nworkflows:\n  ticket:\n    states:\n      - {key: A, category: todo}\n      - {key: B, category: done}\n    initial: A\n    transitions:\n      A: [{to: B, require: [blockers_closed]}]\n"
-	if _, err := config.Parse([]byte(yaml)); err != nil {
-		t.Errorf("require: [blockers_closed] must be accepted, got %v", err)
-	}
-}
-
 func TestValidationRejections(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -187,53 +171,33 @@ func TestValidationRejections(t *testing.T) {
 		},
 		{
 			name:    "duplicate state",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n      - {key: A, category: done}\n    initial: A\n    transitions:\n      A: []\n",
+			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n      - {key: A, category: done}\n    initial: A\n",
 			wantKey: "workflows.bad.states",
 		},
 		{
 			name:    "invalid category",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: sideways}\n    initial: A\n    transitions:\n      A: []\n",
+			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: sideways}\n    initial: A\n",
 			wantKey: "workflows.bad.states[A].category",
 		},
 		{
 			name:    "initial not a defined state",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: Z\n    transitions:\n      A: []\n",
+			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: Z\n",
 			wantKey: "workflows.bad.initial",
 		},
 		{
-			name:    "transition from unknown state",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: A\n    transitions:\n      Z: [A]\n",
-			wantKey: "workflows.bad.transitions",
+			name:    "state resolution outside the vocabulary",
+			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: done, resolution: bogus}\n    initial: A\n",
+			wantKey: "workflows.bad.states[A].resolution",
 		},
 		{
-			name:    "transition to unknown target",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: A\n    transitions:\n      A: [B]\n",
-			wantKey: "workflows.bad.transitions.A",
+			name:    "resolution on a non-done state",
+			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: doing, resolution: done}\n    initial: A\n",
+			wantKey: "workflows.bad.states[A].resolution",
 		},
 		{
 			name:    "negative wip",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo, wip: -1}\n    initial: A\n    transitions:\n      A: []\n",
+			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo, wip: -1}\n    initial: A\n",
 			wantKey: "workflows.bad.states[A].wip",
-		},
-		{
-			name:    "guard map without target",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: A\n    transitions:\n      A: [{require: [resolution]}]\n",
-			wantKey: "workflows.bad.transitions.A",
-		},
-		{
-			name:    "require names unknown field",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: A\n    transitions:\n      A: [{to: A, require: [wibble]}]\n",
-			wantKey: "workflows.bad.transitions.A",
-		},
-		{
-			name:    "set names unknown field",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: A\n    transitions:\n      A: [{to: A, set: {wibble: x}}]\n",
-			wantKey: "workflows.bad.transitions.A",
-		},
-		{
-			name:    "set resolution outside vocabulary",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: A\n    transitions:\n      A: [{to: A, set: {resolution: bogus}}]\n",
-			wantKey: "set.resolution",
 		},
 		{
 			name:    "empty priorities entry",
