@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "Sync rebase loop cannot skip an empty commit and aborts with 'did not converge'"
 state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:05:11+02:00
-updated: 2026-08-31T16:12:04+02:00
+updated: 2026-09-01T10:25:57+02:00
 ---
 
 ## Description
