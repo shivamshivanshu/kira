@@ -21,7 +21,7 @@ func BenchmarkValidateExtras(b *testing.B) {
 			}
 			b.ReportAllocs()
 			for b.Loop() {
-				if v := ValidateExtras(schemas, cfg, it, codec.DecodeExtraScalar); len(v) > 0 {
+				if v := ValidateExtras(schemas, cfg, it, codec.DecodeExtraScalar, codec.DecodeScalar); len(v) > 0 {
 					b.Fatal(v)
 				}
 			}

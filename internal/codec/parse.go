@@ -125,7 +125,7 @@ func captureExtras(nodes map[string]*yaml.Node, add addFunc) (scalars map[string
 			if lists == nil {
 				lists = map[string][]string{}
 			}
-			lists[k] = scalarSeq(n, fmt.Sprintf("field %q", k), add)
+			lists[k] = extraScalarSeq(n, fmt.Sprintf("field %q", k), add)
 		default:
 			add("field %q: unsupported extra field shape, expected a scalar or list", k)
 		}
@@ -193,7 +193,13 @@ func isNull(n *yaml.Node) bool { return n.Kind == yaml.ScalarNode && n.Tag == "!
 // renderExtraScalar computes the faithful single-line YAML rendering of an
 // extra scalar node, to be emitted verbatim (never re-decoded through
 // EmitScalar, which would treat every value as a string and quote it).
-func renderExtraScalar(n *yaml.Node) string {
+func renderExtraScalar(n *yaml.Node) string { return renderExtra(n, EmitScalar) }
+
+// renderExtraListElement is renderExtraScalar for an element of a flow list,
+// where a plain scalar holding a comma or a bracket would split the list.
+func renderExtraListElement(n *yaml.Node) string { return renderExtra(n, emitFlowScalar) }
+
+func renderExtra(n *yaml.Node, emit func(string) string) string {
 	var s string
 	switch n.Tag {
 	case "!!null":
@@ -205,10 +211,10 @@ func renderExtraScalar(n *yaml.Node) string {
 	case "!!bool", "!!int", "!!float", "!!timestamp":
 		s = n.Value
 	default:
-		s = EmitScalar(n.Value)
+		s = emit(n.Value)
 	}
 	if strings.ContainsRune(s, '\n') {
-		s = EmitScalar(n.Value)
+		s = emit(n.Value)
 	}
 	return s
 }
@@ -320,13 +326,24 @@ func reqList(nodes map[string]*yaml.Node, key string, add addFunc) []string {
 }
 
 func scalarSeq(n *yaml.Node, label string, add addFunc) []string {
+	return mapScalarSeq(n, label, add, func(c *yaml.Node) string { return c.Value })
+}
+
+// extraScalarSeq captures a list extra as each element's faithful YAML text,
+// the way renderExtraScalar captures a scalar extra, so an element's type and
+// quoting survive a rewrite of the item.
+func extraScalarSeq(n *yaml.Node, label string, add addFunc) []string {
+	return mapScalarSeq(n, label, add, renderExtraListElement)
+}
+
+func mapScalarSeq(n *yaml.Node, label string, add addFunc, render func(*yaml.Node) string) []string {
 	out := make([]string, 0, len(n.Content))
 	for _, c := range n.Content {
 		if c.Kind != yaml.ScalarNode {
 			add("%s: list elements must be scalars", label)
 			continue
 		}
-		out = append(out, c.Value)
+		out = append(out, render(c))
 	}
 	return out
 }

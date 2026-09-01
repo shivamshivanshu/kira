@@ -128,7 +128,11 @@ func fieldString(it *datamodel.Item, field string) string {
 		return v
 	}
 	if v, ok := it.ExtraLists[field]; ok {
-		return strings.Join(v, ", ")
+		decoded := make([]string, len(v))
+		for i, elem := range v {
+			decoded[i] = codec.DecodeScalar(elem)
+		}
+		return strings.Join(decoded, ", ")
 	}
 	return "-"
 }

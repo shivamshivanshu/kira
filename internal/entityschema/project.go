@@ -8,12 +8,12 @@ import (
 
 // ProjectItem converts an Item into the values map Validate expects. Slices are
 // cloned so a caller can't mutate the source Item through the returned map.
-// decodeScalar recovers a declared scalar extra's typed value (e.g.
-// codec.DecodeExtraScalar); entityschema stays free of codec/yaml, so callers
-// inject it. A ref extra's value is a bare string either way, so it decodes to
-// a string regardless — fine for both a typed validator and doctor's
-// refStrings.
-func ProjectItem(schema Schema, it *datamodel.Item, decodeScalar func(string) any) map[string]any {
+// Extras are stored as their rendered YAML, so both decoders recover the value
+// behind that text (e.g. codec.DecodeExtraScalar and codec.DecodeScalar);
+// entityschema stays free of codec/yaml, so callers inject them. List elements
+// decode to strings because a list field's type is string-valued by schema
+// rule — which is what both the validator and doctor's refStrings expect.
+func ProjectItem(schema Schema, it *datamodel.Item, decodeScalar func(string) any, decodeListElement func(string) string) map[string]any {
 	values := map[string]any{
 		"title":      it.Title,
 		"state":      it.State,
@@ -48,7 +48,7 @@ func ProjectItem(schema Schema, it *datamodel.Item, decodeScalar func(string) an
 		values[k] = decodeScalar(v)
 	}
 	for k, v := range it.ExtraLists {
-		values[k] = slices.Clone(v)
+		values[k] = decodeList(v, decodeListElement)
 	}
 	return values
 }
@@ -58,7 +58,7 @@ func ProjectItem(schema Schema, it *datamodel.Item, decodeScalar func(string) an
 // rather than going through ProjectItem: this runs per row on every listing,
 // and ProjectItem parses the whole body to build a map whose built-in keys are
 // all discarded here.
-func CustomFields(schema Schema, it *datamodel.Item, decodeScalar func(string) any) map[string]any {
+func CustomFields(schema Schema, it *datamodel.Item, decodeScalar func(string) any, decodeListElement func(string) string) map[string]any {
 	var customValues map[string]any
 	put := func(name string, value any) {
 		if customValues == nil {
@@ -72,7 +72,7 @@ func CustomFields(schema Schema, it *datamodel.Item, decodeScalar func(string) a
 		}
 		if f.List {
 			if list, ok := it.ExtraLists[f.Name]; ok {
-				put(f.Name, slices.Clone(list))
+				put(f.Name, decodeList(list, decodeListElement))
 			}
 			continue
 		}
@@ -105,7 +105,7 @@ func (f FieldDef) IsCustomFrontmatter() bool {
 // schema declares — builtin fields keep their existing validators, so nothing
 // is double-reported. Enum vocabularies resolve through ResolveEnums: inline
 // schema enums, overridden by config vocab.
-func ValidateExtras(schemas map[string]Schema, cfg *datamodel.Config, it *datamodel.Item, decodeScalar func(string) any) []Violation {
+func ValidateExtras(schemas map[string]Schema, cfg *datamodel.Config, it *datamodel.Item, decodeScalar func(string) any, decodeListElement func(string) string) []Violation {
 	schema, ok := schemas[it.Type]
 	if !ok {
 		return nil
@@ -114,7 +114,15 @@ func ValidateExtras(schemas map[string]Schema, cfg *datamodel.Config, it *datamo
 	if len(extras.Fields) == 0 {
 		return nil
 	}
-	return Validate(extras, ProjectItem(extras, it, decodeScalar), ResolveEnums(schema, ConfigVocab(cfg)), nil)
+	return Validate(extras, ProjectItem(extras, it, decodeScalar, decodeListElement), ResolveEnums(schema, ConfigVocab(cfg)), nil)
+}
+
+func decodeList(stored []string, decodeListElement func(string) string) []string {
+	out := make([]string, len(stored))
+	for i, elem := range stored {
+		out[i] = decodeListElement(elem)
+	}
+	return out
 }
 
 func extrasOnly(schema Schema) Schema {

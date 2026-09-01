@@ -4,9 +4,11 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/entityschema"
@@ -95,6 +97,38 @@ func TestApplyFieldEditDeclaredExtraList(t *testing.T) {
 	}
 	if _, ok := it.ExtraLists["tags"]; ok {
 		t.Error("--field key= must clear the list extra")
+	}
+}
+
+// A list extra is stored as its rendered YAML, so --field must write the same
+// encoding the parser produces: two encodings of one value in the same map
+// make merge set-operations and query comparisons miss silently.
+func TestApplyFieldEditListExtraMatchesParsedEncoding(t *testing.T) {
+	schema := extraFieldSchema(t)
+	it := &datamodel.Item{
+		ID:      "01J8X8Q7RZTN5Y3VXW2A9K4E7F",
+		Number:  "KIRA-1",
+		Type:    "ticket",
+		Title:   "t",
+		State:   "TODO",
+		Created: "2026-07-10T09:14:00+05:30",
+		Updated: "2026-07-10T09:14:00+05:30",
+	}
+	if err := applyFieldEdit(it, "tags", "42,null,x[y,plain", schema); err != nil {
+		t.Fatalf("set list extra: %v", err)
+	}
+	reparsed, err := codec.Parse(codec.Serialize(it))
+	if err != nil {
+		t.Fatalf("re-parse: %v", err)
+	}
+	if !slices.Equal(reparsed.ExtraLists["tags"], it.ExtraLists["tags"]) {
+		t.Fatalf("--field stored %v, parsing the file it serializes to yields %v",
+			it.ExtraLists["tags"], reparsed.ExtraLists["tags"])
+	}
+	want := []string{"42", "null", "x[y", "plain"}
+	got, _ := entityschema.CustomFields(schema, it, codec.DecodeExtraScalar, codec.DecodeScalar)["tags"].([]string)
+	if !slices.Equal(got, want) {
+		t.Fatalf("tags read back as %v, want %v", got, want)
 	}
 }
 
