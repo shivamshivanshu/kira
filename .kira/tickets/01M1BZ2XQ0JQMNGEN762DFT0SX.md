@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "DECISION: --field k=v filtering on kira list"
 state: DONE
+resolution: done
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:10:37+02:00
-updated: 2026-08-31T23:51:34+02:00
+updated: 2026-09-01T10:26:00+02:00
 ---
 
 ## Description
