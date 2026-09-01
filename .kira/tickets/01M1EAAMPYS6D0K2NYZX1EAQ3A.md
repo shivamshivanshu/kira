@@ -4,7 +4,8 @@ number: KIRA-154
 aliases: []
 type: ticket
 title: "commutative_test never randomizes extras or ExtraLinks"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
