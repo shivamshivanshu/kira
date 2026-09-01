@@ -10,8 +10,6 @@ const (
 	SeverityInfo    Severity = "info"
 )
 
-var Severities = []Severity{SeverityError, SeverityWarning, SeverityInfo}
-
 type Class string
 
 const (
@@ -22,7 +20,7 @@ const (
 	ClassCollision     Class = "id-collision"
 	ClassCycle         Class = "epic-cycle"
 	ClassRefCycle      Class = "ref-cycle"
-	ClassEpicKind      Class = "epic-kind"
+	ClassRefType       Class = "ref-type"
 	ClassComment       Class = "comment"
 	ClassFreshness     Class = "index-freshness"
 	ClassHooks         Class = "hooks"
@@ -30,17 +28,9 @@ const (
 	ClassBoard         Class = "board"
 	ClassNumberOutlier Class = "number-outlier"
 	ClassStray         Class = "stray-file"
-	ClassRefKind       Class = "ref-kind"
 	ClassStateDrift    Class = "state-drift"
 	ClassWipLimit      Class = "wip-limit"
 )
-
-var Classes = []Class{
-	ClassSchema, ClassState, ClassVocab, ClassRef, ClassCollision,
-	ClassCycle, ClassRefCycle, ClassEpicKind, ClassComment, ClassFreshness,
-	ClassHooks, ClassEnv, ClassBoard, ClassNumberOutlier, ClassStray,
-	ClassRefKind, ClassStateDrift, ClassWipLimit,
-}
 
 type CollisionKind string
 
@@ -49,6 +39,15 @@ const (
 	CollisionLiveAlias  CollisionKind = "live-alias"
 	CollisionAliasAlias CollisionKind = "alias-alias"
 )
+
+var Severities = []Severity{SeverityError, SeverityWarning, SeverityInfo}
+
+var Classes = []Class{
+	ClassSchema, ClassState, ClassVocab, ClassRef, ClassCollision, ClassCycle,
+	ClassRefCycle, ClassRefType, ClassComment, ClassFreshness, ClassHooks,
+	ClassEnv, ClassBoard, ClassNumberOutlier, ClassStray, ClassStateDrift,
+	ClassWipLimit,
+}
 
 var CollisionKinds = []CollisionKind{CollisionLiveLive, CollisionLiveAlias, CollisionAliasAlias}
 

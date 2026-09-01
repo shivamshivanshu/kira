@@ -6,12 +6,13 @@ type: ticket
 subtype: task
 title: "query: field-spec table, Match typechecking and notes, datetime day comparison, priority capture"
 state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:24:46+05:30
-updated: 2026-07-16T19:51:54+05:30
+updated: 2026-07-28T14:27:59+05:30
 ---
 
 ## Description

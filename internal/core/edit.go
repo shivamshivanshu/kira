@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -88,19 +89,22 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		}
 	}
 
+	schemas, err := s.schemas()
+	if err != nil {
+		return nil, err
+	}
+	schema := schemas[orig.Type]
+	vctx := newValidationCtx(cfg, items, resolver, schema, opts.Force)
+
 	var updated *datamodel.Item
 	var warns []error
 	finish := func(it *datamodel.Item) error {
-		schemas, err := s.Schemas()
-		if err != nil {
-			return err
-		}
-		restoreImmutable(schemas, it, orig)
-		guardErrs, guardWarns := applyEditGuards(cfg, orig, it, opts.Force, resolver, items)
+		restoreImmutable(it, orig, schema)
+		guardErrs, guardWarns := applyEditGuards(cfg, orig, it, opts.Force, resolver, items, schema)
 		if len(guardErrs) > 0 {
 			return errx.Invalid(invalidItemPrefix, guardErrs)
 		}
-		errs, w := s.validateMutation(cfg, orig, it, resolver, items, opts.Force)
+		errs, w := vctx.validateMutation(orig, it)
 		if len(errs) > 0 {
 			return errx.Invalid(invalidItemPrefix, errs)
 		}
@@ -111,19 +115,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 	switch {
 	case len(opts.Fields) > 0 || opts.Description != nil:
 		it := cloneItem(orig)
-		var errs []error
-		for _, fe := range opts.Fields {
-			value := fe.Value
-			if fe.Key == datamodel.KeyOwner || fe.Key == datamodel.KeyReporter {
-				if value, err = s.resolveMe(cfg, fe.Value); err != nil {
-					return nil, err
-				}
-			}
-			if err := s.editField(it, fe.Key, value); err != nil {
-				errs = append(errs, err)
-			}
-		}
-		if len(errs) > 0 {
+		if errs := s.applyFieldEdits(cfg, it, opts.Fields, schema); len(errs) > 0 {
 			return nil, errx.Invalid(invalidItemPrefix, errs)
 		}
 		if opts.Description != nil {
@@ -152,7 +144,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		}
 	}
 
-	changed := datamodel.ChangedFields(orig, updated)
+	changed := changedKeys(orig, updated)
 	subject := cfg.Commit.SubjectPrefix + updated.Number + " edit " + strings.Join(changed, ",")
 	finalWarns, err := s.commitMutation(cfg, orig, updated, changed, warns, subject, datamodel.SourceCLI)
 	if err != nil {
@@ -167,26 +159,14 @@ func (b *Batch) EditFields(ref string, fields []FieldEdit, force bool) (*datamod
 	if err != nil {
 		return nil, err
 	}
+	schema := b.schemas[orig.Type]
 	var changed []string
 	apply := func(it *datamodel.Item, resolver *id.Resolver, items []*datamodel.Item) (hard, warns []error) {
-		for _, field := range fields {
-			value := field.Value
-			if field.Key == datamodel.KeyOwner || field.Key == datamodel.KeyReporter {
-				var err error
-				value, err = b.store.resolveMe(b.cfg, value)
-				if err != nil {
-					return []error{err}, nil
-				}
-			}
-			if err := b.store.editField(it, field.Key, value); err != nil {
-				hard = append(hard, err)
-			}
+		if errs := b.store.applyFieldEdits(b.cfg, it, fields, schema); len(errs) > 0 {
+			return errs, nil
 		}
-		if len(hard) > 0 {
-			return hard, nil
-		}
-		hard, warns = applyEditGuards(b.cfg, orig, it, force, resolver, items)
-		changed = datamodel.ChangedFields(orig, it)
+		hard, warns = applyEditGuards(b.cfg, orig, it, force, resolver, items, schema)
+		changed = changedKeys(orig, it)
 		return hard, warns
 	}
 	subject := func(it *datamodel.Item) string {
@@ -204,7 +184,7 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 	if err != nil {
 		return "", "", err
 	}
-	if err := s.guardWritable(orig); err != nil {
+	if err := guardWritable(orig); err != nil {
 		return "", "", err
 	}
 	// Snapshot raw bytes, not `updated`: comment appends deliberately never bump it.
@@ -212,27 +192,29 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 	if err != nil {
 		return "", "", err
 	}
-	schemas, err := s.Schemas()
+	schemas, err := s.schemas()
 	if err != nil {
 		return "", "", err
 	}
+	schema := schemas[orig.Type]
+	vctx := newValidationCtx(cfg, items, resolver, schema, opts.Force)
 	content, err := runEditor(cfg.UI.Editor, opts.Stdio, codec.Serialize(orig), func(c string) []error {
 		it, errs := parseFullItem(c)
 		if len(errs) > 0 {
 			return errs
 		}
-		restoreImmutable(schemas, it, orig)
-		if hard, _ := applyEditGuards(cfg, orig, it, opts.Force, resolver, items); len(hard) > 0 {
+		restoreImmutable(it, orig, schema)
+		if hard, _ := applyEditGuards(cfg, orig, it, opts.Force, resolver, items, schema); len(hard) > 0 {
 			return hard
 		}
-		hard, _ := s.validateMutation(cfg, orig, it, resolver, items, opts.Force)
+		hard, _ := vctx.validateMutation(orig, it)
 		return hard
 	})
 	return content, snapshot, err
 }
 
-func applyEditGuards(cfg *datamodel.Config, orig, it *datamodel.Item, force bool, resolver *id.Resolver, items []*datamodel.Item) (hard, warns []error) {
-	if hard := normalizeAndCheckRefs(it, resolver); len(hard) > 0 {
+func applyEditGuards(cfg *datamodel.Config, orig, it *datamodel.Item, force bool, resolver *id.Resolver, items []*datamodel.Item, schema entityschema.Schema) (hard, warns []error) {
+	if hard := normalizeAndCheckRefs(it, resolver, schema); len(hard) > 0 {
 		return hard, nil
 	}
 	if it.State == orig.State {
@@ -266,85 +248,65 @@ func parseFullItem(content string) (*datamodel.Item, []error) {
 
 // restoreImmutable reverts every field the editor and --from-file paths may
 // not change: the builtin identity fields, plus the extras orig's schema
-// declares immutable. Copy also covers a deletion, since it clears a key
-// absent from orig.
-func restoreImmutable(schemas map[string]entityschema.Schema, it, orig *datamodel.Item) {
+// declares immutable. copyExtra also covers a deletion, since a key absent
+// from orig is cleared rather than left as the buffer wrote it.
+func restoreImmutable(it, orig *datamodel.Item, schema entityschema.Schema) {
 	it.ID = orig.ID
 	it.Number = orig.Number
 	it.Type = orig.Type
 	it.Created = orig.Created
 	it.Aliases = orig.Aliases
-	for _, f := range schemas[orig.Type].Fields {
-		if f.Immutable && f.Placement == entityschema.PlacementFrontmatter {
-			datamodel.ExtraField(f.Name, f.List).Copy(it, orig)
+	for _, f := range schema.Fields {
+		if f.Immutable && f.IsCustomFrontmatter() {
+			copyExtra(it, orig, f.Name)
 		}
 	}
 }
 
-func applyFieldEdit(it *datamodel.Item, key, value string) error {
-	d, ok := datamodel.Field(key)
-	if !ok || d.Set == nil {
-		return fieldEditError(key, nil)
+// applyFieldEdits reports one error per offending field so a caller can surface
+// them together; an unresolvable @me stops the pass, since every field after it
+// would fail identically.
+func (s *Store) applyFieldEdits(cfg *datamodel.Config, it *datamodel.Item, fields []FieldEdit, schema entityschema.Schema) []error {
+	var errs []error
+	for _, fe := range fields {
+		value := fe.Value
+		if fe.Key == datamodel.KeyOwner || fe.Key == datamodel.KeyReporter {
+			resolved, err := s.resolveMe(cfg, fe.Value)
+			if err != nil {
+				return append(errs, err)
+			}
+			value = resolved
+		}
+		if err := applyFieldEdit(it, fe.Key, value, schema); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return d.Set(it, value)
+	return errs
 }
 
-func fieldEditError(key string, extras []string) error {
-	return errx.User("--field: unknown or immutable field %q", key).WithHint("%s", fieldHint(key, extras))
-}
-
-func (s *Store) editField(it *datamodel.Item, key, value string) error {
-	if d, ok := datamodel.Field(key); ok && d.Set != nil {
+func applyFieldEdit(it *datamodel.Item, key, value string, schema entityschema.Schema) error {
+	if d, ok := datamodel.Field(key); ok {
+		if d.Set == nil {
+			return fieldEditError(key, schema)
+		}
 		return d.Set(it, value)
 	}
-	return s.editExtraField(it, key, value)
-}
-
-func (s *Store) editExtraField(it *datamodel.Item, key, value string) error {
-	schemas, err := s.Schemas()
-	if err != nil {
-		return err
+	f, ok := schema.Field(key)
+	if !ok || !fieldEditableViaFlag(f) {
+		return fieldEditError(key, schema)
 	}
-	f, ok := entityschema.DeclaredExtra(schemas, it.Type, key)
-	if !ok || f.Immutable {
-		return fieldEditError(key, editableExtras(schemas, it.Type))
-	}
-	stored, err := storedExtraValue(f, value)
-	if err != nil {
-		return err
-	}
-	return datamodel.ExtraField(key, f.List).Set(it, stored)
-}
-
-// storedExtraValue renders raw --field input into the canonical YAML text form
-// parsing captures, so a set-then-serialize emits exactly what a re-parse
-// stores.
-func storedExtraValue(f entityschema.FieldDef, value string) (string, error) {
-	if f.List {
-		elems := datamodel.SplitCSV(value)
-		rendered := make([]string, len(elems))
-		for i, e := range elems {
-			r, ok := codec.RenderFlowElem(e)
-			if !ok {
-				return "", extraValueError(f.Name, e)
-			}
-			rendered[i] = r
+	if f.Placement == entityschema.PlacementBody {
+		if datamodel.ContainsSectionHeading(value) {
+			return errx.User("--field %q: a body-section value cannot contain a \"## \" heading line", key)
 		}
-		return strings.Join(rendered, ","), nil
+		it.Body = datamodel.UpsertBodySection(it.Body, f.Section, value)
+		return nil
 	}
-	if value == "" {
-		return "", nil
-	}
-	r, ok := codec.RenderScalar(value)
-	if !ok {
-		return "", extraValueError(f.Name, value)
-	}
-	return r, nil
+	return setSchemaExtra(it, f, value)
 }
 
-func extraValueError(name, value string) error {
-	return errx.User("--field %s: value %q cannot be stored in frontmatter", name, value).
-		WithHint("values must fit one line; clear with `--field %s=`", name)
+func fieldEditError(key string, schema entityschema.Schema) error {
+	return errx.User("--field: unknown or immutable field %q", key).WithHint("%s", fieldHint(key, schema))
 }
 
 func replaceDescription(it, orig *datamodel.Item, description string) error {
@@ -367,7 +329,9 @@ func cloneItem(src *datamodel.Item) *datamodel.Item {
 	dst.Aliases = slices.Clone(src.Aliases)
 	dst.Labels = slices.Clone(src.Labels)
 	dst.BlockedBy = slices.Clone(src.BlockedBy)
-	dst.Links = datamodel.CloneLinks(src.Links)
-	dst.Extras = datamodel.CloneExtras(src.Extras)
+	dst.Links = datamodel.CloneStringListMap(src.Links)
+	dst.ExtraLinks = datamodel.CloneStringListMap(src.ExtraLinks)
+	dst.ExtraScalars = maps.Clone(src.ExtraScalars)
+	dst.ExtraLists = datamodel.CloneStringListMap(src.ExtraLists)
 	return &dst
 }

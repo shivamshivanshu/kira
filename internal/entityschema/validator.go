@@ -8,8 +8,19 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
+type ViolationCode string
+
+const (
+	CodeRequired ViolationCode = "required"
+	CodeType     ViolationCode = "type"
+	CodeEnum     ViolationCode = "enum"
+	CodeState    ViolationCode = "state"
+	CodeRef      ViolationCode = "ref"
+)
+
 type Violation struct {
 	Field   string
+	Code    ViolationCode
 	Message string
 }
 
@@ -20,20 +31,22 @@ type RefResolver interface {
 	Exists(target, id string) bool
 }
 
-// Validate is pure. values is keyed by FieldDef.Name (absent or nil means
-// unset; list fields use []string). A field name absent from enums is an open
-// vocabulary and is not membership-checked.
+type addFunc func(field string, code ViolationCode, format string, args ...any)
+
+// Validate is pure. values is keyed by FieldDef.Name (absent, nil, or an empty
+// string means unset; list fields use []string). A field name absent from
+// enums is an open vocabulary and is not membership-checked.
 func Validate(schema Schema, values map[string]any, enums map[string][]string, refs RefResolver) []Violation {
 	var out []Violation
-	add := func(field, format string, args ...any) {
-		out = append(out, Violation{Field: field, Message: fmt.Sprintf(format, args...)})
+	add := func(field string, code ViolationCode, format string, args ...any) {
+		out = append(out, Violation{Field: field, Code: code, Message: fmt.Sprintf(format, args...)})
 	}
 
 	for _, f := range schema.Fields {
 		v, present := values[f.Name]
-		if !present || v == nil {
+		if !present || v == nil || (!f.List && isBlank(v)) {
 			if f.Required {
-				add(f.Name, "required, missing")
+				add(f.Name, CodeRequired, "required, missing")
 			}
 			continue
 		}
@@ -42,18 +55,23 @@ func Validate(schema Schema, values map[string]any, enums map[string][]string, r
 	return out
 }
 
-func validateField(f FieldDef, v any, enums map[string][]string, refs RefResolver, add func(field, format string, args ...any)) {
+func isBlank(v any) bool {
+	s, ok := v.(string)
+	return ok && s == ""
+}
+
+func validateField(f FieldDef, v any, enums map[string][]string, refs RefResolver, add addFunc) {
 	if f.List {
 		list, ok := v.([]string)
 		if !ok {
-			add(f.Name, "expected a list, got %T", v)
+			add(f.Name, CodeType, "expected a list, got %T", v)
 			return
 		}
 		seen := make(map[string]bool, len(list))
 		for _, elem := range list {
 			if f.Unique {
 				if seen[elem] {
-					add(f.Name, "duplicate value %q in a unique list", elem)
+					add(f.Name, CodeType, "duplicate value %q in a unique list", elem)
 				}
 				seen[elem] = true
 			}
@@ -64,21 +82,28 @@ func validateField(f FieldDef, v any, enums map[string][]string, refs RefResolve
 	validateScalar(f, v, enums, refs, add)
 }
 
-func validateScalar(f FieldDef, v any, enums map[string][]string, refs RefResolver, add func(field, format string, args ...any)) {
+// validateScalar checks a ref field's existence against RefResolver when it
+// targets another entity (no config-vocab Source), and against enums when it
+// is instead a config-vocab-backed reference (e.g. owner/reporter -> person).
+func validateScalar(f FieldDef, v any, enums map[string][]string, refs RefResolver, add addFunc) {
 	if !checkType(f, v, add) {
 		return
 	}
 	switch f.Type {
 	case FieldEnum, FieldResolution:
-		checkEnumMembership(f, v.(string), enums, add)
+		checkEnumMembership(f.Name, f.Enum, v.(string), enums, add)
 	case FieldState:
 		checkStateMembership(f, v.(string), add)
 	case FieldRef:
-		checkRefExists(f, v.(string), refs, add)
+		if f.Source != "" {
+			checkEnumMembership(f.Name, f.Target, v.(string), enums, add)
+		} else {
+			checkRefExists(f, v.(string), refs, add)
+		}
 	}
 }
 
-func checkType(f FieldDef, v any, add func(field, format string, args ...any)) bool {
+func checkType(f FieldDef, v any, add addFunc) bool {
 	ok := false
 	switch f.Type {
 	case FieldString, FieldMarkdown, FieldEnum, FieldState, FieldResolution, FieldRef:
@@ -90,14 +115,12 @@ func checkType(f FieldDef, v any, add func(field, format string, args ...any)) b
 	case FieldBool:
 		_, ok = v.(bool)
 	case FieldDate:
-		s, isStr := v.(string)
-		ok = isStr && datamodel.ValidDate(s)
+		ok = isTemporal(v, datamodel.ValidDate)
 	case FieldDatetime:
-		s, isStr := v.(string)
-		ok = isStr && validDatetime(s)
+		ok = isTemporal(v, validDatetime)
 	}
 	if !ok {
-		add(f.Name, "expected type %s, got %T", f.Type, v)
+		add(f.Name, CodeType, "expected type %s, got %T", f.Type, v)
 	}
 	return ok
 }
@@ -113,32 +136,32 @@ func stringRepresented(t FieldType) bool {
 	return false
 }
 
-func checkEnumMembership(f FieldDef, value string, enums map[string][]string, add func(field, format string, args ...any)) {
-	if f.Enum == "" {
+func checkEnumMembership(field, vocabName, value string, enums map[string][]string, add addFunc) {
+	if vocabName == "" {
 		return
 	}
-	allowed, ok := enums[f.Enum]
+	allowed, ok := enums[vocabName]
 	if !ok {
 		return
 	}
 	if !slices.Contains(allowed, value) {
-		add(f.Name, "value %q is not in the %q vocabulary", value, f.Enum)
+		add(field, CodeEnum, "value %q is not in the %q vocabulary", value, vocabName)
 	}
 }
 
-func checkStateMembership(f FieldDef, value string, add func(field, format string, args ...any)) {
+func checkStateMembership(f FieldDef, value string, add addFunc) {
 	if slices.ContainsFunc(f.States, func(s StateValue) bool { return s.Key == value }) {
 		return
 	}
-	add(f.Name, "value %q is not one of the declared states", value)
+	add(f.Name, CodeState, "value %q is not one of the declared states", value)
 }
 
-func checkRefExists(f FieldDef, value string, refs RefResolver, add func(field, format string, args ...any)) {
+func checkRefExists(f FieldDef, value string, refs RefResolver, add addFunc) {
 	if refs == nil || f.Target == "" {
 		return
 	}
 	if !refs.Exists(f.Target, value) {
-		add(f.Name, "references a non-existent %s %q", f.Target, value)
+		add(f.Name, CodeRef, "references a non-existent %s %q", f.Target, value)
 	}
 }
 
@@ -165,4 +188,16 @@ func isWholeNumber(v any) bool {
 func validDatetime(s string) bool {
 	_, err := time.Parse(time.RFC3339, s)
 	return err == nil
+}
+
+// A hand-edited unquoted date decodes to time.Time rather than a string, so
+// both spellings have to satisfy a temporal field.
+func isTemporal(v any, validText func(string) bool) bool {
+	switch t := v.(type) {
+	case string:
+		return validText(t)
+	case time.Time:
+		return true
+	}
+	return false
 }

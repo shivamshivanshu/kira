@@ -3,7 +3,6 @@ package core
 import (
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/config"
@@ -16,11 +15,11 @@ import (
 )
 
 type Store struct {
-	root        string
-	store       *storage.FS
-	prompter    Prompter
-	schemaCache map[string]entityschema.Schema
-	trust       string
+	root         string
+	store        *storage.FS
+	prompter     Prompter
+	schemasCache map[string]entityschema.Schema
+	trust        string
 }
 
 func newStore(root string) *Store {
@@ -54,17 +53,6 @@ func (s *Store) WithPrompter(p Prompter) *Store {
 
 func (s *Store) fs() *storage.FS { return s.store }
 
-func (s *Store) Schemas() (map[string]entityschema.Schema, error) {
-	if s.schemaCache == nil {
-		schemas, err := entityschema.Load(s.fs().SchemaDir())
-		if err != nil {
-			return nil, errx.User("%v", err)
-		}
-		s.schemaCache = schemas
-	}
-	return s.schemaCache, nil
-}
-
 func (s *Store) Root() string { return s.root }
 
 func (s *Store) Config() (*datamodel.Config, error) {
@@ -76,6 +64,21 @@ func (s *Store) Config() (*datamodel.Config, error) {
 }
 
 func (s *Store) LoadAll() ([]*datamodel.Item, []string, error) { return s.fs().LoadAll() }
+
+// schemas caches its result on s for the lifetime of the command: interactive
+// create/edit resolve it once up front and again after locking, and a Store
+// is never shared across concurrent commands.
+func (s *Store) schemas() (map[string]entityschema.Schema, error) {
+	if s.schemasCache != nil {
+		return s.schemasCache, nil
+	}
+	schemas, err := entityschema.Load(s.fs().SchemaDir())
+	if err != nil {
+		return nil, errx.Env("loading %s: %v", s.fs().RelToRoot(s.fs().SchemaDir()), err)
+	}
+	s.schemasCache = schemas
+	return schemas, nil
+}
 
 func (s *Store) itemPath(ulid string) string { return s.fs().ItemPath(ulid) }
 
@@ -171,18 +174,10 @@ func (s *Store) ResolveItemFile(cfg *datamodel.Config, ref string) (string, stri
 	return path, string(data), nil
 }
 
-func (s *Store) guardWritable(items ...*datamodel.Item) error {
-	schemas, err := s.Schemas()
-	if err != nil {
-		return err
-	}
+func guardWritable(items ...*datamodel.Item) error {
 	for _, it := range items {
 		if it == nil {
 			continue
-		}
-		if names := slices.Concat(blockingUnknownKeys(schemas, it), it.UnknownLinkTypes); len(names) > 0 {
-			return errx.Env("this item uses fields from a newer kira: %s", strings.Join(names, ", ")).
-				WithHint("upgrade kira, then retry: `go install github.com/shivamshivanshu/kira/cmd/kira@latest`")
 		}
 		if it.CRLF {
 			return errx.Env("this item has CRLF line endings, which kira cannot rewrite byte-stably").
@@ -190,22 +185,6 @@ func (s *Store) guardWritable(items ...*datamodel.Item) error {
 		}
 	}
 	return nil
-}
-
-// blockingUnknownKeys keeps the write block for every unknown key except one
-// the item's schema declares as a frontmatter extra AND parsing captured into
-// Extras: a declared key holding an uncapturable value (mapping, null) must
-// still block, or a rewrite would silently drop it.
-func blockingUnknownKeys(schemas map[string]entityschema.Schema, it *datamodel.Item) []string {
-	var out []string
-	for _, k := range it.UnknownKeys {
-		_, declared := entityschema.DeclaredExtra(schemas, it.Type, k)
-		if _, captured := it.Extras[k]; declared && captured {
-			continue
-		}
-		out = append(out, k)
-	}
-	return out
 }
 
 func findByULID(items []*datamodel.Item, ulid string) *datamodel.Item {

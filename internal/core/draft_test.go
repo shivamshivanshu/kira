@@ -5,33 +5,30 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"strings"
 	"testing"
 
-	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/editorx"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 func TestDraftRoundTrip(t *testing.T) {
 	est := 3.0
 	d := draft{
-		Title:    "Fix race",
-		Type:     "ticket",
-		Subtype:  new("bug"),
-		Priority: new("P1"),
-		Rank:     new("0|m:"),
-		Owner:    new("shivam"),
-		Labels:   []string{"bug", "perf"},
-		Sprint:   new("2026-S14"),
-		Due:      new("2026-07-20"),
-		Estimate: &est,
-		Extras: map[string]datamodel.ExtraValue{
-			"severity": {Scalar: new("high")},
-			"watchers": {List: []string{"alice", "bob"}},
-		},
-		Body: "\n## Description\n\nbody text\n",
+		Title:        "Fix race",
+		Type:         "ticket",
+		Subtype:      new("bug"),
+		Priority:     new("P1"),
+		Rank:         new("0|m:"),
+		Owner:        new("shivam"),
+		Labels:       []string{"bug", "perf"},
+		Sprint:       new("2026-S14"),
+		Due:          new("2026-07-20"),
+		Estimate:     &est,
+		ExtraScalars: map[string]string{"severity": "high"},
+		ExtraLists:   map[string][]string{"watchers": {"alice", "bob"}},
+		Body:         "\n## Description\n\nbody text\n",
 	}
 	got, err := parseDraft(serializeDraft(d))
 	if err != nil {
@@ -58,8 +55,8 @@ func TestDraftRoundTrip(t *testing.T) {
 	if len(got.Labels) != 2 || got.Estimate == nil || *got.Estimate != est {
 		t.Fatalf("labels/estimate lost: %+v", got)
 	}
-	if !reflect.DeepEqual(got.Extras, d.Extras) || !slices.Equal(got.Unknown, []string{"severity", "watchers"}) {
-		t.Fatalf("extras lost: %+v (unknown %v)", got.Extras, got.Unknown)
+	if !reflect.DeepEqual(got.ExtraScalars, d.ExtraScalars) || !reflect.DeepEqual(got.ExtraLists, d.ExtraLists) {
+		t.Fatalf("extras lost: scalars %+v lists %+v", got.ExtraScalars, got.ExtraLists)
 	}
 	if got.Body != d.Body {
 		t.Fatalf("body = %q, want %q", got.Body, d.Body)
@@ -86,7 +83,7 @@ func TestItemFromDraftEmptyScalarsAreAbsent(t *testing.T) {
 }
 
 func TestApplyFlagsOverridesTemplate(t *testing.T) {
-	base, err := parseDraft(defaultTemplate("ticket"))
+	base, err := parseDraft(defaultTemplate("ticket", entityschema.Schema{}))
 	if err != nil {
 		t.Fatalf("parse default template: %v", err)
 	}

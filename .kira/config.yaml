@@ -11,15 +11,17 @@ workflows:
   ticket:
     states:
       - { key: TODO,        category: todo }
-      - { key: IN_PROGRESS, category: doing }
-      - { key: REVIEW,      category: doing }
-      - { key: DONE,        category: done }
+      - { key: IN_PROGRESS, category: doing, wip: 3 }   # advisory column cap (0/absent = unlimited)
+      - { key: REVIEW,      category: doing, wip: 2 }
+      - { key: DONE,        category: done, resolution: done }
       - { key: WONT_DO,     category: done, resolution: dropped }
     initial: TODO
     transitions:
       TODO:        [IN_PROGRESS, WONT_DO]
       IN_PROGRESS: [REVIEW, TODO, WONT_DO]
-      REVIEW:      [{ to: DONE, require: [blockers_closed] }, IN_PROGRESS]
+      REVIEW:                                            # bare strings and guard maps may mix
+        - { to: DONE, require: [resolution, blockers_closed], set: { resolution: done } }
+        - IN_PROGRESS
       DONE:        []
       WONT_DO:     []
     enforce_transitions: true
@@ -27,46 +29,55 @@ workflows:
     states:
       - { key: PLANNED, category: todo }
       - { key: ACTIVE,  category: doing }
-      - { key: DONE,    category: done }
+      - { key: DONE,    category: done, resolution: done }
     initial: PLANNED
     transitions:
       PLANNED: [ACTIVE]
       ACTIVE:  [DONE]
       DONE:    []
 
-filters:
-  backlog: "state = TODO ORDER BY priority"
-  core: "label = core AND state != DONE"
-
-priorities: [P0, P1, P2, P3]
-subtypes: [bug, task, feature, support]
-resolutions: [done, dropped, duplicate, cannot-reproduce]
 labels:
-  known: [captured]                                          # area labels retired in favor of boards; strict rejects unknown ones (--force overrides)
+  known: [captured, core, tui, cli, data, infra, dx]   # 'captured' is system; the rest are retired area labels still on older items
   strict: false
 
 people:
-  known: []
+  known: [{ name: shivam }]   # add known people; strict rejects unknown assignees
   strict: false
 
+priorities: [P0, P1, P2, P3]  # ordered high→low: validates priority, defines ranked sort
+                              # and >/< query compare; [] = free-form (equality-only)
+subtypes:    [bug, task, feature, support]                 # validates subtype; [] = free-form
+resolutions: [done, dropped, duplicate, cannot-reproduce]  # validates resolution; [] = free-form
+
 commit:
-  mode: auto                  # auto | manual | prompt
+  mode: auto                  # auto | manual | prompt (prompt needs a terminal; without one, changes stage but are not committed)
   subject_prefix: ""
-  trailer: Kira-Ticket
+  trailer: Kira-Ticket        # trailer key that links a commit to its ticket
+  close_trailer: Kira-Closes  # trailer key that closes a ticket when the commit lands
+  link_markers: [trailer, subject, leading_number]  # what links a commit: trailer, a [[KIRA-n]] subject marker, and/or a bare KIRA-n leading the subject
+  reference_markers: [bare]   # what weakly references a commit: bare KIRA-n refs; [] to disable
 
 merge:
-  policy: auto                # auto | manual
+  policy: auto                # auto | manual: auto-resolve same-field kira conflicts vs leave markers
 
 sync:
-  push: false
+  push: false                 # true = kira sync publishes after a clean pull; default is pull-only
 
 ui:
   icons: auto                 # auto | nerd | emoji | text — if glyphs render as boxes, set emoji or text (nerd font not installed)
 
 estimate:
   unit: points                # points | hours
+
+# filters: named saved queries, run via kira list --filter <name>.
+filters:
+  backlog: "state = TODO ORDER BY priority"
+  core: "label = core AND state != DONE"
+  next: "state = TODO AND NOT blocked ORDER BY priority"
+
 sprints:
   - { key: 2026-S14, name: Parity + restructure, start: "2026-07-13", end: "2026-07-20" }
+
 boards:
   - { key: KIRA, name: kira, default: true }
   - { key: CORE, name: Core store and domain }

@@ -1,6 +1,12 @@
 # CORE-3 — Extensible entity schema
 
-Status: design approved (brainstorm 2026-07-23). Phase 1 in progress.
+Status: design approved (brainstorm 2026-07-23). Phases 1-3 done. Phase 4's
+headline goal — user-defined new item types — turned out to already work
+generically: a `workflows:` entry in `.kira/config.yaml` is enough for
+`create`/`edit`/`move`/`list`/`show` and doctor's state checks to handle a new
+type, with no schema file and no code change (verified 2026-07-28). What
+remains of Phase 4 is narrower than this line used to imply; see the phase list
+below.
 
 ## Problem
 
@@ -190,22 +196,59 @@ faithfully reproduces hardcoded behavior.
   no change to existing init output otherwise). **No changes to `Item`, codec,
   core mutations, cli commands other than init wiring, or tui.** De-risks the
   type system; nothing in the hot path.
-- **Phase 2** — strong `ref` integrity (ULID-bound) + `doctor` dangling/wrong-type
-  check + completion sourced from schema.
-- **Phase 3** — typed *extra* fields on ticket/epic: codec round-trips typed
-  frontmatter (replacing untyped `UnknownKeys` for schema-declared keys);
-  create/edit/validate honor them. Typing is storage/validation-side only: in
-  `--json` output an extra always renders as a string or list of strings
-  (`datamodel.ExtraJSON`), even when its schema declares int/number/bool/date.
-  Extras store canonical YAML text (what keeps `points: 42` un-requoted on
-  rewrite), and typing the JSON per FieldDef would make the generated output
-  schema per-field rather than static, breaking the fixed `schema/kira.json`
-  contract. Consumers interpret an extra through the schema — the same
-  contract as `due`/`priority`, typed by schema but strings on the wire
-  (KIRA-145).
-- **Phase 4** — user-defined *new* item entity types: generic create/edit/list/show.
-- **Phase 5** — representation-driven rendering (list columns, show layout, icons)
-  from schema.
+- **Phase 2 (done) — schema-driven ref-type integrity.** `doctor` now checks a
+  ref field's *target type* against the schema (`RefTypeMismatches`, class
+  `ref-type`), generalizing the hardcoded epic-parent check (`NonEpicParents`,
+  removed) to every item-target ref field — catching e.g. `blocked_by` pointing
+  at the wrong kind. Dangling/self-ref/cycle checks already existed and are
+  unchanged. Read-only; drives off the embedded built-in schemas (user
+  `.kira/schema` overrides for ref targets deferred to Phase 4, when custom
+  item types make doctor load user schemas anyway). Completion-sourced-from-schema
+  moved to Phase 4/5 (see the CLI section); write-path `Validate` wiring is Phase 3.
+- **Phase 3 (done)** — typed *extra* fields on ticket/epic. Landed as 3a + 3b (3b-i/ii/iii):
+  - **3a** — lossless, schema-agnostic round-trip of extra frontmatter.
+    `UnknownKeys` (names only, values dropped) replaced by `Item.ExtraScalars`/
+    `ExtraLists`; codec parses+serializes them faithfully (scalar rendering
+    preserves null/int/bool/quoting byte-identically); `merge.mergeExtras`
+    keeps the two maps disjoint; `guardWritable` no longer hard-blocks on
+    extras (still blocks on `UnknownLinkTypes`, which stay lossy — CORE-41).
+  - **3b-i** — REPLACE `validateItem`'s field-level checks (required/type/enum/
+    ref) with `entityschema.Validate` + a `RefResolver` adapter and severity
+    policy-mapping; state/sprint/rank/graph/resolution stay config-driven.
+  - **3b-ii** — `create`/`edit --field` editing of declared frontmatter extras
+    (typed-parsed, round-trip-safe); schema-aware `doctor` lint; a validationCtx
+    that builds byID once, caches schemas, resolves enums once per batch.
+  - **3b-iii** — writable `placement:body` fields via `--field` (edit a section);
+    `datamodel.BodySections`/`UpsertBodySection` single-source the `## ` rule.
+  - **Wire shape** — `--json` carries declared extras under a `fields` object
+    with their declared type preserved: an `int` comes back as a number, a
+    `list` as an array. Storage still keeps canonical YAML text (what leaves
+    `points: 42` un-requoted on rewrite); typing happens on the way out.
+    `schema/kira.json` stays static by typing `fields` as an open object rather
+    than one property per declared field. This supersedes the earlier
+    strings-on-the-wire decision (KIRA-145), which is withdrawn.
+  - Follow-ups: CORE-41 (unknown link-type round-trip), CORE-42 (extras in merge
+    arbitration + ref-extra ULID normalization), CORE-43 (blocked_by target-type
+    on write).
+- **Phase 4** — what actually remains for user-defined types and custom fields.
+  Generic create/edit/move/list/show for a new type already works off a
+  `workflows:` config entry alone (no schema file, no code change), so the open
+  work is the parts that are still blind to schema-declared fields:
+  - *(done, CORE-53)* The dangling/self-reference scan drives off the item's
+    schema rather than a hardcoded `epic`/`blocked_by`/`links` list, so a custom
+    ref field gets dangling, self-reference and wrong-type checks together.
+    CORE-56 extends the target-type check to refs aimed at a config-only type.
+  - *(done, CORE-51 + CORE-52 + KIRA-143)* `show` prints declared frontmatter
+    fields after the built-in header and carries them under `fields` in
+    `--json`; the `query` grammar resolves a declared name and compares by its
+    declared type, with `list --field key=value` as the equality shorthand.
+    Body-placed fields (`placement: body`) remain outside `fields` and
+    unfilterable — their text is already in the body `show` prints.
+  - `.kira/schema` overrides for ref targets (deferred here from Phase 1).
+- **Phase 5 (part done)** — representation-driven rendering from schema. List
+  columns landed: `representation.list_columns` names the table's columns when
+  `ui.list.columns` is not pinned, and a schema-declared field can be one of
+  them (CORE-54). Show layout and icons are still hardcoded.
 - **Phase 6 (maybe never)** — replace `Item` struct with a schema-driven value.
   Evaluate whether the hybrid is good enough first.
 

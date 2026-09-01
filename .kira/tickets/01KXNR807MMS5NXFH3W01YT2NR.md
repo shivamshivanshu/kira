@@ -6,12 +6,13 @@ type: ticket
 subtype: task
 title: "golangci-lint: doc-comment enforcement disabled and 130 findings still unfixed"
 state: DONE
+resolution: done
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-16T20:50:40+05:30
-updated: 2026-07-16T21:13:06+05:30
+updated: 2026-07-28T14:28:02+05:30
 ---
 
 ## Description

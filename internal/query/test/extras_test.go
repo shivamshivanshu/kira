@@ -5,26 +5,23 @@ import (
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/query"
 )
 
 func extrasFixture() (items []*datamodel.Item, opts query.Options, cfg *datamodel.Config) {
 	items, opts, cfg = evalFixture()
-	opts.Extras = []query.ExtraField{
-		{Name: "team"},
-		{Name: "watchers", List: true},
-		{Name: "points", Ordered: true},
+	opts.Schemas = map[string]entityschema.Schema{
+		datamodel.TypeTicket: {Name: datamodel.TypeTicket, Fields: []entityschema.FieldDef{
+			{Name: "team", Type: entityschema.FieldString},
+			{Name: "watchers", Type: entityschema.FieldString, List: true},
+			{Name: "points", Type: entityschema.FieldInt},
+		}},
 	}
-	items[1].Extras = map[string]datamodel.ExtraValue{
-		"team":     {Scalar: new("'infra core'")},
-		"watchers": {List: []string{"alice", "'b c'"}},
-		"points":   {Scalar: new("8")},
-	}
-	items[2].Extras = map[string]datamodel.ExtraValue{
-		"team":     {Scalar: new("qa")},
-		"watchers": {List: []string{}},
-		"points":   {Scalar: new("10")},
-	}
+	items[1].ExtraScalars = map[string]string{"team": "'infra core'", "points": "8"}
+	items[1].ExtraLists = map[string][]string{"watchers": {"alice", "'b c'"}}
+	items[2].ExtraScalars = map[string]string{"team": "qa", "points": "10"}
+	items[2].ExtraLists = map[string][]string{"watchers": {}}
 	return items, opts, cfg
 }
 
@@ -61,11 +58,44 @@ func TestEvalExtras(t *testing.T) {
 	}
 }
 
+// An extra reaches the query as the rendered YAML of its frontmatter node, so
+// a value that needed quoting on disk only equals the query's bare text once
+// it is decoded back. Every comparison path must decode; presence checks need
+// not, since quoting cannot make a value absent.
+func TestQuotedExtraValueDecodesBeforeMatching(t *testing.T) {
+	items, opts, cfg := extrasFixture()
+	if raw := items[1].ExtraScalars["team"]; raw != "'infra core'" {
+		t.Fatalf("fixture must store the quoted rendering, got %q", raw)
+	}
+	// Eight alternatives take the set-based IN path, which extracts the field
+	// once per item rather than once per alternative.
+	exprs := []string{
+		`team="infra core"`,
+		`watchers="b c"`,
+		`team IN ("infra core", a, b, c, d, e, f, g)`,
+	}
+	for _, expr := range exprs {
+		if got := matchNums(t, expr, items, opts, cfg); strings.Join(got, ",") != "KIRA-1" {
+			t.Errorf("%s matched %v, want KIRA-1", expr, got)
+		}
+	}
+}
+
+// An extra is declared by the schemas of some item types and not others, so a
+// query spanning types matches only where it is declared.
+func TestExtraUndeclaredForItemType(t *testing.T) {
+	items, opts, cfg := extrasFixture()
+	items[0].ExtraScalars = map[string]string{"team": "qa"}
+	if got := matchNums(t, "team=qa", items, opts, cfg); strings.Join(got, ",") != "KIRA-2" {
+		t.Errorf("team=qa matched %v, want only the ticket that declares team", got)
+	}
+}
+
 func TestOrderByExtraIsNumericWhenOrdered(t *testing.T) {
 	items, opts, cfg := extrasFixture()
-	q, err := query.Parse("type=ticket ORDER BY points", opts.Extras)
+	q, err := query.Compile("type=ticket ORDER BY points", opts)
 	if err != nil {
-		t.Fatalf("Parse: %v", err)
+		t.Fatalf("Compile: %v", err)
 	}
 	keyOf := q.Order.Keyer(cfg)
 	if q.Order.Less(keyOf(items[2]), keyOf(items[1])) {
@@ -84,18 +114,19 @@ func TestExtrasFieldErrors(t *testing.T) {
 		wantMsg    string
 	}{
 		{"unknown field lists extras", "bogus = x", true, "team"},
-		{"extras unknown without spec", "team = x", true, "unknown field"},
+		{"extras unknown without schemas", "team = x", true, "unknown field"},
+		{"ORDER BY unknown field", "x ORDER BY bogus", true, "unknown field"},
 		{"syntax error is not unknown-field", "state =", false, "expected a value"},
 		{"ordered extra needs a number", "points > abc", false, "invalid number"},
-		{"no ordered cmp on plain extra", "team > qa", false, "only valid on"},
+		{"no ordered cmp on plain extra", "team > qa", false, "declared string"},
 		{"no order by list extra", "x ORDER BY watchers", false, "cannot order by list field"},
 	}
 	for _, tc := range cases {
-		extras := opts.Extras
-		if tc.name == "extras unknown without spec" {
-			extras = nil
+		schemas := opts.Schemas
+		if tc.name == "extras unknown without schemas" {
+			schemas = nil
 		}
-		_, err := query.Compile(tc.expr, query.Options{Extras: extras})
+		_, err := query.Compile(tc.expr, query.Options{Schemas: schemas})
 		if err == nil {
 			t.Errorf("%s: Compile(%q) should error", tc.name, tc.expr)
 			continue
@@ -126,6 +157,16 @@ func TestMatchOnExtras(t *testing.T) {
 		t.Error("Match(watchers, alice) must match KIRA-1 only")
 	}
 	if _, _, err := query.Match("team", "qa", query.Options{}); err == nil {
-		t.Error("Match on an extra without the spec must error")
+		t.Error("Match on an extra without the schemas must error")
+	}
+}
+
+func TestFieldNamesIncludesSchemaFields(t *testing.T) {
+	_, opts, _ := extrasFixture()
+	names := strings.Join(query.FieldNames(opts.Schemas), ",")
+	for _, want := range []string{"state", "team", "watchers", "points"} {
+		if !strings.Contains(names, want) {
+			t.Errorf("FieldNames = %s, want it to include %q", names, want)
+		}
 	}
 }

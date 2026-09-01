@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/storage"
@@ -25,7 +26,7 @@ func (s *Store) lockAndResolve(cfg *datamodel.Config, ref string) (func(), *data
 		release()
 		return nil, nil, nil, nil, err
 	}
-	if err := s.guardWritable(orig); err != nil {
+	if err := guardWritable(orig); err != nil {
 		release()
 		return nil, nil, nil, nil, err
 	}
@@ -38,23 +39,28 @@ func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply appl
 		return nil, nil, nil, err
 	}
 	defer release()
-	return s.mutateAgainst(cfg, orig, items, resolver, force, apply, subjectOf, source, nil)
+	schemas, err := s.schemas()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	vctx := newValidationCtx(cfg, items, resolver, schemas[orig.Type], force)
+	return s.mutateAgainst(vctx, orig, items, apply, subjectOf, source)
 }
 
-func (s *Store) mutateAgainst(cfg *datamodel.Config, orig *datamodel.Item, items []*datamodel.Item, resolver *id.Resolver, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource, byID map[string]*datamodel.Item) (*datamodel.Item, []string, []error, error) {
+func (s *Store) mutateAgainst(vctx *validationCtx, orig *datamodel.Item, items []*datamodel.Item, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, []error, error) {
 	updated := cloneItem(orig)
-	hard, warns := apply(updated, resolver, items)
+	hard, warns := apply(updated, vctx.resolver, items)
 	if len(hard) > 0 {
 		return nil, nil, nil, errx.Invalid(invalidItemPrefix, hard)
 	}
-	vhard, vwarns := s.validateMutationAgainst(cfg, orig, updated, resolver, items, force, byID)
+	vhard, vwarns := vctx.validateMutation(orig, updated)
 	if len(vhard) > 0 {
 		return nil, nil, nil, errx.Invalid(invalidItemPrefix, vhard)
 	}
 	warns = append(warns, vwarns...)
 
-	changed := datamodel.ChangedFields(orig, updated)
-	finalWarns, err := s.commitMutation(cfg, orig, updated, changed, warns, subjectOf(orig), source)
+	changed := changedKeys(orig, updated)
+	finalWarns, err := s.commitMutation(vctx.cfg, orig, updated, changed, warns, subjectOf(orig), source)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -69,6 +75,8 @@ type Batch struct {
 	resolver  *id.Resolver
 	byID      map[string]*datamodel.Item
 	positions map[string]int
+	schemas   map[string]entityschema.Schema
+	enums     map[string]map[string][]string
 }
 
 func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
@@ -81,13 +89,33 @@ func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
 		release()
 		return nil, err
 	}
+	schemas, err := s.schemas()
+	if err != nil {
+		release()
+		return nil, err
+	}
+	vocab := entityschema.ConfigVocab(cfg)
+	enums := make(map[string]map[string][]string, len(schemas))
+	for typ, schema := range schemas {
+		enums[typ] = entityschema.ResolveEnums(schema, vocab)
+	}
 	positions := make(map[string]int, len(ld.items))
 	for n, it := range ld.items {
 		if _, exists := positions[it.ID]; !exists {
 			positions[it.ID] = n
 		}
 	}
-	return &Batch{cfg: cfg, store: s, release: release, items: ld.items, resolver: ld.resolver, byID: datamodel.IndexByID(ld.items), positions: positions}, nil
+	return &Batch{
+		cfg:       cfg,
+		store:     s,
+		release:   release,
+		items:     ld.items,
+		resolver:  ld.resolver,
+		byID:      datamodel.IndexByID(ld.items),
+		positions: positions,
+		schemas:   schemas,
+		enums:     enums,
+	}, nil
 }
 
 func (b *Batch) Close() { b.release() }
@@ -118,10 +146,11 @@ func (b *Batch) Mutate(ref string, force bool, apply applyFn, subjectOf func(ori
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if err := b.store.guardWritable(orig); err != nil {
+	if err := guardWritable(orig); err != nil {
 		return nil, nil, nil, err
 	}
-	updated, changed, warns, err := b.store.mutateAgainst(b.cfg, orig, b.items, b.resolver, force, apply, subjectOf, source, b.byID)
+	vctx := newValidationCtxWithEnums(b.cfg, b.byID, b.resolver, b.schemas[orig.Type], b.enums[orig.Type], force)
+	updated, changed, warns, err := b.store.mutateAgainst(vctx, orig, b.items, apply, subjectOf, source)
 	if err != nil {
 		// A write may succeed before its Git commit fails. Later operations
 		// must validate against the actual on-disk state even in that case.
@@ -164,12 +193,16 @@ func (s *Store) commitMutation(cfg *datamodel.Config, before, updated *datamodel
 func scopeVocabWarnings(warns []error, changed []string) []error {
 	out := warns[:0:0]
 	for _, w := range warns {
-		if vw, ok := errors.AsType[*vocabWarning](w); ok && !slices.Contains(changed, vw.field) {
+		if v, ok := errors.AsType[entityschema.Violation](w); ok && !slices.Contains(changed, v.Field) {
 			continue
 		}
 		out = append(out, w)
 	}
 	return out
+}
+
+func changedKeys(orig, updated *datamodel.Item) []string {
+	return append(datamodel.ChangedFields(orig, updated), datamodel.ChangedExtraKeys(orig, updated)...)
 }
 
 func (s *Store) commit(cfg *datamodel.Config, cs *datamodel.ChangeSet) error {

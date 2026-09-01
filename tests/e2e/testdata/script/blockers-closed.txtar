@@ -26,9 +26,11 @@ stderr 'blocked by open items'
 exec kira move KIRA-1 IN_PROGRESS --force
 stderr 'forced past blocker guard'
 
-# a blocker of an orphan type (no known state category) cannot be evaluated:
-# warn and pass rather than brick the move on missing data
-cp saga.md .kira/tickets/01HXAGA0000000000000000000.md
+# a blocker in a state the workflow no longer declares (no known state
+# category) cannot be evaluated: warn and pass rather than brick the move on
+# missing data. It stays type ticket (CORE-43 rejects a blocked_by target of
+# the wrong entity type on write), just with a state config.yaml doesn't list.
+cp legacy-state.md .kira/tickets/01HXAGA0000000000000000000.md
 exec kira link KIRA-3 --blocked-by KIRA-77
 exec kira move KIRA-3 IN_PROGRESS
 stderr 'no known state category'
@@ -51,14 +53,14 @@ workflows:
       DONE:        []
     enforce_transitions: true
 
--- saga.md --
+-- legacy-state.md --
 ---
 id: 01HXAGA0000000000000000000
 number: KIRA-77
 aliases: []
-type: saga
-title: an orphan-typed blocker
-state: TODO
+type: ticket
+title: a blocker stuck in a retired state
+state: LEGACY
 labels: []
 blocked_by: []
 epic: null

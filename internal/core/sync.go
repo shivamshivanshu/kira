@@ -14,7 +14,6 @@ import (
 
 const maxRebaseIterations = 100
 
-// SyncOpts configures a Sync run.
 type SyncOpts struct {
 	Push   bool
 	Dirty  syncx.DirtyPolicy

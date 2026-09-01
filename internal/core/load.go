@@ -62,7 +62,7 @@ func (s *Store) readRaw(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
 		}
 		return &loaded{items: tl.Items, resolver: tl.Resolver, cfg: tl.Config, schemas: tl.Schemas, notes: literalWarnings(tl.Warnings)}, nil
 	}
-	schemas, err := s.Schemas()
+	schemas, err := s.schemas()
 	if err != nil {
 		return nil, err
 	}

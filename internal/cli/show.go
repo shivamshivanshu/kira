@@ -3,6 +3,8 @@ package cli
 import (
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -97,6 +99,9 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 	}
 	line("created", r.Created)
 	line("updated", r.Updated)
+	for _, name := range slices.Sorted(maps.Keys(r.Fields)) {
+		line(name, typedFieldValueAsText(r.Fields[name]))
+	}
 	if desc := codec.Description(r.Body); strings.TrimSpace(desc) != "" {
 		_, _ = fmt.Fprintf(w, "\n%s\n", desc)
 	}
@@ -106,4 +111,11 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 			_, _ = fmt.Fprintf(w, "%s\n%s\n", showfmt.CommentByline(c.Author, c.Ts), showfmt.CommentBody(c.Text))
 		}
 	}
+}
+
+func typedFieldValueAsText(value any) string {
+	if list, isList := value.([]string); isList {
+		return strings.Join(list, ", ")
+	}
+	return fmt.Sprint(value)
 }

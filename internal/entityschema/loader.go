@@ -74,20 +74,24 @@ func LoadFiles(files []File) (map[string]Schema, error) {
 	return schemas, nil
 }
 
+// checkExtrasAgreement rejects two schemas declaring the same extra with a
+// different type or list-ness: the query layer builds one spec per field name
+// across all schemas, so a disagreement would let one schema's traits silently
+// win for both types.
 func checkExtrasAgreement(schemas map[string]Schema) error {
-	type origin struct {
+	type declaration struct {
 		schema string
 		field  FieldDef
 	}
-	first := map[string]origin{}
+	first := map[string]declaration{}
 	for _, name := range slices.Sorted(maps.Keys(schemas)) {
 		for _, f := range schemas[name].Fields {
-			if f.Placement != PlacementFrontmatter {
+			if !f.IsCustomFrontmatter() {
 				continue
 			}
 			prev, ok := first[f.Name]
 			if !ok {
-				first[f.Name] = origin{schema: name, field: f}
+				first[f.Name] = declaration{schema: name, field: f}
 				continue
 			}
 			if prev.field.Type != f.Type || prev.field.List != f.List {
@@ -167,10 +171,6 @@ func loadBuiltins() (map[string]Schema, error) {
 	return schemas, nil
 }
 
-// parseSchema deliberately tolerates unknown JSON keys: kira init materializes
-// the builtin schemas into .kira/schema/, so files on disk may carry keys a
-// later kira dropped (e.g. "identity", removed as inert in KIRA-141) and must
-// keep loading.
 func parseSchema(filename string, data []byte) (Schema, error) {
 	var s Schema
 	if err := json.Unmarshal(data, &s); err != nil {
@@ -205,13 +205,10 @@ func checkSchemaShape(s Schema) error {
 		case "", PlacementFrontmatter:
 		case PlacementBody:
 			if f.Section == "" {
-				return fmt.Errorf("schema %q: field %q: placement %q requires \"section\"", s.Name, f.Name, f.Placement)
+				return fmt.Errorf("schema %q: field %q: body placement requires \"section\"", s.Name, f.Name)
 			}
 		default:
 			return fmt.Errorf("schema %q: field %q: unknown placement %q (valid: %q, %q)", s.Name, f.Name, f.Placement, PlacementFrontmatter, PlacementBody)
-		}
-		if f.Placement == PlacementFrontmatter && datamodel.IsFrontmatterKey(f.Name) {
-			return fmt.Errorf("schema %q: field %q: placement \"frontmatter\" shadows a builtin frontmatter key", s.Name, f.Name)
 		}
 		switch f.Type {
 		case FieldEnum, FieldResolution:

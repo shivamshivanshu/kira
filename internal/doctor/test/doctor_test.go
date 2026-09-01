@@ -12,20 +12,26 @@ import (
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
+// builtinTypes mirrors the workflows a default config declares, which is what
+// makes a type exist.
+func builtinTypes() map[string]bool {
+	return map[string]bool{datamodel.TypeTicket: true, datamodel.TypeEpic: true}
+}
+
+func builtinSchemas(t *testing.T) map[string]entityschema.Schema {
+	t.Helper()
+	s, err := entityschema.Load("")
+	if err != nil {
+		t.Fatalf("loading built-in schemas: %v", err)
+	}
+	return s
+}
+
 const (
 	ulidA = "01HAAAAAAAAAAAAAAAAAAAAAAA"
 	ulidB = "01HBBBBBBBBBBBBBBBBBBBBBBB"
 	ulidC = "01HCCCCCCCCCCCCCCCCCCCCCCC"
 )
-
-func builtinSchemas(t *testing.T) map[string]entityschema.Schema {
-	t.Helper()
-	schemas, err := entityschema.Load("")
-	if err != nil {
-		t.Fatalf("loading builtin schemas: %v", err)
-	}
-	return schemas
-}
 
 func resolver(items ...*datamodel.Item) *id.Resolver {
 	snap := id.Snapshot{Key: "KIRA"}
@@ -62,7 +68,7 @@ func hasClass(findings []doctor.Finding, class doctor.Class) bool {
 
 func TestLintMalformedFrontmatter(t *testing.T) {
 	t.Parallel()
-	it, parsed, findings := doctor.Lint("no fence here\n")
+	it, parsed, findings := doctor.Lint("no fence here\n", builtinSchemas(t))
 	if parsed {
 		t.Fatal("expected parsed=false for content without a frontmatter fence")
 	}
@@ -74,46 +80,65 @@ func TestLintMalformedFrontmatter(t *testing.T) {
 	}
 }
 
-func TestUnknownFieldWarns(t *testing.T) {
+func TestLintUnknownFieldWarns(t *testing.T) {
 	t.Parallel()
 	content := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
 		"state: TODO\nlabels: []\nblocked_by: []\nepic: null\nbogus_key: 1\n" +
 		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n## Description\n"
-	files := []doctor.File{{Path: ulidA + ".md", Content: content}}
-	unknownWarning := func(report *doctor.Report) bool {
-		for _, f := range report.Findings {
-			if f.Class == doctor.ClassSchema && f.Field == "bogus_key" && f.Severity == doctor.SeverityWarning {
-				return true
-			}
+	_, parsed, findings := doctor.Lint(content, builtinSchemas(t))
+	if !parsed {
+		t.Fatalf("expected a well-formed item to parse, got findings %+v", findings)
+	}
+	for _, f := range findings {
+		if f.Class == doctor.ClassSchema && f.Field == "bogus_key" && f.Severity == doctor.SeverityWarning {
+			return
 		}
-		return false
 	}
+	t.Fatalf("expected an unknown-field warning for bogus_key, got %+v", findings)
+}
 
-	undeclared := doctor.Run(config.Default(), files, nil, doctor.Env{GitInstalled: true}, builtinSchemas(t))
-	if !unknownWarning(undeclared) {
-		t.Fatalf("expected an unknown-field warning for undeclared bogus_key, got %+v", undeclared.Findings)
-	}
-
+func TestLintDeclaredExtraDoesNotWarn(t *testing.T) {
+	t.Parallel()
 	schemas := builtinSchemas(t)
-	ticket := schemas["ticket"]
-	ticket.Fields = append(ticket.Fields, entityschema.FieldDef{
-		Name: "bogus_key", Type: entityschema.FieldInt, Placement: entityschema.PlacementFrontmatter,
-	})
-	schemas["ticket"] = ticket
-	declared := doctor.Run(config.Default(), files, nil, doctor.Env{GitInstalled: true}, schemas)
-	if unknownWarning(declared) {
-		t.Fatalf("a schema-declared extra must not warn, got %+v", declared.Findings)
+	ticket := schemas[datamodel.TypeTicket]
+	ticket.Fields = append(ticket.Fields, entityschema.FieldDef{Name: "severity", Type: entityschema.FieldString})
+	schemas[datamodel.TypeTicket] = ticket
+
+	content := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
+		"state: TODO\nlabels: []\nblocked_by: []\nepic: null\nseverity: high\nbogus_key: 1\n" +
+		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n## Description\n"
+	_, parsed, findings := doctor.Lint(content, schemas)
+	if !parsed {
+		t.Fatalf("expected a well-formed item to parse, got findings %+v", findings)
+	}
+	var sawSeverity, sawBogus bool
+	for _, f := range findings {
+		if f.Class != doctor.ClassSchema {
+			continue
+		}
+		switch f.Field {
+		case "severity":
+			sawSeverity = true
+		case "bogus_key":
+			sawBogus = true
+		}
+	}
+	if sawSeverity {
+		t.Errorf("a schema-declared extra must not warn, got %+v", findings)
+	}
+	if !sawBogus {
+		t.Errorf("a truly undeclared extra must still warn, got %+v", findings)
 	}
 }
 
 func TestDoctorFlagsInvalidDeclaredExtra(t *testing.T) {
 	t.Parallel()
 	schemas := builtinSchemas(t)
-	ticket := schemas["ticket"]
-	ticket.Fields = append(ticket.Fields, entityschema.FieldDef{
+	ticket := schemas[datamodel.TypeTicket]
+	ticket.Fields = append(slices.Clone(ticket.Fields), entityschema.FieldDef{
 		Name: "story_points", Type: entityschema.FieldInt, Placement: entityschema.PlacementFrontmatter,
 	})
-	schemas["ticket"] = ticket
+	schemas[datamodel.TypeTicket] = ticket
 	itemWith := func(pointsLine string) []doctor.File {
 		content := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
 			"state: TODO\nlabels: []\nblocked_by: []\nepic: null\n" + pointsLine +
@@ -144,7 +169,7 @@ func TestLintSurfacesDuplicateKeys(t *testing.T) {
 	content := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
 		"state: TODO\nstate: DONE\nlabels: []\nblocked_by: []\nepic: null\n" +
 		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n## Description\n"
-	_, parsed, findings := doctor.Lint(content)
+	_, parsed, findings := doctor.Lint(content, builtinSchemas(t))
 	if parsed {
 		t.Fatal("duplicate keys must fail parsing")
 	}
@@ -159,9 +184,9 @@ func TestLintSurfacesDuplicateKeys(t *testing.T) {
 func TestLintMalformedComment(t *testing.T) {
 	t.Parallel()
 	body := "## Comments\n<!-- kira:comment id=X author=y ts=bogus -->\nunterminated body\n"
-	_, _, findings := doctor.Lint("---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\n" +
-		"title: t\nstate: TODO\nlabels: []\nblocked_by: []\nepic: null\n" +
-		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n" + body)
+	_, _, findings := doctor.Lint("---\nid: "+ulidA+"\nnumber: KIRA-1\naliases: []\ntype: ticket\n"+
+		"title: t\nstate: TODO\nlabels: []\nblocked_by: []\nepic: null\n"+
+		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n"+body, builtinSchemas(t))
 	var commentFindings int
 	for _, f := range findings {
 		if f.Class == doctor.ClassComment {
@@ -176,14 +201,14 @@ func TestLintMalformedComment(t *testing.T) {
 func TestCheckCleanItemHasNoFindings(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
-	if f := doctor.Check(config.Default(), resolver(it), it); len(f) != 0 {
+	if f := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t)); len(f) != 0 {
 		t.Fatalf("expected no findings for a clean item, got %+v", f)
 	}
 }
 
 func TestCheckUnknownBoardPrefixWarns(t *testing.T) {
 	it := valid(ulidA, "ZZZ-9")
-	findings := doctor.Check(config.Default(), resolver(it), it)
+	findings := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	if classes(findings)[doctor.ClassBoard] != doctor.SeverityWarning {
 		t.Fatalf("expected a board warning for the unconfigured prefix ZZZ, got %+v", findings)
 	}
@@ -191,7 +216,7 @@ func TestCheckUnknownBoardPrefixWarns(t *testing.T) {
 
 func TestCheckUnknownBoardPrefixWarnsForHashNumber(t *testing.T) {
 	it := valid(ulidA, "ZZZ-a1b2c3")
-	findings := doctor.Check(config.Default(), resolver(it), it)
+	findings := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	if classes(findings)[doctor.ClassBoard] != doctor.SeverityWarning {
 		t.Fatalf("expected a board warning for the unconfigured hash-style prefix ZZZ, got %+v", findings)
 	}
@@ -203,7 +228,7 @@ func TestCheckUnknownStateAndSprintAndDue(t *testing.T) {
 	it.State = "NOPE"
 	it.Sprint = new("2099-S1")
 	it.Due = new("not-a-date")
-	findings := doctor.Check(config.Default(), resolver(it), it)
+	findings := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	cl := classes(findings)
 	if cl[doctor.ClassState] != doctor.SeverityError {
 		t.Errorf("expected state error, got %+v", findings)
@@ -218,14 +243,14 @@ func TestCheckVocabStrictVsWarn(t *testing.T) {
 	it := valid(ulidA, "KIRA-1")
 	it.Labels = []string{"not-a-label"}
 
-	warn := doctor.Check(config.Default(), resolver(it), it)
+	warn := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	if classes(warn)[doctor.ClassVocab] != doctor.SeverityWarning {
 		t.Errorf("expected vocab warning under non-strict labels, got %+v", warn)
 	}
 
 	strict := config.Default()
 	strict.Labels.Strict = true
-	got := doctor.Check(strict, resolver(it), it)
+	got := doctor.Check(strict, resolver(it), it, builtinSchemas(t))
 	if classes(got)[doctor.ClassVocab] != doctor.SeverityError {
 		t.Errorf("expected vocab error under strict labels, got %+v", got)
 	}
@@ -238,7 +263,7 @@ func TestCheckExemptsSystemCapturedLabel(t *testing.T) {
 
 	strict := config.Default()
 	strict.Labels.Strict = true
-	if got := doctor.Check(strict, resolver(it), it); hasClass(got, doctor.ClassVocab) {
+	if got := doctor.Check(strict, resolver(it), it, builtinSchemas(t)); hasClass(got, doctor.ClassVocab) {
 		t.Errorf("system %q label must be exempt from vocab checks, got %+v", datamodel.CapturedLabel, got)
 	}
 }
@@ -250,13 +275,13 @@ func TestCheckEnumVocabFollowsStrict(t *testing.T) {
 
 	lenient := config.Default()
 	lenient.Labels.Strict = false
-	if classes(doctor.Check(lenient, resolver(it), it))[doctor.ClassVocab] != doctor.SeverityWarning {
+	if classes(doctor.Check(lenient, resolver(it), it, builtinSchemas(t)))[doctor.ClassVocab] != doctor.SeverityWarning {
 		t.Fatalf("expected enum vocab warning under non-strict labels, matching create")
 	}
 
 	strict := config.Default()
 	strict.Labels.Strict = true
-	if classes(doctor.Check(strict, resolver(it), it))[doctor.ClassVocab] != doctor.SeverityError {
+	if classes(doctor.Check(strict, resolver(it), it, builtinSchemas(t)))[doctor.ClassVocab] != doctor.SeverityError {
 		t.Fatalf("expected enum vocab error under strict labels, matching create")
 	}
 }
@@ -266,7 +291,7 @@ func TestCheckDanglingAndSelfRef(t *testing.T) {
 	it := valid(ulidA, "KIRA-1")
 	it.Epic = new(ulidB)
 	it.BlockedBy = []string{ulidA}
-	findings := doctor.Check(config.Default(), resolver(it), it)
+	findings := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	var dangling, selfRef bool
 	for _, f := range findings {
 		if f.Class != doctor.ClassRef {
@@ -370,23 +395,6 @@ func TestCollisionsLiveAlias(t *testing.T) {
 	}
 }
 
-func TestCollisionsCaseInsensitive(t *testing.T) {
-	t.Parallel()
-	a := valid(ulidA, "KIRA-5")
-	b := valid(ulidB, "kira-5")
-	findings := doctor.Collisions([]*datamodel.Item{a, b})
-	if len(findings) != 1 || findings[0].Collision.Kind != doctor.CollisionLiveLive {
-		t.Fatalf("expected one live-live collision across case variants, got %+v", findings)
-	}
-	c := findings[0].Collision
-	if c.Value != "KIRA-5" || findings[0].Number != "KIRA-5" {
-		t.Errorf("report should carry the first-seen original form KIRA-5, got value=%q number=%q", c.Value, findings[0].Number)
-	}
-	if !slices.Equal(c.LiveIDs, []string{ulidA, ulidB}) {
-		t.Errorf("expected both live holders, got %v", c.LiveIDs)
-	}
-}
-
 func TestCollisionsNoneWhenAliasIsOwnRetiredNumber(t *testing.T) {
 	t.Parallel()
 	a := valid(ulidA, "KIRA-2")
@@ -416,11 +424,28 @@ func TestCollisionsAliasAlias(t *testing.T) {
 	}
 }
 
+func TestCollisionsCaseInsensitive(t *testing.T) {
+	t.Parallel()
+	a := valid(ulidA, "KIRA-5")
+	b := valid(ulidB, "kira-5")
+	findings := doctor.Collisions([]*datamodel.Item{a, b})
+	if len(findings) != 1 || findings[0].Collision.Kind != doctor.CollisionLiveLive {
+		t.Fatalf("expected one live-live collision across case variants, got %+v", findings)
+	}
+	c := findings[0].Collision
+	if c.Value != "KIRA-5" || findings[0].Number != "KIRA-5" {
+		t.Errorf("report should carry the first-seen original form KIRA-5, got value=%q number=%q", c.Value, findings[0].Number)
+	}
+	if !slices.Equal(c.LiveIDs, []string{ulidA, ulidB}) {
+		t.Errorf("expected both live holders, got %v", c.LiveIDs)
+	}
+}
+
 func TestCheckEmptyRankIsSchemaError(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
 	it.Rank = new("")
-	findings := doctor.Check(config.Default(), resolver(it), it)
+	findings := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	for _, f := range findings {
 		if f.Class == doctor.ClassSchema && f.Field == datamodel.KeyRank && f.Severity == doctor.SeverityError {
 			return
@@ -429,13 +454,13 @@ func TestCheckEmptyRankIsSchemaError(t *testing.T) {
 	t.Fatalf("expected a schema error for an empty rank, got %+v", findings)
 }
 
-func TestWrongTypeRefSkipsMissingTarget(t *testing.T) {
+func TestRefTypeSkipsMissingParent(t *testing.T) {
 	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
 	child.Epic = new(ulidC)
 	items := []*datamodel.Item{child}
-	if f := doctor.WrongTypeRefs(items, resolver(items...), builtinSchemas(t)); len(f) != 0 {
-		t.Fatalf("a missing/unresolved target must not raise a wrong-type finding, got %+v", f)
+	if f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...), builtinTypes()); len(f) != 0 {
+		t.Fatalf("a missing/unresolved parent must not raise a ref-type finding, got %+v", f)
 	}
 }
 
@@ -448,7 +473,7 @@ func TestEnvOptionalBinsAndHookFindings(t *testing.T) {
 		TrackedHooks:        []string{"post-merge", "pre-commit"},
 		InstalledHooks:      []string{"post-merge"},
 	}
-	report := doctor.Run(config.Default(), nil, nil, env, nil)
+	report := doctor.Run(config.Default(), nil, nil, env, builtinSchemas(t))
 	var optionalBin, missingHook, mergeDriver, ticketAttr bool
 	for _, f := range report.Findings {
 		switch {
@@ -502,50 +527,131 @@ func TestEpicChainAcyclic(t *testing.T) {
 	}
 }
 
-func TestNonEpicParentDetected(t *testing.T) {
+func TestRefTypeEpicParentDetected(t *testing.T) {
 	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
 	parent := valid(ulidB, "KIRA-2")
 	child.Epic = new(ulidB)
 	items := []*datamodel.Item{child, parent}
-	f := doctor.WrongTypeRefs(items, resolver(items...), builtinSchemas(t))
-	if len(f) != 1 || f[0].Class != doctor.ClassEpicKind || f[0].ItemID != ulidA {
-		t.Fatalf("expected one epic-kind finding on the child, got %+v", f)
-	}
-	if want := "epic points at KIRA-2, which is not an epic"; f[0].Message != want {
-		t.Fatalf("message = %q, want %q", f[0].Message, want)
+	f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...), builtinTypes())
+	if len(f) != 1 || f[0].Class != doctor.ClassRefType || f[0].ItemID != ulidA || f[0].Field != datamodel.KeyEpic {
+		t.Fatalf("expected one ref-type finding on the child's epic, got %+v", f)
 	}
 }
 
-func TestWrongTypeBlockedByDetected(t *testing.T) {
+func TestRefTypeEpicParentAccepted(t *testing.T) {
 	t.Parallel()
-	ticket := valid(ulidA, "KIRA-1")
-	epic := valid(ulidB, "KIRA-2")
-	epic.Type = datamodel.TypeEpic
-	epic.State = "PLANNED"
-	ticket.BlockedBy = []string{ulidB}
-	items := []*datamodel.Item{ticket, epic}
-	f := doctor.WrongTypeRefs(items, resolver(items...), builtinSchemas(t))
-	if len(f) != 1 || f[0].Class != doctor.ClassRefKind || f[0].ItemID != ulidA || f[0].Field != datamodel.KeyBlockedBy {
-		t.Fatalf("expected one ref-kind finding on the ticket, got %+v", f)
-	}
-	if want := "blocked_by points at KIRA-2, which is not a ticket"; f[0].Message != want {
-		t.Fatalf("message = %q, want %q", f[0].Message, want)
+	child := valid(ulidA, "KIRA-1")
+	parent := valid(ulidB, "KIRA-2")
+	parent.Type = datamodel.TypeEpic
+	child.Epic = new(ulidB)
+	items := []*datamodel.Item{child, parent}
+	if f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...), builtinTypes()); len(f) != 0 {
+		t.Fatalf("an epic parent must be accepted, got %+v", f)
 	}
 }
 
-func TestCorrectlyTypedRefsAccepted(t *testing.T) {
+func TestRefTypeBlockedByMismatch(t *testing.T) {
 	t.Parallel()
-	a := valid(ulidA, "KIRA-1")
-	b := valid(ulidB, "KIRA-2")
-	epic := valid(ulidC, "KIRA-3")
-	epic.Type = datamodel.TypeEpic
-	epic.State = "PLANNED"
-	a.BlockedBy = []string{ulidB}
-	a.Epic = new(ulidC)
-	items := []*datamodel.Item{a, b, epic}
-	if f := doctor.WrongTypeRefs(items, resolver(items...), builtinSchemas(t)); len(f) != 0 {
-		t.Fatalf("correctly typed refs must not be reported, got %+v", f)
+	child := valid(ulidA, "KIRA-1")
+	blocker := valid(ulidB, "KIRA-2")
+	blocker.Type = datamodel.TypeEpic
+	child.BlockedBy = []string{ulidB}
+	items := []*datamodel.Item{child, blocker}
+	f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...), builtinTypes())
+	if len(f) != 1 || f[0].Class != doctor.ClassRefType || f[0].Field != datamodel.KeyBlockedBy {
+		t.Fatalf("expected one ref-type finding on blocked_by, got %+v", f)
+	}
+}
+
+func TestRefTypeBlockedByAccepted(t *testing.T) {
+	t.Parallel()
+	child := valid(ulidA, "KIRA-1")
+	blocker := valid(ulidB, "KIRA-2")
+	child.BlockedBy = []string{ulidB}
+	items := []*datamodel.Item{child, blocker}
+	if f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...), builtinTypes()); len(f) != 0 {
+		t.Fatalf("a ticket blocked by a ticket must be accepted, got %+v", f)
+	}
+}
+
+func TestRefTypeExtraRefFieldMismatch(t *testing.T) {
+	t.Parallel()
+	schemas := builtinSchemas(t)
+	ticketSchema := schemas[datamodel.TypeTicket]
+	ticketSchema.Fields = append(slices.Clone(ticketSchema.Fields), entityschema.FieldDef{
+		Name: "reviewer_of", Type: entityschema.FieldRef, Target: datamodel.TypeEpic,
+	})
+	schemas[datamodel.TypeTicket] = ticketSchema
+
+	child := valid(ulidA, "KIRA-1")
+	child.ExtraScalars = map[string]string{"reviewer_of": ulidB}
+	other := valid(ulidB, "KIRA-2")
+	items := []*datamodel.Item{child, other}
+
+	f := doctor.RefTypeMismatches(schemas, items, resolver(items...), builtinTypes())
+	if len(f) != 1 || f[0].Class != doctor.ClassRefType || f[0].ItemID != ulidA || f[0].Field != "reviewer_of" {
+		t.Fatalf("expected one ref-type finding on the declared ref extra, got %+v", f)
+	}
+}
+
+func TestCheckDanglingExtraRefField(t *testing.T) {
+	t.Parallel()
+	schemas := builtinSchemas(t)
+	ticketSchema := schemas[datamodel.TypeTicket]
+	ticketSchema.Fields = append(slices.Clone(ticketSchema.Fields), entityschema.FieldDef{
+		Name: "reviewer_of", Type: entityschema.FieldRef, Target: datamodel.TypeTicket,
+	})
+	schemas[datamodel.TypeTicket] = ticketSchema
+
+	it := valid(ulidA, "KIRA-1")
+	it.ExtraScalars = map[string]string{"reviewer_of": ulidB}
+
+	f := doctor.Check(config.Default(), resolver(it), it, schemas)
+	if len(f) != 1 || f[0].Class != doctor.ClassRef || f[0].Field != "reviewer_of" {
+		t.Fatalf("a custom ref pointing at nothing must be flagged dangling, got %+v", f)
+	}
+}
+
+func TestCheckReportsBuiltinDanglingRefOnce(t *testing.T) {
+	t.Parallel()
+	it := valid(ulidA, "KIRA-1")
+	it.Epic = new(ulidB)
+
+	f := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
+	if len(f) != 1 || f[0].Field != datamodel.KeyEpic {
+		t.Fatalf("epic is both a built-in and schema-declared; it must be reported once, got %+v", f)
+	}
+}
+
+// A type exists because config declares a workflow for it, with or without a
+// schema file, so a ref targeting one must still be checked.
+func TestRefChecksReachConfigOnlyTargetType(t *testing.T) {
+	t.Parallel()
+	schemas := builtinSchemas(t)
+	ticketSchema := schemas[datamodel.TypeTicket]
+	ticketSchema.Fields = append(slices.Clone(ticketSchema.Fields), entityschema.FieldDef{
+		Name: "saga_ref", Type: entityschema.FieldRef, Target: "saga",
+	})
+	schemas[datamodel.TypeTicket] = ticketSchema
+	types := map[string]bool{datamodel.TypeTicket: true, datamodel.TypeEpic: true, "saga": true}
+
+	dangling := valid(ulidA, "KIRA-1")
+	dangling.ExtraScalars = map[string]string{"saga_ref": ulidC}
+	cfg := config.Default()
+	cfg.Workflows["saga"] = cfg.Workflows[datamodel.TypeTicket]
+
+	f := doctor.Check(cfg, resolver(dangling), dangling, schemas)
+	if len(f) != 1 || f[0].Class != doctor.ClassRef || f[0].Field != "saga_ref" {
+		t.Fatalf("a ref to a config-only type must be dangling-checked, got %+v", f)
+	}
+
+	wrongType := valid(ulidA, "KIRA-1")
+	wrongType.ExtraScalars = map[string]string{"saga_ref": ulidB}
+	items := []*datamodel.Item{wrongType, valid(ulidB, "KIRA-2")}
+	m := doctor.RefTypeMismatches(schemas, items, resolver(items...), types)
+	if len(m) != 1 || m[0].Field != "saga_ref" {
+		t.Fatalf("a ref to a config-only type must be type-checked, got %+v", m)
 	}
 }
 
@@ -557,20 +663,39 @@ func TestOwnerAndSprintValuesAreNotItemRefs(t *testing.T) {
 	it.Reporter = new("KIRA-2")
 	it.Sprint = new(ulidB)
 	items := []*datamodel.Item{it, other}
-	if f := doctor.WrongTypeRefs(items, resolver(items...), builtinSchemas(t)); len(f) != 0 {
-		t.Fatalf("source-backed ref fields must not be checked against items, got %+v", f)
+	if f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...), builtinTypes()); len(f) != 0 {
+		t.Fatalf("source-backed ref fields must not be type-checked against items, got %+v", f)
+	}
+
+	named := valid(ulidA, "KIRA-1")
+	named.Owner = new("alice")
+	named.Reporter = new("bob")
+	named.Sprint = new("2026-S1")
+	for _, f := range doctor.Check(config.Default(), resolver(named), named, builtinSchemas(t)) {
+		if f.Class == doctor.ClassRef {
+			t.Fatalf("source-backed ref fields must not be dangling-checked against items, got %+v", f)
+		}
 	}
 }
 
-func TestEpicParentAccepted(t *testing.T) {
+func TestDanglingRefNotDoubleReported(t *testing.T) {
 	t.Parallel()
-	child := valid(ulidA, "KIRA-1")
-	parent := valid(ulidB, "KIRA-2")
-	parent.Type = datamodel.TypeEpic
-	child.Epic = new(ulidB)
-	items := []*datamodel.Item{child, parent}
-	if f := doctor.WrongTypeRefs(items, resolver(items...), builtinSchemas(t)); len(f) != 0 {
-		t.Fatalf("an epic parent must be accepted, got %+v", f)
+	content := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
+		"state: TODO\nlabels: []\nblocked_by: [" + ulidC + "]\nepic: null\n" +
+		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n## Description\n"
+	files := []doctor.File{{Path: ulidA + ".md", Content: content}}
+	report := doctor.Run(config.Default(), files, nil, doctor.Env{GitInstalled: true}, builtinSchemas(t))
+	var dangling int
+	for _, f := range report.Findings {
+		switch f.Class {
+		case doctor.ClassRef:
+			dangling++
+		case doctor.ClassRefType:
+			t.Fatalf("a dangling ref must not also be reported as wrong-type: %+v", f)
+		}
+	}
+	if dangling != 1 {
+		t.Fatalf("expected exactly one dangling-ref finding, got %+v", report.Findings)
 	}
 }
 
@@ -644,7 +769,7 @@ func TestRunAggregatesAndFlagsIdentity(t *testing.T) {
 
 func TestRunReportsStrayFiles(t *testing.T) {
 	t.Parallel()
-	report := doctor.Run(config.Default(), nil, []string{"README.md"}, doctor.Env{GitInstalled: true}, nil)
+	report := doctor.Run(config.Default(), nil, []string{"README.md"}, doctor.Env{GitInstalled: true}, builtinSchemas(t))
 	if report.OK {
 		t.Fatal("expected OK=false with a stray file present")
 	}
@@ -662,7 +787,7 @@ func TestRunReportsStrayFiles(t *testing.T) {
 func TestRunFreshnessSeam(t *testing.T) {
 	t.Parallel()
 	env := doctor.Env{GitInstalled: true, InsideWorkTree: true}
-	report := doctor.Run(config.Default(), nil, nil, env, nil)
+	report := doctor.Run(config.Default(), nil, nil, env, builtinSchemas(t))
 	if !report.OK {
 		t.Fatalf("empty repo should be OK, got %+v", report)
 	}
@@ -672,7 +797,7 @@ func TestRunFreshnessSeam(t *testing.T) {
 
 	fresh := env
 	fresh.Freshness = &doctor.Freshness{Built: true, Fresh: false, Reason: "head-advanced"}
-	stale := doctor.Run(config.Default(), nil, nil, fresh, nil)
+	stale := doctor.Run(config.Default(), nil, nil, fresh, builtinSchemas(t))
 	for _, f := range stale.Findings {
 		if f.Class == doctor.ClassFreshness && f.Severity == doctor.SeverityWarning {
 			return
@@ -717,7 +842,7 @@ func TestValidateScopesToTargets(t *testing.T) {
 		"\nnumber: KIRA-2\naliases: []\ntype: ticket\ntitle: t\nstate: WAT\nlabels: []\n" +
 		"blocked_by: []\nepic: null\ncreated: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n"}
 
-	report := doctor.Validate(config.Default(), []doctor.File{store}, []doctor.File{badTarget}, nil)
+	report := doctor.Validate(config.Default(), []doctor.File{store}, []doctor.File{badTarget}, builtinSchemas(t))
 	if report.OK {
 		t.Fatal("expected the bad target state to fail validation")
 	}
@@ -732,12 +857,12 @@ func TestCheckStaleResolutionWarns(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
 	it.Resolution = new("done")
-	findings := doctor.Check(config.Default(), resolver(it), it)
+	findings := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	if classes(findings)[doctor.ClassState] != doctor.SeverityWarning {
 		t.Fatalf("expected a stale-resolution warning on a non-done state, got %+v", findings)
 	}
 	it.State = "WONT_DO"
-	if f := doctor.Check(config.Default(), resolver(it), it); hasClass(f, doctor.ClassState) {
+	if f := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t)); hasClass(f, doctor.ClassState) {
 		t.Fatalf("resolution on a done state must be clean, got %+v", f)
 	}
 }
@@ -746,47 +871,26 @@ func TestCheckDoneStateWithNilResolutionWarns(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
 	it.State = "WONT_DO"
-	findings := doctor.Check(config.Default(), resolver(it), it)
+	findings := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	if classes(findings)[doctor.ClassState] != doctor.SeverityWarning {
 		t.Fatalf("expected a missing-resolution warning on a done state with nil resolution, got %+v", findings)
 	}
 	it.Resolution = new("dropped")
-	if f := doctor.Check(config.Default(), resolver(it), it); hasClass(f, doctor.ClassState) {
+	if f := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t)); hasClass(f, doctor.ClassState) {
 		t.Fatalf("resolution set on a done state must be clean, got %+v", f)
-	}
-}
-
-func TestDanglingRefNotDoubleReported(t *testing.T) {
-	t.Parallel()
-	content := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
-		"state: TODO\nlabels: []\nblocked_by: [" + ulidC + "]\nepic: null\n" +
-		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n## Description\n"
-	files := []doctor.File{{Path: ulidA + ".md", Content: content}}
-	report := doctor.Run(config.Default(), files, nil, doctor.Env{GitInstalled: true}, builtinSchemas(t))
-	var dangling int
-	for _, f := range report.Findings {
-		switch f.Class {
-		case doctor.ClassRef:
-			dangling++
-		case doctor.ClassRefKind, doctor.ClassEpicKind:
-			t.Fatalf("a dangling ref must not also be reported as wrong-type: %+v", f)
-		}
-	}
-	if dangling != 1 {
-		t.Fatalf("expected exactly one dangling-ref finding, got %+v", report.Findings)
 	}
 }
 
 func TestStateDriftDetected(t *testing.T) {
 	t.Parallel()
-	drifted := entityschema.Schema{Name: "ticket", Fields: []entityschema.FieldDef{{
+	drifted := entityschema.Schema{Name: datamodel.TypeTicket, Fields: []entityschema.FieldDef{{
 		Name: datamodel.KeyState, Type: entityschema.FieldState,
 		States: []entityschema.StateValue{
 			{Key: "TODO", Category: datamodel.CategoryTodo},
 			{Key: "DOING", Category: datamodel.CategoryDoing},
 		},
 	}}}
-	f := doctor.StateDrift(config.Default(), map[string]entityschema.Schema{"ticket": drifted})
+	f := doctor.StateDrift(config.Default(), map[string]entityschema.Schema{datamodel.TypeTicket: drifted})
 	if len(f) != 1 || f[0].Class != doctor.ClassStateDrift || f[0].Severity != doctor.SeverityWarning {
 		t.Fatalf("expected one state-drift warning, got %+v", f)
 	}
@@ -805,17 +909,17 @@ func TestStateDriftQuietWhenAligned(t *testing.T) {
 func TestWipOverrunsReportsOverLimitState(t *testing.T) {
 	t.Parallel()
 	cfg := config.Default()
-	wf := cfg.Workflows["ticket"]
+	wf := cfg.Workflows[datamodel.TypeTicket]
 	for i, st := range wf.States {
 		if st.Key == "IN_PROGRESS" {
 			wf.States[i].Wip = 1
 		}
 	}
-	cfg.Workflows["ticket"] = wf
+	cfg.Workflows[datamodel.TypeTicket] = wf
 	items := []*datamodel.Item{
-		{ID: ulidA, Type: "ticket", State: "IN_PROGRESS"},
-		{ID: ulidB, Type: "ticket", State: "IN_PROGRESS"},
-		{ID: ulidC, Type: "epic", State: "IN_PROGRESS"},
+		{ID: ulidA, Type: datamodel.TypeTicket, State: "IN_PROGRESS"},
+		{ID: ulidB, Type: datamodel.TypeTicket, State: "IN_PROGRESS"},
+		{ID: ulidC, Type: datamodel.TypeEpic, State: "IN_PROGRESS"},
 	}
 
 	f := doctor.WipOverruns(cfg, items)
@@ -831,14 +935,14 @@ func TestWipOverrunsReportsOverLimitState(t *testing.T) {
 func TestWipOverrunsQuietAtOrUnderLimit(t *testing.T) {
 	t.Parallel()
 	cfg := config.Default()
-	wf := cfg.Workflows["ticket"]
+	wf := cfg.Workflows[datamodel.TypeTicket]
 	for i := range wf.States {
 		wf.States[i].Wip = 1
 	}
-	cfg.Workflows["ticket"] = wf
+	cfg.Workflows[datamodel.TypeTicket] = wf
 	items := []*datamodel.Item{
-		{ID: ulidA, Type: "ticket", State: "IN_PROGRESS"},
-		{ID: ulidB, Type: "ticket", State: "TODO"},
+		{ID: ulidA, Type: datamodel.TypeTicket, State: "IN_PROGRESS"},
+		{ID: ulidB, Type: datamodel.TypeTicket, State: "TODO"},
 	}
 
 	if f := doctor.WipOverruns(cfg, items); len(f) != 0 {

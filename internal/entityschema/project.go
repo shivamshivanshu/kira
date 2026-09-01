@@ -2,16 +2,18 @@ package entityschema
 
 import (
 	"slices"
-	"strconv"
-	"strings"
 
-	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
 // ProjectItem converts an Item into the values map Validate expects. Slices are
 // cloned so a caller can't mutate the source Item through the returned map.
-func ProjectItem(schema Schema, it *datamodel.Item) map[string]any {
+// decodeScalar recovers a declared scalar extra's typed value (e.g.
+// codec.DecodeExtraScalar); entityschema stays free of codec/yaml, so callers
+// inject it. A ref extra's value is a bare string either way, so it decodes to
+// a string regardless — fine for both a typed validator and doctor's
+// refStrings.
+func ProjectItem(schema Schema, it *datamodel.Item, decodeScalar func(string) any) map[string]any {
 	values := map[string]any{
 		"title":      it.Title,
 		"state":      it.State,
@@ -34,85 +36,76 @@ func ProjectItem(schema Schema, it *datamodel.Item) map[string]any {
 
 	var sections map[string]string
 	for _, f := range schema.Fields {
-		switch {
-		case f.Placement == PlacementBody && f.Section != "":
+		if f.Placement == PlacementBody && f.Section != "" {
 			if sections == nil {
-				sections = bodySections(it.Body)
+				sections = datamodel.BodySections(it.Body)
 			}
 			values[f.Name] = sections[f.Section]
-		case f.Placement == PlacementFrontmatter:
-			setExtra(values, f, it.Extras[f.Name])
 		}
+	}
+
+	for k, v := range it.ExtraScalars {
+		values[k] = decodeScalar(v)
+	}
+	for k, v := range it.ExtraLists {
+		values[k] = slices.Clone(v)
 	}
 	return values
 }
 
-func setIfPresent[T any](values map[string]any, name string, v *T) {
-	if v != nil {
-		values[name] = *v
-	}
-}
-
-func setExtra(values map[string]any, f FieldDef, v datamodel.ExtraValue) {
-	switch {
-	case v.List != nil:
-		values[f.Name] = codec.DecodeList(v.List)
-	case v.Scalar != nil:
-		values[f.Name] = typedScalar(f.Type, codec.DecodeScalar(*v.Scalar))
-	}
-}
-
-// typedScalar converts an extra's decoded text to the Go type checkType
-// expects for f's declared type; unparseable text stays a string so the
-// validator reports the mismatch (date/datetime are string-checked as-is).
-func typedScalar(t FieldType, s string) any {
-	switch t {
-	case FieldInt:
-		if n, err := strconv.ParseInt(s, 10, 64); err == nil {
-			return n
+// CustomFields projects the fields a schema adds beyond the built-in item
+// shape, and is nil for a schema that adds none. It reads the extras directly
+// rather than going through ProjectItem: this runs per row on every listing,
+// and ProjectItem parses the whole body to build a map whose built-in keys are
+// all discarded here.
+func CustomFields(schema Schema, it *datamodel.Item, decodeScalar func(string) any) map[string]any {
+	var customValues map[string]any
+	put := func(name string, value any) {
+		if customValues == nil {
+			customValues = map[string]any{}
 		}
-	case FieldNumber:
-		if f, err := strconv.ParseFloat(s, 64); err == nil {
-			return f
-		}
-	case FieldBool:
-		if b, err := strconv.ParseBool(s); err == nil {
-			return b
-		}
+		customValues[name] = value
 	}
-	return s
-}
-
-func bodySections(body string) map[string]string {
-	builders := make(map[string]*strings.Builder)
-	current := ""
-	for line := range strings.SplitSeq(body, "\n") {
-		if title, ok := strings.CutPrefix(line, "## "); ok {
-			current = title
+	for _, f := range schema.Fields {
+		if !f.IsCustomFrontmatter() {
 			continue
 		}
-		if current != "" {
-			b := builders[current]
-			if b == nil {
-				b = &strings.Builder{}
-				builders[current] = b
+		if f.List {
+			if list, ok := it.ExtraLists[f.Name]; ok {
+				put(f.Name, slices.Clone(list))
 			}
-			b.WriteString(line)
-			b.WriteByte('\n')
+			continue
+		}
+		if raw, ok := it.ExtraScalars[f.Name]; ok {
+			put(f.Name, decodeScalar(raw))
 		}
 	}
-	sections := make(map[string]string, len(builders))
-	for title, b := range builders {
-		sections[title] = strings.TrimSpace(b.String())
+	return customValues
+}
+
+// IsSchemaOnly reports whether a schema declares this field beyond the built-in
+// item shape: no dedicated Item field behind it and not system-managed, whether
+// it lands in frontmatter or a body section.
+func (f FieldDef) IsSchemaOnly() bool {
+	if f.System {
+		return false
 	}
-	return sections
+	_, hasDedicatedItemField := datamodel.Field(f.Name)
+	return !hasDedicatedItemField
+}
+
+// IsCustomFrontmatter narrows IsSchemaOnly to the fields whose value lives in
+// the item's extras, which is what can be read back and filtered; a body-placed
+// field's text reaches callers through the body instead.
+func (f FieldDef) IsCustomFrontmatter() bool {
+	return f.IsSchemaOnly() && f.Placement != PlacementBody
 }
 
 // ValidateExtras checks only the frontmatter-extra fields the item type's
 // schema declares — builtin fields keep their existing validators, so nothing
 // is double-reported. Enum vocabularies resolve through ResolveEnums: inline
-// schema enums, overridden by strict config vocab.
-func ValidateExtras(schemas map[string]Schema, cfg *datamodel.Config, it *datamodel.Item) []Violation {
+// schema enums, overridden by config vocab.
+func ValidateExtras(schemas map[string]Schema, cfg *datamodel.Config, it *datamodel.Item, decodeScalar func(string) any) []Violation {
 	schema, ok := schemas[it.Type]
 	if !ok {
 		return nil
@@ -121,35 +114,43 @@ func ValidateExtras(schemas map[string]Schema, cfg *datamodel.Config, it *datamo
 	if len(extras.Fields) == 0 {
 		return nil
 	}
-	return Validate(extras, ProjectItem(extras, it), ResolveEnums(schema, ConfigVocab(cfg)), nil)
+	return Validate(extras, ProjectItem(extras, it, decodeScalar), ResolveEnums(schema, ConfigVocab(cfg)), nil)
 }
 
 func extrasOnly(schema Schema) Schema {
 	out := schema
 	out.Fields = nil
 	for _, f := range schema.Fields {
-		if f.Placement == PlacementFrontmatter {
+		if f.IsCustomFrontmatter() {
 			out.Fields = append(out.Fields, f)
 		}
 	}
 	return out
 }
 
-// ConfigVocab mirrors core.validateItem's strict/open policy: a vocab is
-// membership-checked only when strict, and the system captured label is always
-// admitted under a strict label vocabulary.
+func setIfPresent[T any](values map[string]any, name string, v *T) {
+	if v != nil {
+		values[name] = *v
+	}
+}
+
+// ConfigVocab surfaces each config-driven vocabulary's known values (the system
+// captured label always admitted). label and person are always membership-
+// checked (empty Known means "nothing known yet", not "unchecked"); priority/
+// subtype/resolution are free-form when their config leaves Values empty.
+// Strictness (error vs warning) is the caller's policy, not this function's.
 func ConfigVocab(cfg *datamodel.Config) map[string][]string {
-	enums := map[string][]string{}
-	addIfStrict := func(name string, ev datamodel.EnumVocab) {
-		if ev.StrictOr(cfg.Labels.Strict) {
+	enums := map[string][]string{
+		"label":  append(slices.Clone(cfg.Labels.Known), datamodel.CapturedLabel),
+		"person": cfg.People.Names(),
+	}
+	addIfConfigured := func(name string, ev datamodel.EnumVocab) {
+		if len(ev.Values) > 0 {
 			enums[name] = ev.Values
 		}
 	}
-	addIfStrict("priority", cfg.Priorities)
-	addIfStrict("subtype", cfg.Subtypes)
-	addIfStrict("resolution", cfg.Resolutions)
-	if cfg.Labels.Strict {
-		enums["label"] = append(slices.Clone(cfg.Labels.Known), datamodel.CapturedLabel)
-	}
+	addIfConfigured("priority", cfg.Priorities)
+	addIfConfigured("subtype", cfg.Subtypes)
+	addIfConfigured("resolution", cfg.Resolutions)
 	return enums
 }

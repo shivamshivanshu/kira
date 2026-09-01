@@ -48,7 +48,7 @@ func fixture() (items []*datamodel.Item, cfg *datamodel.Config) {
 
 func orderNums(t *testing.T, expr string, items []*datamodel.Item, cfg *datamodel.Config) []string {
 	t.Helper()
-	q, err := query.Parse(expr, nil)
+	q, err := query.Parse(expr)
 	if err != nil {
 		t.Fatalf("Parse(%q): %v", expr, err)
 	}
@@ -127,7 +127,7 @@ func TestOrderByBoard(t *testing.T) {
 func TestOrderLessEqualStringKeys(t *testing.T) {
 	t.Parallel()
 	items, cfg := fixture()
-	q, err := query.Parse("x ORDER BY owner", nil)
+	q, err := query.Parse("x ORDER BY owner")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}

@@ -111,6 +111,7 @@ points.
 
 ## Documentation
 
+- **[docs/user_manual/](docs/user_manual/README.md)** — the full user manual: getting started, concepts, a complete CLI reference, configuration reference, custom fields/schema, the TUI guide, recipes, and current limitations.
 - `kira --help` and `kira <command> --help` — the command surface.
 - `kira schema` / [schema/kira.json](schema/kira.json) — published JSON schema for every `--json` output and the automation hook-stdin payload.
 - `kira version` — build version.

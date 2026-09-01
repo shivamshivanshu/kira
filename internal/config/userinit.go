@@ -20,7 +20,6 @@ func mustTemplate(name string) string {
 	return string(data)
 }
 
-// InitUser initializes the user's kira config directory and returns the result.
 func InitUser(env func(string) string) (*datamodel.ConfigInitResult, error) {
 	dir, ok := UserConfigDir(env)
 	if !ok {

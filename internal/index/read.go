@@ -28,10 +28,10 @@ func ReadCached(cacheDir string) ([]*datamodel.Item, error) {
 }
 
 // Items returns all cached items along with their aliases, labels, links,
-// and extras. Read-only projections: the cache stores no Body, UnknownKeys,
-// UnknownLinkTypes or CRLF, so a rehydrated item claims HasUnknown() == false
-// even for a file kira must refuse to rewrite. Never feed these to a write
-// path — core reaches the filesystem loader for that.
+// and extras. Read-only projections: the cache stores no Body, ExtraLinks or
+// CRLF, so a rehydrated item looks rewritable even for a file kira must refuse
+// to rewrite. Never feed these to a write path — core reaches the filesystem
+// loader for that.
 func (i *Index) Items() ([]*datamodel.Item, error) {
 	items, byID, err := i.scanItems()
 	if err != nil {
@@ -46,15 +46,12 @@ func (i *Index) Items() ([]*datamodel.Item, error) {
 	if err := i.attachLinks(byID); err != nil {
 		return nil, err
 	}
-	if err := i.attachExtras(byID); err != nil {
-		return nil, err
-	}
 	return items, nil
 }
 
 func (i *Index) scanItems() ([]*datamodel.Item, map[string]*datamodel.Item, error) {
 	rows, err := i.db.Query(`SELECT id, number, type, subtype, title, state, resolution,
-		priority, rank, owner, reporter, epic, sprint, due, estimate, created, updated, activity
+		priority, rank, owner, reporter, epic, sprint, due, estimate, created, updated, activity, extras
 		FROM items ORDER BY id`)
 	if err != nil {
 		return nil, nil, errx.Env("querying index items: %v", err)
@@ -64,12 +61,15 @@ func (i *Index) scanItems() ([]*datamodel.Item, map[string]*datamodel.Item, erro
 	var items []*datamodel.Item
 	for rows.Next() {
 		var it datamodel.Item
-		var subtype, resolution, priority, rank, owner, reporter, epic, sprint, due sql.NullString
+		var subtype, resolution, priority, rank, owner, reporter, epic, sprint, due, extras sql.NullString
 		var estimate sql.NullFloat64
 		if err := rows.Scan(&it.ID, &it.Number, &it.Type, &subtype, &it.Title, &it.State,
 			&resolution, &priority, &rank, &owner, &reporter, &epic, &sprint, &due,
-			&estimate, &it.Created, &it.Updated, &it.Activity); err != nil {
+			&estimate, &it.Created, &it.Updated, &it.Activity, &extras); err != nil {
 			return nil, nil, errx.Env("scanning index item: %v", err)
+		}
+		if err := decodeExtras(extras.String, &it); err != nil {
+			return nil, nil, err
 		}
 		it.Subtype = strPtr(subtype)
 		it.Resolution = strPtr(resolution)
@@ -123,40 +123,6 @@ func (i *Index) attachLinks(byID map[string]*datamodel.Item) error {
 		it.Links[kind] = append(it.Links[kind], target)
 	}
 	return rows.Err()
-}
-
-func (i *Index) attachExtras(byID map[string]*datamodel.Item) error {
-	rows, err := i.db.Query("SELECT item_id, name, kind, value FROM extras ORDER BY item_id, name, ord")
-	if err != nil {
-		return errx.Env("querying index extras: %v", err)
-	}
-	return eachPair(rows, func(r *sql.Rows) error {
-		var itemID, name, kind string
-		var value sql.NullString
-		if err := r.Scan(&itemID, &name, &kind, &value); err != nil {
-			return errx.Env("scanning index extra: %v", err)
-		}
-		it := byID[itemID]
-		if it == nil {
-			return nil
-		}
-		if it.Extras == nil {
-			it.Extras = map[string]datamodel.ExtraValue{}
-		}
-		it.Extras[name] = extendExtra(it.Extras[name], kind, value)
-		return nil
-	})
-}
-
-func extendExtra(cur datamodel.ExtraValue, kind string, value sql.NullString) datamodel.ExtraValue {
-	if kind == extraKindScalar {
-		return datamodel.ExtraValue{Scalar: &value.String}
-	}
-	if !value.Valid {
-		return datamodel.ExtraValue{List: []string{}}
-	}
-	cur.List = append(cur.List, value.String)
-	return cur
 }
 
 func (i *Index) eachChild(q string, byID map[string]*datamodel.Item, add func(*datamodel.Item, string)) error {

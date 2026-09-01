@@ -1,12 +1,10 @@
 package core
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
-	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/editorx"
 	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
@@ -27,40 +25,26 @@ type draft struct {
 	Due      *string  `yaml:"due"`
 	Estimate *float64 `yaml:"estimate"`
 
-	Extras  map[string]datamodel.ExtraValue `yaml:"-"`
-	Unknown []string                        `yaml:"-"`
-	Body    string                          `yaml:"-"`
+	ExtraScalars map[string]string   `yaml:"-"`
+	ExtraLists   map[string][]string `yaml:"-"`
+	Body         string              `yaml:"-"`
 }
 
+// parseDraft captures the non-builtin frontmatter alongside the builtin fields
+// so a template or --from-file document carries its extras into the item
+// instead of losing them on the way through.
 func parseDraft(content string) (draft, error) {
 	var d draft
-	body, extras, unknown, err := codec.DecodeFrontmatter(content, &d)
+	body, err := codec.DecodeFrontmatter(content, &d)
 	if err != nil {
 		return draft{}, err
 	}
-	d.Extras, d.Unknown, d.Body = extras, unknown, body
-	return d, nil
-}
-
-func (s *Store) draftExtraErrors(typ string, d draft) []error {
-	if len(d.Unknown) == 0 {
-		return nil
-	}
-	schemas, err := s.Schemas()
+	scalars, lists, err := codec.ExtraFrontmatter(content)
 	if err != nil {
-		return []error{err}
+		return draft{}, err
 	}
-	var errs []error
-	for _, k := range d.Unknown {
-		if _, declared := entityschema.DeclaredExtra(schemas, typ, k); !declared {
-			errs = append(errs, fmt.Errorf("field %q: not a builtin field and not declared in the %s schema", k, typ))
-			continue
-		}
-		if _, captured := d.Extras[k]; !captured {
-			errs = append(errs, fmt.Errorf("field %q: value cannot be stored in frontmatter; use a scalar or a list of scalars", k))
-		}
-	}
-	return errs
+	d.ExtraScalars, d.ExtraLists, d.Body = scalars, lists, body
+	return d, nil
 }
 
 func serializeDraft(d draft) string {
@@ -82,7 +66,7 @@ func serializeDraft(d draft) string {
 		estimate = codec.EmitFloat(*d.Estimate)
 	}
 	b.WriteString("estimate: " + estimate + "\n")
-	codec.WriteExtras(&b, d.Extras)
+	codec.WriteExtras(&b, d.ExtraScalars, d.ExtraLists)
 	b.WriteString(codec.FenceLine)
 	b.WriteString(d.Body)
 	return b.String()
@@ -160,9 +144,12 @@ func runEditor(editor string, stdio editorx.Stdio, initial string, validate func
 	}
 }
 
-func defaultTemplate(typ string) string {
-	return serializeDraft(draft{
-		Type: typ,
-		Body: "\n## Description\n\n## Acceptance criteria\n",
-	})
+func defaultTemplate(typ string, schema entityschema.Schema) string {
+	var body strings.Builder
+	for _, f := range schema.Fields {
+		if f.Placement == entityschema.PlacementBody && f.Section != "" {
+			body.WriteString("\n## " + f.Section + "\n")
+		}
+	}
+	return serializeDraft(draft{Type: typ, Body: body.String()})
 }

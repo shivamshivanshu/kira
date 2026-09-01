@@ -39,6 +39,19 @@ const (
 	PlacementBody        Placement = "body"
 )
 
+// Identity is descriptive only in phase 1 — nothing generates IDs from it yet.
+type Identity struct {
+	Style  string `json:"style,omitempty"`
+	Prefix string `json:"prefix,omitempty"`
+}
+
+const IdentityStyleConfig = "config"
+
+// ConfigBacked reports whether instances of this entity live as config.yaml
+// entries (board, sprint) rather than as item files, which is what makes them
+// absent from anything that reads, filters, or renders the item set.
+func (s Schema) ConfigBacked() bool { return s.Identity.Style == IdentityStyleConfig }
+
 type EnumDef struct {
 	Name   string   `json:"name"`
 	Values []string `json:"values"`
@@ -58,7 +71,9 @@ type StateValue struct {
 }
 
 // FieldDef declares one field. By Type: enum/resolution use Enum, state uses
-// States, ref uses Target. Source (config vocab) is informational in phase 1.
+// States, ref uses Target. Source names a config vocab for a config-backed ref
+// (e.g. people, sprints); its presence routes ref validation to membership
+// rather than entity existence.
 type FieldDef struct {
 	Name      string       `json:"name"`
 	Type      FieldType    `json:"type"`
@@ -76,12 +91,23 @@ type FieldDef struct {
 	Section   string       `json:"section,omitempty"`
 }
 
+// TargetsItemType reports whether this field references another item. A type
+// exists because config declares a workflow for it, not because it has a
+// schema file, so the caller supplies the type set rather than this testing
+// the schema map -- a ref to a config-only type is still a ref. A Source names
+// a config vocabulary instead, so such a ref points at a vocabulary entry even
+// when its Target happens to name an item type.
+func (f FieldDef) TargetsItemType(itemTypes map[string]bool) bool {
+	return f.Type == FieldRef && f.Source == "" && itemTypes[f.Target]
+}
+
 type Schema struct {
 	Name           string         `json:"name"`
 	Workflow       string         `json:"workflow,omitempty"`
+	Identity       Identity       `json:"identity,omitempty"`
 	Fields         []FieldDef     `json:"fields"`
 	Enums          []EnumDef      `json:"enums,omitempty"`
-	Representation Representation `json:"representation,omitzero"`
+	Representation Representation `json:"representation,omitempty"`
 }
 
 func (s Schema) Field(name string) (FieldDef, bool) {
@@ -102,7 +128,7 @@ func DeclaredExtra(schemas map[string]Schema, typ, name string) (FieldDef, bool)
 		return FieldDef{}, false
 	}
 	f, ok := schema.Field(name)
-	if !ok || f.Placement != PlacementFrontmatter {
+	if !ok || !f.IsCustomFrontmatter() {
 		return FieldDef{}, false
 	}
 	return f, true

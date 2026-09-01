@@ -206,7 +206,7 @@ func TestResolveInteractiveHonoursArbitratedExtraPick(t *testing.T) {
 
 	it := eventTicket()
 	commitSeverity := func(severity, date, msg string) {
-		it.Extras = map[string]datamodel.ExtraValue{"severity": {Scalar: new(severity)}}
+		it.ExtraScalars = map[string]string{"severity": severity}
 		it.Updated = date + "T10:00:00Z"
 		if _, err := s.fs().WriteItem(it); err != nil {
 			t.Fatal(err)
@@ -251,8 +251,8 @@ func TestResolveInteractiveHonoursArbitratedExtraPick(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolved file unparseable: %v", err)
 	}
-	if got := merged.Extras["severity"].Scalar; got == nil || *got != "critical" {
-		t.Errorf("severity = %v, want the interactive theirs pick %q over the auto winner", got, "critical")
+	if got := merged.ExtraScalars["severity"]; got != "critical" {
+		t.Errorf("severity = %q, want the interactive theirs pick %q over the auto winner", got, "critical")
 	}
 }
 
@@ -269,7 +269,7 @@ func TestPickFieldsHonoursSideChoices(t *testing.T) {
 	theirs.Priority = new("P1")
 	theirs.Owner = new("theirs-owner")
 
-	s.pickFields(target, ours, theirs, []string{datamodel.KeyTitle, datamodel.KeyPriority, datamodel.KeyOwner}, nil)
+	s.pickFields(target, ours, theirs, []string{datamodel.KeyTitle, datamodel.KeyPriority, datamodel.KeyOwner})
 
 	if target.Title != "ours-title" {
 		t.Errorf("title = %q, want ours pick", target.Title)
@@ -279,5 +279,27 @@ func TestPickFieldsHonoursSideChoices(t *testing.T) {
 	}
 	if target.Owner != nil {
 		t.Errorf("owner = %v, want untouched (nil) on empty/auto answer", target.Owner)
+	}
+}
+
+func TestPickFieldsHonoursExtraFieldChoices(t *testing.T) {
+	s := &Store{prompter: &scriptedPrompter{answers: []string{"t", "o"}}}
+
+	target := eventTicket()
+	target.ExtraScalars = map[string]string{"reviewer": "auto"}
+	ours := eventTicket()
+	ours.ExtraScalars = map[string]string{"reviewer": "ours-reviewer"}
+	ours.ExtraLists = map[string][]string{"tags": {"ours"}}
+	theirs := eventTicket()
+	theirs.ExtraScalars = map[string]string{"reviewer": "theirs-reviewer"}
+	theirs.ExtraLists = map[string][]string{"tags": {"theirs"}}
+
+	s.pickFields(target, ours, theirs, []string{"reviewer", "tags"})
+
+	if target.ExtraScalars["reviewer"] != "theirs-reviewer" {
+		t.Errorf("reviewer = %q, want theirs pick", target.ExtraScalars["reviewer"])
+	}
+	if !slices.Equal(target.ExtraLists["tags"], []string{"ours"}) {
+		t.Errorf("tags = %v, want ours pick", target.ExtraLists["tags"])
 	}
 }

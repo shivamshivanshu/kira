@@ -11,6 +11,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/index"
@@ -19,15 +20,13 @@ import (
 
 const futureFieldDecl = `{"name": "future_field", "type": "string", "placement": "frontmatter"}`
 
-func declareTicketExtras(t *testing.T, s *core.Store, fieldsJSON string) *core.Store {
+// replaceTicketSchema overwrites the ticket schema with exactly fieldsJSON, for
+// a fixture that has to un-declare fields the built-in or an earlier write set.
+func replaceTicketSchema(t *testing.T, s *core.Store, fieldsJSON string) *core.Store {
 	t.Helper()
-	return declareTicketSchema(t, s, `{"name": "ticket", "fields": [`+fieldsJSON+`]}`)
-}
-
-func declareTicketSchema(t *testing.T, s *core.Store, schemaJSON string) *core.Store {
-	t.Helper()
-	path := filepath.Join(storage.New(s.Root()).SchemaDir(), "ticket.json")
-	if err := os.WriteFile(path, []byte(schemaJSON), 0o644); err != nil {
+	path := filepath.Join(storage.New(s.Root()).SchemaDir(), datamodel.TypeTicket+".json")
+	doc := `{"name": "ticket", "workflow": "ticket", "fields": [` + fieldsJSON + `]}`
+	if err := os.WriteFile(path, []byte(doc), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	fresh, err := core.Discover(s.Root())
@@ -37,58 +36,24 @@ func declareTicketSchema(t *testing.T, s *core.Store, schemaJSON string) *core.S
 	return fresh
 }
 
-func TestDeclaredExtraDoesNotBlockWrites(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "Declared extra")
-	overwriteItem(t, s, res.ID, withUnknownKey(mustReadItem(t, s, res.ID)))
-	s = declareTicketExtras(t, s, futureFieldDecl)
-
-	if _, err := s.Assign(cfg, "KIRA-1", "bob", core.AssignOpts{}); err != nil {
-		t.Fatalf("a schema-declared extra must not block mutation: %v", err)
+// declareTicketExtras appends field declarations, written as the JSON a schema
+// file carries, to the ticket schema and returns a store whose schema cache
+// predates the write.
+func declareTicketExtras(t *testing.T, s *core.Store, fieldsJSON string, enums ...entityschema.EnumDef) *core.Store {
+	t.Helper()
+	var fields []entityschema.FieldDef
+	if err := json.Unmarshal([]byte("["+fieldsJSON+"]"), &fields); err != nil {
+		t.Fatalf("field declarations %s: %v", fieldsJSON, err)
 	}
-	if got := mustReadItem(t, s, res.ID); !strings.Contains(got, unknownKeyLine) {
-		t.Fatalf("mutation dropped the declared extra:\n%s", got)
+	withDeclaredField(t, s, datamodel.TypeTicket, fields[0], enums...)
+	for _, f := range fields[1:] {
+		withDeclaredField(t, s, datamodel.TypeTicket, f)
 	}
-}
-
-func TestUndeclaredExtraStillBlocksWrites(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "Undeclared extra")
-	content := strings.Replace(mustReadItem(t, s, res.ID), "---\n", "---\nother_field: x\n", 1)
-	overwriteItem(t, s, res.ID, content)
-	s = declareTicketExtras(t, s, futureFieldDecl)
-
-	_, err := s.Assign(cfg, "KIRA-1", "bob", core.AssignOpts{})
-	assertUpgradeRefusal(t, err)
-	if !strings.Contains(err.Error(), "other_field") {
-		t.Fatalf("refusal must name the undeclared key: %v", err)
+	fresh, err := core.Discover(s.Root())
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
 	}
-}
-
-func TestExtrasBlockWhenTypeHasNoSchema(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "No schema for type")
-	content := strings.Replace(withUnknownKey(mustReadItem(t, s, res.ID)), "type: ticket\n", "type: gadget\n", 1)
-	overwriteItem(t, s, res.ID, content)
-	s = declareTicketExtras(t, s, futureFieldDecl)
-
-	_, err := s.Assign(cfg, "KIRA-1", "bob", core.AssignOpts{})
-	assertUpgradeRefusal(t, err)
-}
-
-func TestDeclaredUncapturedExtraStillBlocks(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "Declared mapping")
-	content := strings.Replace(mustReadItem(t, s, res.ID), "---\n", "---\nfuture_field:\n  nested: 1\n", 1)
-	overwriteItem(t, s, res.ID, content)
-	s = declareTicketExtras(t, s, futureFieldDecl)
-
-	_, err := s.Assign(cfg, "KIRA-1", "bob", core.AssignOpts{})
-	assertUpgradeRefusal(t, err)
+	return fresh
 }
 
 func TestEditFieldSetsDeclaredExtras(t *testing.T) {
@@ -107,7 +72,7 @@ func TestEditFieldSetsDeclaredExtras(t *testing.T) {
 	if !strings.Contains(got, "points: 42\n") {
 		t.Fatalf("int extra must serialize unquoted:\n%s", got)
 	}
-	if !strings.Contains(got, "note: 'a: b'\n") {
+	if !strings.Contains(got, "note: \"a: b\"\n") {
 		t.Fatalf("quote-needing extra must serialize quoted:\n%s", got)
 	}
 
@@ -115,7 +80,7 @@ func TestEditFieldSetsDeclaredExtras(t *testing.T) {
 		t.Fatalf("re-edit after reparse: %v", err)
 	}
 	got = mustReadItem(t, s, res.ID)
-	if !strings.Contains(got, "points: 43\n") || !strings.Contains(got, "note: 'a: b'\n") {
+	if !strings.Contains(got, "points: 43\n") || !strings.Contains(got, "note: \"a: b\"\n") {
 		t.Fatalf("stored extras did not round-trip through parse and serialize:\n%s", got)
 	}
 }
@@ -143,7 +108,7 @@ func TestEditFieldHonorsImmutableExtra(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
 	mustCreate(t, s, cfg, "Immutable extra")
-	s = declareTicketExtras(t, s, `{"name": "external_id", "type": "string", "immutable": true, "placement": "frontmatter"}`)
+	s = declareTicketExtras(t, s, immutableExtraDecl)
 
 	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{Fields: []core.FieldEdit{{Key: "external_id", Value: "x"}}})
 	if err == nil || !strings.Contains(err.Error(), `unknown or immutable field "external_id"`) {
@@ -151,24 +116,21 @@ func TestEditFieldHonorsImmutableExtra(t *testing.T) {
 	}
 }
 
-const typedTicketSchema = `{
-  "name": "ticket",
-  "enums": [{"name": "sev", "values": ["LOW", "HIGH"]}],
-  "fields": [
-    {"name": "severity", "type": "enum", "enum": "sev", "placement": "frontmatter"},
-    {"name": "story_points", "type": "int", "placement": "frontmatter"}
-  ]
-}`
+const typedFieldDecls = `{"name": "severity", "type": "enum", "enum": "sev", "placement": "frontmatter"}, ` +
+	`{"name": "story_points", "type": "int", "placement": "frontmatter"}`
+
+var sevEnum = entityschema.EnumDef{Name: "sev", Values: []string{"LOW", "HIGH"}}
 
 func TestEditFieldRejectsMistypedExtraValues(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
 	res := mustCreate(t, s, cfg, "Typed rejection")
-	s = declareTicketSchema(t, s, typedTicketSchema)
+	s = declareTicketExtras(t, s, typedFieldDecls, sevEnum)
+	cfg.Labels.Strict = true
 	before := mustReadItem(t, s, res.ID)
 
 	for key, tt := range map[string]struct{ value, want string }{
-		"story_points": {"abc", "expected type int"},
+		"story_points": {"abc", "expected an integer"},
 		"severity":     {"BOGUS", `not in the "sev" vocabulary`},
 	} {
 		_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{Fields: []core.FieldEdit{{Key: key, Value: tt.value}}})
@@ -196,7 +158,8 @@ func TestMutationBlockedByInvalidOnDiskExtra(t *testing.T) {
 	res := mustCreate(t, s, cfg, "Invalid on disk")
 	content := strings.Replace(mustReadItem(t, s, res.ID), "---\n", "---\nseverity: BOGUS\n", 1)
 	overwriteItem(t, s, res.ID, content)
-	s = declareTicketSchema(t, s, typedTicketSchema)
+	s = declareTicketExtras(t, s, typedFieldDecls, sevEnum)
+	cfg.Labels.Strict = true
 
 	_, err := s.Assign(cfg, "KIRA-1", "bob", core.AssignOpts{})
 	if err == nil || !strings.Contains(err.Error(), `not in the "sev" vocabulary`) {
@@ -254,6 +217,7 @@ func TestQueryOnExtrasServedByWarmIndex(t *testing.T) {
 		"numeric ordered":  {Query: "points > 5"},
 		"saved filter":     {Filter: "infra"},
 		"combined builtin": {Query: "team = infra AND state = TODO"},
+		"field flag":       {Fields: []core.FieldFilter{{Key: "team", Value: "infra"}}},
 	}
 	for name, opts := range queries {
 		res, err := s.List(cfg, opts)
@@ -287,26 +251,26 @@ func TestExtrasInJSONShapes(t *testing.T) {
 	for _, r := range res.Items {
 		rows[r.Number] = r
 	}
-	want := map[string]datamodel.ExtraJSON{"team": "infra", "watchers": []string{"alice", "bob"}, "points": "8"}
-	if !reflect.DeepEqual(rows["KIRA-1"].Extras, want) {
-		t.Errorf("list extras = %#v, want %#v", rows["KIRA-1"].Extras, want)
+	want := map[string]any{"team": "infra", "watchers": []string{"alice", "bob"}, "points": 8}
+	if !reflect.DeepEqual(rows["KIRA-1"].Fields, want) {
+		t.Errorf("list fields = %#v, want %#v", rows["KIRA-1"].Fields, want)
 	}
 
 	tagged, err := json.Marshal(rows["KIRA-1"])
-	if err != nil || !strings.Contains(string(tagged), `"extras":{"points":"8","team":"infra","watchers":["alice","bob"]}`) {
-		t.Errorf("list --json must carry extras, got %s (err=%v)", tagged, err)
+	if err != nil || !strings.Contains(string(tagged), `"fields":{"points":8,"team":"infra","watchers":["alice","bob"]}`) {
+		t.Errorf("list --json must carry the declared fields, got %s (err=%v)", tagged, err)
 	}
 	plain, err := json.Marshal(rows["KIRA-2"])
-	if err != nil || strings.Contains(string(plain), `"extras"`) {
-		t.Errorf("an item without extras must marshal without the key, got %s (err=%v)", plain, err)
+	if err != nil || strings.Contains(string(plain), `"fields"`) {
+		t.Errorf("an item without declared fields must marshal without the key, got %s (err=%v)", plain, err)
 	}
 
 	show, err := s.Show(cfg, "KIRA-1", "")
 	if err != nil {
 		t.Fatalf("Show: %v", err)
 	}
-	if !reflect.DeepEqual(show.Extras, want) {
-		t.Errorf("show extras = %#v, want %#v", show.Extras, want)
+	if !reflect.DeepEqual(show.Fields, want) {
+		t.Errorf("show fields = %#v, want %#v", show.Fields, want)
 	}
 }
 
@@ -319,8 +283,8 @@ func TestListExtraIsEmptyParityWithLabels(t *testing.T) {
 	content := strings.Replace(mustReadItem(t, s, explicit.ID), "---\n", "---\nwatchers: []\n", 1)
 	overwriteItem(t, s, explicit.ID, content)
 	show, err := s.Show(cfg, "KIRA-1", "")
-	if err != nil || !reflect.DeepEqual(show.Extras["watchers"], datamodel.ExtraJSON([]string{})) {
-		t.Fatalf("fixture must carry an explicit empty list, got %#v (err=%v)", show.Extras, err)
+	if err != nil || !reflect.DeepEqual(show.Fields["watchers"], []string{}) {
+		t.Fatalf("fixture must carry an explicit empty list, got %#v (err=%v)", show.Fields, err)
 	}
 
 	for _, field := range []string{"watchers", "label"} {
@@ -339,76 +303,6 @@ func TestListExtraIsEmptyParityWithLabels(t *testing.T) {
 		if got := listNumbers(res); got != "" {
 			t.Errorf("%s IS NOT EMPTY matched %q, want none", field, got)
 		}
-	}
-}
-
-func TestEditFromFileRejectsUndeclaredKey(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "Clean item")
-	before := mustReadItem(t, s, res.ID)
-	src := writeTempItem(t, strings.Replace(before, "---\n", "---\nfoo: bar\n", 1))
-
-	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{FromFile: src})
-	var e *errx.Error
-	if !errors.As(err, &e) || e.Code != errx.ExitUser {
-		t.Fatalf("want ExitUser refusal, got %v (%T)", err, err)
-	}
-	if !strings.Contains(e.Error(), `"foo"`) {
-		t.Fatalf("refusal must name the offending key: %v", err)
-	}
-	if got := mustReadItem(t, s, res.ID); got != before {
-		t.Fatalf("a refused edit must not mutate the file:\n%s", got)
-	}
-}
-
-func TestEditFromFileAcceptsDeclaredExtra(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "Declared extra from file")
-	s = declareTicketExtras(t, s, futureFieldDecl)
-	src := writeTempItem(t, strings.Replace(mustReadItem(t, s, res.ID), "---\n", "---\nfuture_field: x\n", 1))
-
-	if _, err := s.Edit(cfg, "KIRA-1", core.EditOpts{FromFile: src}); err != nil {
-		t.Fatalf("a schema-declared extra must edit fine: %v", err)
-	}
-	if got := mustReadItem(t, s, res.ID); !strings.Contains(got, "future_field: x\n") {
-		t.Fatalf("edit dropped the declared extra:\n%s", got)
-	}
-}
-
-func TestEditorModeRejectsUndeclaredKey(t *testing.T) {
-	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "Clean item")
-	before := mustReadItem(t, s, res.ID)
-
-	counter := filepath.Join(t.TempDir(), "counter")
-	seen := filepath.Join(t.TempDir(), "seen")
-	t.Setenv("KIRA_COUNTER", counter)
-	t.Setenv("KIRA_SEEN", seen)
-	writeEditorScript(t,
-		"n=$(cat \"$KIRA_COUNTER\" 2>/dev/null || echo 0)\n"+
-			"n=$((n+1)); echo \"$n\" > \"$KIRA_COUNTER\"\n"+
-			"if [ \"$n\" -eq 1 ]; then\n"+
-			"  head -n 1 \"$1\" > \"$1.tmp\"; printf 'foo: bar\\n' >> \"$1.tmp\"; tail -n +2 \"$1\" >> \"$1.tmp\"; mv \"$1.tmp\" \"$1\"\n"+
-			"else\n"+
-			"  cp \"$1\" \"$KIRA_SEEN\"\n"+
-			"fi\n")
-
-	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{})
-	var e *errx.Error
-	if !errors.As(err, &e) || e.Code != errx.ExitUser {
-		t.Fatalf("want ExitUser refusal, got %v (%T)", err, err)
-	}
-	banner, readErr := os.ReadFile(seen)
-	if readErr != nil {
-		t.Fatalf("editor never saw a retry banner: %v", readErr)
-	}
-	if !strings.Contains(string(banner), `"foo"`) {
-		t.Fatalf("retry banner must name the offending key:\n%s", banner)
-	}
-	if got := mustReadItem(t, s, res.ID); got != before {
-		t.Fatalf("a refused edit must not mutate the file:\n%s", got)
 	}
 }
 
@@ -438,7 +332,7 @@ func TestExtraEditsSurfaceInLogAndBlame(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
 	mustCreate(t, s, cfg, "History of an extra")
-	s = declareTicketSchema(t, s, typedTicketSchema)
+	s = declareTicketExtras(t, s, typedFieldDecls, sevEnum)
 
 	for _, value := range []string{"LOW", "HIGH"} {
 		if _, err := s.Edit(cfg, "KIRA-1", core.EditOpts{Fields: []core.FieldEdit{{Key: "severity", Value: value}}}); err != nil {
@@ -487,7 +381,7 @@ func TestAtCompilesQueriesAgainstTheSnapshotSchema(t *testing.T) {
 	setExtras(t, s, cfg, "KIRA-1")
 	declared := headSHA(t, s)
 
-	s = declareTicketExtras(t, s, futureFieldDecl)
+	s = replaceTicketSchema(t, s, futureFieldDecl)
 	commitKira(t, s, "undeclare the extras")
 
 	if _, err := s.List(cfg, core.ListOpts{Query: "team = infra"}); err == nil {

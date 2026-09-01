@@ -31,7 +31,7 @@ func Serialize(it *datamodel.Item) string {
 	writeLine(&b, datamodel.KeyLabels, EmitList(it.Labels))
 	writeReqNullableScalar(&b, datamodel.KeyEpic, it.Epic)
 	writeLine(&b, datamodel.KeyBlockedBy, EmitList(it.BlockedBy))
-	writeLinks(&b, it.Links)
+	writeLinks(&b, it.Links, it.ExtraLinks)
 	writeOptScalar(&b, datamodel.KeySprint, it.Sprint)
 	if it.Due != nil {
 		writeLine(&b, datamodel.KeyDue, emitDate(*it.Due))
@@ -39,7 +39,7 @@ func Serialize(it *datamodel.Item) string {
 	writeOptFloat(&b, datamodel.KeyEstimate, it.Estimate)
 	writeLine(&b, datamodel.KeyCreated, emitTimestamp(it.Created))
 	writeLine(&b, datamodel.KeyUpdated, emitTimestamp(it.Updated))
-	WriteExtras(&b, it.Extras)
+	writeExtras(&b, it)
 
 	b.WriteString(FenceLine)
 	b.WriteString(it.Body)
@@ -73,32 +73,43 @@ func writeOptFloat(b *strings.Builder, key string, v *float64) {
 	}
 }
 
-func WriteExtras(b *strings.Builder, extras map[string]datamodel.ExtraValue) {
-	for _, key := range slices.Sorted(maps.Keys(extras)) {
-		v := extras[key]
-		switch {
-		case v.List != nil:
-			// elements hold renderFlowElem output: already flow-safe YAML text
-			writeLine(b, EmitScalar(key), "["+strings.Join(v.List, ", ")+"]")
-		case v.Scalar != nil:
-			writeLine(b, EmitScalar(key), *v.Scalar)
+// WriteExtras emits extras in Serialize's canonical order for a document with
+// no item behind it, such as an editor draft.
+func WriteExtras(b *strings.Builder, scalars map[string]string, lists map[string][]string) {
+	writeExtras(b, &datamodel.Item{ExtraScalars: scalars, ExtraLists: lists})
+}
+
+func writeExtras(b *strings.Builder, it *datamodel.Item) {
+	for _, k := range it.ExtraKeys() {
+		if v, ok := it.ExtraScalars[k]; ok {
+			writeLine(b, k, v)
+			continue
 		}
+		writeLine(b, k, EmitList(it.ExtraLists[k]))
 	}
 }
 
-func writeLinks(b *strings.Builder, links map[string][]string) {
-	first := true
+func writeLinks(b *strings.Builder, links, extraLinks map[string][]string) {
+	type link struct {
+		typ     string
+		targets []string
+	}
+	var ordered []link
 	for _, typ := range datamodel.LinkTypes {
-		targets := links[string(typ)]
-		if len(targets) == 0 {
-			continue
+		if targets := links[string(typ)]; len(targets) > 0 {
+			ordered = append(ordered, link{string(typ), targets})
 		}
-		if first {
-			b.WriteString(datamodel.KeyLinks + ":\n")
-			first = false
-		}
+	}
+	for _, typ := range slices.Sorted(maps.Keys(extraLinks)) {
+		ordered = append(ordered, link{typ, extraLinks[typ]})
+	}
+	if len(ordered) == 0 {
+		return
+	}
+	b.WriteString(datamodel.KeyLinks + ":\n")
+	for _, l := range ordered {
 		b.WriteString("  ")
-		writeLine(b, string(typ), EmitList(targets))
+		writeLine(b, l.typ, EmitList(l.targets))
 	}
 }
 
@@ -137,67 +148,6 @@ func DecodeScalar(raw string) string {
 	return v
 }
 
-func DecodeList(elems []string) []string {
-	out := make([]string, len(elems))
-	for i, e := range elems {
-		out[i] = DecodeScalar(e)
-	}
-	return out
-}
-
-// DecodeExtras decodes captured extras for --json output; nil when the item
-// has none.
-func DecodeExtras(extras map[string]datamodel.ExtraValue) map[string]datamodel.ExtraJSON {
-	if len(extras) == 0 {
-		return nil
-	}
-	out := make(map[string]datamodel.ExtraJSON, len(extras))
-	for k, v := range extras {
-		switch {
-		case v.List != nil:
-			out[k] = DecodeList(v.List)
-		case v.Scalar != nil:
-			out[k] = DecodeScalar(*v.Scalar)
-		}
-	}
-	return out
-}
-
-// RenderScalar is renderScalarNode for plain text, giving `--field` writes the
-// same canonical form parsing produces: an untagged node resolves its implicit
-// tag from the text, so "42" stays an unquoted int rather than EmitScalar's
-// string-typed "42". The result is re-decoded and rendered once more so it is
-// a fixed point of parse-capture (a bare date, for example, re-renders quoted
-// under its implicit !!timestamp tag). Null forms are refused because
-// extraValue would drop them on the next parse.
-func RenderScalar(s string) (string, bool) {
-	out, node, ok := renderAndDecode(s, renderScalarNode)
-	if !ok || isNull(node) {
-		return "", false
-	}
-	return out, true
-}
-
-// RenderFlowElem is RenderScalar inside a [] context (see renderFlowElem).
-// Nulls pass through: extraValue keeps null list elements.
-func RenderFlowElem(s string) (string, bool) {
-	out, _, ok := renderAndDecode(s, renderFlowElem)
-	return out, ok
-}
-
-func renderAndDecode(s string, render func(*yaml.Node) (string, bool)) (string, *yaml.Node, bool) {
-	out, ok := render(&yaml.Node{Kind: yaml.ScalarNode, Value: s})
-	if !ok {
-		return "", nil, false
-	}
-	var doc yaml.Node
-	if yaml.Unmarshal([]byte(out), &doc) != nil || len(doc.Content) == 0 {
-		return "", nil, false
-	}
-	out, ok = render(doc.Content[0])
-	return out, doc.Content[0], ok
-}
-
 func emitFlowScalar(s string) string {
 	if plainSafe(s) {
 		return s
@@ -205,11 +155,19 @@ func emitFlowScalar(s string) string {
 	if out := EmitScalar(s); out != s {
 		return out
 	}
-	out, err := marshalFlowElem(&yaml.Node{Kind: yaml.ScalarNode, Value: s})
+	seq := &yaml.Node{
+		Kind:    yaml.SequenceNode,
+		Style:   yaml.FlowStyle,
+		Content: []*yaml.Node{{Kind: yaml.ScalarNode, Value: s}},
+	}
+	out, err := marshalScalar(seq)
 	if err != nil {
 		return emitQuoted(s)
 	}
-	return out
+	if out == "["+s+"]" {
+		return s
+	}
+	return strings.TrimSuffix(strings.TrimPrefix(out, "["), "]")
 }
 
 func plainSafe(s string) bool {
@@ -249,49 +207,6 @@ func emitQuoted(s string) string {
 // implicit !!timestamp, so re-marshaling would double-quote it and break the
 // unquoted canonical form.
 func emitTimestamp(s string) string { return s }
-
-// renderScalarNode returns a scalar node's canonical YAML text, preserving the
-// implicit tag its style carries: an extra holds rendered text rather than a
-// decoded value so that `points: 42` survives a rewrite as an int instead of
-// being requoted to "42". Readers decode with DecodeScalar. Comments and
-// anchors are stripped -- Serialize drops them from builtin fields too, and a
-// head comment would otherwise force multi-line output. Reports false for
-// anything that will not fit one frontmatter line (literal/folded styles).
-func renderScalarNode(n *yaml.Node) (string, bool) {
-	out, err := marshalScalar(bareValue(n))
-	if err != nil || strings.ContainsAny(out, "\n\r") {
-		return "", false
-	}
-	return out, true
-}
-
-// renderFlowElem is renderScalarNode for a list element, rendered inside a []
-// context so the emitter quotes `,`/`]`-bearing values a bare render would
-// leave plain.
-func renderFlowElem(n *yaml.Node) (string, bool) {
-	if n.Kind != yaml.ScalarNode {
-		return "", false
-	}
-	out, err := marshalFlowElem(bareValue(n))
-	if err != nil || strings.ContainsAny(out, "\n\r") {
-		return "", false
-	}
-	return out, true
-}
-
-func marshalFlowElem(n *yaml.Node) (string, error) {
-	out, err := marshalScalar(&yaml.Node{Kind: yaml.SequenceNode, Style: yaml.FlowStyle, Content: []*yaml.Node{n}})
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSuffix(strings.TrimPrefix(out, "["), "]"), nil
-}
-
-func bareValue(n *yaml.Node) *yaml.Node {
-	clean := *n
-	clean.HeadComment, clean.LineComment, clean.FootComment, clean.Anchor = "", "", "", ""
-	return &clean
-}
 
 // valid dates go verbatim for the same !!timestamp reason as emitTimestamp;
 // invalid ones (due is parsed shape-only) still need EmitScalar's quoting to

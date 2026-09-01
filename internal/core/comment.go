@@ -26,7 +26,7 @@ func (s *Store) Comment(cfg *datamodel.Config, ref string, opts CommentOpts) (*d
 		if err != nil {
 			return nil, err
 		}
-		if err := s.guardWritable(orig); err != nil {
+		if err := guardWritable(orig); err != nil {
 			return nil, err
 		}
 	}

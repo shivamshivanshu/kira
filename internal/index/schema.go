@@ -6,16 +6,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-const schemaVersion = 8
-
-// One extras row per (item_id, name, ord): a scalar is a single
-// extraKindScalar row, a list is one extraKindList row per element in ord
-// order -- except an empty list, which is a single NULL-valued row so a
-// present-but-empty key stays distinct from an absent one.
-const (
-	extraKindScalar = "scalar"
-	extraKindList   = "list"
-)
+const schemaVersion = 9
 
 const ddl = `
 CREATE TABLE IF NOT EXISTS items (
@@ -36,7 +27,8 @@ CREATE TABLE IF NOT EXISTS items (
   estimate REAL,
   created  TEXT NOT NULL,
   updated  TEXT NOT NULL,
-  activity TEXT NOT NULL
+  activity TEXT NOT NULL,
+  extras   TEXT
 );
 CREATE TABLE IF NOT EXISTS aliases (
   item_id TEXT NOT NULL REFERENCES items(id) ON DELETE CASCADE,
@@ -51,14 +43,6 @@ CREATE TABLE IF NOT EXISTS labels (
   PRIMARY KEY (item_id, ord)
 );
 CREATE INDEX IF NOT EXISTS idx_labels_label ON labels(label);
-CREATE TABLE IF NOT EXISTS extras (
-  item_id TEXT NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-  name    TEXT NOT NULL,
-  ord     INTEGER NOT NULL,
-  kind    TEXT NOT NULL,
-  value   TEXT,
-  PRIMARY KEY (item_id, name, ord)
-);
 CREATE TABLE IF NOT EXISTS links (
   item_id   TEXT NOT NULL REFERENCES items(id) ON DELETE CASCADE,
   ord       INTEGER NOT NULL,

@@ -1,7 +1,6 @@
 package query
 
 import (
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -71,7 +70,7 @@ type Order struct {
 	Desc          bool
 	pos           int
 	priorityIndex map[string]int
-	extraNumeric  bool
+	custom        *customField
 }
 
 func (o *Order) String() string {
@@ -127,58 +126,6 @@ var fields = map[string]bool{
 	fieldActivity: true, fieldBoard: true,
 }
 
-// ExtraField projects a schema-declared custom frontmatter field into the
-// traits the grammar needs: list fields get label-style contains semantics,
-// ordered fields compare numerically.
-type ExtraField struct {
-	Name    string
-	List    bool
-	Ordered bool
-}
-
-type extraSpec map[string]ExtraField
-
-func specOf(extras []ExtraField) extraSpec {
-	if len(extras) == 0 {
-		return nil
-	}
-	spec := make(extraSpec, len(extras))
-	for _, f := range extras {
-		if !fields[f.Name] {
-			spec[f.Name] = f
-		}
-	}
-	return spec
-}
-
-func (s extraSpec) known(f string) bool {
-	_, ok := s[f]
-	return fields[f] || ok
-}
-
-func (s extraSpec) isList(f string) bool { return isListField(f) || s[f].List }
-
-func (s extraSpec) allowsOrderedCmp(f string) bool {
-	ef := s[f]
-	return allowsOrderedCmp(f) || (ef.Ordered && !ef.List)
-}
-
-// FieldNames lists every field the grammar accepts given extras: the built-ins
-// plus the schema-declared frontmatter fields.
-func FieldNames(extras []ExtraField) []string { return specOf(extras).names() }
-
-func (s extraSpec) names() []string {
-	out := make([]string, 0, len(fields)+len(s))
-	for f := range fields {
-		out = append(out, f)
-	}
-	for f := range s {
-		out = append(out, f)
-	}
-	slices.Sort(out)
-	return out
-}
-
 func isDateField(f string) bool {
 	return f == fieldCreated || f == fieldUpdated || f == fieldDue || f == fieldActivity
 }
@@ -209,12 +156,12 @@ func anyKeyword(t token) bool {
 	return isKeyword(t, "AND") || isKeyword(t, "OR") || isKeyword(t, "NOT")
 }
 
-func Parse(input string, extras []ExtraField) (*Parsed, error) {
+func Parse(input string) (*Parsed, error) {
 	toks, err := lex(input)
 	if err != nil {
 		return nil, err
 	}
-	p := &parser{toks: toks, spec: specOf(extras)}
+	p := &parser{toks: toks}
 	if p.peek().kind == tokEOF {
 		return nil, &Error{Pos: 0, Msg: "empty query"}
 	}
@@ -238,7 +185,6 @@ func Parse(input string, extras []ExtraField) (*Parsed, error) {
 type parser struct {
 	toks []token
 	i    int
-	spec extraSpec
 }
 
 func (p *parser) peek() token  { return p.toks[p.i] }
@@ -263,17 +209,16 @@ func (p *parser) parseOrder() (*Order, error) {
 	if f.kind != tokWord {
 		return nil, &Error{Pos: f.pos, Msg: "expected a field after ORDER BY"}
 	}
-	if !p.spec.known(f.text) {
-		return nil, unknownFieldErr(f.pos, f.text, p.spec)
-	}
-	if p.spec.isList(f.text) {
-		return nil, &Error{Pos: f.pos, Msg: "cannot order by list field " + f.text}
-	}
-	if isBoolField(f.text) {
-		return nil, &Error{Pos: f.pos, Msg: "cannot order by boolean field " + f.text}
+	if fields[f.text] {
+		if isListField(f.text) {
+			return nil, &Error{Pos: f.pos, Msg: "cannot order by list field " + f.text}
+		}
+		if isBoolField(f.text) {
+			return nil, &Error{Pos: f.pos, Msg: "cannot order by boolean field " + f.text}
+		}
 	}
 	p.next()
-	ord := &Order{Field: f.text, pos: f.pos, extraNumeric: p.spec[f.text].Ordered}
+	ord := &Order{Field: f.text, pos: f.pos}
 	if d := p.peek(); isKeyword(d, "asc") || isKeyword(d, "desc") {
 		ord.Desc = strings.EqualFold(d.text, "desc")
 		p.next()
@@ -361,7 +306,7 @@ func (p *parser) parsePrimary() (Expr, error) {
 		if p.atOrderBy() {
 			return nil, &Error{Pos: t.pos, Msg: "expected an expression before ORDER BY"}
 		}
-		if p.spec.known(t.text) {
+		if fields[t.text] {
 			switch {
 			case p.peek2().isCmp():
 				if isBoolField(t.text) {
@@ -381,7 +326,16 @@ func (p *parser) parsePrimary() (Expr, error) {
 				return &boolExpr{field: t.text, want: true}, nil
 			}
 		} else if p.startsFieldPredicate() {
-			return nil, unknownFieldErr(t.pos, t.text, p.spec)
+			// A schema may declare this field; only the compiler knows, so
+			// parse the shape and let it resolve the name and the value's type.
+			switch {
+			case p.peek2().isCmp():
+				return p.parsePredicate()
+			case isKeyword(p.peek2(), "IN"):
+				return p.parseIn()
+			default:
+				return p.parseIsEmpty()
+			}
 		}
 		p.next()
 		return &termExpr{t.text}, nil
@@ -396,9 +350,10 @@ func (p *parser) parsePrimary() (Expr, error) {
 func (p *parser) parsePredicate() (Expr, error) {
 	field := p.next()
 	op := p.next()
-	if !p.spec.allowsOrderedCmp(field.text) && op.kind != tokEq && op.kind != tokNe {
+	builtin := fields[field.text]
+	if builtin && !allowsOrderedCmp(field.text) && op.kind != tokEq && op.kind != tokNe {
 		return nil, &Error{Pos: op.pos, Msg: "operator " + op.cmpText() + " is only valid on " +
-			"created/updated/due/activity, estimate, priority, and numeric custom fields"}
+			"created/updated/due/activity, estimate, and priority"}
 	}
 	val := p.peek()
 	if val.kind != tokWord && val.kind != tokString {
@@ -406,8 +361,10 @@ func (p *parser) parsePredicate() (Expr, error) {
 	}
 	p.next()
 	pred := &predExpr{field: field.text, op: op, value: val.text, valuePos: val.pos}
-	if err := typeCheckValue(p.spec, field.text, val, &pred.date, &pred.num); err != nil {
-		return nil, err
+	if builtin {
+		if err := typeCheckValue(field.text, val, &pred.date, &pred.num); err != nil {
+			return nil, err
+		}
 	}
 	return pred, nil
 }
@@ -443,7 +400,7 @@ func boolValue(t token) (bool, bool) {
 	return false, false
 }
 
-func typeCheckValue(spec extraSpec, field string, val token, date *time.Time, num *float64) error {
+func typeCheckValue(field string, val token, date *time.Time, num *float64) error {
 	if isDateField(field) {
 		d, err := parseDate(val.text)
 		if err != nil {
@@ -456,7 +413,7 @@ func typeCheckValue(spec extraSpec, field string, val token, date *time.Time, nu
 		}
 		*date = d
 	}
-	if field == fieldEstimate || spec[field].Ordered {
+	if field == fieldEstimate {
 		n, err := strconv.ParseFloat(val.text, 64)
 		if err != nil {
 			return &Error{Pos: val.pos, Msg: "invalid number " + quote(val.text)}
@@ -479,7 +436,7 @@ func (p *parser) parseIn() (Expr, error) {
 		p.next()
 		var date time.Time
 		var num float64
-		if err := typeCheckValue(p.spec, field.text, val, &date, &num); err != nil {
+		if err := typeCheckValue(field.text, val, &date, &num); err != nil {
 			return nil, err
 		}
 		e.values = append(e.values, val.text)

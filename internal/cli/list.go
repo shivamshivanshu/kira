@@ -3,13 +3,13 @@ package cli
 import (
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/warningfmt"
@@ -40,13 +40,7 @@ func newListCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			schemas, err := s.Schemas()
-			if err != nil {
-				return err
-			}
-			cols, unknown := resolveColumns(cfg.UI.List.Columns, schemas)
-			warnUnknownColumns(cmd.ErrOrStderr(), unknown)
-			renderListResult(cmd.OutOrStdout(), res, cols)
+			renderListResult(cmd.OutOrStdout(), res, pinnedColumns(cfg))
 			return nil
 		},
 	}
@@ -89,19 +83,20 @@ func emitStderrNotes(w io.Writer, notes []datamodel.Warning) {
 	}
 }
 
-func renderListResult(w io.Writer, res *datamodel.ListResult, cols []string) {
+func renderListResult(w io.Writer, res *datamodel.ListResult, columns []string) {
 	if res.Tree != nil {
-		renderTreeGroups(w, res, cols)
+		renderTreeGroups(w, res, columns)
 		return
 	}
-	renderList(w, res, cols)
+	renderList(w, res, columns)
 }
 
-func renderList(w io.Writer, res *datamodel.ListResult, cols []string) {
+func renderList(w io.Writer, res *datamodel.ListResult, columns []string) {
 	if res.Count == 0 {
 		_, _ = fmt.Fprintln(w, msgNoItems)
 		return
 	}
+	cols := resolveColumns(columns, res.Columns)
 	tw := newTabWriter(w)
 	_, _ = fmt.Fprintln(tw, columnHeader(cols))
 	for _, it := range res.Items {
@@ -110,35 +105,30 @@ func renderList(w io.Writer, res *datamodel.ListResult, cols []string) {
 	_ = tw.Flush()
 }
 
-func resolveColumns(columns []string, schemas map[string]entityschema.Schema) (cols, unknown []string) {
-	for _, c := range columns {
-		if _, ok := listCells[c]; ok || declaredExtraColumn(schemas, c) {
-			cols = append(cols, c)
-			continue
-		}
-		unknown = append(unknown, c)
+// pinnedColumns reports the columns the repo actually pins. The default config
+// fills ui.list.columns in, so a value equal to the built-in default means "not
+// customized" -- the same test `kira config explain` uses to tag a section
+// default rather than repo.
+func pinnedColumns(cfg *datamodel.Config) []string {
+	if slices.Equal(cfg.UI.List.Columns, datamodel.DefaultListColumns) {
+		return nil
 	}
-	if len(cols) == 0 {
-		return datamodel.DefaultListColumns, unknown
-	}
-	return cols, unknown
+	return cfg.UI.List.Columns
 }
 
-func declaredExtraColumn(schemas map[string]entityschema.Schema, name string) bool {
-	for typ := range schemas {
-		if _, ok := entityschema.DeclaredExtra(schemas, typ, name); ok {
-			return true
-		}
+// resolveColumns picks the table's columns: ui.list.columns wins, then what
+// the matched types' schemas declare, then the built-in default. Names are not
+// filtered against the built-in cells, since a schema-declared field is a
+// legitimate column from either source and itemCell renders it.
+func resolveColumns(configured, schemaDeclared []string) []string {
+	switch {
+	case len(configured) > 0:
+		return configured
+	case len(schemaDeclared) > 0:
+		return schemaDeclared
+	default:
+		return datamodel.DefaultListColumns
 	}
-	return false
-}
-
-func warnUnknownColumns(w io.Writer, unknown []string) {
-	msgs := make([]string, len(unknown))
-	for i, c := range unknown {
-		msgs[i] = fmt.Sprintf("ui.list.columns: unknown column %q; ignored", c)
-	}
-	emitWarningLines(w, msgs)
 }
 
 func columnHeader(cols []string) string {
@@ -152,33 +142,26 @@ func columnHeader(cols []string) string {
 func formatItemRow(cols []string, it datamodel.ListItem) string {
 	cells := make([]string, len(cols))
 	for i, c := range cols {
-		cells[i] = cellValue(c, it)
+		cells[i] = itemCell(c, it)
 	}
 	return strings.Join(cells, "\t")
 }
 
-func cellValue(col string, it datamodel.ListItem) string {
-	if cell, ok := listCells[col]; ok {
+func itemCell(column string, it datamodel.ListItem) string {
+	if cell, ok := listCells[column]; ok {
 		return cell(it)
 	}
-	return extraCell(it.Extras[col])
-}
-
-func extraCell(v datamodel.ExtraJSON) string {
-	switch v := v.(type) {
-	case string:
-		return v
-	case []string:
-		return strings.Join(v, ",")
-	default:
-		return "-"
+	if v, ok := it.Fields[column]; ok {
+		return typedFieldValueAsText(v)
 	}
+	return "-"
 }
 
 var listCells = map[string]func(datamodel.ListItem) string{
 	"number":      func(it datamodel.ListItem) string { return it.Number },
 	"title":       func(it datamodel.ListItem) string { return it.Title },
 	"type":        func(it datamodel.ListItem) string { return it.Type },
+	"subtype":     func(it datamodel.ListItem) string { return ptr.DerefOr(it.Subtype, "-") },
 	"state":       func(it datamodel.ListItem) string { return it.State },
 	"category":    func(it datamodel.ListItem) string { return it.Category },
 	"priority":    func(it datamodel.ListItem) string { return ptr.DerefOr(it.Priority, "-") },
