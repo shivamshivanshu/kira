@@ -68,6 +68,10 @@ func (s *Store) LoadAll() ([]*datamodel.Item, []string, error) { return s.fs().L
 // schemas caches its result on s for the lifetime of the command: interactive
 // create/edit resolve it once up front and again after locking, and a Store
 // is never shared across concurrent commands.
+// Schemas exposes the loaded schemas so the CLI can tell a renderable column
+// name from a typo; everything in-package uses the unexported accessor.
+func (s *Store) Schemas() (map[string]entityschema.Schema, error) { return s.schemas() }
+
 func (s *Store) schemas() (map[string]entityschema.Schema, error) {
 	if s.schemasCache != nil {
 		return s.schemasCache, nil

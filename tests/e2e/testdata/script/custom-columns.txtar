@@ -21,15 +21,14 @@ stdout 'NUMBER\s+TITLE\s+SEVERITY\s+WATCHERS'
 stdout 'KIRA-1\s+Alpha\s+HIGH\s+alice, bob'
 stdout 'KIRA-2\s+Beta\s+-\s+-'
 
-# a name neither a built-in cell nor declared by any schema is taken at face
-# value and renders an empty column: config cannot see schemas, so nothing
-# rejects it, and the render path does not check either. Restoring a
-# render-time warning here is tracked separately.
+# a name neither a built-in cell nor declared by any schema warns and is
+# dropped from the table: config cannot see schemas, so the check lives at
+# render time where they are loaded.
 cp typo-config.yaml .kira/config.yaml
 exec kira list --no-color
-stdout 'NUMBER\s+TITLE\s+SEVERTY'
-stdout 'KIRA-1\s+Alpha\s+-'
-! stderr 'ui.list.columns'
+stderr 'ui.list.columns: unknown column "severty"; ignored'
+! stdout 'SEVERTY'
+stdout 'NUMBER\s+TITLE'
 
 -- ticket.json --
 {
