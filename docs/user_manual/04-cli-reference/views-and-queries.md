@@ -35,6 +35,7 @@ as the tie-break.
 | `--at` | git ref or `YYYY-MM-DD` | Read the item set as it stood at that point, anchored on `HEAD`. |
 | `--category` | `todo`\|`doing`\|`done` | Filter by workflow category rather than a specific state. |
 | `--epic` | item reference | Only items whose parent epic is that item. |
+| `--field` | `key=value` | Equality filter on any schema-declared field. Repeatable; multiple uses are ANDed. |
 | `--filter` | filter name | Run a named saved query from `filters:` in `.kira/config.yaml`. |
 | `--label` | label | Only items carrying that label. |
 | `--owner` | person or `@me` | Filter by owner. `@me` resolves to your git identity. |

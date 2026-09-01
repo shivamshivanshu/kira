@@ -10,6 +10,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/warningfmt"
@@ -40,7 +41,13 @@ func newListCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			renderListResult(cmd.OutOrStdout(), res, pinnedColumns(cfg))
+			pinned := pinnedColumns(cfg)
+			if schemas, serr := s.Schemas(); serr == nil {
+				var unknown []string
+				pinned, unknown = knownColumns(pinned, schemas)
+				warnUnknownColumns(cmd.ErrOrStderr(), unknown)
+			}
+			renderListResult(cmd.OutOrStdout(), res, pinned)
 			return nil
 		},
 	}
@@ -103,6 +110,38 @@ func renderList(w io.Writer, res *datamodel.ListResult, columns []string) {
 		_, _ = fmt.Fprintln(tw, formatItemRow(cols, it))
 	}
 	_ = tw.Flush()
+}
+
+// knownColumns splits configured column names into those something can render
+// -- a built-in cell, or a frontmatter field some loaded schema declares -- and
+// those nothing can. A body-placed field is unknown here: CustomFields skips it,
+// so itemCell has no value to show.
+func knownColumns(configured []string, schemas map[string]entityschema.Schema) (known, unknown []string) {
+	for _, name := range configured {
+		if _, builtin := listCells[name]; builtin || declaredExtraColumn(schemas, name) {
+			known = append(known, name)
+			continue
+		}
+		unknown = append(unknown, name)
+	}
+	return known, unknown
+}
+
+func declaredExtraColumn(schemas map[string]entityschema.Schema, name string) bool {
+	for typ := range schemas {
+		if _, ok := entityschema.DeclaredExtra(schemas, typ, name); ok {
+			return true
+		}
+	}
+	return false
+}
+
+func warnUnknownColumns(w io.Writer, unknown []string) {
+	warns := make([]string, 0, len(unknown))
+	for _, name := range unknown {
+		warns = append(warns, fmt.Sprintf("ui.list.columns: unknown column %q; ignored", name))
+	}
+	emitWarningLines(w, warns)
 }
 
 // pinnedColumns reports the columns the repo actually pins. The default config

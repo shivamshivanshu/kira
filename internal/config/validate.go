@@ -182,10 +182,10 @@ func validateWorkonSection(w datamodel.Workon) error {
 
 func UIWarnings(ui datamodel.UI) []string {
 	var out []string
-	// ui.list.columns is deliberately unchecked: a schema may declare a field
-	// as a column, and config has no view of schemas, so a closed-set test
-	// here would reject legitimate names. An unrenderable one shows as an
-	// empty column instead.
+	// ui.list.columns is deliberately unchecked here: a schema may declare a
+	// field as a column, and config has no view of schemas, so a closed-set
+	// test at load would reject legitimate names. `kira list` warns about
+	// genuinely unknown columns at render time, where the schemas are loaded.
 	for _, slot := range slices.Sorted(maps.Keys(ui.Theme)) {
 		switch {
 		case !slices.Contains(datamodel.ThemeSlots, slot):

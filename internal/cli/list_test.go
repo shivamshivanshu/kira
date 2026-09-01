@@ -1,11 +1,14 @@
 package cli
 
 import (
+	"bytes"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 )
 
 func TestPinnedColumnsIgnoresTheBuiltInDefault(t *testing.T) {
@@ -62,5 +65,48 @@ func TestParseFieldFilters(t *testing.T) {
 		if _, err := parseFieldFilters([]string{bad}); err == nil {
 			t.Errorf("parseFieldFilters(%q) succeeded, want a rejection", bad)
 		}
+	}
+}
+
+func columnSchemas() map[string]entityschema.Schema {
+	return map[string]entityschema.Schema{
+		datamodel.TypeTicket: {Name: datamodel.TypeTicket, Fields: []entityschema.FieldDef{
+			{Name: "severity", Type: entityschema.FieldString, Placement: entityschema.PlacementFrontmatter},
+			{Name: "notes", Type: entityschema.FieldMarkdown, Placement: entityschema.PlacementBody, Section: "Notes"},
+		}},
+	}
+}
+
+func TestKnownColumnsAcceptsCellsAndDeclaredFields(t *testing.T) {
+	t.Parallel()
+	known, unknown := knownColumns([]string{"number", "title", "severity"}, columnSchemas())
+	if !slices.Equal(known, []string{"number", "title", "severity"}) || len(unknown) != 0 {
+		t.Fatalf("known=%v unknown=%v", known, unknown)
+	}
+}
+
+func TestKnownColumnsRejectsTypoAndBodyPlacedField(t *testing.T) {
+	t.Parallel()
+	known, unknown := knownColumns([]string{"number", "notes", "severty"}, columnSchemas())
+	if !slices.Equal(known, []string{"number"}) {
+		t.Fatalf("known = %v, want only the built-in cell", known)
+	}
+	// notes is declared but body-placed: CustomFields skips it, so itemCell
+	// has nothing to render and it is as unusable as the typo.
+	if !slices.Equal(unknown, []string{"notes", "severty"}) {
+		t.Fatalf("unknown = %v", unknown)
+	}
+}
+
+func TestWarnUnknownColumnsIsSilentWhenNothingIsUnknown(t *testing.T) {
+	t.Parallel()
+	var b bytes.Buffer
+	warnUnknownColumns(&b, nil)
+	if b.Len() != 0 {
+		t.Fatalf("wrote %q for an empty slice", b.String())
+	}
+	warnUnknownColumns(&b, []string{"severty"})
+	if !strings.Contains(b.String(), `ui.list.columns: unknown column "severty"; ignored`) {
+		t.Fatalf("warning text = %q", b.String())
 	}
 }

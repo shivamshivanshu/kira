@@ -900,15 +900,19 @@ given. This repo does not set it, so it uses the shipped default `[number,
 state, type, priority, title]`. The full set of selectable columns is:
 
 ```
-number  title  type  state  category  priority  owner
+number  title  type  subtype  state  category  priority  owner
 labels  epic   epic_number  resolution  due  id
 ```
 
-An unrecognized column name is a warning, not an error — the column is dropped
-and the rest of the list still renders:
+Any frontmatter field a schema declares is also a valid column name. A
+body-placed field is not — there is no cell to render it into.
+
+A name that is neither is a warning, not an error: the column is dropped and
+the rest of the list still renders. The check happens when `kira list` runs,
+not at config load, because only then are the schemas available:
 
 ```
-~/.config/kira/config.yaml: ui.list.columns: unknown column "assignee"; ignored
+kira: warning: ui.list.columns: unknown column "assignee"; ignored
 ```
 
 **`tui.split`** is the fraction of width given to the tree pane versus the
