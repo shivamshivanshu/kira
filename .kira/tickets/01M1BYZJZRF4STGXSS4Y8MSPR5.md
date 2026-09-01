@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "BoardMove and Reconcile bypass the mutation pipeline with no marker saying so"
 state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:08:48+02:00
-updated: 2026-08-31T16:12:18+02:00
+updated: 2026-09-01T10:25:59+02:00
 ---
 
 ## Description
