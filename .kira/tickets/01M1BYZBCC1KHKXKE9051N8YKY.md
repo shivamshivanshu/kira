@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "kira create silently drops schema-declared extras from templates, editor buffers and --from-file"
 state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:08:40+02:00
-updated: 2026-08-31T16:12:06+02:00
+updated: 2026-09-01T10:25:57+02:00
 ---
 
 ## Description
