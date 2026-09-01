@@ -5,13 +5,14 @@ aliases: []
 type: ticket
 subtype: bug
 title: "Draft path silently drops schema-declared fields"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P1
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-28T14:19:13+05:30
-updated: 2026-09-01T15:46:17+02:00
+updated: 2026-09-01T15:46:18+02:00
 ---
 
 `create --from-file` and the interactive editor discard any schema-declared
