@@ -96,7 +96,10 @@ func changedItem(repo gitx.Repo, from, to *datamodel.Item) (datamodel.DiffItem, 
 			di.Changes = append(di.Changes, datamodel.FieldChange{Field: datamodel.KeyNumber, From: from.Number, To: to.Number})
 		}
 	}
-	for _, field := range datamodel.ChangedFields(from, to) {
+	// ChangedFields covers only the built-in shape; a schema-declared or
+	// unknown frontmatter field changes under ChangedExtraKeys, and fieldString
+	// already reads both.
+	for _, field := range slices.Concat(datamodel.ChangedFields(from, to), datamodel.ChangedExtraKeys(from, to)) {
 		fc, err := fieldChange(repo, from, to, field)
 		if err != nil {
 			return datamodel.DiffItem{}, false, err
