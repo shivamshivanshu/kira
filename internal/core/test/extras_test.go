@@ -456,3 +456,23 @@ func TestFieldHintSuggestsDeclaredExtras(t *testing.T) {
 		t.Fatalf("hint must suggest the declared extra, got %q", e.Hint)
 	}
 }
+
+// A ULID is Crockford base32, so an all-digit one is legal and renders quoted.
+// Passing the quoted form straight to the resolver silently fails to normalize,
+// leaving a stale ref after a renumber.
+func TestRefExtraNormalizesThroughItsStoredEncoding(t *testing.T) {
+	t.Parallel()
+	s, cfg := newStore(t)
+	target := mustCreate(t, s, cfg, "Target")
+	s = declareTicketExtras(t, s, `{"name": "tracks", "type": "ref", "target": "ticket", "placement": "frontmatter"}`)
+	src := mustCreate(t, s, cfg, "Source")
+
+	if _, err := s.Edit(cfg, src.Number, core.EditOpts{
+		Fields: []core.FieldEdit{{Key: "tracks", Value: target.Number}}}); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
+	got := mustReadItem(t, s, src.ID)
+	if !strings.Contains(got, "tracks: "+target.ID) {
+		t.Fatalf("ref extra must normalize to the target ULID:\n%s", got)
+	}
+}

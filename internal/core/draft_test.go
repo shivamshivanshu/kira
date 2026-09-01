@@ -224,3 +224,14 @@ func TestDropUnsetDeclaredExtrasKeepsUndeclaredKeys(t *testing.T) {
 		t.Errorf("undeclared keys must round-trip verbatim: %+v", got.ExtraScalars)
 	}
 }
+
+func TestDropUnsetDoesNotMutateCaller(t *testing.T) {
+	d := draft{ExtraScalars: map[string]string{"severity": "null"}}
+	schema := entityschema.Schema{Name: "ticket", Fields: []entityschema.FieldDef{
+		{Name: "severity", Type: entityschema.FieldString, Placement: entityschema.PlacementFrontmatter},
+	}}
+	_ = dropUnsetDeclaredExtras(d, schema)
+	if _, ok := d.ExtraScalars["severity"]; !ok {
+		t.Fatal("caller's draft was mutated through the copied map header")
+	}
+}

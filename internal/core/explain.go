@@ -37,8 +37,8 @@ func Explain(cfg *datamodel.Config) *datamodel.ExplainResult {
 
 func explainGit(cfg, def *datamodel.Config) datamodel.ExplainSection {
 	lines := []string{
-		"landed_ref: " + orUnset(cfg.Git.LandedRef),
-		"scan_since: " + orUnset(cfg.Git.ScanSince),
+		"landed_ref: " + cmp.Or(cfg.Git.LandedRef, "(unset)"),
+		"scan_since: " + cmp.Or(cfg.Git.ScanSince, "(unset)"),
 	}
 	return datamodel.ExplainSection{Name: "git", Provenance: tierOf(changed(cfg.Git, def.Git), datamodel.ProvenanceRepo), Lines: lines}
 }
@@ -66,7 +66,7 @@ func explainAutomation(cfg, def *datamodel.Config) datamodel.ExplainSection {
 	lines := make([]string, 0, len(hooks))
 	for _, h := range hooks {
 		state := ""
-		if h.Enabled != nil && !*h.Enabled {
+		if !h.IsEnabled() {
 			state = " (disabled)"
 		}
 		lines = append(lines, string(h.On)+" -> "+h.Run+state)
@@ -76,13 +76,6 @@ func explainAutomation(cfg, def *datamodel.Config) datamodel.ExplainSection {
 	}
 	differs := changed(cfg.Automation, def.Automation) || len(cfg.UserAutomation) > 0
 	return datamodel.ExplainSection{Name: "automation", Provenance: tierOf(differs, datamodel.ProvenanceRepo), Lines: lines}
-}
-
-func orUnset(s string) string {
-	if s == "" {
-		return "(unset)"
-	}
-	return s
 }
 
 // changed reports whether a is not deeply equal to its default counterpart b.

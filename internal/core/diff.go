@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"slices"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -117,7 +118,26 @@ func fieldChange(repo gitx.Repo, from, to *datamodel.Item, field string) (datamo
 		}
 		return datamodel.FieldChange{Field: field, To: fmt.Sprintf("+%d/-%d lines", added, removed)}, nil
 	}
-	return datamodel.FieldChange{Field: field, From: fieldString(from, field), To: fieldString(to, field)}, nil
+	before, after := fieldString(from, field), fieldString(to, field)
+	if before == after {
+		// The stored bytes differ or this field would not be listed as changed,
+		// so the decoded forms colliding means the YAML type changed: 42 became
+		// "42". Show what is on disk rather than a change that reads as X -> X.
+		before, after = storedFieldString(from, field), storedFieldString(to, field)
+	}
+	return datamodel.FieldChange{Field: field, From: before, To: after}, nil
+}
+
+// storedFieldString renders an extra exactly as it sits in frontmatter, keeping
+// the quoting that distinguishes a string from the scalar it looks like.
+func storedFieldString(it *datamodel.Item, field string) string {
+	if v, ok := it.ExtraScalars[field]; ok {
+		return v
+	}
+	if v, ok := it.ExtraLists[field]; ok {
+		return codec.EmitRenderedList(v)
+	}
+	return "-"
 }
 
 func sortDiffItems(items []datamodel.DiffItem) {

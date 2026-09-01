@@ -222,6 +222,15 @@ func renderExtra(n *yaml.Node, emit func(string) string) string {
 // DecodeExtraScalar recovers the Go value (int/bool/float64/string/nil) a
 // faithfully-rendered extra scalar represents, for callers that need it typed
 // rather than as its raw on-disk text.
+// DecodeExtraList recovers the displayable values a stored extra list holds.
+func DecodeExtraList(stored []string) []string {
+	out := make([]string, len(stored))
+	for i, v := range stored {
+		out[i] = DecodeScalar(v)
+	}
+	return out
+}
+
 func DecodeExtraScalar(s string) any {
 	var v any
 	if err := yaml.Unmarshal([]byte(s), &v); err != nil {

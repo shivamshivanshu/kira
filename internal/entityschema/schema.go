@@ -63,8 +63,7 @@ type Representation struct {
 	ListColumns []string `json:"list_columns,omitempty"`
 }
 
-// StateValue pairs a state value with its category; the transition graph
-// between states is a workflow concern, not a schema constraint.
+// StateValue pairs a state value with its category.
 type StateValue struct {
 	Key      string             `json:"key"`
 	Category datamodel.Category `json:"category"`

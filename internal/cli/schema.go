@@ -42,9 +42,6 @@ func newSchemaInitCmd(g *globalFlags) *cobra.Command {
 				return err
 			}
 			if g.json {
-				if written == nil {
-					written = []string{}
-				}
 				return emitJSON(cmd.OutOrStdout(), datamodel.SchemaInitResult{Written: written})
 			}
 			if len(written) == 0 {

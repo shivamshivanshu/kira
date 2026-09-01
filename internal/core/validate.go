@@ -300,8 +300,8 @@ func normalizeRefExtras(it *datamodel.Item, resolver *id.Resolver, schema entity
 			continue
 		}
 		if ref, ok := it.ExtraScalars[f.Name]; ok {
-			if ulid, ok := normalize(label, ref); ok {
-				it.ExtraScalars[f.Name] = ulid
+			if ulid, ok := normalize(label, codec.DecodeScalar(ref)); ok {
+				it.ExtraScalars[f.Name] = codec.EmitScalar(ulid)
 			}
 		}
 	}
