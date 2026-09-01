@@ -1,6 +1,7 @@
 {
   "name": "ticket",
   "workflow": "ticket",
+  "identity": { "style": "sequential", "prefix": "KIRA" },
   "fields": [
     { "name": "title", "type": "string", "required": true },
     { "name": "state", "type": "state", "required": true, "system": true, "guarded": true,
@@ -32,6 +33,6 @@
   "representation": {
     "label": "Ticket",
     "icon": "ticket",
-    "list_columns": ["number", "state", "subtype", "priority", "title"]
+    "list_columns": ["number", "state", "type", "priority", "title"]
   }
 }

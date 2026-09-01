@@ -2,9 +2,27 @@ package entityschema
 
 import (
 	"testing"
+	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
+
+func TestValidateDateFieldAcceptsStringAndTime(t *testing.T) {
+	schema := Schema{Name: "w", Fields: []FieldDef{
+		{Name: "d", Type: FieldDate},
+		{Name: "ts", Type: FieldDatetime},
+	}}
+	when, _ := time.Parse(time.RFC3339, "2026-01-01T10:00:00Z")
+
+	ok := map[string]any{"d": "2026-01-01", "ts": when}
+	if v := Validate(schema, ok, nil, nil); len(v) != 0 {
+		t.Fatalf("a string date and a time.Time datetime must both validate, got %v", v)
+	}
+	bad := map[string]any{"d": "nope", "ts": when}
+	if v := Validate(schema, bad, nil, nil); len(v) != 1 {
+		t.Fatalf("a malformed date string must be rejected, got %v", v)
+	}
+}
 
 func testSchema() Schema {
 	return Schema{
@@ -132,6 +150,24 @@ func TestValidateRefExistenceEnforcedWithResolver(t *testing.T) {
 
 	if len(violations) != 1 || violations[0].Field != "owner" {
 		t.Fatalf("expected exactly one violation on %q, got %v", "owner", violations)
+	}
+}
+
+func TestValidateConfigVocabBackedRefUsesEnumMembershipNotResolver(t *testing.T) {
+	schema := Schema{
+		Name: "widget",
+		Fields: []FieldDef{
+			{Name: "owner", Type: FieldRef, Target: "person", Source: "people"},
+		},
+	}
+	values := map[string]any{"owner": "nobody"}
+	enums := map[string][]string{"person": {"shivam"}}
+	refs := stubResolver{known: map[string]bool{}}
+
+	violations := Validate(schema, values, enums, refs)
+
+	if len(violations) != 1 || violations[0].Field != "owner" || violations[0].Code != CodeEnum {
+		t.Fatalf("expected one CodeEnum violation on %q (not a resolver-based ref check), got %v", "owner", violations)
 	}
 }
 

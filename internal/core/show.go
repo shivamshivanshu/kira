@@ -2,9 +2,11 @@ package core
 
 import (
 	"os"
+	"slices"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/index"
 	"github.com/shivamshivanshu/kira/internal/ptr"
@@ -40,6 +42,8 @@ func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResu
 		return nil, errx.User("%s resolved to %s, which is absent at %s", ref, ulid, at)
 	}
 	res := showResultOf(ld.cfg, it)
+	res.Blocks = blocksOf(ld.items, ulid)
+	res.Fields = entityschema.CustomFields(ld.schemas[it.Type], it, codec.DecodeExtraScalar)
 	res.Skew = s.skew(cfg, ref, ulid, at)
 	return &res, nil
 }
@@ -60,6 +64,8 @@ func (s *Store) detail(ld *loaded, ref string) (*ItemDetail, error) {
 			WithHint("the file is malformed; repair it in a text editor, then verify with `kira doctor`")
 	}
 	res := showResultOf(ld.cfg, it)
+	res.Blocks = blocksOf(ld.items, ulid)
+	res.Fields = entityschema.CustomFields(ld.schemas[it.Type], it, codec.DecodeExtraScalar)
 	res.StderrNotes = ld.notes
 
 	events, links, err := s.logEntries(ulid)
@@ -70,6 +76,20 @@ func (s *Store) detail(ld *loaded, ref string) (*ItemDetail, error) {
 	res.ReferencedBy = commitLinksView(links, index.LinkReferenced)
 	res.HistoryTail = historyTailView(events)
 	return &ItemDetail{Item: &res, Revision: ItemRevision(string(data)), store: s}, nil
+}
+
+// blocksOf derives the reverse of blocked_by: the items that name ulid as a
+// blocker. It is not stored on the item itself, so it is recomputed from the
+// loaded set rather than read from the file.
+func blocksOf(items []*datamodel.Item, ulid string) []string {
+	out := []string{}
+	for _, it := range items {
+		if slices.Contains(it.BlockedBy, ulid) {
+			out = append(out, it.ID)
+		}
+	}
+	slices.Sort(out)
+	return out
 }
 
 func commitLinksView(links []index.CommitLink, kind index.LinkKind) []datamodel.CommitLink {
@@ -124,7 +144,6 @@ func showResultOf(cfg *datamodel.Config, it *datamodel.Item) datamodel.ShowResul
 		Estimate:      it.Estimate,
 		Created:       it.Created,
 		Updated:       it.Updated,
-		Extras:        codec.DecodeExtras(it.Extras),
 		Body:          it.Body,
 		Comments:      views,
 		LinkedCommits: []datamodel.CommitLink{},

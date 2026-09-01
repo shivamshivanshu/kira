@@ -75,7 +75,7 @@ cp strict.yaml .kira/config.yaml
 exec git add .kira/config.yaml
 exec git commit -m 'strict labels'
 ! exec kira label add KIRA-1 orphan
-stderr 'not in the known'
+stderr 'not in the "label" vocabulary'
 exec kira label add KIRA-1 orphan --force
 stdout 'Added orphan to KIRA-1'
 

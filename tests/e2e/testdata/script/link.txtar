@@ -16,9 +16,10 @@ exec git log --oneline
 stdout 'kira: KIRA-1 link blocked-by KIRA-2'
 exec kira show KIRA-1 --json
 stdout '"blocked_by": \['
-# the blocker's own file stores no inverse edge; blocks is derived (empty pre-index)
+# the blocker's own file stores no inverse edge; blocks is derived from the set
 exec kira show KIRA-2 --json
-stdout '"blocks": \[\]'
+stdout '"blocks": \[\n    "[0-9A-Z]{26}"\n  \]'
+! stdout '"blocked_by": \[\n'
 
 # epic parent
 exec kira link KIRA-1 --epic KIRA-3

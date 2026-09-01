@@ -95,19 +95,6 @@ func ChangedFields(a, b *Item) []string {
 			out = append(out, d.Key)
 		}
 	}
-	return append(out, changedExtras(a, b)...)
-}
-
-func changedExtras(a, b *Item) []string {
-	union := make(map[string]ExtraValue, len(a.Extras)+len(b.Extras))
-	maps.Copy(union, a.Extras)
-	maps.Copy(union, b.Extras)
-	var out []string
-	for _, k := range slices.Sorted(maps.Keys(union)) {
-		if !a.Extras[k].Equal(b.Extras[k]) {
-			out = append(out, k)
-		}
-	}
 	return out
 }
 
@@ -151,16 +138,25 @@ func listField(key string, ref func(*Item) *[]string) FieldDescriptor {
 
 func linksField() FieldDescriptor {
 	return FieldDescriptor{
-		Key:     KeyLinks,
-		Changed: func(a, b *Item) bool { return !maps.EqualFunc(a.Links, b.Links, slices.Equal[[]string]) },
+		Key: KeyLinks,
+		Changed: func(a, b *Item) bool {
+			return !maps.EqualFunc(a.Links, b.Links, slices.Equal[[]string]) ||
+				!maps.EqualFunc(a.ExtraLinks, b.ExtraLinks, slices.Equal[[]string])
+		},
 		Get: func(it *Item) string {
-			parts := make([]string, 0, len(it.Links))
+			parts := make([]string, 0, len(it.Links)+len(it.ExtraLinks))
 			for _, typ := range slices.Sorted(maps.Keys(it.Links)) {
 				parts = append(parts, typ+":"+listString(it.Links[typ]))
 			}
+			for _, typ := range slices.Sorted(maps.Keys(it.ExtraLinks)) {
+				parts = append(parts, typ+":"+listString(it.ExtraLinks[typ]))
+			}
 			return strings.Join(parts, " ")
 		},
-		Copy: func(dst, src *Item) { dst.Links = CloneLinks(src.Links) },
+		Copy: func(dst, src *Item) {
+			dst.Links = CloneStringListMap(src.Links)
+			dst.ExtraLinks = CloneStringListMap(src.ExtraLinks)
+		},
 	}
 }
 
@@ -200,57 +196,7 @@ func bodyField() FieldDescriptor {
 	}
 }
 
-// ExtraField describes a schema-declared frontmatter extra. Set stores value
-// verbatim and Serialize splices it straight into frontmatter, so callers must
-// pass codec-rendered YAML text (codec.RenderScalar / RenderFlowElem,
-// comma-joined for a list) — datamodel sits below codec, so nothing here can
-// render or check it.
-func ExtraField(key string, list bool) FieldDescriptor {
-	d := FieldDescriptor{
-		Key:     key,
-		Changed: func(a, b *Item) bool { return !a.Extras[key].Equal(b.Extras[key]) },
-		Copy:    func(dst, src *Item) { copyExtra(dst, src, key) },
-	}
-	if list {
-		d.Get = func(it *Item) string { return listString(it.Extras[key].List) }
-		d.Set = func(it *Item, value string) error { putExtra(it, key, ExtraValue{List: SplitCSV(value)}); return nil }
-		d.Present = func(it *Item) bool { return len(it.Extras[key].List) > 0 }
-		return d
-	}
-	d.Get = func(it *Item) string {
-		if v := it.Extras[key].Scalar; v != nil {
-			return *v
-		}
-		return "-"
-	}
-	d.Set = func(it *Item, value string) error {
-		if value == "" {
-			delete(it.Extras, key)
-			return nil
-		}
-		putExtra(it, key, ExtraValue{Scalar: &value})
-		return nil
-	}
-	d.Present = func(it *Item) bool { return it.Extras[key].Scalar != nil }
-	return d
-}
-
-func putExtra(it *Item, key string, v ExtraValue) {
-	if it.Extras == nil {
-		it.Extras = map[string]ExtraValue{}
-	}
-	it.Extras[key] = v
-}
-
-func copyExtra(dst, src *Item, key string) {
-	v, ok := src.Extras[key]
-	if !ok {
-		delete(dst.Extras, key)
-		return
-	}
-	putExtra(dst, key, v.clone())
-}
-
+// SplitCSV splits a comma-separated value into trimmed, non-empty elements.
 func SplitCSV(value string) []string {
 	if strings.TrimSpace(value) == "" {
 		return []string{}

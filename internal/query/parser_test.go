@@ -2,6 +2,7 @@ package query
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -62,7 +63,7 @@ func TestParseCanonical(t *testing.T) {
 		{"not a", "(not (term a))"},
 	}
 	for _, tc := range tests {
-		q, err := Parse(tc.in, nil)
+		q, err := Parse(tc.in)
 		if err != nil {
 			t.Fatalf("Parse(%q): %v", tc.in, err)
 		}
@@ -99,23 +100,42 @@ func TestParseErrors(t *testing.T) {
 		{"state is never empty", "state IS EMPTY", 6},
 		{"created is never empty", "created IS EMPTY", 8},
 		{"activity is never empty", "activity IS EMPTY", 9},
-		{"unknown field before comparison", "onwer=shivam", 0},
 		{"no expression before ORDER BY", "ORDER BY rank", 0},
 		{"ORDER BY in operand position", "NOT ORDER BY rank", 4},
 		{"ORDER BY missing field", "a ORDER BY", 10},
-		{"ORDER BY unknown field", "a ORDER BY notafield", 11},
 		{"ORDER BY list field", "a ORDER BY label", 11},
 		{"trailing garbage after ORDER BY", "a ORDER BY rank desc x", 21},
 		{"second ORDER BY clause", "a ORDER BY rank ORDER BY due", 16},
 	}
 	for _, tc := range tests {
-		_, err := Parse(tc.in, nil)
+		_, err := Parse(tc.in)
 		qe, ok := errors.AsType[*Error](err)
 		if !ok {
 			t.Fatalf("%s: Parse(%q) err = %v, want *Error", tc.name, tc.in, err)
 		}
 		if qe.Pos != tc.pos {
 			t.Errorf("%s: Parse(%q) pos = %d, want %d (%s)", tc.name, tc.in, qe.Pos, tc.pos, qe.Msg)
+		}
+	}
+}
+
+// A misspelled field parses: only the compiler knows which names a schema
+// declares, so it owns the rejection.
+func TestCompileRejectsUnknownField(t *testing.T) {
+	if _, err := Parse("onwer=shivam"); err != nil {
+		t.Fatalf("Parse should defer an unknown field to compile, got %v", err)
+	}
+	for _, in := range []string{"onwer=shivam", "a ORDER BY onwer"} {
+		_, err := Compile(in, Options{})
+		qe, ok := errors.AsType[*Error](err)
+		if !ok {
+			t.Fatalf("Compile(%q) err = %v, want *Error", in, err)
+		}
+		if !strings.Contains(qe.Msg, `unknown field "onwer"`) {
+			t.Errorf("Compile(%q) msg = %q, want it to name the unknown field", in, qe.Msg)
+		}
+		if !IsUnknownField(err) {
+			t.Errorf("Compile(%q): IsUnknownField = false, want true", in)
 		}
 	}
 }
@@ -129,7 +149,7 @@ func TestParseOrderedFieldAllOps(t *testing.T) {
 			"estimate" + op + "3",
 			"priority" + op + "P1",
 		} {
-			if _, err := Parse(in, nil); err != nil {
+			if _, err := Parse(in); err != nil {
 				t.Errorf("%s: %v", in, err)
 			}
 		}

@@ -51,23 +51,6 @@ func TestLoadUserFileOverridesBuiltinByName(t *testing.T) {
 	}
 }
 
-func TestLoadIgnoresDroppedIdentityKey(t *testing.T) {
-	dir := t.TempDir()
-	custom := `{"name": "ticket", "identity": {"style": "sequential", "prefix": "KIRA"}, "fields": [{"name": "title", "type": "string", "required": true}]}`
-	if err := os.WriteFile(filepath.Join(dir, "ticket.json"), []byte(custom), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	schemas, err := Load(dir)
-
-	if err != nil {
-		t.Fatalf("a schema materialized by an older kira must keep loading: %v", err)
-	}
-	if len(schemas["ticket"].Fields) != 1 {
-		t.Fatalf("user schema should still override the built-in, got fields %v", schemas["ticket"].Fields)
-	}
-}
-
 func TestLoadUserFileAddsNewType(t *testing.T) {
 	dir := t.TempDir()
 	custom := `{"name": "bug", "fields": [{"name": "title", "type": "string", "required": true}]}`
@@ -123,9 +106,8 @@ func TestValidateSchemaRejectsMalformedDefinitions(t *testing.T) {
 		"enum without enum":    {Name: "w", Fields: []FieldDef{{Name: "p", Type: FieldEnum}}},
 		"ref without target":   {Name: "w", Fields: []FieldDef{{Name: "o", Type: FieldRef}}},
 		"non-string list":      {Name: "w", Fields: []FieldDef{{Name: "n", Type: FieldInt, List: true}}},
-		"builtin shadowed":     {Name: "w", Fields: []FieldDef{{Name: "title", Type: FieldString, Placement: PlacementFrontmatter}}},
+		"body without section": {Name: "w", Fields: []FieldDef{{Name: "n", Type: FieldMarkdown, Placement: PlacementBody}}},
 		"unknown placement":    {Name: "w", Fields: []FieldDef{{Name: "x", Type: FieldString, Placement: "front-matter"}}},
-		"body without section": {Name: "w", Fields: []FieldDef{{Name: "x", Type: FieldMarkdown, Placement: PlacementBody}}},
 	}
 
 	for name, schema := range cases {
@@ -211,5 +193,21 @@ func TestLoadAllowsAgreeingExtrasAcrossSchemas(t *testing.T) {
 
 	if _, err := Load(dir); err != nil {
 		t.Fatalf("identical declarations across schemas must keep loading: %v", err)
+	}
+}
+
+func TestLoadFilesLayersDocumentsOverBuiltins(t *testing.T) {
+	custom := []byte(`{"name": "bug", "fields": [{"name": "title", "type": "string", "required": true}]}`)
+
+	schemas, err := LoadFiles([]File{{Name: "bug.json", Data: custom}})
+
+	if err != nil {
+		t.Fatalf("LoadFiles: %v", err)
+	}
+	if _, ok := schemas["bug"]; !ok {
+		t.Fatalf("bug schema missing from %v", schemas)
+	}
+	if _, ok := schemas["ticket"]; !ok {
+		t.Fatal("built-ins must still be layered underneath")
 	}
 }

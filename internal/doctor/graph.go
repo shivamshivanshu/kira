@@ -1,8 +1,10 @@
 package doctor
 
 import (
+	"fmt"
 	"strings"
 
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/id"
@@ -66,12 +68,8 @@ func RefCycles(items []*datamodel.Item, resolver *id.Resolver) []Finding {
 	return out
 }
 
-// WrongTypeRefs reports refs whose target exists but is the wrong entity
-// type; refFindings owns the dangling case. Ref fields carrying a source are
-// config vocabulary, not items, so a resolver over items cannot see them.
-func WrongTypeRefs(items []*datamodel.Item, resolver *id.Resolver, schemas map[string]entityschema.Schema) []Finding {
+func RefTypeMismatches(schemas map[string]entityschema.Schema, items []*datamodel.Item, resolver *id.Resolver, itemTypes map[string]bool) []Finding {
 	byID := itemsByID(items)
-	refs := entityschema.NewRefResolver(items)
 	var out []Finding
 	for _, it := range items {
 		if it.ID == "" {
@@ -81,52 +79,37 @@ func WrongTypeRefs(items []*datamodel.Item, resolver *id.Resolver, schemas map[s
 		if !ok {
 			continue
 		}
+		values := entityschema.ProjectItem(schema, it, codec.DecodeExtraScalar)
 		for _, f := range schema.Fields {
-			if f.Type != entityschema.FieldRef || f.Source != "" || f.Target == "" {
+			if !f.TargetsItemType(itemTypes) {
 				continue
 			}
-			for _, ref := range refValues(it, f.Name) {
+			for _, ref := range refStrings(values[f.Name]) {
 				target := resolveRef(ref, resolver)
-				if byID[target] == nil || refs.Exists(f.Target, target) {
-					continue
+				if parent := byID[target]; parent != nil && parent.Type != f.Target {
+					out = append(out, Finding{
+						Class:    ClassRefType,
+						Severity: SeverityError,
+						ItemID:   it.ID,
+						Number:   it.Number,
+						Field:    f.Name,
+						Message:  fmt.Sprintf("%s points at %s of type %s, expected %s", f.Name, numberOf(target, byID), parent.Type, f.Target),
+					})
 				}
-				out = append(out, Finding{
-					Class:    wrongTypeRefClass(f.Name),
-					Severity: SeverityError,
-					ItemID:   it.ID,
-					Number:   it.Number,
-					Field:    f.Name,
-					Message:  f.Name + " points at " + numberOf(target, byID) + ", which is not " + indefinite(f.Target),
-				})
 			}
 		}
 	}
 	return out
 }
 
-func wrongTypeRefClass(field string) Class {
-	if field == datamodel.KeyEpic {
-		return ClassEpicKind
+func refStrings(v any) []string {
+	switch t := v.(type) {
+	case string:
+		return []string{t}
+	case []string:
+		return t
 	}
-	return ClassRefKind
-}
-
-func refValues(it *datamodel.Item, field string) []string {
-	if field == datamodel.KeyBlockedBy {
-		return it.BlockedBy
-	}
-	d, ok := datamodel.Field(field)
-	if !ok || d.Get == nil || d.Present == nil || !d.Present(it) {
-		return nil
-	}
-	return []string{d.Get(it)}
-}
-
-func indefinite(noun string) string {
-	if strings.ContainsAny(noun[:1], "aeiouAEIOU") {
-		return "an " + noun
-	}
-	return "a " + noun
+	return nil
 }
 
 func itemsByID(items []*datamodel.Item) map[string]*datamodel.Item {

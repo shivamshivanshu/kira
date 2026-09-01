@@ -45,7 +45,7 @@ func (f *eventFields) add(key string) {
 }
 
 func (s *Store) eventFields() (eventFields, error) {
-	schemas, err := s.Schemas()
+	schemas, err := s.schemas()
 	if err != nil {
 		return eventFields{}, err
 	}

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/errx"
-	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
@@ -31,45 +30,44 @@ type Item struct {
 	Estimate   *float64
 	Created    string
 	Updated    string
-	Extras     map[string]ExtraValue
 
 	Body string
 
-	Activity         string
-	UnknownKeys      []string
-	UnknownLinkTypes []string
-	CRLF             bool
+	Activity     string
+	ExtraScalars map[string]string
+	ExtraLists   map[string][]string
+	ExtraLinks   map[string][]string
+	CRLF         bool
 }
 
-func (it *Item) HasUnknown() bool {
-	return len(it.UnknownKeys) > 0 || len(it.UnknownLinkTypes) > 0
-}
-
-// ExtraValue holds a non-builtin frontmatter value as rendered one-line YAML
-// text (codec renders and decodes it). Exactly one arm is set:
-// doctor, treeish, and the merge driver all parse without a schema, so
-// scalar-vs-list must be evident from the data alone.
-type ExtraValue struct {
-	Scalar *string
-	List   []string
-}
-
-func (v ExtraValue) Equal(o ExtraValue) bool {
-	return ptr.Equal(v.Scalar, o.Scalar) && slices.Equal(v.List, o.List)
-}
-
-func (v ExtraValue) clone() ExtraValue {
-	return ExtraValue{Scalar: v.Scalar, List: slices.Clone(v.List)}
-}
-
-func CloneExtras(extras map[string]ExtraValue) map[string]ExtraValue {
-	if extras == nil {
-		return nil
+func (it *Item) ExtraKeys() []string {
+	out := make([]string, 0, len(it.ExtraScalars)+len(it.ExtraLists))
+	for k := range it.ExtraScalars {
+		out = append(out, k)
 	}
-	out := make(map[string]ExtraValue, len(extras))
-	for k, v := range extras {
-		out[k] = v.clone()
+	for k := range it.ExtraLists {
+		out = append(out, k)
 	}
+	slices.Sort(out)
+	return out
+}
+
+// ChangedExtraKeys is the extras-map counterpart to ChangedFields, kept
+// separate because ChangedFields callers feed its output to schema lookups
+// that must see only built-in keys.
+func ChangedExtraKeys(a, b *Item) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, k := range append(a.ExtraKeys(), b.ExtraKeys()...) {
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		if a.ExtraScalars[k] != b.ExtraScalars[k] || !slices.Equal(a.ExtraLists[k], b.ExtraLists[k]) {
+			out = append(out, k)
+		}
+	}
+	slices.Sort(out)
 	return out
 }
 
@@ -102,13 +100,13 @@ var LinkTypes = []LinkType{LinkRelates, LinkDuplicateOf}
 
 func ValidLinkType(t string) bool { return slices.Contains(LinkTypes, LinkType(t)) }
 
-func CloneLinks(links map[string][]string) map[string][]string {
-	if links == nil {
+func CloneStringListMap(m map[string][]string) map[string][]string {
+	if m == nil {
 		return nil
 	}
-	out := make(map[string][]string, len(links))
-	for typ, targets := range links {
-		out[typ] = slices.Clone(targets)
+	out := make(map[string][]string, len(m))
+	for k, v := range m {
+		out[k] = slices.Clone(v)
 	}
 	return out
 }

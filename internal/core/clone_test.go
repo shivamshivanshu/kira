@@ -7,10 +7,14 @@ import (
 )
 
 func TestCloneItemDeepCopiesExtras(t *testing.T) {
-	src := &datamodel.Item{Extras: map[string]datamodel.ExtraValue{"watchers": {List: []string{"alice"}}}}
+	src := &datamodel.Item{ExtraLists: map[string][]string{"watchers": {"alice"}}}
 	dst := cloneItem(src)
-	dst.Extras["watchers"].List[0] = "mallory"
-	if got := src.Extras["watchers"].List[0]; got != "alice" {
-		t.Fatalf("original mutated to %q; cloneItem must deep-copy the Extras list arm", got)
+	dst.ExtraLists["watchers"][0] = "mallory"
+	if got := src.ExtraLists["watchers"][0]; got != "alice" {
+		t.Fatalf("original mutated to %q; cloneItem must deep-copy ExtraLists", got)
+	}
+	dst.ExtraScalars = map[string]string{"team": "infra"}
+	if src.ExtraScalars != nil {
+		t.Fatalf("original grew an ExtraScalars map: %v", src.ExtraScalars)
 	}
 }

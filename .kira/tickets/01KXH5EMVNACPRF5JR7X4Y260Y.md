@@ -6,12 +6,13 @@ type: ticket
 subtype: bug
 title: "Resolve/merge layer can mint stale-resolution shape: add resolve-side state validation"
 state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T02:05:18+05:30
-updated: 2026-07-16T18:45:02+05:30
+updated: 2026-07-28T14:28:02+05:30
 ---
 
 ## Description

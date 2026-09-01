@@ -1,8 +1,8 @@
 package codec_test
 
 import (
+	"errors"
 	"reflect"
-	"slices"
 	"strings"
 	"testing"
 
@@ -33,13 +33,13 @@ func TestExtrasRoundTripIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	team := "infra"
-	want := map[string]datamodel.ExtraValue{
-		"team":     {Scalar: &team},
-		"watchers": {List: []string{"alice", "bob"}},
+	wantScalars := map[string]string{"team": "infra"}
+	wantLists := map[string][]string{"watchers": {"alice", "bob"}}
+	if !reflect.DeepEqual(it.ExtraScalars, wantScalars) {
+		t.Fatalf("ExtraScalars = %+v, want %+v", it.ExtraScalars, wantScalars)
 	}
-	if !reflect.DeepEqual(it.Extras, want) {
-		t.Fatalf("Extras = %+v, want %+v", it.Extras, want)
+	if !reflect.DeepEqual(it.ExtraLists, wantLists) {
+		t.Fatalf("ExtraLists = %+v, want %+v", it.ExtraLists, wantLists)
 	}
 	out := codec.Serialize(it)
 	for _, needle := range []string{"team: infra\n", "watchers: [alice, bob]\n"} {
@@ -51,48 +51,22 @@ func TestExtrasRoundTripIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("re-parse: %v", err)
 	}
-	if !reflect.DeepEqual(again.Extras, it.Extras) {
-		t.Fatalf("re-parsed Extras = %+v, want %+v", again.Extras, it.Extras)
+	if !reflect.DeepEqual(again.ExtraScalars, it.ExtraScalars) || !reflect.DeepEqual(again.ExtraLists, it.ExtraLists) {
+		t.Fatalf("re-parsed extras = %+v/%+v, want %+v/%+v", again.ExtraScalars, again.ExtraLists, it.ExtraScalars, it.ExtraLists)
 	}
 	if out2 := codec.Serialize(again); out2 != out {
 		t.Fatalf("serialize not idempotent\n--- first ---\n%s\n--- second ---\n%s", out, out2)
 	}
 }
 
-func TestExtrasNotCapturedShapes(t *testing.T) {
-	tests := []struct {
-		name string
-		line string
-		key  string
-	}{
-		{"mapping", "custom_map:\n  a: b\n", "custom_map"},
-		{"sequence with mapping element", "weird: [{a: b}]\n", "weird"},
-		{"null", "nothing: null\n", "nothing"},
+func TestExtraListWithNonScalarElementRejected(t *testing.T) {
+	_, err := codec.Parse(docWithExtras("weird: [{a: b}]\n"))
+	var pe *datamodel.ParseError
+	if !errors.As(err, &pe) {
+		t.Fatalf("a list extra with a mapping element must be a parse error, got %v", err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			it, err := codec.Parse(docWithExtras(tt.line))
-			if err != nil {
-				t.Fatalf("parse: %v", err)
-			}
-			if !slices.Contains(it.UnknownKeys, tt.key) {
-				t.Fatalf("UnknownKeys = %v, want %q recorded", it.UnknownKeys, tt.key)
-			}
-			if _, ok := it.Extras[tt.key]; ok {
-				t.Fatalf("Extras = %+v, %q must not be captured", it.Extras, tt.key)
-			}
-			out := codec.Serialize(it)
-			if strings.Contains(out, tt.key) {
-				t.Fatalf("uncaptured key %q must not be re-emitted:\n%s", tt.key, out)
-			}
-			again, err := codec.Parse(out)
-			if err != nil {
-				t.Fatalf("re-parse: %v", err)
-			}
-			if out2 := codec.Serialize(again); out2 != out {
-				t.Fatalf("serialize not a fixed point\n%q\n%q", out, out2)
-			}
-		})
+	if !strings.Contains(err.Error(), "weird") {
+		t.Fatalf("error must name the offending field: %v", err)
 	}
 }
 
@@ -121,15 +95,14 @@ func TestExtraScalarsKeepTheirYAMLType(t *testing.T) {
 	}
 }
 
-func TestExtraListsKeepElementTypesFlowSafely(t *testing.T) {
+func TestExtraListElementsQuotedForFlow(t *testing.T) {
 	tests := []struct {
 		name string
 		in   string
 		want string
 	}{
-		{"typed elements verbatim", "history: [1, \"2\", true, null]\n", "history: [1, \"2\", true, null]\n"},
-		{"block element with comma quoted for flow", "k:\n  - a,b\n", "k: ['a,b']\n"},
-		{"block element with bracket quoted for flow", "k:\n  - \"x]y\"\n", "k: [\"x]y\"]\n"},
+		{"element with comma", "k:\n  - a,b\n", "k: ['a,b']\n"},
+		{"element with bracket", "k:\n  - \"x]y\"\n", "k: ['x]y']\n"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -145,8 +118,8 @@ func TestExtraListsKeepElementTypesFlowSafely(t *testing.T) {
 			if err != nil {
 				t.Fatalf("re-parse: %v", err)
 			}
-			if !reflect.DeepEqual(again.Extras, it.Extras) {
-				t.Fatalf("re-parsed Extras = %+v, want %+v", again.Extras, it.Extras)
+			if !reflect.DeepEqual(again.ExtraLists, it.ExtraLists) {
+				t.Fatalf("re-parsed ExtraLists = %+v, want %+v", again.ExtraLists, it.ExtraLists)
 			}
 		})
 	}
@@ -174,5 +147,23 @@ func TestExtraCommentAndAnchorMetadataStripped(t *testing.T) {
 				t.Fatalf("want bare value %q emitted, got:\n%s", tt.want, out)
 			}
 		})
+	}
+}
+
+func TestExtraFrontmatterReadsDraftFields(t *testing.T) {
+	draft := "---\ntitle: t\nteam: infra\nwatchers: [alice, bob]\n---\nbody\n"
+	scalars, lists, err := codec.ExtraFrontmatter(draft)
+	if err != nil {
+		t.Fatalf("ExtraFrontmatter: %v", err)
+	}
+	if !reflect.DeepEqual(scalars, map[string]string{"team": "infra"}) {
+		t.Fatalf("scalars = %+v, want team only (title is builtin)", scalars)
+	}
+	if !reflect.DeepEqual(lists, map[string][]string{"watchers": {"alice", "bob"}}) {
+		t.Fatalf("lists = %+v, want watchers", lists)
+	}
+
+	if _, _, err := codec.ExtraFrontmatter("---\ntitle: t\nnested:\n  a: b\n---\n"); err == nil {
+		t.Fatal("a nested mapping must be reported rather than silently dropped")
 	}
 }

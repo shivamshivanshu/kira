@@ -59,9 +59,14 @@ func listResult(ld *loaded, opts ListOpts, qopts query.Options) (*datamodel.List
 	epicNumbers := epicNumberMap(items)
 	rows := make([]datamodel.ListItem, len(matched))
 	for i, it := range matched {
-		rows[i] = listItemOf(cfg, it, epicNumbers)
+		rows[i] = listItemOf(cfg, it, epicNumbers, ld.schemas)
 	}
-	res := &datamodel.ListResult{Items: rows, Count: len(rows), StderrNotes: slices.Concat(ld.notes, notes)}
+	res := &datamodel.ListResult{
+		Items:       rows,
+		Count:       len(rows),
+		Columns:     declaredColumns(matched, ld.schemas),
+		StderrNotes: slices.Concat(ld.notes, notes),
+	}
 	if opts.Tree {
 		res.Tree = groupByEpic(rows, epicNumbers)
 	}
@@ -91,6 +96,28 @@ func (ld *loaded) match(opts ListOpts, pred query.Predicate, order *query.Order)
 	return matched
 }
 
+// declaredColumns is the column set the matched items' own schemas ask for.
+// A listing spans types, so the result is their union in first-declared order;
+// types that agree (as the built-ins do) yield exactly their shared set, and
+// only a schema that declares something extra widens the table. Empty when no
+// matched type declares any, which leaves the choice to the caller.
+func declaredColumns(items []*datamodel.Item, schemas map[string]entityschema.Schema) []string {
+	var out []string
+	seenType := map[string]bool{}
+	for _, it := range items {
+		if seenType[it.Type] {
+			continue
+		}
+		seenType[it.Type] = true
+		for _, c := range schemas[it.Type].Representation.ListColumns {
+			if !slices.Contains(out, c) {
+				out = append(out, c)
+			}
+		}
+	}
+	return out
+}
+
 func filterSort(cfg *datamodel.Config, items []*datamodel.Item, pred query.Predicate, order *query.Order) []*datamodel.Item {
 	matched := make([]*datamodel.Item, 0, len(items))
 	for _, it := range items {
@@ -104,33 +131,26 @@ func filterSort(cfg *datamodel.Config, items []*datamodel.Item, pred query.Predi
 }
 
 // queryOptions compiles queries against ld's own schemas, so an --at read
-// resolves extras exactly as the snapshot declared them.
+// resolves custom fields exactly as the snapshot declared them.
 func (s *Store) queryOptions(ld *loaded) query.Options {
 	cfg := ld.cfg
 	me := sync.OnceValue(func() string { value, _ := s.identity(cfg); return value })
-	return query.Options{Resolver: ld.resolver, Priorities: cfg.Priorities.Values, ActiveSprint: s.ActiveSprintKey(),
-		Me: me, Items: ld.items, Extras: queryExtras(ld.schemas)}
-}
-
-func queryExtras(schemas map[string]entityschema.Schema) []query.ExtraField {
-	extras := declaredExtras(schemas)
-	out := make([]query.ExtraField, len(extras))
-	for i, f := range extras {
-		out[i] = query.ExtraField{Name: f.Name, List: f.List, Ordered: numericExtra(f)}
+	return query.Options{
+		Resolver:     ld.resolver,
+		Priorities:   cfg.Priorities.Values,
+		ActiveSprint: s.ActiveSprintKey(),
+		Me:           me,
+		Items:        ld.items,
+		Schemas:      ld.schemas,
 	}
-	return out
 }
 
 func (s *Store) FilterableFields() ([]string, error) {
-	schemas, err := s.Schemas()
+	schemas, err := s.schemas()
 	if err != nil {
 		return nil, err
 	}
-	return query.FieldNames(queryExtras(schemas)), nil
-}
-
-func numericExtra(f entityschema.FieldDef) bool {
-	return !f.List && (f.Type == entityschema.FieldInt || f.Type == entityschema.FieldNumber)
+	return query.FieldNames(schemas), nil
 }
 
 func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel.ListItem, map[string]bool, error) {
@@ -150,7 +170,7 @@ func listWithMatches(cfg *datamodel.Config, items []*datamodel.Item, expr string
 	rows := make([]datamodel.ListItem, len(items))
 	matched := make(map[string]bool, len(items))
 	for i, it := range items {
-		rows[i] = listItemOf(cfg, it, epicNumbers)
+		rows[i] = listItemOf(cfg, it, epicNumbers, qopts.Schemas)
 		if pred == nil || pred(it, cfg) {
 			matched[it.ID] = true
 		}
@@ -216,7 +236,7 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 	}
 	for _, f := range opts.Fields {
 		if err := addMatch(f); err != nil {
-			return nil, nil, nil, fieldFilterErr(f.Key, err, qopts.Extras)
+			return nil, nil, nil, fieldFilterErr(f.Key, err, qopts.Schemas)
 		}
 	}
 
@@ -327,13 +347,14 @@ func epicNumberMap(items []*datamodel.Item) map[string]string {
 	return m
 }
 
-func listItemOf(cfg *datamodel.Config, it *datamodel.Item, epicNumbers map[string]string) datamodel.ListItem {
+func listItemOf(cfg *datamodel.Config, it *datamodel.Item, epicNumbers map[string]string, schemas map[string]entityschema.Schema) datamodel.ListItem {
 	li := datamodel.ListItem{
 		ID:         it.ID,
 		Number:     it.Number,
 		Board:      boardKeyOf(it.Number),
 		Title:      it.Title,
 		Type:       it.Type,
+		Subtype:    it.Subtype,
 		State:      it.State,
 		Category:   categoryString(cfg, it.Type, it.State),
 		Owner:      it.Owner,
@@ -342,7 +363,7 @@ func listItemOf(cfg *datamodel.Config, it *datamodel.Item, epicNumbers map[strin
 		Priority:   it.Priority,
 		Resolution: it.Resolution,
 		Due:        it.Due,
-		Extras:     codec.DecodeExtras(it.Extras),
+		Fields:     entityschema.CustomFields(schemas[it.Type], it, codec.DecodeExtraScalar),
 	}
 	if it.Epic != nil {
 		if num, ok := epicNumbers[*it.Epic]; ok {

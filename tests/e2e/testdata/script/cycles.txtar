@@ -13,7 +13,7 @@ exec kira create ticket --title child --no-edit --parent KIRA-1
 
 # --parent must point at an epic, not a ticket
 ! exec kira create ticket --title bad --no-edit --parent KIRA-2
-stderr 'not an epic'
+stderr 'expected epic'
 
 exec kira create ticket --title a --no-edit
 exec kira create ticket --title b --no-edit
@@ -28,7 +28,7 @@ cp cyca.md .kira/tickets/01HAAAAAAAAAAAAAAAAAAAAAAA.md
 cp cycb.md .kira/tickets/01HBBBBBBBBBBBBBBBBBBBBBBB.md
 ! exec kira doctor
 stdout 'ref-cycle'
-stdout 'epic-kind'
+stdout 'ref-type'
 
 -- cyca.md --
 ---

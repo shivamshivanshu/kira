@@ -32,7 +32,7 @@ func (b *Batch) BoardMove(ref, targetKey string) (*datamodel.BoardMoveResult, er
 		return nil, err
 	}
 	it := cloneItem(orig)
-	if err := s.guardWritable(it); err != nil {
+	if err := guardWritable(it); err != nil {
 		return nil, err
 	}
 

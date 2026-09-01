@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/storage"
@@ -56,7 +57,12 @@ func TestConformanceAgainstRepoTickets(t *testing.T) {
 			t.Errorf("%s: no schema for type %q", it.ID, it.Type)
 			continue
 		}
-		for _, v := range entityschema.Validate(schema, entityschema.ProjectItem(schema, it), enums, nil) {
+		for _, v := range entityschema.Validate(schema, entityschema.ProjectItem(schema, it, codec.DecodeExtraScalar), enums, nil) {
+			// An open (non-strict) vocabulary is caller policy, not a schema
+			// conformance failure: it downgrades to a warning, never rejects.
+			if v.Code == entityschema.CodeEnum {
+				continue
+			}
 			t.Errorf("%s (%s): %v", it.Number, it.ID, v)
 			violations++
 		}

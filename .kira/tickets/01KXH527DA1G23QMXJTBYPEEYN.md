@@ -6,12 +6,13 @@ type: ticket
 subtype: bug
 title: "Bridged find breaks when TUI launched with -C: value-aware global-flag extraction in ParseFindArgs"
 state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-15T01:58:31+05:30
-updated: 2026-07-16T18:44:59+05:30
+updated: 2026-07-28T14:28:01+05:30
 ---
 
 ## Description

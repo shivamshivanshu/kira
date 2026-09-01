@@ -82,7 +82,7 @@ func TestBoardAndSprintScopesConjoinWithQueriesAndSavedFilters(t *testing.T) {
 func TestScopedQueryPreservesOrderWordAsOwner(t *testing.T) {
 	t.Parallel()
 	const expr = "owner=ORDER BY created"
-	parsed, err := query.Parse(expr, nil)
+	parsed, err := query.Parse(expr)
 	if err != nil || parsed.Order != nil {
 		t.Fatalf("ORDER is an owner value here, not a sorting clause: %+v %v", parsed, err)
 	}

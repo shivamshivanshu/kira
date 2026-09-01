@@ -46,13 +46,16 @@ func (o *Order) Keyer(cfg *datamodel.Config) func(*datamodel.Item) OrderKey {
 		}
 	default:
 		get := scalarGet(o.Field)
-		if o.extraNumeric {
-			return func(it *datamodel.Item) OrderKey {
-				n, err := strconv.ParseFloat(get(it, cfg), 64)
-				if err != nil {
-					return OrderKey{null: true}
+		if cf := o.custom; cf != nil {
+			get = func(it *datamodel.Item, _ *datamodel.Config) string { return cf.scalar(it) }
+			if cf.numeric() {
+				return func(it *datamodel.Item) OrderKey {
+					n, err := strconv.ParseFloat(get(it, cfg), 64)
+					if err != nil {
+						return OrderKey{null: true}
+					}
+					return OrderKey{numeric: true, num: n}
 				}
-				return OrderKey{numeric: true, num: n}
 			}
 		}
 		return func(it *datamodel.Item) OrderKey {

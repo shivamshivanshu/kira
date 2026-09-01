@@ -32,6 +32,7 @@ type CreateOpts struct {
 	Sprint   string
 	Due      string
 	Estimate *float64
+	Fields   []FieldEdit
 	NoEdit   bool
 	FromFile string
 	Force    bool
@@ -50,7 +51,10 @@ func (opts CreateOpts) ValidateBlocking() error {
 	return nil
 }
 
-func (s *Store) ResolveTemplate(opts CreateOpts) (string, error) {
+func (s *Store) ResolveTemplate(cfg *datamodel.Config, opts CreateOpts) (string, error) {
+	if err := s.resolveOptsIdentities(cfg, &opts); err != nil {
+		return "", err
+	}
 	base, err := s.templateDraft(opts.Type, opts.Subtype)
 	if err != nil {
 		return "", err
@@ -58,8 +62,25 @@ func (s *Store) ResolveTemplate(opts CreateOpts) (string, error) {
 	return serializeDraft(applyFlags(base, opts)), nil
 }
 
+// resolveOptsIdentities binds the @me token in the dedicated owner/reporter
+// flags, which applyFlags copies verbatim; --field owner=@me takes the
+// separate applyFieldEdits path, which resolves it there.
+func (s *Store) resolveOptsIdentities(cfg *datamodel.Config, opts *CreateOpts) error {
+	for _, field := range []*string{&opts.Owner, &opts.Reporter} {
+		resolved, err := s.resolveMe(cfg, *field)
+		if err != nil {
+			return err
+		}
+		*field = resolved
+	}
+	return nil
+}
+
 func (s *Store) Create(cfg *datamodel.Config, opts CreateOpts) (*datamodel.CreateResult, error) {
 	if err := opts.ValidateBlocking(); err != nil {
+		return nil, err
+	}
+	if err := s.resolveOptsIdentities(cfg, &opts); err != nil {
 		return nil, err
 	}
 	var hereActive string
@@ -133,9 +154,6 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 	if err != nil {
 		return nil, err
 	}
-	if errs := s.draftExtraErrors(opts.Type, d); len(errs) > 0 {
-		return nil, errx.Invalid(invalidItemPrefix, errs)
-	}
 
 	release, err := s.fs().Lock()
 	if err != nil {
@@ -147,10 +165,17 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 	if err != nil {
 		return nil, err
 	}
+	schemas, err := s.schemas()
+	if err != nil {
+		return nil, err
+	}
 
 	sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, wf.Initial)
 	finalItem := itemFromDraft(d, sys)
-	hard, warns := s.validateMutation(cfg, nil, finalItem, ld.resolver, ld.items, opts.Force)
+	if errs := s.applyFieldEdits(cfg, finalItem, opts.Fields, schemas[finalItem.Type]); len(errs) > 0 {
+		return nil, errx.Invalid(invalidItemPrefix, errs)
+	}
+	hard, warns := newValidationCtx(cfg, ld.items, ld.resolver, schemas[finalItem.Type], opts.Force).validateMutation(nil, finalItem)
 	if len(hard) > 0 {
 		return nil, errx.Invalid(invalidItemPrefix, hard)
 	}
@@ -205,7 +230,9 @@ func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, boardKey,
 		if perr != nil {
 			return draft{}, errx.User("--from-file: %v", perr)
 		}
-		return d, nil
+		// The file plays the same role as the template it replaces: it supplies
+		// the values, and an explicit flag still overrides them.
+		return applyFlags(d, opts), nil
 	case opts.NoEdit:
 		return base, nil
 	default:
@@ -213,14 +240,16 @@ func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, boardKey,
 		if err != nil {
 			return draft{}, err
 		}
+		schemas, err := s.schemas()
+		if err != nil {
+			return draft{}, err
+		}
 		sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, initialState)
-		content, err := runEditor(cfg.UI.Editor, editorx.Stdio{}, serializeDraft(base), s.validateBuffer(cfg, ld.resolver, opts.Force, func(c string) (*datamodel.Item, []error) {
+		vctx := newValidationCtx(cfg, ld.items, ld.resolver, schemas[opts.Type], opts.Force)
+		content, err := runEditor(cfg.UI.Editor, editorx.Stdio{}, serializeDraft(base), vctx.validateBuffer(func(c string) (*datamodel.Item, []error) {
 			d, perr := parseDraft(c)
 			if perr != nil {
 				return nil, []error{perr}
-			}
-			if errs := s.draftExtraErrors(opts.Type, d); len(errs) > 0 {
-				return nil, errs
 			}
 			return itemFromDraft(d, sys), nil
 		}))
@@ -253,27 +282,28 @@ func newSystemFields(cfg *datamodel.Config, snap id.Snapshot, boardKey, typ, sta
 
 func itemFromDraft(d draft, sys systemFields) *datamodel.Item {
 	return &datamodel.Item{
-		ID:        sys.ulid,
-		Number:    sys.number,
-		Aliases:   []string{},
-		Type:      sys.typ,
-		Subtype:   normPtr(d.Subtype),
-		Title:     d.Title,
-		State:     sys.state,
-		Priority:  normPtr(d.Priority),
-		Rank:      normPtr(d.Rank),
-		Owner:     normPtr(d.Owner),
-		Reporter:  normPtr(d.Reporter),
-		Labels:    nonNil(d.Labels),
-		Epic:      normPtr(d.Epic),
-		BlockedBy: []string{},
-		Sprint:    normPtr(d.Sprint),
-		Due:       normPtr(d.Due),
-		Estimate:  d.Estimate,
-		Extras:    d.Extras,
-		Created:   sys.created,
-		Updated:   sys.created,
-		Body:      d.Body,
+		ID:           sys.ulid,
+		Number:       sys.number,
+		Aliases:      []string{},
+		Type:         sys.typ,
+		Subtype:      normPtr(d.Subtype),
+		Title:        d.Title,
+		State:        sys.state,
+		Priority:     normPtr(d.Priority),
+		Rank:         normPtr(d.Rank),
+		Owner:        normPtr(d.Owner),
+		Reporter:     normPtr(d.Reporter),
+		Labels:       nonNil(d.Labels),
+		Epic:         normPtr(d.Epic),
+		BlockedBy:    []string{},
+		Sprint:       normPtr(d.Sprint),
+		Due:          normPtr(d.Due),
+		Estimate:     d.Estimate,
+		Created:      sys.created,
+		Updated:      sys.created,
+		Body:         d.Body,
+		ExtraScalars: d.ExtraScalars,
+		ExtraLists:   d.ExtraLists,
 	}
 }
 
@@ -288,7 +318,11 @@ func (s *Store) templateDraft(typ, subtype string) (draft, error) {
 	data, err := os.ReadFile(s.templatePath(typ, subtype))
 	if err != nil {
 		if os.IsNotExist(err) {
-			d, _ := parseDraft(defaultTemplate(typ))
+			schemas, serr := s.schemas()
+			if serr != nil {
+				return draft{}, serr
+			}
+			d, _ := parseDraft(defaultTemplate(typ, schemas[typ]))
 			return d, nil
 		}
 		return draft{}, errx.User("reading template: %v", err)

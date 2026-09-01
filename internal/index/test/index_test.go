@@ -1507,17 +1507,20 @@ func TestExtrasRoundTripThroughIndex(t *testing.T) {
 	if len(items) != 1 || len(disk) != 1 {
 		t.Fatalf("want 1 item, index=%d disk=%d", len(items), len(disk))
 	}
-	if len(disk[0].Extras) != 5 {
-		t.Fatalf("fixture must capture 5 extras, got %+v", disk[0].Extras)
+	if len(disk[0].ExtraKeys()) != 5 {
+		t.Fatalf("fixture must capture 5 extras, got %v", disk[0].ExtraKeys())
 	}
-	if !reflect.DeepEqual(items[0].Extras, disk[0].Extras) {
-		t.Errorf("extras mismatch:\n index: %+v\n disk:  %+v", items[0].Extras, disk[0].Extras)
+	if !reflect.DeepEqual(items[0].ExtraScalars, disk[0].ExtraScalars) {
+		t.Errorf("extra scalars mismatch:\n index: %+v\n disk:  %+v", items[0].ExtraScalars, disk[0].ExtraScalars)
 	}
-	if got := items[0].Extras["reviewers"].List; got == nil || len(got) != 0 {
+	if !reflect.DeepEqual(items[0].ExtraLists, disk[0].ExtraLists) {
+		t.Errorf("extra lists mismatch:\n index: %+v\n disk:  %+v", items[0].ExtraLists, disk[0].ExtraLists)
+	}
+	if got := items[0].ExtraLists["reviewers"]; got == nil || len(got) != 0 {
 		t.Errorf("empty list must round-trip non-nil and empty, got %#v", got)
 	}
-	if got := items[0].Extras["watchers"].List; !reflect.DeepEqual(got, disk[0].Extras["watchers"].List) {
-		t.Errorf("list order changed: got %v want %v", got, disk[0].Extras["watchers"].List)
+	if got := items[0].ExtraLists["watchers"]; !reflect.DeepEqual(got, disk[0].ExtraLists["watchers"]) {
+		t.Errorf("list order changed: got %v want %v", got, disk[0].ExtraLists["watchers"])
 	}
 }
 
@@ -1532,8 +1535,9 @@ func TestItemWithoutExtrasStaysExtrasFree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if items[0].Extras != nil {
-		t.Fatalf("item without extras must reload with a nil map, got %+v", items[0].Extras)
+	if items[0].ExtraScalars != nil || items[0].ExtraLists != nil {
+		t.Fatalf("item without extras must reload with nil maps, got %+v / %+v",
+			items[0].ExtraScalars, items[0].ExtraLists)
 	}
 }
 
@@ -1555,8 +1559,8 @@ func TestIncrementalRefreshReplacesAndRemovesExtras(t *testing.T) {
 	if res.Action != "incremental" {
 		t.Fatalf("action=%q want incremental", res.Action)
 	}
-	if got := items[0].Extras["watchers"].List; got == nil || len(got) != 0 {
-		t.Errorf("stale element rows must be replaced by the empty-list marker, got %#v", got)
+	if got := items[0].ExtraLists["watchers"]; got == nil || len(got) != 0 {
+		t.Errorf("an emptied list must reload non-nil and empty, got %#v", got)
 	}
 
 	f.writeTicket(t, ulid, withExtras("team: infra\n"))
@@ -1565,8 +1569,10 @@ func TestIncrementalRefreshReplacesAndRemovesExtras(t *testing.T) {
 	if res.Action != "incremental" {
 		t.Fatalf("action=%q want incremental", res.Action)
 	}
-	want := map[string]datamodel.ExtraValue{"team": {Scalar: new("infra")}}
-	if !reflect.DeepEqual(items[0].Extras, want) {
-		t.Errorf("removed extra must leave no rows behind, got %+v", items[0].Extras)
+	if want := map[string]string{"team": "infra"}; !reflect.DeepEqual(items[0].ExtraScalars, want) {
+		t.Errorf("removed extra must leave nothing behind, got %+v", items[0].ExtraScalars)
+	}
+	if items[0].ExtraLists != nil {
+		t.Errorf("removed list extra must leave nothing behind, got %+v", items[0].ExtraLists)
 	}
 }

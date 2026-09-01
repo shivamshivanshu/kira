@@ -6,12 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/timex"
@@ -30,7 +29,7 @@ type Options struct {
 	Me           func() string
 	ActiveSprint string
 	Items        []*datamodel.Item
-	Extras       []ExtraField
+	Schemas      map[string]entityschema.Schema
 }
 
 type Compiled struct {
@@ -48,37 +47,58 @@ type Error struct {
 func (e *Error) Error() string { return fmt.Sprintf("query: %s at position %d", e.Msg, e.Pos) }
 
 // IsUnknownField reports whether err is a query error about an unrecognised
-// field name — the one class of parse error whose validity depends on which
-// schema-declared extras the caller could supply.
+// field name — the one class of compile error whose validity depends on which
+// schema-declared fields the caller could supply.
 func IsUnknownField(err error) bool {
 	e, ok := errors.AsType[*Error](err)
 	return ok && e.unknownField
 }
 
 func Compile(input string, opts Options) (*Compiled, error) {
-	q, err := Parse(input, opts.Extras)
+	q, err := Parse(input)
 	if err != nil {
 		return nil, err
 	}
-	c := &compiler{opts: opts, spec: specOf(opts.Extras)}
+	c := &compiler{opts: opts}
 	pred, err := c.compile(q.Expr)
 	if err != nil {
 		return nil, err
 	}
-	if q.Order != nil && q.Order.Field == fieldPriority {
-		if len(opts.Priorities) == 0 {
-			return nil, &Error{Pos: q.Order.pos, Msg: "ORDER BY priority requires configured priorities"}
-		}
-		q.Order.priorityIndex = PriorityIndex(opts.Priorities)
+	if err := c.bindOrder(q.Order); err != nil {
+		return nil, err
 	}
 	return &Compiled{Pred: pred, Order: q.Order, Notes: c.notes}, nil
 }
 
-func Match(field, value string, opts Options) (Predicate, []datamodel.WarnCode, error) {
-	spec := specOf(opts.Extras)
-	if !spec.known(field) {
-		return nil, nil, unknownFieldErr(0, field, spec)
+// bindOrder resolves an ORDER BY field the parser left unresolved: only the
+// compiler knows which names a schema declares.
+func (c *compiler) bindOrder(o *Order) error {
+	switch {
+	case o == nil:
+		return nil
+	case o.Field == fieldPriority:
+		if len(c.opts.Priorities) == 0 {
+			return &Error{Pos: o.pos, Msg: "ORDER BY priority requires configured priorities"}
+		}
+		o.priorityIndex = PriorityIndex(c.opts.Priorities)
+		return nil
+	case fields[o.Field]:
+		return nil
 	}
+	cf, ok := c.lookupCustomField(o.Field)
+	switch {
+	case !ok:
+		return c.unknownFieldErr(o.pos, o.Field)
+	case cf.def.Placement == entityschema.PlacementBody:
+		return bodyFieldErr(o.pos, o.Field)
+	case cf.def.List:
+		return &Error{Pos: o.pos, Msg: "cannot order by list field " + o.Field}
+	}
+	o.custom = &cf
+	return nil
+}
+
+func Match(field, value string, opts Options) (Predicate, []datamodel.WarnCode, error) {
 	if isDateField(field) {
 		return nil, nil, &Error{Pos: 0, Msg: "field " + field + " is a date; use the query grammar instead"}
 	}
@@ -86,10 +106,12 @@ func Match(field, value string, opts Options) (Predicate, []datamodel.WarnCode, 
 		return nil, nil, &Error{Pos: 0, Msg: "field " + field + " is boolean; use the query grammar instead"}
 	}
 	pred := &predExpr{field: field, op: token{kind: tokEq, text: "="}, value: value}
-	if err := typeCheckValue(spec, field, token{kind: tokWord, text: value}, &pred.date, &pred.num); err != nil {
-		return nil, nil, err
+	if fields[field] {
+		if err := typeCheckValue(field, token{kind: tokWord, text: value}, &pred.date, &pred.num); err != nil {
+			return nil, nil, err
+		}
 	}
-	c := &compiler{opts: opts, spec: spec}
+	c := &compiler{opts: opts}
 	p, err := c.compilePred(pred)
 	if err != nil {
 		return nil, nil, err
@@ -99,7 +121,6 @@ func Match(field, value string, opts Options) (Predicate, []datamodel.WarnCode, 
 
 type compiler struct {
 	opts  Options
-	spec  extraSpec
 	notes []datamodel.WarnCode
 	byID  map[string]*datamodel.Item
 }
@@ -123,7 +144,7 @@ func (c *compiler) compile(e Expr) (Predicate, error) {
 	case *inExpr:
 		return c.compileIn(n)
 	case *emptyExpr:
-		return c.compileIsEmpty(n), nil
+		return c.compileIsEmpty(n)
 	case *boolExpr:
 		return c.compileBool(n)
 	default:
@@ -202,41 +223,36 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 	case fieldDue:
 		return datePred(n, func(it *datamodel.Item) string { return ptr.Deref(it.Due) }), nil
 	}
-	if ef, ok := c.spec[n.field]; ok {
-		return extraPred(n, ef), nil
+	if cf, ok := c.lookupCustomField(n.field); ok {
+		if cf.def.Placement == entityschema.PlacementBody {
+			return nil, bodyFieldErr(n.op.pos, n.field)
+		}
+		return c.compileCustomPred(n, cf)
 	}
-	return nil, unknownFieldErr(n.op.pos, n.field, c.spec)
+	return nil, c.unknownFieldErr(n.op.pos, n.field)
 }
 
-func extraPred(n *predExpr, ef ExtraField) Predicate {
-	eq := n.op.kind == tokEq
-	switch {
-	case ef.List:
-		field, want := n.field, n.value
-		return func(it *datamodel.Item, _ *datamodel.Config) bool {
-			return slices.ContainsFunc(it.Extras[field].List, func(e string) bool {
-				return codec.DecodeScalar(e) == want
-			}) == eq
-		}
-	case ef.Ordered:
-		get, op, want := scalarGet(n.field), n.op.kind, n.num
-		return func(it *datamodel.Item, cfg *datamodel.Config) bool {
-			got, err := strconv.ParseFloat(get(it, cfg), 64)
-			if err != nil {
-				return op == tokNe
-			}
-			return applyCmp(op, got, want)
-		}
-	}
-	return scalarPred(eq, n.value, scalarGet(n.field))
+func bodyFieldErr(pos int, field string) *Error {
+	return &Error{Pos: pos, Msg: "field " + field + " is a body section and cannot be filtered"}
 }
 
-func unknownFieldErr(pos int, field string, spec extraSpec) *Error {
+func (c *compiler) unknownFieldErr(pos int, field string) *Error {
 	return &Error{
-		Pos:          pos,
-		Msg:          fmt.Sprintf("unknown field %s (available: %s)", quote(field), strings.Join(spec.names(), ", ")),
+		Pos: pos,
+		Msg: fmt.Sprintf("unknown field %s (available: %s)",
+			quote(field), strings.Join(availableFieldNames(customFieldNames(c.opts.Schemas)), ", ")),
 		unknownField: true,
 	}
+}
+
+func availableFieldNames(custom []string) []string {
+	names := make([]string, 0, len(fields)+len(custom))
+	for f := range fields {
+		names = append(names, f)
+	}
+	names = append(names, custom...)
+	slices.Sort(names)
+	return names
 }
 
 func (c *compiler) compileRefPred(n *predExpr, eq bool, matches func(*datamodel.Item, string) bool) (Predicate, error) {
@@ -261,7 +277,7 @@ func (c *compiler) resolveMe(pos int) (string, error) {
 func (c *compiler) compileIn(n *inExpr) (Predicate, error) {
 	// Large scalar sets need one field extraction per item, including extras
 	// whose quoted values otherwise get YAML-decoded once per alternative.
-	if len(n.values) >= 8 && c.scalarInField(n.field) {
+	if get, ok := c.scalarInGet(n.field); len(n.values) >= 8 && ok {
 		values := make(map[string]bool, len(n.values))
 		for i, value := range n.values {
 			if (n.field == fieldOwner || n.field == fieldReporter) && value == MeToken {
@@ -276,7 +292,6 @@ func (c *compiler) compileIn(n *inExpr) (Predicate, error) {
 			}
 			values[value] = true
 		}
-		get := scalarGet(n.field)
 		return func(it *datamodel.Item, cfg *datamodel.Config) bool { return values[get(it, cfg)] }, nil
 	}
 	orPreds := make([]Predicate, len(n.values))
@@ -285,8 +300,10 @@ func (c *compiler) compileIn(n *inExpr) (Predicate, error) {
 			field: n.field, op: token{kind: tokEq, text: "=", pos: n.fieldPos},
 			value: v, valuePos: n.valuePos[i],
 		}
-		if err := typeCheckValue(c.spec, n.field, token{text: v, pos: n.valuePos[i]}, &pred.date, &pred.num); err != nil {
-			return nil, err
+		if fields[n.field] {
+			if err := typeCheckValue(n.field, token{text: v, pos: n.valuePos[i]}, &pred.date, &pred.num); err != nil {
+				return nil, err
+			}
 		}
 		p, err := c.compilePred(pred)
 		if err != nil {
@@ -304,17 +321,30 @@ func (c *compiler) compileIn(n *inExpr) (Predicate, error) {
 	}, nil
 }
 
-func (c *compiler) scalarInField(field string) bool {
+func (c *compiler) scalarInGet(field string) (func(*datamodel.Item, *datamodel.Config) string, bool) {
 	switch field {
 	case fieldState, fieldType, fieldPriority, fieldOwner, fieldReporter,
 		fieldSubtype, fieldResolution, fieldRank, fieldCategory, fieldBoard:
-		return true
+		return accessors[field], true
 	}
-	f, ok := c.spec[field]
-	return ok && !f.List && !f.Ordered
+	cf, ok := c.lookupCustomField(field)
+	if !ok || cf.def.List || cf.def.Placement == entityschema.PlacementBody {
+		return nil, false
+	}
+	return func(it *datamodel.Item, _ *datamodel.Config) string { return cf.scalar(it) }, true
 }
 
-func (c *compiler) compileIsEmpty(n *emptyExpr) Predicate {
+func (c *compiler) compileIsEmpty(n *emptyExpr) (Predicate, error) {
+	if !fields[n.field] {
+		cf, ok := c.lookupCustomField(n.field)
+		if !ok {
+			return nil, c.unknownFieldErr(0, n.field)
+		}
+		if cf.def.Placement == entityschema.PlacementBody {
+			return nil, bodyFieldErr(0, n.field)
+		}
+		return c.compileCustomIsEmpty(n, cf), nil
+	}
 	var isEmpty func(it *datamodel.Item, cfg *datamodel.Config) bool
 	switch n.field {
 	case fieldLabel:
@@ -326,16 +356,11 @@ func (c *compiler) compileIsEmpty(n *emptyExpr) Predicate {
 	case fieldEstimate:
 		isEmpty = func(it *datamodel.Item, _ *datamodel.Config) bool { return it.Estimate == nil }
 	default:
-		field := n.field
-		if c.spec[field].List {
-			isEmpty = func(it *datamodel.Item, _ *datamodel.Config) bool { return len(it.Extras[field].List) == 0 }
-			break
-		}
-		get := scalarGet(field)
+		get := scalarGet(n.field)
 		isEmpty = func(it *datamodel.Item, cfg *datamodel.Config) bool { return get(it, cfg) == "" }
 	}
 	want := !n.notEmpty
-	return func(it *datamodel.Item, cfg *datamodel.Config) bool { return isEmpty(it, cfg) == want }
+	return func(it *datamodel.Item, cfg *datamodel.Config) bool { return isEmpty(it, cfg) == want }, nil
 }
 
 func (c *compiler) compileBool(n *boolExpr) (Predicate, error) {
@@ -419,12 +444,7 @@ func scalarGet(field string) func(*datamodel.Item, *datamodel.Config) string {
 	if get, ok := accessors[field]; ok {
 		return get
 	}
-	return func(it *datamodel.Item, _ *datamodel.Config) string {
-		if v := it.Extras[field].Scalar; v != nil {
-			return codec.DecodeScalar(*v)
-		}
-		return ""
-	}
+	return func(*datamodel.Item, *datamodel.Config) string { return "" }
 }
 
 func PriorityIndex(priorities []string) map[string]int {

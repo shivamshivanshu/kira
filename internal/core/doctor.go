@@ -15,7 +15,7 @@ import (
 )
 
 func (s *Store) DoctorReport(cfg *datamodel.Config) (*doctor.Report, error) {
-	schemas, err := s.Schemas()
+	schemas, err := s.schemas()
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (s *Store) DoctorReport(cfg *datamodel.Config) (*doctor.Report, error) {
 }
 
 func (s *Store) ValidateFiles(cfg *datamodel.Config, args []string) (*doctor.Report, error) {
-	schemas, err := s.Schemas()
+	schemas, err := s.schemas()
 	if err != nil {
 		return nil, err
 	}

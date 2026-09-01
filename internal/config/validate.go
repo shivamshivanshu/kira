@@ -21,12 +21,10 @@ const MaxBoardKeyLen = 10
 
 var boardKeyRe = regexp.MustCompile(BoardKeyPattern)
 
-// ValidBoardKey reports whether a board key string is valid.
 func ValidBoardKey(key string) bool {
 	return boardKeyRe.MatchString(key)
 }
 
-// Validate validates the entire config structure and returns an error if invalid.
 func Validate(c *datamodel.Config) error {
 	if c.Version < 1 || c.Version > datamodel.SchemaVersion {
 		return errx.User("config: version: unsupported version %d (this kira understands 1..%d)", c.Version, datamodel.SchemaVersion)
@@ -182,13 +180,12 @@ func validateWorkonSection(w datamodel.Workon) error {
 	return nil
 }
 
-// UIWarnings returns validation warnings for the UI configuration.
-//
-// ui.list.columns is not checked here: schema-declared custom fields are
-// valid columns but resolve only where a store can load schemas, so `kira
-// list` warns about genuinely unknown columns at render time instead.
 func UIWarnings(ui datamodel.UI) []string {
 	var out []string
+	// ui.list.columns is deliberately unchecked: a schema may declare a field
+	// as a column, and config has no view of schemas, so a closed-set test
+	// here would reject legitimate names. An unrenderable one shows as an
+	// empty column instead.
 	for _, slot := range slices.Sorted(maps.Keys(ui.Theme)) {
 		switch {
 		case !slices.Contains(datamodel.ThemeSlots, slot):
@@ -266,7 +263,7 @@ func validateFilters(c *datamodel.Config) error {
 		// only where a store can load schemas, and every use site re-parses
 		// the saved filter with them; a stricter check would brick config
 		// load for any repo whose saved filter names one.
-		if _, err := query.Parse(q, nil); err != nil && !query.IsUnknownField(err) {
+		if _, err := query.Parse(q); err != nil && !query.IsUnknownField(err) {
 			return errx.User("config: filters.%s: %v", name, err)
 		}
 	}

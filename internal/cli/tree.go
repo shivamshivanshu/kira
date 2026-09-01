@@ -61,11 +61,12 @@ func renderTreeNode(w io.Writer, n datamodel.TreeNode, depth int) {
 	}
 }
 
-func renderTreeGroups(w io.Writer, res *datamodel.ListResult, cols []string) {
+func renderTreeGroups(w io.Writer, res *datamodel.ListResult, columns []string) {
 	if res.Count == 0 {
 		_, _ = fmt.Fprintln(w, msgNoItems)
 		return
 	}
+	cols := resolveColumns(columns, res.Columns)
 	pad := strings.Repeat("\t", len(cols)-1)
 	byID := make(map[string]datamodel.ListItem, len(res.Items))
 	for _, it := range res.Items {

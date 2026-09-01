@@ -3,7 +3,6 @@ package codec
 
 import (
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -58,14 +57,14 @@ func Parse(content string) (*datamodel.Item, error) {
 	it.Labels = reqList(nodes, datamodel.KeyLabels, add)
 	it.Epic = reqNullableScalar(nodes, datamodel.KeyEpic, add)
 	it.BlockedBy = reqList(nodes, datamodel.KeyBlockedBy, add)
-	it.Links, it.UnknownLinkTypes = optLinks(nodes, datamodel.KeyLinks, add)
+	it.Links, it.ExtraLinks = optLinks(nodes, datamodel.KeyLinks, add)
 	it.Sprint = optScalar(nodes, datamodel.KeySprint, add)
 	it.Due = optScalar(nodes, datamodel.KeyDue, add)
 	it.Estimate = optFloat(nodes, datamodel.KeyEstimate, add)
 	it.Created = reqTimestamp(nodes, datamodel.KeyCreated, add)
 	it.Updated = reqTimestamp(nodes, datamodel.KeyUpdated, add)
 
-	it.Extras, it.UnknownKeys = captureExtras(nodes)
+	it.ExtraScalars, it.ExtraLists = captureExtras(nodes, add)
 
 	if len(errs) > 0 {
 		return it, &datamodel.ParseError{Errs: errs}
@@ -73,30 +72,65 @@ func Parse(content string) (*datamodel.Item, error) {
 	return it, nil
 }
 
-// DecodeFrontmatter decodes content's frontmatter into out and captures
-// non-builtin keys the way Parse does: capturable values land in extras, and
-// every non-builtin key — capturable or not — is returned sorted in unknown.
-func DecodeFrontmatter(content string, out any) (body string, extras map[string]datamodel.ExtraValue, unknown []string, err error) {
+func DecodeFrontmatter(content string, out any) (body string, err error) {
 	front, body, err := splitDocument(content)
 	if err != nil {
-		return "", nil, nil, err
+		return "", err
+	}
+	if err := yaml.Unmarshal([]byte(front), out); err != nil {
+		return "", fmt.Errorf("frontmatter yaml: %w", err)
+	}
+	return body, nil
+}
+
+// ExtraFrontmatter reports content's non-builtin frontmatter in the shape
+// Parse captures it, for a partial document Parse itself would reject (an
+// editor draft). A value that is neither a scalar nor a scalar list is
+// reported as a ParseError rather than dropped.
+func ExtraFrontmatter(content string) (scalars map[string]string, lists map[string][]string, err error) {
+	front, _, err := splitDocument(content)
+	if err != nil {
+		return nil, nil, err
 	}
 	var doc yaml.Node
 	if err := yaml.Unmarshal([]byte(front), &doc); err != nil {
-		return "", nil, nil, fmt.Errorf("frontmatter yaml: %w", err)
+		return nil, nil, fmt.Errorf("frontmatter yaml: %w", err)
 	}
-	if len(doc.Content) == 0 {
-		return body, nil, nil, nil
-	}
-	if doc.Content[0].Kind != yaml.MappingNode {
-		return "", nil, nil, fmt.Errorf("frontmatter: expected a mapping")
-	}
-	if err := doc.Decode(out); err != nil {
-		return "", nil, nil, fmt.Errorf("frontmatter yaml: %w", err)
+	if len(doc.Content) > 0 && doc.Content[0].Kind != yaml.MappingNode {
+		return nil, nil, fmt.Errorf("frontmatter: expected a mapping")
 	}
 	nodes, _ := frontmatterNodes(&doc)
-	extras, unknown = captureExtras(nodes)
-	return body, extras, unknown, nil
+	var errs []error
+	scalars, lists = captureExtras(nodes, func(format string, args ...any) {
+		errs = append(errs, fmt.Errorf(format, args...))
+	})
+	if len(errs) > 0 {
+		return scalars, lists, &datamodel.ParseError{Errs: errs}
+	}
+	return scalars, lists, nil
+}
+
+func captureExtras(nodes map[string]*yaml.Node, add addFunc) (scalars map[string]string, lists map[string][]string) {
+	for k, n := range nodes {
+		if datamodel.IsFrontmatterKey(k) {
+			continue
+		}
+		switch n.Kind {
+		case yaml.ScalarNode:
+			if scalars == nil {
+				scalars = map[string]string{}
+			}
+			scalars[k] = renderExtraScalar(n)
+		case yaml.SequenceNode:
+			if lists == nil {
+				lists = map[string][]string{}
+			}
+			lists[k] = scalarSeq(n, fmt.Sprintf("field %q", k), add)
+		default:
+			add("field %q: unsupported extra field shape, expected a scalar or list", k)
+		}
+	}
+	return scalars, lists
 }
 
 func splitDocument(content string) (front, body string, err error) {
@@ -129,7 +163,7 @@ func cutAfterFrontmatter(doc string) (head, body string, ok bool) {
 	if b, found := strings.CutPrefix(rest, FenceLine); found {
 		return doc[:len(doc)-len(b)], b, true
 	}
-	if _, b, ok := strings.Cut(rest, closeFence); ok {
+	if _, b, found := strings.Cut(rest, closeFence); found {
 		return doc[:len(doc)-len(b)], b, true
 	}
 	if strings.HasSuffix(rest, "\n---") || rest == "---" {
@@ -155,6 +189,51 @@ func frontmatterNodes(doc *yaml.Node) (nodes map[string]*yaml.Node, duplicates [
 }
 
 func isNull(n *yaml.Node) bool { return n.Kind == yaml.ScalarNode && n.Tag == "!!null" }
+
+// renderExtraScalar computes the faithful single-line YAML rendering of an
+// extra scalar node, to be emitted verbatim (never re-decoded through
+// EmitScalar, which would treat every value as a string and quote it).
+func renderExtraScalar(n *yaml.Node) string {
+	var s string
+	switch n.Tag {
+	case "!!null":
+		if n.Value == "" {
+			s = "null"
+		} else {
+			s = n.Value
+		}
+	case "!!bool", "!!int", "!!float", "!!timestamp":
+		s = n.Value
+	default:
+		s = EmitScalar(n.Value)
+	}
+	if strings.ContainsRune(s, '\n') {
+		s = EmitScalar(n.Value)
+	}
+	return s
+}
+
+// DecodeExtraScalar recovers the Go value (int/bool/float64/string/nil) a
+// faithfully-rendered extra scalar represents, for callers that need it typed
+// rather than as its raw on-disk text.
+func DecodeExtraScalar(s string) any {
+	var v any
+	if err := yaml.Unmarshal([]byte(s), &v); err != nil {
+		return s
+	}
+	return v
+}
+
+// EncodeExtraScalar renders a typed Go value to on-disk scalar form, quoting a
+// string only where needed so it isn't read back as another type (a date-shaped
+// string, or "5").
+func EncodeExtraScalar(v any) (string, error) {
+	var n yaml.Node
+	if err := n.Encode(v); err != nil {
+		return "", err
+	}
+	return renderExtraScalar(&n), nil
+}
 
 type addFunc func(format string, args ...any)
 
@@ -252,53 +331,7 @@ func scalarSeq(n *yaml.Node, label string, add addFunc) []string {
 	return out
 }
 
-func captureExtras(nodes map[string]*yaml.Node) (extras map[string]datamodel.ExtraValue, unknown []string) {
-	for k, n := range nodes {
-		if datamodel.IsFrontmatterKey(k) {
-			continue
-		}
-		unknown = append(unknown, k)
-		v, ok := extraValue(n)
-		if !ok {
-			continue
-		}
-		if extras == nil {
-			extras = map[string]datamodel.ExtraValue{}
-		}
-		extras[k] = v
-	}
-	slices.Sort(unknown)
-	return extras, unknown
-}
-
-// Mappings, null, and sequences with non-scalar elements are not captured:
-// nested objects are a declared non-goal, so those stay in UnknownKeys only.
-func extraValue(n *yaml.Node) (datamodel.ExtraValue, bool) {
-	switch n.Kind {
-	case yaml.ScalarNode:
-		if isNull(n) {
-			return datamodel.ExtraValue{}, false
-		}
-		v, ok := renderScalarNode(n)
-		if !ok {
-			return datamodel.ExtraValue{}, false
-		}
-		return datamodel.ExtraValue{Scalar: &v}, true
-	case yaml.SequenceNode:
-		vals := make([]string, 0, len(n.Content))
-		for _, c := range n.Content {
-			v, ok := renderFlowElem(c)
-			if !ok {
-				return datamodel.ExtraValue{}, false
-			}
-			vals = append(vals, v)
-		}
-		return datamodel.ExtraValue{List: vals}, true
-	}
-	return datamodel.ExtraValue{}, false
-}
-
-func optLinks(nodes map[string]*yaml.Node, key string, add addFunc) (map[string][]string, []string) {
+func optLinks(nodes map[string]*yaml.Node, key string, add addFunc) (links, extraLinks map[string][]string) {
 	n, ok := nodes[key]
 	if !ok || isNull(n) {
 		return nil, nil
@@ -307,14 +340,8 @@ func optLinks(nodes map[string]*yaml.Node, key string, add addFunc) (map[string]
 		add("field %q: expected a map of link type to id list", key)
 		return nil, nil
 	}
-	var links map[string][]string
-	var unknown []string
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		typ, val := n.Content[i].Value, n.Content[i+1]
-		if !datamodel.ValidLinkType(typ) {
-			unknown = append(unknown, typ)
-			continue
-		}
 		if isNull(val) {
 			continue
 		}
@@ -326,13 +353,19 @@ func optLinks(nodes map[string]*yaml.Node, key string, add addFunc) (map[string]
 		if len(targets) == 0 {
 			continue
 		}
-		if links == nil {
-			links = make(map[string][]string, len(datamodel.LinkTypes))
+		if datamodel.ValidLinkType(typ) {
+			if links == nil {
+				links = make(map[string][]string, len(datamodel.LinkTypes))
+			}
+			links[typ] = targets
+		} else {
+			if extraLinks == nil {
+				extraLinks = map[string][]string{}
+			}
+			extraLinks[typ] = targets
 		}
-		links[typ] = targets
 	}
-	slices.Sort(unknown)
-	return links, unknown
+	return links, extraLinks
 }
 
 func optFloat(nodes map[string]*yaml.Node, key string, add addFunc) *float64 {

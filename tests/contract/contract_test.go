@@ -404,7 +404,7 @@ func TestJSONContract(t *testing.T) {
 		{"move-resolution", oneTicket, []string{"move", "KIRA-1", "WONT_DO", "--resolution", "dropped"}, false, false},
 		{"move-wip-warn", wipLoaded, []string{"move", "KIRA-3", "REVIEW"}, false, true},
 		{"assign", oneTicket, []string{"assign", "KIRA-1", "shivam"}, false, true},
-		{"link", seededRepo, []string{"link", "KIRA-2", "--blocked-by", "KIRA-1"}, false, false},
+		{"link", twoTickets, []string{"link", "KIRA-2", "--blocked-by", "KIRA-1"}, false, false},
 		{"link-relates", seededRepo, []string{"link", "KIRA-2", "--relates", "KIRA-1"}, false, false},
 		{"edit", oneTicket, []string{"edit", "KIRA-1", "--field", "title=Renamed"}, false, false},
 		{"edit-parity", oneTicket, []string{"edit", "KIRA-1", "--subtype", "task", "--priority", "P2", "--rank", "0|m:", "--due", "2026-08-01"}, false, false},

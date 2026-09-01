@@ -5,11 +5,12 @@ aliases: []
 type: epic
 title: "M2: index + git integration"
 state: DONE
+resolution: done
 labels: []
 epic: null
 blocked_by: []
 created: 2026-07-13T03:00:22+05:30
-updated: 2026-07-13T07:44:51+05:30
+updated: 2026-07-28T14:27:52+05:30
 ---
 
 ## Description

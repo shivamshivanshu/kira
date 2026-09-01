@@ -32,3 +32,15 @@ stdout 'KIRA-1'
 exec kira edit KIRA-2 --owner @me
 exec kira show KIRA-2 --json
 stdout '"owner": "tester"'
+
+# create --owner/--reporter @me resolve at create time, like every other verb
+exec kira create ticket --title 'Created mine' --owner @me --reporter @me --no-edit
+exec kira show KIRA-3 --json
+stdout '"owner": "tester"'
+stdout '"reporter": "tester"'
+exec kira list --owner @me --json
+stdout '"number": "KIRA-3"'
+
+# --print-template resolves it too, so the preview matches what create would write
+exec kira create ticket --title 'Preview' --owner @me --print-template
+stdout 'owner: tester'

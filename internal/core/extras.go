@@ -17,24 +17,11 @@ func declaredExtras(schemas map[string]entityschema.Schema) []entityschema.Field
 	var out []entityschema.FieldDef
 	for _, name := range slices.Sorted(maps.Keys(schemas)) {
 		for _, f := range schemas[name].Fields {
-			if f.Placement != entityschema.PlacementFrontmatter || !seen.Add(f.Name) {
+			if !f.IsCustomFrontmatter() || !seen.Add(f.Name) {
 				continue
 			}
 			out = append(out, f)
 		}
 	}
-	return out
-}
-
-// editableExtras names the frontmatter extras typ's schema declares that
-// `--field` may write, sorted for a stable hint.
-func editableExtras(schemas map[string]entityschema.Schema, typ string) []string {
-	var out []string
-	for _, f := range schemas[typ].Fields {
-		if f.Placement == entityschema.PlacementFrontmatter && !f.Immutable {
-			out = append(out, f.Name)
-		}
-	}
-	slices.Sort(out)
 	return out
 }

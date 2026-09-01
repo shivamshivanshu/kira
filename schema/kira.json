@@ -941,7 +941,7 @@
             "id-collision",
             "epic-cycle",
             "ref-cycle",
-            "epic-kind",
+            "ref-type",
             "comment",
             "index-freshness",
             "hooks",
@@ -949,7 +949,6 @@
             "board",
             "number-outlier",
             "stray-file",
-            "ref-kind",
             "state-drift",
             "wip-limit"
           ],
@@ -1364,21 +1363,8 @@
             "null"
           ]
         },
-        "extras": {
-          "additionalProperties": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              }
-            ],
-            "description": "Schema-declared extra field; always a string or array of strings on the wire, even for fields typed int/number/bool/date — interpret via the field's declared type in .kira/schema/*.json."
-          },
+        "fields": {
+          "additionalProperties": {},
           "type": "object"
         },
         "id": {
@@ -1414,6 +1400,12 @@
         "state": {
           "type": "string"
         },
+        "subtype": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "title": {
           "type": "string"
         },
@@ -1427,6 +1419,7 @@
         "board",
         "title",
         "type",
+        "subtype",
         "state",
         "category",
         "owner",
@@ -1899,21 +1892,8 @@
             "null"
           ]
         },
-        "extras": {
-          "additionalProperties": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              }
-            ],
-            "description": "Schema-declared extra field; always a string or array of strings on the wire, even for fields typed int/number/bool/date — interpret via the field's declared type in .kira/schema/*.json."
-          },
+        "fields": {
+          "additionalProperties": {},
           "type": "object"
         },
         "history_tail": {
