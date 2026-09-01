@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "kira resolve writes the item file before checking it is the conflicted path"
 state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:08:42+02:00
-updated: 2026-08-31T16:12:08+02:00
+updated: 2026-09-01T10:25:58+02:00
 ---
 
 ## Description
