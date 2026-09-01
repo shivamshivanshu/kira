@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "showfmt branch form re-implements workon slug rules and drifts from the real branch name"
 state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:08:46+02:00
-updated: 2026-08-31T16:12:15+02:00
+updated: 2026-09-01T10:25:59+02:00
 ---
 
 ## Description
