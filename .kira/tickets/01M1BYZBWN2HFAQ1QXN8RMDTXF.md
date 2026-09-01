@@ -5,12 +5,13 @@ aliases: []
 type: ticket
 title: "Collision detection is case-sensitive while resolution is case-insensitive, leaving unrepairable pairs"
 state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-08-31T15:08:40+02:00
-updated: 2026-08-31T15:48:08+02:00
+updated: 2026-09-01T10:25:58+02:00
 ---
 
 ## Description
