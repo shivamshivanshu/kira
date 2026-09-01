@@ -166,3 +166,61 @@ func TestRunEditorUnsetIsEnvError(t *testing.T) {
 		t.Fatalf("want errx.ExitEnv, got %v", err)
 	}
 }
+
+func draftSchema() entityschema.Schema {
+	return entityschema.Schema{Name: "ticket", Fields: []entityschema.FieldDef{
+		{Name: "severity", Type: entityschema.FieldString, Placement: entityschema.PlacementFrontmatter},
+		{Name: "watchers", Type: entityschema.FieldString, List: true, Placement: entityschema.PlacementFrontmatter},
+		{Name: "notes", Type: entityschema.FieldMarkdown, Placement: entityschema.PlacementBody, Section: "Notes"},
+	}}
+}
+
+func TestDefaultTemplateOffersDeclaredFrontmatterFields(t *testing.T) {
+	tmpl := defaultTemplate("ticket", draftSchema())
+	for _, want := range []string{"severity: \n", "watchers: []\n", "## Notes\n"} {
+		if !strings.Contains(tmpl, want) {
+			t.Fatalf("template missing %q:\n%s", want, tmpl)
+		}
+	}
+	// the offered key must read as blank, not as the literal null an empty
+	// YAML scalar parses back to
+	if strings.Contains(tmpl, "severity: null") {
+		t.Fatalf("offered field rendered as null:\n%s", tmpl)
+	}
+}
+
+func TestDefaultTemplateSurvivesItsOwnRoundTrip(t *testing.T) {
+	d, err := parseDraft(defaultTemplate("ticket", draftSchema()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := serializeDraft(d); strings.Contains(got, "severity: null") {
+		t.Fatalf("re-serialized template rendered the offered field as null:\n%s", got)
+	}
+}
+
+func TestDropUnsetDeclaredExtrasKeepsUndeclaredKeys(t *testing.T) {
+	d := draft{
+		ExtraScalars: map[string]string{
+			"severity":    "null",
+			"set":         "high",
+			"from_newer":  "null",
+			"from_newer2": "value",
+		},
+		ExtraLists: map[string][]string{"watchers": {}, "kept": {"a"}},
+	}
+	got := dropUnsetDeclaredExtras(d, draftSchema())
+	if _, ok := got.ExtraScalars["severity"]; ok {
+		t.Error("an unset declared scalar must be dropped")
+	}
+	if _, ok := got.ExtraLists["watchers"]; ok {
+		t.Error("an unset declared list must be dropped")
+	}
+	if got.ExtraScalars["set"] != "high" || !reflect.DeepEqual(got.ExtraLists["kept"], []string{"a"}) {
+		t.Errorf("a set value must survive: %+v", got)
+	}
+	// an undeclared key is a newer kira's field: never dropped, null included
+	if got.ExtraScalars["from_newer"] != "null" || got.ExtraScalars["from_newer2"] != "value" {
+		t.Errorf("undeclared keys must round-trip verbatim: %+v", got.ExtraScalars)
+	}
+}
