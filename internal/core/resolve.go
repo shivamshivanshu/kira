@@ -130,6 +130,9 @@ func fieldString(it *datamodel.Item, field string) string {
 	if v, ok := it.ExtraLists[field]; ok {
 		return strings.Join(codec.DecodeExtraList(v), ", ")
 	}
+	if v, ok := it.ExtraBlocks[field]; ok {
+		return codec.FlowBlock(v)
+	}
 	return "-"
 }
 
@@ -156,6 +159,7 @@ func applyPick(target, src *datamodel.Item, field string) {
 func copyExtra(target, src *datamodel.Item, key string) {
 	delete(target.ExtraScalars, key)
 	delete(target.ExtraLists, key)
+	delete(target.ExtraBlocks, key)
 	if v, ok := src.ExtraScalars[key]; ok {
 		if target.ExtraScalars == nil {
 			target.ExtraScalars = map[string]datamodel.Rendered{}
@@ -168,5 +172,12 @@ func copyExtra(target, src *datamodel.Item, key string) {
 			target.ExtraLists = map[string][]datamodel.Rendered{}
 		}
 		target.ExtraLists[key] = slices.Clone(v)
+		return
+	}
+	if v, ok := src.ExtraBlocks[key]; ok {
+		if target.ExtraBlocks == nil {
+			target.ExtraBlocks = map[string]datamodel.Rendered{}
+		}
+		target.ExtraBlocks[key] = v
 	}
 }

@@ -75,8 +75,8 @@ func writeOptFloat(b *strings.Builder, key string, v *float64) {
 
 // WriteExtras emits extras in Serialize's canonical order for a document with
 // no item behind it, such as an editor draft.
-func WriteExtras(b *strings.Builder, scalars map[string]datamodel.Rendered, lists map[string][]datamodel.Rendered) {
-	writeExtras(b, &datamodel.Item{ExtraScalars: scalars, ExtraLists: lists})
+func WriteExtras(b *strings.Builder, scalars map[string]datamodel.Rendered, lists map[string][]datamodel.Rendered, blocks map[string]datamodel.Rendered) {
+	writeExtras(b, &datamodel.Item{ExtraScalars: scalars, ExtraLists: lists, ExtraBlocks: blocks})
 }
 
 func writeExtras(b *strings.Builder, it *datamodel.Item) {
@@ -85,7 +85,51 @@ func writeExtras(b *strings.Builder, it *datamodel.Item) {
 			writeLine(b, k, string(v))
 			continue
 		}
+		if v, ok := it.ExtraBlocks[k]; ok {
+			writeBlock(b, k, v)
+			continue
+		}
 		writeLine(b, k, emitRenderedList(it.ExtraLists[k]))
+	}
+}
+
+const blockIndent = "  "
+
+func writeBlock(b *strings.Builder, key string, block datamodel.Rendered) {
+	b.WriteString(key)
+	b.WriteString(":\n")
+	for line := range strings.SplitSeq(string(block), "\n") {
+		if line != "" {
+			b.WriteString(blockIndent)
+			b.WriteString(line)
+		}
+		b.WriteByte('\n')
+	}
+}
+
+// FlowBlock renders a stored block as one line of flow-style YAML, for the
+// diff and conflict-prompt output a multi-line value would break. It is a
+// display form only: blocks reach disk through writeBlock.
+func FlowBlock(block datamodel.Rendered) string {
+	var n yaml.Node
+	if err := yaml.Unmarshal([]byte(block), &n); err != nil {
+		return string(block)
+	}
+	forceFlowStyle(&n)
+	out, err := marshalScalar(&n)
+	if err != nil {
+		return string(block)
+	}
+	return out
+}
+
+func forceFlowStyle(n *yaml.Node) {
+	n.HeadComment, n.LineComment, n.FootComment = "", "", ""
+	if n.Kind == yaml.MappingNode || n.Kind == yaml.SequenceNode {
+		n.Style = yaml.FlowStyle
+	}
+	for _, c := range n.Content {
+		forceFlowStyle(c)
 	}
 }
 

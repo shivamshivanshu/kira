@@ -94,6 +94,35 @@ func randExtraScalars(r *rand.Rand) map[string]datamodel.Rendered {
 	return out
 }
 
+var extraBlockKeys = []string{"custom_m", "custom_n"}
+
+// Blocks are stored canonically -- the text an encoder at the frontmatter's own
+// indentation emits -- so the pool has to be written in exactly that form for
+// the round trip to come back equal.
+var canonicalBlocks = []datamodel.Rendered{
+	"response: 4h\nresolve: 24h",
+	"- name: build\n  cmd: make\n- name: test",
+	"escalation:\n  - after: 1h\n    notify: [oncall, lead]\n  - after: 4h\nowner: sre",
+	"{}",
+	"[{a: b}]",
+	"desc: |\n  line1\n  line2\nn: 1",
+	"\"weird key\": 'v'\nnested:\n  deep:\n    x: 1",
+}
+
+func randExtraBlocks(r *rand.Rand) map[string]datamodel.Rendered {
+	var out map[string]datamodel.Rendered
+	for _, k := range extraBlockKeys {
+		if r.Intn(2) == 0 {
+			continue
+		}
+		if out == nil {
+			out = map[string]datamodel.Rendered{}
+		}
+		out[k] = canonicalBlocks[r.Intn(len(canonicalBlocks))]
+	}
+	return out
+}
+
 func randExtraLists(r *rand.Rand) map[string][]datamodel.Rendered {
 	var out map[string][]datamodel.Rendered
 	for _, k := range extraListKeys {
@@ -178,6 +207,7 @@ func randItem(r *rand.Rand) *datamodel.Item {
 		Body:         "\n## Description\n" + pick(r) + "\n---\nmid-body rule\n",
 		ExtraScalars: randExtraScalars(r),
 		ExtraLists:   randExtraLists(r),
+		ExtraBlocks:  randExtraBlocks(r),
 	}
 	if r.Intn(2) == 0 {
 		e := float64(r.Intn(100)) + float64(r.Intn(4))*0.25

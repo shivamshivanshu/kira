@@ -13,13 +13,14 @@ import (
 type itemExtras struct {
 	Scalars map[string]datamodel.Rendered   `json:"scalars,omitempty"`
 	Lists   map[string][]datamodel.Rendered `json:"lists,omitempty"`
+	Blocks  map[string]datamodel.Rendered   `json:"blocks,omitempty"`
 }
 
 func encodeExtras(it *datamodel.Item) (any, error) {
-	if len(it.ExtraScalars) == 0 && len(it.ExtraLists) == 0 {
+	if len(it.ExtraScalars) == 0 && len(it.ExtraLists) == 0 && len(it.ExtraBlocks) == 0 {
 		return nil, nil
 	}
-	blob, err := json.Marshal(itemExtras{Scalars: it.ExtraScalars, Lists: it.ExtraLists})
+	blob, err := json.Marshal(itemExtras{Scalars: it.ExtraScalars, Lists: it.ExtraLists, Blocks: it.ExtraBlocks})
 	if err != nil {
 		return nil, errx.Env("encoding index extras for %s: %v", it.ID, err)
 	}
@@ -36,5 +37,6 @@ func decodeExtras(blob string, it *datamodel.Item) error {
 	}
 	it.ExtraScalars = extras.Scalars
 	it.ExtraLists = extras.Lists
+	it.ExtraBlocks = extras.Blocks
 	return nil
 }

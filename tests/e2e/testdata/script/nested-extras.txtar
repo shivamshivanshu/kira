@@ -1,0 +1,60 @@
+# Forward compatibility: a structured frontmatter field written by a newer
+# kira must survive a rewrite by this one, unread and unchanged.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key XX
+
+cp nested.md .kira/tickets/01J8X8Q7RZTN5Y3VXW2A9K4E7F.md
+exec git add -A
+exec git commit -m 'a ticket from a newer kira'
+
+# the file reads normally rather than being skipped as unparseable
+exec kira list --no-color
+stdout 'XX-1'
+! stderr 'skipped'
+exec kira show XX-1 --no-color
+stdout 'from a newer kira'
+
+# undeclared is undeclared: doctor flags a nested key like any other
+exec kira doctor
+stdout 'unknown top-level field "sla"'
+stdout 'unknown top-level field "steps"'
+
+# a mutation rewrites the whole file, and must hand both blocks back verbatim
+exec kira move XX-1 IN_PROGRESS
+grep '^sla:\n  response: 4h\n  resolve: 24h\n' .kira/tickets/01J8X8Q7RZTN5Y3VXW2A9K4E7F.md
+grep '^steps:\n  - name: build\n    cmd: make\n  - name: test\n' .kira/tickets/01J8X8Q7RZTN5Y3VXW2A9K4E7F.md
+grep '^severity: high\n' .kira/tickets/01J8X8Q7RZTN5Y3VXW2A9K4E7F.md
+
+# and a second rewrite must change nothing further
+exec kira edit XX-1 --title 'still from a newer kira'
+grep '^sla:\n  response: 4h\n  resolve: 24h\n' .kira/tickets/01J8X8Q7RZTN5Y3VXW2A9K4E7F.md
+grep '^steps:\n  - name: build\n    cmd: make\n  - name: test\n' .kira/tickets/01J8X8Q7RZTN5Y3VXW2A9K4E7F.md
+
+-- nested.md --
+---
+id: 01J8X8Q7RZTN5Y3VXW2A9K4E7F
+number: XX-1
+aliases: []
+type: ticket
+title: "from a newer kira"
+state: TODO
+labels: []
+epic: null
+blocked_by: []
+severity: high
+sla:
+    response: 4h
+    resolve: 24h
+steps:
+    - name: build
+      cmd: make
+    - name: test
+created: 2026-07-10T09:14:00+05:30
+updated: 2026-07-10T09:14:00+05:30
+---
+body
