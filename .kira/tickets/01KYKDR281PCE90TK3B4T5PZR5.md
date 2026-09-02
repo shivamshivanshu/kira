@@ -4,13 +4,13 @@ number: CORE-55
 aliases: []
 type: ticket
 title: "Representation-driven labels and icons"
-state: IN_PROGRESS
+state: REVIEW
 priority: P3
 labels: []
 epic: 01KYKDNPSZEGK032FRCJCVNKE1
 blocked_by: []
 created: 2026-07-28T09:24:25+05:30
-updated: 2026-09-02T13:56:36+02:00
+updated: 2026-09-02T14:15:56+02:00
 ---
 
 A schema's `representation.label` and `representation.icon` are parsed and
