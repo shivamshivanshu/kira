@@ -239,7 +239,7 @@ Look hard at: doctor staying pure (IO only in cli); collision Keep semantics mat
 - [ ] internal/doctor/epic.go — Detects cycles in the epic parent chain, one finding per member.
 - [ ] internal/doctor/finding.go — Defines Finding/Severity/Class/Collision/Report types and report summarization.
 - [ ] internal/doctor/lint.go — Parses/lints one item's content: schema errors, unknown keys, bad comments.
-- [ ] internal/doctor/test/doctor_test.go — Tests for lint, checks, collisions, epic cycles, Run/Validate, freshness seam.
+- [ ] internal/doctor/test/doctor_test.go — Tests for lint, checks, collisions, parent cycles, Run/Validate, freshness seam.
 - [ ] internal/seed/recipe.go — Builds a deterministic size-parametric spec list of epics/tickets from a seed.
 - [ ] internal/seed/seed.go — Materializes recipe specs into committed kira item files, returning counts.
 - [ ] internal/seed/test/seed_test.go — Tests recipe determinism/shape and that Seed produces a clean committed backlog.

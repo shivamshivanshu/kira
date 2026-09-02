@@ -42,6 +42,12 @@ func CycleRelations() []Relation {
 	return []Relation{
 		{Field: KeyBlockedBy, Edges: func(it *Item) []string { return it.BlockedBy }},
 		{Field: string(LinkDuplicateOf), Edges: func(it *Item) []string { return it.Links[string(LinkDuplicateOf)] }},
+		{Field: KeyParent, Edges: func(it *Item) []string {
+			if it.Parent == nil || *it.Parent == "" {
+				return nil
+			}
+			return []string{*it.Parent}
+		}},
 	}
 }
 

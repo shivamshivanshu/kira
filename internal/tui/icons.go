@@ -180,7 +180,7 @@ func (ic iconSet) priorityCell(value string) string {
 		gutter *= maxPriorityMarks
 	}
 	cell := strings.Repeat(unit, priorityMarks(ic.priorityTier(value)))
-	return cell + strings.Repeat(" ", gutter-lipgloss.Width(cell))
+	return padToWidth(cell, gutter)
 }
 
 func priorityHue(t theme.Theme, tier int) lipgloss.Style {
