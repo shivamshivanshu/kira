@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -64,7 +63,6 @@ func newEditCmd(g *globalFlags) *cobra.Command {
 				return err
 			}
 			apply := func(id string) (*datamodel.MutationResult, error) { return s.Edit(cfg, id, opts) }
-			warn := func(w io.Writer, res *datamodel.MutationResult) { emitMutationWarnings(w, res.Warnings) }
 			out := cmd.OutOrStdout()
 			if len(args) != 1 {
 				if fromFile != "" {
@@ -82,7 +80,7 @@ func newEditCmd(g *globalFlags) *cobra.Command {
 					return batch.EditFields(id, opts.Fields, opts.Force)
 				}
 			}
-			return runSingleOrBulk(out, cmd.ErrOrStderr(), g.json, args, apply, editLine, warn)
+			return runSingleOrBulk(out, cmd.ErrOrStderr(), g.json, args, apply, editLine, warnMutation)
 		},
 	}
 	f := cmd.Flags()

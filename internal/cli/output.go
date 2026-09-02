@@ -24,6 +24,8 @@ func emitMutationWarnings(w io.Writer, warns []datamodel.Warning) {
 	emitWarningLines(w, rendered)
 }
 
+func warnMutation(w io.Writer, res *datamodel.MutationResult) { emitMutationWarnings(w, res.Warnings) }
+
 func emitJSON(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)

@@ -100,9 +100,8 @@ func newLabelMutateCmd(g *globalFlags, add bool) *cobra.Command {
 				return b.LabelSet(id, label, add, force)
 			}
 			line := func(res *datamodel.MutationResult) string { return labelLine(res, label, add) }
-			warn := func(w io.Writer, res *datamodel.MutationResult) { emitMutationWarnings(w, res.Warnings) }
 			out := cmd.OutOrStdout()
-			return runSingleOrBulk(out, cmd.ErrOrStderr(), g.json, ids, apply, line, warn)
+			return runSingleOrBulk(out, cmd.ErrOrStderr(), g.json, ids, apply, line, warnMutation)
 		},
 	}
 	cmd.Flags().BoolVar(&force, "force", false, "accept a label outside the configured vocabulary")
