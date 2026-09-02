@@ -4,13 +4,14 @@ number: CLI-12
 aliases: []
 type: ticket
 title: "show padded its label column by byte length, misaligning non-ASCII labels"
-state: TODO
+state: DONE
+resolution: done
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-09-02T14:57:25+02:00
-updated: 2026-09-02T14:57:25+02:00
+updated: 2026-09-02T15:10:55+02:00
 ---
 `renderShow` sized the label column with `len(label)` (bytes) and padded with
 `fmt.Fprintf("%-*s")`, which pads by rune count. Neither is the column count a
