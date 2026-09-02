@@ -1,0 +1,47 @@
+# A ticket that will not parse still owns its number. If the allocator cannot
+# see it, create hands out a duplicate -- and the states that produce an
+# unparseable file are ordinary: a conflict marker, or a field written by a
+# newer kira.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key XX
+exec kira create ticket --title one --no-edit
+exec kira create ticket --title two --no-edit
+
+# break XX-2 the way a newer kira's structured field would
+cp broken.md .kira/tickets/01J8X8Q7RZTN5Y3VXW2A9K4E7F.md
+exec kira list --no-color
+stderr 'skipped'
+! stdout 'XX-9'
+
+# the next number skips past the unparseable file rather than colliding
+exec kira create ticket --title three --no-edit
+stdout 'Created XX-10'
+stderr 'skipped'
+
+# doctor still reports the unparseable file, but no number was reissued
+! exec kira doctor
+stdout 'schema'
+! stdout 'id-collision'
+
+-- broken.md --
+---
+id: 01J8X8Q7RZTN5Y3VXW2A9K4E7F
+number: XX-9
+aliases: []
+type: ticket
+title: "from a newer kira"
+state: TODO
+labels: []
+epic: null
+blocked_by: []
+structured:
+  key: value
+created: 2026-07-10T09:14:00+05:30
+updated: 2026-07-10T09:14:00+05:30
+---
+body

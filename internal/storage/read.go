@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
@@ -82,37 +83,64 @@ func (s *FS) RawItems() ([]RawItem, error) {
 	return items, nil
 }
 
-func (s *FS) LoadAll() ([]*datamodel.Item, []string, error) {
+// Skipped describes the files LoadAll could not parse. Numbers holds the
+// display numbers recovered from them textually: an unparseable file still owns
+// its number, and an allocator that cannot see it will hand out a duplicate.
+type Skipped struct {
+	Warnings []string
+	Numbers  []string
+}
+
+func (s *FS) LoadAll() ([]*datamodel.Item, Skipped, error) {
 	names, err := s.ItemFilenames()
 	if err != nil {
-		return nil, nil, err
+		return nil, Skipped{}, err
 	}
 	items := make([]*datamodel.Item, 0, len(names))
-	var warnings []string
+	var skipped Skipped
 	for _, name := range names {
-		it, err := ReadItem(filepath.Join(s.ItemsDir(), name))
+		path := filepath.Join(s.ItemsDir(), name)
+		it, err := ReadItem(path)
 		if err != nil {
-			warnings = append(warnings, SkipNote(name, err))
+			skipped.Warnings = append(skipped.Warnings, SkipNote(name, err))
+			skipped.Numbers = append(skipped.Numbers, numbersInFile(path)...)
 			continue
 		}
 		items = append(items, it)
 	}
-	return items, warnings, nil
+	return items, skipped, nil
+}
+
+var numberLine = regexp.MustCompile(`(?m)^number:[ \t]*["']?([A-Za-z0-9]+-[0-9]+)["']?[ \t]*$`)
+
+// numbersInFile recovers every number a file declares without parsing it. A
+// conflict-marked file legitimately carries two, and both are taken.
+func numbersInFile(path string) []string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	matches := numberLine.FindAllSubmatch(data, -1)
+	out := make([]string, 0, len(matches))
+	for _, m := range matches {
+		out = append(out, string(m[1]))
+	}
+	return out
 }
 
 func SkipNote(name string, err error) string {
 	return fmt.Sprintf("skipped %s/%s: %v; run kira doctor", TicketsPrefix, name, err)
 }
 
-func Snapshot(key string, items []*datamodel.Item) id.Snapshot {
-	snap := id.Snapshot{Key: key, Items: make([]id.Item, len(items))}
+func Snapshot(key string, items []*datamodel.Item, reserved ...string) id.Snapshot {
+	snap := id.Snapshot{Key: key, Items: make([]id.Item, len(items)), Reserved: reserved}
 	for i, it := range items {
 		snap.Items[i] = id.Item{ULID: it.ID, Number: it.Number, Aliases: it.Aliases}
 	}
 	return snap
 }
 
-func SnapshotAndResolver(key string, items []*datamodel.Item) (id.Snapshot, *id.Resolver) {
-	snap := Snapshot(key, items)
+func SnapshotAndResolver(key string, items []*datamodel.Item, reserved ...string) (id.Snapshot, *id.Resolver) {
+	snap := Snapshot(key, items, reserved...)
 	return snap, id.NewResolver(snap)
 }

@@ -209,7 +209,9 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 		Priority:   finalItem.Priority,
 		Resolution: finalItem.Resolution,
 		Path:       path,
-		Warnings:   warningsFromErrors(warns),
+		// A file that would not parse is why a number can look skipped; say so
+		// here rather than only on list.
+		Warnings: append(literalWarnings(ld.warnings), warningsFromErrors(warns)...),
 	}
 	if finalItem.Epic != nil {
 		if num, ok := epicNumberMap(ld.items)[*finalItem.Epic]; ok {

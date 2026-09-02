@@ -63,7 +63,7 @@ func (s *Store) Config() (*datamodel.Config, error) {
 	return cfg, nil
 }
 
-func (s *Store) LoadAll() ([]*datamodel.Item, []string, error) { return s.fs().LoadAll() }
+func (s *Store) LoadAll() ([]*datamodel.Item, storage.Skipped, error) { return s.fs().LoadAll() }
 
 // schemas caches its result on s for the lifetime of the command: interactive
 // create/edit resolve it once up front and again after locking, and a Store
@@ -94,15 +94,15 @@ type loadResult struct {
 }
 
 func (s *Store) load(cfg *datamodel.Config) (loadResult, error) {
-	items, warnings, err := s.LoadAll()
+	items, skipped, err := s.LoadAll()
 	if err != nil {
 		return loadResult{}, err
 	}
 	for _, it := range items {
 		it.Activity = it.Updated
 	}
-	snap, resolver := storage.SnapshotAndResolver(cfg.Project.Key, items)
-	return loadResult{items: items, snap: snap, resolver: resolver, warnings: warnings}, nil
+	snap, resolver := storage.SnapshotAndResolver(cfg.Project.Key, items, skipped.Numbers...)
+	return loadResult{items: items, snap: snap, resolver: resolver, warnings: skipped.Warnings}, nil
 }
 
 func (s *Store) resolveRef(cfg *datamodel.Config, ref string) (*datamodel.Item, []*datamodel.Item, *id.Resolver, error) {

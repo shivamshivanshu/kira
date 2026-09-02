@@ -29,12 +29,12 @@ func TestConformanceAgainstRepoTickets(t *testing.T) {
 	root := repoRoot(t)
 	fs := storage.New(root)
 
-	items, warnings, err := fs.LoadAll()
+	items, skipped, err := fs.LoadAll()
 	if err != nil {
 		t.Fatalf("LoadAll: %v", err)
 	}
-	if len(warnings) != 0 {
-		t.Fatalf("unexpected parse warnings: %v", warnings)
+	if len(skipped.Warnings) != 0 {
+		t.Fatalf("unexpected parse warnings: %v", skipped.Warnings)
 	}
 	if len(items) == 0 {
 		t.Fatal("expected a non-empty corpus of real tickets")

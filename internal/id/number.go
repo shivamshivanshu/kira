@@ -57,6 +57,9 @@ func HighestN(snap Snapshot, key string) int {
 			bump(a)
 		}
 	}
+	for _, n := range snap.Reserved {
+		bump(n)
+	}
 	return highest
 }
 
@@ -72,6 +75,9 @@ func takenNumbers(snap Snapshot) map[string]bool {
 		for _, a := range it.Aliases {
 			taken[strings.ToUpper(a)] = true
 		}
+	}
+	for _, n := range snap.Reserved {
+		taken[strings.ToUpper(n)] = true
 	}
 	return taken
 }
