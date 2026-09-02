@@ -4,13 +4,14 @@ number: CORE-59
 aliases: []
 type: ticket
 title: "An epic can be given an epic parent by create --parent, which link forbids"
-state: TODO
+state: DONE
+resolution: done
 priority: P2
 labels: []
-epic: null
+parent: null
 blocked_by: []
 created: 2026-09-02T14:34:57+02:00
-updated: 2026-09-02T14:34:57+02:00
+updated: 2026-09-02T23:41:00+02:00
 ---
 Three parts of the tool disagree about whether an epic may have an epic
 parent. Verified on a scratch repo (`kira init --key TST`):
