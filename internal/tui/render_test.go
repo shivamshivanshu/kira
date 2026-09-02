@@ -11,6 +11,7 @@ import (
 	"github.com/muesli/termenv"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
@@ -38,9 +39,11 @@ func sampleTree() ([]datamodel.TreeNode, map[string]datamodel.ListItem, map[stri
 	return nodes, fields, progress
 }
 
-// declaredIcons stands in for what the shipped schemas declare: kira has no
-// per-type glyph of its own, so a test that renders a tree has to say what the
-// schemas said.
+// declaredIcons supplies glyphs of deliberately differing display widths -- 1
+// cell for nerd, 2 for emoji, 3 for the bracketed text form -- so the layout
+// code is exercised at each. It is NOT what the shipped schemas declare: those
+// declare one mode-independent glyph, which
+// TestShippedSchemaIconsIgnoreIconMode pins separately.
 func declaredIcons(mode datamodel.IconMode) iconSet {
 	glyphs := map[datamodel.IconMode]map[string]string{
 		datamodel.IconNerd:  {datamodel.TypeEpic: "\uf45d", datamodel.TypeTicket: "\uf41b"},
@@ -233,5 +236,50 @@ func TestDetailMemoServesCacheWithoutStore(t *testing.T) {
 	ts.setData(&m, treeData{nodes: ts.tree.nodes, fields: ts.tree.fields, progress: ts.tree.progress})
 	if _, ok := ts.host.cache["E1"]; ok {
 		t.Fatal("setData did not invalidate the detail memo on reload")
+	}
+}
+
+// The schema format carries one icon per type with no per-mode variants, so
+// ui.icons selects state and priority glyphs but never the type glyph. A repo
+// on a terminal without a nerd font sees the declared rune regardless; that is
+// the accepted cost of letting a schema name any symbol it likes.
+func TestShippedSchemaIconsIgnoreIconMode(t *testing.T) {
+	schemas, err := entityschema.Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for typ, schema := range schemas {
+		declared := schema.Representation.Icon
+		if declared == "" {
+			continue
+		}
+		for _, mode := range []datamodel.IconMode{datamodel.IconNerd, datamodel.IconEmoji, datamodel.IconText} {
+			ic := iconSet{mode: mode}.withTypeIcons(map[string]string{typ: declared})
+			if got := ic.typeGlyph(typ); got != declared {
+				t.Errorf("type %q in mode %q: typeGlyph = %q, want the declared %q", typ, mode, got, declared)
+			}
+		}
+	}
+}
+
+// The cell is uniform whether a glyph is padded or truncated, so uniformity
+// alone cannot tell the two apart -- only the glyph surviving intact can.
+func TestTypeGlyphKeepsTheDeclaredGlyphIntact(t *testing.T) {
+	for _, icon := range []string{"@", "\uf41b", "[E]", "\U0001F680", "[EPIC]"} {
+		ic := iconSet{mode: datamodel.IconNerd}.withTypeIcons(map[string]string{datamodel.TypeTicket: icon})
+
+		if got := ic.typeGlyph(datamodel.TypeTicket); !strings.HasPrefix(got, icon) {
+			t.Errorf("icon %q: typeGlyph = %q, want it to start with the declared glyph", icon, got)
+		}
+	}
+}
+
+func TestWithTypeIconsDoesNotAccumulateCellWidthAcrossCalls(t *testing.T) {
+	ic := iconSet{mode: datamodel.IconNerd}.
+		withTypeIcons(map[string]string{datamodel.TypeTicket: "\U0001F680"}).
+		withTypeIcons(map[string]string{datamodel.TypeTicket: "@"})
+
+	if got := ic.typeGlyph(datamodel.TypeTicket); got != "@" {
+		t.Errorf("typeGlyph = %q, want %q -- the cell kept a width from a superseded icon set", got, "@")
 	}
 }

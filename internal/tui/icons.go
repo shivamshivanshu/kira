@@ -53,6 +53,7 @@ type iconSet struct {
 // leaves this unset.
 func (ic iconSet) withTypeIcons(icons map[string]string) iconSet {
 	ic.typeIcons = icons
+	ic.typeCell = 0
 	for _, g := range icons {
 		ic.typeCell = max(ic.typeCell, lipgloss.Width(g))
 	}
