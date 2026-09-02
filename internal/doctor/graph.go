@@ -10,21 +10,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
-func EpicCycles(items []*datamodel.Item, resolver *id.Resolver) []Finding {
-	byID := itemsByID(items)
-	edges := func(it *datamodel.Item) []string {
-		if it.Parent == nil || *it.Parent == "" {
-			return nil
-		}
-		return []string{resolveRef(*it.Parent, resolver)}
-	}
-	var out []Finding
-	for _, cycle := range datamodel.FindCycles(byID, edges) {
-		out = append(out, cyclePathFindings(ClassCycle, datamodel.KeyParent, cycle, byID)...)
-	}
-	return out
-}
-
 func cyclePathFindings(class Class, field string, cycle []string, byID map[string]*datamodel.Item) []Finding {
 	trail := strings.Join(cycleTrail(cycle, byID), " -> ")
 	out := make([]Finding, 0, len(cycle))

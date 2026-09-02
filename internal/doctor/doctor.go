@@ -60,7 +60,6 @@ func Run(cfg *datamodel.Config, files []File, strays []string, env Env, schemas 
 	}
 	findings = append(findings, stampByID(Collisions(items), pathByID)...)
 	findings = append(findings, stampByID(SequentialOutliers(items), pathByID)...)
-	findings = append(findings, stampByID(EpicCycles(items, resolver), pathByID)...)
 	findings = append(findings, stampByID(RefTypeMismatches(schemas, items, resolver, itemTypes(cfg)), pathByID)...)
 	findings = append(findings, stampByID(RefCycles(items, resolver), pathByID)...)
 	findings = append(findings, StateDrift(cfg, schemas)...)

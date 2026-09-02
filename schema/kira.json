@@ -939,7 +939,6 @@
             "vocab",
             "dangling-ref",
             "id-collision",
-            "epic-cycle",
             "ref-cycle",
             "ref-type",
             "comment",
