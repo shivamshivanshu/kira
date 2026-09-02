@@ -21,7 +21,7 @@ func Merge(base, ours, theirs *datamodel.Item, remote Side, tm TextMerger) Resul
 	winner := laterUpdated(ours.Updated, theirs.Updated, remote)
 	number := threeWayScalar(base.Number, ours.Number, theirs.Number, winner)
 	aliases := slices.DeleteFunc(aliasUnion(base.Aliases, ours.Aliases, theirs.Aliases), func(a string) bool { return a == number })
-	extraScalars, extraLists := mergeExtras(base, ours, theirs, winner)
+	extraScalars, extraLists, extraBlocks := mergeExtras(base, ours, theirs, winner)
 
 	m := &datamodel.Item{
 		ID:           ours.ID,
@@ -49,6 +49,7 @@ func Merge(base, ours, theirs *datamodel.Item, remote Side, tm TextMerger) Resul
 		Body:         mergeBody(base.Body, ours.Body, theirs.Body, winner, tm),
 		ExtraScalars: extraScalars,
 		ExtraLists:   extraLists,
+		ExtraBlocks:  extraBlocks,
 	}
 	return Result{Item: m, Arbitrated: arbitrated(base, ours, theirs)}
 }

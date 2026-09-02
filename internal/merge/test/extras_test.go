@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/merge"
 )
@@ -109,5 +110,68 @@ func TestExtraListOneSidedReorderTaken(t *testing.T) {
 	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
 	if want := []datamodel.Rendered{"bob", "alice"}; !slices.Equal(got.ExtraLists["watchers"], want) {
 		t.Fatalf("ExtraLists[watchers] = %v, want theirs' reorder %v", got.ExtraLists["watchers"], want)
+	}
+}
+
+func slaBlock(v datamodel.Rendered) func(*datamodel.Item) {
+	return func(it *datamodel.Item) { it.ExtraBlocks = map[string]datamodel.Rendered{"sla": v} }
+}
+
+func TestExtraBlockChangedOnOneSideTakesThatSide(t *testing.T) {
+	t.Parallel()
+	b := base(slaBlock("response: 4h"))
+	ours := base(slaBlock("response: 4h"))
+	theirs := base(slaBlock("response: 1h\nresolve: 8h"))
+	res := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger)
+	if got := res.Item.ExtraBlocks["sla"]; got != "response: 1h\nresolve: 8h" {
+		t.Fatalf("ExtraBlocks[sla] = %q, want theirs' edit", got)
+	}
+	if len(res.Arbitrated) != 0 {
+		t.Fatalf("Arbitrated = %v, want none for a one-sided block edit", res.Arbitrated)
+	}
+}
+
+// kira does not read inside a block, so it cannot merge inside one: the whole
+// value goes to the later-updated side and the key is reported as arbitrated.
+func TestExtraBlockChangedOnBothSidesArbitratesAsAUnit(t *testing.T) {
+	t.Parallel()
+	b := base(slaBlock("response: 4h"))
+	ours := base(func(it *datamodel.Item) {
+		slaBlock("response: 1h")(it)
+		it.Updated = "2026-02-02T00:00:00Z"
+	})
+	theirs := base(func(it *datamodel.Item) {
+		slaBlock("response: 4h\nresolve: 8h")(it)
+		it.Updated = "2026-02-01T00:00:00Z"
+	})
+	res := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger)
+	if got := res.Item.ExtraBlocks["sla"]; got != "response: 1h" {
+		t.Fatalf("ExtraBlocks[sla] = %q, want ours whole (updated later); no partial merge", got)
+	}
+	if !slices.Contains(res.Arbitrated, "sla") {
+		t.Fatalf("Arbitrated = %v, want sla reported", res.Arbitrated)
+	}
+}
+
+func TestExtraKeyFlippingBetweenScalarAndBlock(t *testing.T) {
+	t.Parallel()
+	b := base(nil)
+	ours := base(func(it *datamodel.Item) {
+		it.ExtraScalars = scalarExtras("sla", "4h")
+		it.Updated = "2026-02-01T00:00:00Z"
+	})
+	theirs := base(func(it *datamodel.Item) {
+		slaBlock("response: 4h")(it)
+		it.Updated = "2026-02-02T00:00:00Z"
+	})
+	got := merge.Merge(b, ours, theirs, merge.Ours, conflictMerger).Item
+	if _, isScalar := got.ExtraScalars["sla"]; isScalar {
+		t.Fatalf("sla must not survive in two maps: scalars=%v blocks=%v", got.ExtraScalars, got.ExtraBlocks)
+	}
+	if want := datamodel.Rendered("response: 4h"); got.ExtraBlocks["sla"] != want {
+		t.Fatalf("ExtraBlocks[sla] = %q, want %q (theirs updated later, wins wholesale)", got.ExtraBlocks["sla"], want)
+	}
+	if _, err := codec.Parse(codec.Serialize(got)); err != nil {
+		t.Fatalf("merged item must re-parse: %v", err)
 	}
 }

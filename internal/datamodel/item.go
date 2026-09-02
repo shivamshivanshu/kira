@@ -42,8 +42,14 @@ type Item struct {
 	// ExtraLinks is the exception: link targets are bare refs, stored raw.
 	ExtraScalars map[string]Rendered
 	ExtraLists   map[string][]Rendered
-	ExtraLinks   map[string][]string
-	CRLF         bool
+	// ExtraBlocks holds a structured extra -- a mapping, or a sequence with
+	// non-scalar elements -- as its YAML text with the key's own indentation
+	// stripped, so two blocks that say the same thing compare equal however
+	// their source files were indented. kira never interprets one; carrying it
+	// verbatim is what lets a field a newer kira writes survive an older one.
+	ExtraBlocks map[string]Rendered
+	ExtraLinks  map[string][]string
+	CRLF        bool
 }
 
 // Rendered is frontmatter text exactly as it sits on disk, quoting and YAML
@@ -53,11 +59,14 @@ type Item struct {
 type Rendered string
 
 func (it *Item) ExtraKeys() []string {
-	out := make([]string, 0, len(it.ExtraScalars)+len(it.ExtraLists))
+	out := make([]string, 0, len(it.ExtraScalars)+len(it.ExtraLists)+len(it.ExtraBlocks))
 	for k := range it.ExtraScalars {
 		out = append(out, k)
 	}
 	for k := range it.ExtraLists {
+		out = append(out, k)
+	}
+	for k := range it.ExtraBlocks {
 		out = append(out, k)
 	}
 	slices.Sort(out)
@@ -74,7 +83,7 @@ func ChangedExtraKeys(a, b *Item) []string {
 		if !dedup.Add(k) {
 			continue
 		}
-		if a.ExtraScalars[k] != b.ExtraScalars[k] || !slices.Equal(a.ExtraLists[k], b.ExtraLists[k]) {
+		if a.ExtraScalars[k] != b.ExtraScalars[k] || a.ExtraBlocks[k] != b.ExtraBlocks[k] || !slices.Equal(a.ExtraLists[k], b.ExtraLists[k]) {
 			out = append(out, k)
 		}
 	}

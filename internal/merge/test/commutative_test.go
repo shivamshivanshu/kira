@@ -93,6 +93,41 @@ func randExtraLists(r *rand.Rand) map[string][]datamodel.Rendered {
 	return out
 }
 
+// A key that flips shape between the two sides is the fiddliest thing
+// mergeExtras arbitrates, so one is generated across all three maps -- and
+// only ever into one of them, the way a parsed item holds it.
+func placeShapeShiftingExtra(r *rand.Rand, it *datamodel.Item) {
+	const key = "escalation"
+	switch r.Intn(4) {
+	case 1:
+		it.ExtraScalars = withExtraEntry(it.ExtraScalars, key, datamodel.Rendered(pickStr(r, []string{"none", "page"})))
+	case 2:
+		it.ExtraLists = withExtraEntry(it.ExtraLists, key, renderedSubset(r, []string{"alice", "bob"}))
+	case 3:
+		it.ExtraBlocks = withExtraEntry(it.ExtraBlocks, key, datamodel.Rendered(pickStr(r, []string{"after: 1h\nnotify: oncall", "after: 4h"})))
+	}
+}
+
+func withExtraEntry[V any](m map[string]V, k string, v V) map[string]V {
+	if m == nil {
+		m = map[string]V{}
+	}
+	m[k] = v
+	return m
+}
+
+func randExtraBlocks(r *rand.Rand) map[string]datamodel.Rendered {
+	var out map[string]datamodel.Rendered
+	for _, k := range []string{"sla", "policy"} {
+		v := pickPtr(r, []string{"response: 4h", "- step: build\n  cmd: make"})
+		if v == nil {
+			continue
+		}
+		out = withExtraEntry(out, k, datamodel.Rendered(*v))
+	}
+	return out
+}
+
 func randExtraLinks(r *rand.Rand) map[string][]string {
 	var out map[string][]string
 	for _, typ := range []string{"supersedes", "tracks"} {
@@ -142,7 +177,9 @@ func randSide(r *rand.Rand) *datamodel.Item {
 	it.Links = randLinks(r)
 	it.ExtraScalars = randExtraScalars(r)
 	it.ExtraLists = randExtraLists(r)
+	it.ExtraBlocks = randExtraBlocks(r)
 	it.ExtraLinks = randExtraLinks(r)
+	placeShapeShiftingExtra(r, it)
 	it.Body = pickStr(r, []string{"## Description\n\nbody\n", "## Description\n\nours prose\n", "## Description\n\ntheirs prose\n"})
 	it.Updated = pickStr(r, []string{"2026-02-01T00:00:00Z", "2026-02-02T00:00:00Z", "2026-02-03T00:00:00Z"})
 	return it
