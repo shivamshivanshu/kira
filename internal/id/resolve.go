@@ -22,6 +22,9 @@ type Item struct {
 type Snapshot struct {
 	Key   string
 	Items []Item
+	// Reserved holds numbers owned by files that would not parse. They cannot
+	// resolve, but they are taken, so allocation must not reissue them.
+	Reserved []string
 }
 
 // NotFoundError indicates that a token does not resolve to any item.
