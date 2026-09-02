@@ -20,7 +20,13 @@ func TestNoColorLiteralOutsideThemePackage(t *testing.T) {
 		if err != nil {
 			return err
 		}
+		// Agent worktrees are checkouts of this same repo living inside it, so
+		// walking them re-finds the theme package's own palette under a path
+		// that no longer starts with themePkg.
 		if info.IsDir() {
+			if info.Name() == ".claude" || info.Name() == ".git" {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		if !strings.HasSuffix(path, ".go") {
