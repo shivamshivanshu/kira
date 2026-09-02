@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"cmp"
 	"fmt"
 	"io"
 	"slices"
@@ -201,7 +200,7 @@ func itemCell(column string, it datamodel.ListItem) string {
 var listCells = map[string]func(datamodel.ListItem) string{
 	"number":      func(it datamodel.ListItem) string { return it.Number },
 	"title":       func(it datamodel.ListItem) string { return it.Title },
-	"type":        func(it datamodel.ListItem) string { return cmp.Or(it.TypeLabel, it.Type) },
+	"type":        func(it datamodel.ListItem) string { return it.TypeLabel },
 	"subtype":     func(it datamodel.ListItem) string { return ptr.DerefOr(it.Subtype, "-") },
 	"state":       func(it datamodel.ListItem) string { return it.State },
 	"category":    func(it datamodel.ListItem) string { return it.Category },
