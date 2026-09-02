@@ -170,6 +170,11 @@ func renderExtraBlock(n *yaml.Node) (datamodel.Rendered, error) {
 		return "", err
 	}
 	block := strings.TrimRight(b.String(), "\n")
+	// A block is stored on its own and rewritten on its own, so it has to parse
+	// on its own. Re-reading it here rejects a value that only resolves in the
+	// context of the whole document -- an alias to an anchor defined under some
+	// other key encodes as a bare *ref and would be carried out as a fragment
+	// that no longer means anything.
 	var standalone yaml.Node
 	if err := yaml.Unmarshal([]byte(block), &standalone); err != nil {
 		return "", err
