@@ -4,13 +4,14 @@ number: CORE-61
 aliases: []
 type: ticket
 title: "Route hand-rolled dedup through setx, and remove duplicated logic across layers"
-state: TODO
+state: DONE
+resolution: done
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-09-02T15:10:23+02:00
-updated: 2026-09-02T15:10:23+02:00
+updated: 2026-09-02T15:10:56+02:00
 ---
 Four independent audits (low layers, mid layers, cli/tui, and cross-layer)
 converged on the same set, which is what gave confidence it was real rather
