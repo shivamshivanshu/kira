@@ -333,5 +333,6 @@ func cloneItem(src *datamodel.Item) *datamodel.Item {
 	dst.ExtraLinks = datamodel.CloneStringListMap(src.ExtraLinks)
 	dst.ExtraScalars = maps.Clone(src.ExtraScalars)
 	dst.ExtraLists = datamodel.CloneStringListMap(src.ExtraLists)
+	dst.ExtraBlocks = maps.Clone(src.ExtraBlocks)
 	return &dst
 }

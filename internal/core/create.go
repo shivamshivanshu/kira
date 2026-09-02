@@ -311,6 +311,7 @@ func itemFromDraft(d draft, sys systemFields) *datamodel.Item {
 		Body:         d.Body,
 		ExtraScalars: d.ExtraScalars,
 		ExtraLists:   d.ExtraLists,
+		ExtraBlocks:  d.ExtraBlocks,
 	}
 }
 

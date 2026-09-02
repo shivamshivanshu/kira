@@ -1492,7 +1492,7 @@ func TestExtrasRoundTripThroughIndex(t *testing.T) {
 	const ulid = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
 	content := strings.Replace(ticket(ulid, "KIRA-1", "with extras"),
 		"state: TODO\n",
-		"state: TODO\nteam: infra\nnote: 'a: b'\nwatchers: [zebra, apple, 'b c']\nreviewers: []\npoints: 8\n", 1)
+		"state: TODO\nteam: infra\nnote: 'a: b'\nwatchers: [zebra, apple, 'b c']\nreviewers: []\npoints: 8\nsla:\n  response: 4h\n  resolve: 24h\n", 1)
 	f.writeTicket(t, ulid, content)
 	f.commit(t, "init")
 
@@ -1507,14 +1507,20 @@ func TestExtrasRoundTripThroughIndex(t *testing.T) {
 	if len(items) != 1 || len(disk) != 1 {
 		t.Fatalf("want 1 item, index=%d disk=%d", len(items), len(disk))
 	}
-	if len(disk[0].ExtraKeys()) != 5 {
-		t.Fatalf("fixture must capture 5 extras, got %v", disk[0].ExtraKeys())
+	if len(disk[0].ExtraKeys()) != 6 {
+		t.Fatalf("fixture must capture 6 extras, got %v", disk[0].ExtraKeys())
 	}
 	if !reflect.DeepEqual(items[0].ExtraScalars, disk[0].ExtraScalars) {
 		t.Errorf("extra scalars mismatch:\n index: %+v\n disk:  %+v", items[0].ExtraScalars, disk[0].ExtraScalars)
 	}
 	if !reflect.DeepEqual(items[0].ExtraLists, disk[0].ExtraLists) {
 		t.Errorf("extra lists mismatch:\n index: %+v\n disk:  %+v", items[0].ExtraLists, disk[0].ExtraLists)
+	}
+	if !reflect.DeepEqual(items[0].ExtraBlocks, disk[0].ExtraBlocks) {
+		t.Errorf("extra blocks mismatch:\n index: %+v\n disk:  %+v", items[0].ExtraBlocks, disk[0].ExtraBlocks)
+	}
+	if want := (map[string]datamodel.Rendered{"sla": "response: 4h\nresolve: 24h"}); !reflect.DeepEqual(items[0].ExtraBlocks, want) {
+		t.Errorf("ExtraBlocks = %+v, want %+v", items[0].ExtraBlocks, want)
 	}
 	if got := items[0].ExtraLists["reviewers"]; got == nil || len(got) != 0 {
 		t.Errorf("empty list must round-trip non-nil and empty, got %#v", got)
@@ -1535,9 +1541,9 @@ func TestItemWithoutExtrasStaysExtrasFree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if items[0].ExtraScalars != nil || items[0].ExtraLists != nil {
-		t.Fatalf("item without extras must reload with nil maps, got %+v / %+v",
-			items[0].ExtraScalars, items[0].ExtraLists)
+	if items[0].ExtraScalars != nil || items[0].ExtraLists != nil || items[0].ExtraBlocks != nil {
+		t.Fatalf("item without extras must reload with nil maps, got %+v / %+v / %+v",
+			items[0].ExtraScalars, items[0].ExtraLists, items[0].ExtraBlocks)
 	}
 }
 

@@ -385,7 +385,10 @@ func TestEncodeExtraScalarRoundTrips(t *testing.T) {
 	}
 }
 
-func TestExtraMappingFieldRejected(t *testing.T) {
+// An extra whose value kira cannot write back on its own -- here an alias to
+// an anchor defined by a sibling key -- must fail loudly. Rewriting it would
+// emit a dangling reference and leave a file kira can no longer read.
+func TestUnwritableExtraFieldRejected(t *testing.T) {
 	src := "---\n" +
 		"id: 01J8X8Q7RZTN5Y3VXW2A9K4E7F\n" +
 		"number: KIRA-1\n" +
@@ -396,7 +399,8 @@ func TestExtraMappingFieldRejected(t *testing.T) {
 		"labels: []\n" +
 		"parent: null\n" +
 		"blocked_by: []\n" +
-		"nested_extra:\n  a: 1\n" +
+		"anchored: &shared 1\n" +
+		"nested_extra:\n  a: *shared\n" +
 		"created: 2026-07-10T09:14:00+05:30\n" +
 		"updated: 2026-07-12T11:02:00+05:30\n" +
 		"---\nbody\n"
@@ -404,7 +408,7 @@ func TestExtraMappingFieldRejected(t *testing.T) {
 	_, err := codec.Parse(src)
 	var pe *datamodel.ParseError
 	if !errors.As(err, &pe) {
-		t.Fatalf("nested mapping extras must be a loud parse error, got %v", err)
+		t.Fatalf("an unwritable extra must be a loud parse error, got %v", err)
 	}
 	if !strings.Contains(err.Error(), "nested_extra") {
 		t.Fatalf("error must name the offending field: %v", err)

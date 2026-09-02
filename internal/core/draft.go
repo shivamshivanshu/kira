@@ -29,6 +29,7 @@ type draft struct {
 
 	ExtraScalars map[string]datamodel.Rendered   `yaml:"-"`
 	ExtraLists   map[string][]datamodel.Rendered `yaml:"-"`
+	ExtraBlocks  map[string]datamodel.Rendered   `yaml:"-"`
 	Body         string                          `yaml:"-"`
 }
 
@@ -41,11 +42,11 @@ func parseDraft(content string) (draft, error) {
 	if err != nil {
 		return draft{}, err
 	}
-	scalars, lists, err := codec.ExtraFrontmatter(content)
+	scalars, lists, blocks, err := codec.ExtraFrontmatter(content)
 	if err != nil {
 		return draft{}, err
 	}
-	d.ExtraScalars, d.ExtraLists, d.Body = scalars, lists, body
+	d.ExtraScalars, d.ExtraLists, d.ExtraBlocks, d.Body = scalars, lists, blocks, body
 	return d, nil
 }
 
@@ -85,7 +86,7 @@ func writeDraftExtras(b *strings.Builder, d draft) {
 			scalars[name] = ""
 		}
 	}
-	codec.WriteExtras(b, scalars, d.ExtraLists)
+	codec.WriteExtras(b, scalars, d.ExtraLists, d.ExtraBlocks)
 }
 
 func draftScalar(s string) string {
