@@ -158,14 +158,14 @@ func copyExtra(target, src *datamodel.Item, key string) {
 	delete(target.ExtraLists, key)
 	if v, ok := src.ExtraScalars[key]; ok {
 		if target.ExtraScalars == nil {
-			target.ExtraScalars = map[string]string{}
+			target.ExtraScalars = map[string]datamodel.Rendered{}
 		}
 		target.ExtraScalars[key] = v
 		return
 	}
 	if v, ok := src.ExtraLists[key]; ok {
 		if target.ExtraLists == nil {
-			target.ExtraLists = map[string][]string{}
+			target.ExtraLists = map[string][]datamodel.Rendered{}
 		}
 		target.ExtraLists[key] = slices.Clone(v)
 	}

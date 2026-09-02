@@ -133,7 +133,7 @@ func scalarFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 // builtin fields stay with the config-driven checks above.
 func extrasFindings(cfg *datamodel.Config, schemas map[string]entityschema.Schema, it *datamodel.Item) []Finding {
 	var out []Finding
-	for _, v := range entityschema.ValidateExtras(schemas, cfg, it, codec.DecodeExtraScalar, codec.DecodeScalar) {
+	for _, v := range entityschema.ValidateExtras(schemas, cfg, it, codec.Decoder{}) {
 		out = append(out, schemaErr(v.Field, v.Message))
 	}
 	return out
@@ -176,7 +176,7 @@ func refFindings(resolver *id.Resolver, it *datamodel.Item, schemas map[string]e
 	if !ok {
 		return out
 	}
-	values := entityschema.ProjectItem(schema, it, codec.DecodeExtraScalar, codec.DecodeScalar)
+	values := entityschema.ProjectItem(schema, it, codec.Decoder{})
 	for _, f := range schema.Fields {
 		if !f.TargetsItemType(itemTypes) {
 			continue

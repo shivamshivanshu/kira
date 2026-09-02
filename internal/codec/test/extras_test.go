@@ -33,8 +33,8 @@ func TestExtrasRoundTripIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	wantScalars := map[string]string{"team": "infra"}
-	wantLists := map[string][]string{"watchers": {"alice", "bob"}}
+	wantScalars := map[string]datamodel.Rendered{"team": "infra"}
+	wantLists := map[string][]datamodel.Rendered{"watchers": {"alice", "bob"}}
 	if !reflect.DeepEqual(it.ExtraScalars, wantScalars) {
 		t.Fatalf("ExtraScalars = %+v, want %+v", it.ExtraScalars, wantScalars)
 	}
@@ -156,10 +156,10 @@ func TestExtraFrontmatterReadsDraftFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExtraFrontmatter: %v", err)
 	}
-	if !reflect.DeepEqual(scalars, map[string]string{"team": "infra"}) {
+	if !reflect.DeepEqual(scalars, map[string]datamodel.Rendered{"team": "infra"}) {
 		t.Fatalf("scalars = %+v, want team only (title is builtin)", scalars)
 	}
-	if !reflect.DeepEqual(lists, map[string][]string{"watchers": {"alice", "bob"}}) {
+	if !reflect.DeepEqual(lists, map[string][]datamodel.Rendered{"watchers": {"alice", "bob"}}) {
 		t.Fatalf("lists = %+v, want watchers", lists)
 	}
 

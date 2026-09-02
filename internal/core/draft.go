@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/editorx"
 	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
@@ -26,9 +27,9 @@ type draft struct {
 	Due      *string  `yaml:"due"`
 	Estimate *float64 `yaml:"estimate"`
 
-	ExtraScalars map[string]string   `yaml:"-"`
-	ExtraLists   map[string][]string `yaml:"-"`
-	Body         string              `yaml:"-"`
+	ExtraScalars map[string]datamodel.Rendered   `yaml:"-"`
+	ExtraLists   map[string][]datamodel.Rendered `yaml:"-"`
+	Body         string                          `yaml:"-"`
 }
 
 // parseDraft captures the non-builtin frontmatter alongside the builtin fields
@@ -180,13 +181,13 @@ func defaultTemplate(typ string, schema entityschema.Schema) string {
 func offerExtra(d *draft, f entityschema.FieldDef) {
 	if f.List {
 		if d.ExtraLists == nil {
-			d.ExtraLists = map[string][]string{}
+			d.ExtraLists = map[string][]datamodel.Rendered{}
 		}
 		d.ExtraLists[f.Name] = nil
 		return
 	}
 	if d.ExtraScalars == nil {
-		d.ExtraScalars = map[string]string{}
+		d.ExtraScalars = map[string]datamodel.Rendered{}
 	}
 	d.ExtraScalars[f.Name] = ""
 }

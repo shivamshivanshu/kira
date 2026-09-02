@@ -177,7 +177,7 @@ func TestValidateItemDeclaredExtraFields(t *testing.T) {
 
 	t.Run("valid declared enum extra passes", func(t *testing.T) {
 		it := base
-		it.ExtraScalars = map[string]string{"severity": "high"}
+		it.ExtraScalars = map[string]datamodel.Rendered{"severity": "high"}
 		errs, warns := newValidationCtx(config.Default(), nil, nil, schema, false).validateItem(&it)
 		if len(errs) != 0 || len(warns) != 0 {
 			t.Fatalf("errs = %v, warns = %v, want none", errs, warns)
@@ -186,7 +186,7 @@ func TestValidateItemDeclaredExtraFields(t *testing.T) {
 
 	t.Run("unknown declared enum extra warns when open", func(t *testing.T) {
 		it := base
-		it.ExtraScalars = map[string]string{"severity": "critical"}
+		it.ExtraScalars = map[string]datamodel.Rendered{"severity": "critical"}
 		errs, warns := newValidationCtx(config.Default(), nil, nil, schema, false).validateItem(&it)
 		if len(errs) != 0 || len(warns) != 1 {
 			t.Fatalf("errs = %v, warns = %v, want 0 errs, 1 warn", errs, warns)
@@ -197,7 +197,7 @@ func TestValidateItemDeclaredExtraFields(t *testing.T) {
 		cfg := config.Default()
 		cfg.Labels.Strict = true
 		it := base
-		it.ExtraScalars = map[string]string{"severity": "critical"}
+		it.ExtraScalars = map[string]datamodel.Rendered{"severity": "critical"}
 		errs, warns := newValidationCtx(cfg, nil, nil, schema, false).validateItem(&it)
 		if len(errs) != 1 || len(warns) != 0 {
 			t.Fatalf("errs = %v, warns = %v, want 1 err, 0 warn", errs, warns)
@@ -208,7 +208,7 @@ func TestValidateItemDeclaredExtraFields(t *testing.T) {
 		cfg := config.Default()
 		cfg.Labels.Strict = true
 		it := base
-		it.ExtraScalars = map[string]string{"severity": "critical"}
+		it.ExtraScalars = map[string]datamodel.Rendered{"severity": "critical"}
 		errs, warns := newValidationCtx(cfg, nil, nil, schema, true).validateItem(&it)
 		if len(errs) != 0 || len(warns) != 1 {
 			t.Fatalf("errs = %v, warns = %v, want 0 errs, 1 warn", errs, warns)
@@ -217,7 +217,7 @@ func TestValidateItemDeclaredExtraFields(t *testing.T) {
 
 	t.Run("typed int extra rejects a non-int value", func(t *testing.T) {
 		it := base
-		it.ExtraScalars = map[string]string{"points": "abc"}
+		it.ExtraScalars = map[string]datamodel.Rendered{"points": "abc"}
 		errs, _ := newValidationCtx(config.Default(), nil, nil, schema, false).validateItem(&it)
 		if len(errs) != 1 {
 			t.Fatalf("errs = %v, want exactly one type violation", errs)
@@ -226,7 +226,7 @@ func TestValidateItemDeclaredExtraFields(t *testing.T) {
 
 	t.Run("typed int extra accepts an int value", func(t *testing.T) {
 		it := base
-		it.ExtraScalars = map[string]string{"points": "3"}
+		it.ExtraScalars = map[string]datamodel.Rendered{"points": "3"}
 		errs, warns := newValidationCtx(config.Default(), nil, nil, schema, false).validateItem(&it)
 		if len(errs) != 0 || len(warns) != 0 {
 			t.Fatalf("errs = %v, warns = %v, want none", errs, warns)

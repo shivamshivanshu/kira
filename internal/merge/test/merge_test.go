@@ -130,7 +130,7 @@ func TestExtraScalarAddedOnOneSideSurvives(t *testing.T) {
 	t.Parallel()
 	b := base(nil)
 	ours := base(nil)
-	theirs := base(func(it *datamodel.Item) { it.ExtraScalars = map[string]string{"severity": "HIGH"} })
+	theirs := base(func(it *datamodel.Item) { it.ExtraScalars = map[string]datamodel.Rendered{"severity": "HIGH"} })
 	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
 	if got.ExtraScalars["severity"] != "HIGH" {
 		t.Fatalf("ExtraScalars = %v, want severity=HIGH (added on theirs, must survive)", got.ExtraScalars)
@@ -139,13 +139,13 @@ func TestExtraScalarAddedOnOneSideSurvives(t *testing.T) {
 
 func TestExtraScalarBothChangedLaterUpdatedWins(t *testing.T) {
 	t.Parallel()
-	b := base(func(it *datamodel.Item) { it.ExtraScalars = map[string]string{"severity": "LOW"} })
+	b := base(func(it *datamodel.Item) { it.ExtraScalars = map[string]datamodel.Rendered{"severity": "LOW"} })
 	ours := base(func(it *datamodel.Item) {
-		it.ExtraScalars = map[string]string{"severity": "HIGH"}
+		it.ExtraScalars = map[string]datamodel.Rendered{"severity": "HIGH"}
 		it.Updated = "2026-02-02T00:00:00Z"
 	})
 	theirs := base(func(it *datamodel.Item) {
-		it.ExtraScalars = map[string]string{"severity": "MEDIUM"}
+		it.ExtraScalars = map[string]datamodel.Rendered{"severity": "MEDIUM"}
 		it.Updated = "2026-02-01T00:00:00Z"
 	})
 	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
@@ -156,11 +156,11 @@ func TestExtraScalarBothChangedLaterUpdatedWins(t *testing.T) {
 
 func TestExtraListUnion(t *testing.T) {
 	t.Parallel()
-	b := base(func(it *datamodel.Item) { it.ExtraLists = map[string][]string{"watchers": {"a", "b"}} })
-	ours := base(func(it *datamodel.Item) { it.ExtraLists = map[string][]string{"watchers": {"a", "b", "c"}} })
-	theirs := base(func(it *datamodel.Item) { it.ExtraLists = map[string][]string{"watchers": {"b"}} })
+	b := base(func(it *datamodel.Item) { it.ExtraLists = map[string][]datamodel.Rendered{"watchers": {"a", "b"}} })
+	ours := base(func(it *datamodel.Item) { it.ExtraLists = map[string][]datamodel.Rendered{"watchers": {"a", "b", "c"}} })
+	theirs := base(func(it *datamodel.Item) { it.ExtraLists = map[string][]datamodel.Rendered{"watchers": {"b"}} })
 	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
-	want := []string{"b", "c"}
+	want := []datamodel.Rendered{"b", "c"}
 	if !equalStrings(got.ExtraLists["watchers"], want) {
 		t.Fatalf("ExtraLists[watchers] = %v, want %v (b survives both, c added, a removed by theirs)", got.ExtraLists["watchers"], want)
 	}
@@ -170,11 +170,11 @@ func TestExtraShapeCollisionWinnerWinsWholesale(t *testing.T) {
 	t.Parallel()
 	b := base(nil)
 	ours := base(func(it *datamodel.Item) {
-		it.ExtraScalars = map[string]string{"custom": "scalar-value"}
+		it.ExtraScalars = map[string]datamodel.Rendered{"custom": "scalar-value"}
 		it.Updated = "2026-02-02T00:00:00Z"
 	})
 	theirs := base(func(it *datamodel.Item) {
-		it.ExtraLists = map[string][]string{"custom": {"a", "b"}}
+		it.ExtraLists = map[string][]datamodel.Rendered{"custom": {"a", "b"}}
 		it.Updated = "2026-02-01T00:00:00Z"
 	})
 	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
@@ -392,9 +392,9 @@ func TestArbitratedReportsOnlyBothSidesDivergedFromBase(t *testing.T) {
 
 func TestArbitratedReportsExtrasOnlyConflict(t *testing.T) {
 	t.Parallel()
-	b := base(func(it *datamodel.Item) { it.ExtraScalars = map[string]string{"severity": "LOW"} })
-	ours := base(func(it *datamodel.Item) { it.ExtraScalars = map[string]string{"severity": "HIGH"} })
-	theirs := base(func(it *datamodel.Item) { it.ExtraScalars = map[string]string{"severity": "MEDIUM"} })
+	b := base(func(it *datamodel.Item) { it.ExtraScalars = map[string]datamodel.Rendered{"severity": "LOW"} })
+	ours := base(func(it *datamodel.Item) { it.ExtraScalars = map[string]datamodel.Rendered{"severity": "HIGH"} })
+	theirs := base(func(it *datamodel.Item) { it.ExtraScalars = map[string]datamodel.Rendered{"severity": "MEDIUM"} })
 	res := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger)
 	if !slices.Contains(res.Arbitrated, "severity") {
 		t.Fatalf("arbitrated = %v, want severity (both sides changed the same extra from base)", res.Arbitrated)
@@ -418,7 +418,7 @@ func TestArbitratedReportsExtraLinkConflict(t *testing.T) {
 	}
 }
 
-func equalStrings(a, b []string) bool {
+func equalStrings[T ~string](a, b []T) bool {
 	if len(a) != len(b) {
 		return false
 	}

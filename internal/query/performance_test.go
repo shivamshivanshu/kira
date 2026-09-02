@@ -40,7 +40,7 @@ func TestLargeScalarInMatchesAlternatives(t *testing.T) {
 		}
 		for _, value := range append(values, "Ada", "missing", "") {
 			it := &datamodel.Item{Type: "ticket", Owner: new(value), Number: value + "-1",
-				ExtraScalars: map[string]string{"custom": value}}
+				ExtraScalars: map[string]datamodel.Rendered{"custom": datamodel.Rendered(value)}}
 			want := false
 			for _, v := range values {
 				pred, _, err := Match(field, v, opts)

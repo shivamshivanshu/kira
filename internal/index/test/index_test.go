@@ -1569,7 +1569,7 @@ func TestIncrementalRefreshReplacesAndRemovesExtras(t *testing.T) {
 	if res.Action != "incremental" {
 		t.Fatalf("action=%q want incremental", res.Action)
 	}
-	if want := map[string]string{"team": "infra"}; !reflect.DeepEqual(items[0].ExtraScalars, want) {
+	if want := map[string]datamodel.Rendered{"team": "infra"}; !reflect.DeepEqual(items[0].ExtraScalars, want) {
 		t.Errorf("removed extra must leave nothing behind, got %+v", items[0].ExtraScalars)
 	}
 	if items[0].ExtraLists != nil {

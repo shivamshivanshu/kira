@@ -87,7 +87,7 @@ func DecodeFrontmatter(content string, out any) (body string, err error) {
 // Parse captures it, for a partial document Parse itself would reject (an
 // editor draft). A value that is neither a scalar nor a scalar list is
 // reported as a ParseError rather than dropped.
-func ExtraFrontmatter(content string) (scalars map[string]string, lists map[string][]string, err error) {
+func ExtraFrontmatter(content string) (scalars map[string]datamodel.Rendered, lists map[string][]datamodel.Rendered, err error) {
 	front, _, err := splitDocument(content)
 	if err != nil {
 		return nil, nil, err
@@ -110,7 +110,7 @@ func ExtraFrontmatter(content string) (scalars map[string]string, lists map[stri
 	return scalars, lists, nil
 }
 
-func captureExtras(nodes map[string]*yaml.Node, add addFunc) (scalars map[string]string, lists map[string][]string) {
+func captureExtras(nodes map[string]*yaml.Node, add addFunc) (scalars map[string]datamodel.Rendered, lists map[string][]datamodel.Rendered) {
 	for k, n := range nodes {
 		if datamodel.IsFrontmatterKey(k) {
 			continue
@@ -118,12 +118,12 @@ func captureExtras(nodes map[string]*yaml.Node, add addFunc) (scalars map[string
 		switch n.Kind {
 		case yaml.ScalarNode:
 			if scalars == nil {
-				scalars = map[string]string{}
+				scalars = map[string]datamodel.Rendered{}
 			}
 			scalars[k] = renderExtraScalar(n)
 		case yaml.SequenceNode:
 			if lists == nil {
-				lists = map[string][]string{}
+				lists = map[string][]datamodel.Rendered{}
 			}
 			lists[k] = extraScalarSeq(n, fmt.Sprintf("field %q", k), add)
 		default:
@@ -193,11 +193,15 @@ func isNull(n *yaml.Node) bool { return n.Kind == yaml.ScalarNode && n.Tag == "!
 // renderExtraScalar computes the faithful single-line YAML rendering of an
 // extra scalar node, to be emitted verbatim (never re-decoded through
 // EmitScalar, which would treat every value as a string and quote it).
-func renderExtraScalar(n *yaml.Node) string { return renderExtra(n, EmitScalar) }
+func renderExtraScalar(n *yaml.Node) datamodel.Rendered {
+	return datamodel.Rendered(renderExtra(n, EmitScalar))
+}
 
 // renderExtraListElement is renderExtraScalar for an element of a flow list,
 // where a plain scalar holding a comma or a bracket would split the list.
-func renderExtraListElement(n *yaml.Node) string { return renderExtra(n, emitFlowScalar) }
+func renderExtraListElement(n *yaml.Node) datamodel.Rendered {
+	return datamodel.Rendered(renderExtra(n, emitFlowScalar))
+}
 
 func renderExtra(n *yaml.Node, emit func(string) string) string {
 	var s string
@@ -222,8 +226,17 @@ func renderExtra(n *yaml.Node, emit func(string) string) string {
 // DecodeExtraScalar recovers the Go value (int/bool/float64/string/nil) a
 // faithfully-rendered extra scalar represents, for callers that need it typed
 // rather than as its raw on-disk text.
+// Decoder satisfies entityschema.ExtraDecoder. It carries no state; it exists
+// so callers can hand the decoding seam across a package boundary that must not
+// import codec.
+type Decoder struct{}
+
+func (Decoder) DecodeExtraScalar(s datamodel.Rendered) any { return DecodeExtraScalar(s) }
+
+func (Decoder) DecodeExtraList(stored []datamodel.Rendered) []string { return DecodeExtraList(stored) }
+
 // DecodeExtraList recovers the displayable values a stored extra list holds.
-func DecodeExtraList(stored []string) []string {
+func DecodeExtraList(stored []datamodel.Rendered) []string {
 	out := make([]string, len(stored))
 	for i, v := range stored {
 		out[i] = DecodeScalar(v)
@@ -231,7 +244,7 @@ func DecodeExtraList(stored []string) []string {
 	return out
 }
 
-func DecodeExtraScalar(s string) any {
+func DecodeExtraScalar(s datamodel.Rendered) any {
 	var v any
 	if err := yaml.Unmarshal([]byte(s), &v); err != nil {
 		return s
@@ -242,7 +255,7 @@ func DecodeExtraScalar(s string) any {
 // EncodeExtraScalar renders a typed Go value to on-disk scalar form, quoting a
 // string only where needed so it isn't read back as another type (a date-shaped
 // string, or "5").
-func EncodeExtraScalar(v any) (string, error) {
+func EncodeExtraScalar(v any) (datamodel.Rendered, error) {
 	var n yaml.Node
 	if err := n.Encode(v); err != nil {
 		return "", err
@@ -341,12 +354,12 @@ func scalarSeq(n *yaml.Node, label string, add addFunc) []string {
 // extraScalarSeq captures a list extra as each element's faithful YAML text,
 // the way renderExtraScalar captures a scalar extra, so an element's type and
 // quoting survive a rewrite of the item.
-func extraScalarSeq(n *yaml.Node, label string, add addFunc) []string {
+func extraScalarSeq(n *yaml.Node, label string, add addFunc) []datamodel.Rendered {
 	return mapScalarSeq(n, label, add, renderExtraListElement)
 }
 
-func mapScalarSeq(n *yaml.Node, label string, add addFunc, render func(*yaml.Node) string) []string {
-	out := make([]string, 0, len(n.Content))
+func mapScalarSeq[T ~string](n *yaml.Node, label string, add addFunc, render func(*yaml.Node) T) []T {
+	out := make([]T, 0, len(n.Content))
 	for _, c := range n.Content {
 		if c.Kind != yaml.ScalarNode {
 			add("%s: list elements must be scalars", label)

@@ -266,7 +266,7 @@ func TestExtraFieldsRoundTripLosslessly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unknown top-level keys must parse, not reject: %v", err)
 	}
-	want := map[string]string{"another_future": "42", "future_field": "whatever"}
+	want := map[string]datamodel.Rendered{"another_future": "42", "future_field": "whatever"}
 	if !reflect.DeepEqual(it.ExtraScalars, want) {
 		t.Fatalf("ExtraScalars = %v, want %v", it.ExtraScalars, want)
 	}
@@ -309,7 +309,7 @@ func TestExtraScalarTypesRoundTripFaithfully(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	want := map[string]string{
+	want := map[string]datamodel.Rendered{
 		"future_bool":        "true",
 		"future_int":         "7",
 		"future_null":        "null",

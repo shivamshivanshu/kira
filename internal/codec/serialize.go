@@ -75,14 +75,14 @@ func writeOptFloat(b *strings.Builder, key string, v *float64) {
 
 // WriteExtras emits extras in Serialize's canonical order for a document with
 // no item behind it, such as an editor draft.
-func WriteExtras(b *strings.Builder, scalars map[string]string, lists map[string][]string) {
+func WriteExtras(b *strings.Builder, scalars map[string]datamodel.Rendered, lists map[string][]datamodel.Rendered) {
 	writeExtras(b, &datamodel.Item{ExtraScalars: scalars, ExtraLists: lists})
 }
 
 func writeExtras(b *strings.Builder, it *datamodel.Item) {
 	for _, k := range it.ExtraKeys() {
 		if v, ok := it.ExtraScalars[k]; ok {
-			writeLine(b, k, v)
+			writeLine(b, k, string(v))
 			continue
 		}
 		writeLine(b, k, emitRenderedList(it.ExtraLists[k]))
@@ -119,27 +119,33 @@ func EmitFloat(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
 // faithful YAML text, which EmitList would quote a second time.
 // EmitRenderedList renders already-rendered elements verbatim, for callers that
 // need the on-disk form of a stored list.
-func EmitRenderedList(xs []string) string { return emitRenderedList(xs) }
+func EmitRenderedList(xs []datamodel.Rendered) string { return emitRenderedList(xs) }
 
-func emitRenderedList(xs []string) string {
+func emitRenderedList(xs []datamodel.Rendered) string {
 	if len(xs) == 0 {
 		return "[]"
 	}
-	return "[" + strings.Join(xs, ", ") + "]"
+	parts := make([]string, len(xs))
+	for i, x := range xs {
+		parts[i] = string(x)
+	}
+	return "[" + strings.Join(parts, ", ") + "]"
 }
 
 // EncodeExtraListElement renders a string to the on-disk form a list extra
 // stores, quoting it where a plain scalar would not survive the flow list.
-func EncodeExtraListElement(s string) string { return emitFlowScalar(s) }
+func EncodeExtraListElement(s string) datamodel.Rendered {
+	return datamodel.Rendered(emitFlowScalar(s))
+}
 
 func EmitList(xs []string) string { return emitRenderedList(EncodeExtraList(xs)) }
 
 // EncodeExtraList renders raw values into the flow-safe form a stored extra
 // list holds; DecodeExtraList is its inverse.
-func EncodeExtraList(values []string) []string {
-	out := make([]string, len(values))
+func EncodeExtraList(values []string) []datamodel.Rendered {
+	out := make([]datamodel.Rendered, len(values))
 	for i, v := range values {
-		out[i] = emitFlowScalar(v)
+		out[i] = datamodel.Rendered(emitFlowScalar(v))
 	}
 	return out
 }
@@ -154,8 +160,8 @@ func EmitScalar(s string) string {
 	return emitQuoted(s)
 }
 
-func DecodeScalar(raw string) string {
-	trimmed := strings.TrimSpace(raw)
+func DecodeScalar(raw datamodel.Rendered) string {
+	trimmed := strings.TrimSpace(string(raw))
 	if trimmed == "" || (trimmed[0] != '"' && trimmed[0] != '\'') {
 		return trimmed
 	}

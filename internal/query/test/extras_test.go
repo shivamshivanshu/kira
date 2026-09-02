@@ -18,10 +18,10 @@ func extrasFixture() (items []*datamodel.Item, opts query.Options, cfg *datamode
 			{Name: "points", Type: entityschema.FieldInt},
 		}},
 	}
-	items[1].ExtraScalars = map[string]string{"team": "'infra core'", "points": "8"}
-	items[1].ExtraLists = map[string][]string{"watchers": {"alice", "'b c'"}}
-	items[2].ExtraScalars = map[string]string{"team": "qa", "points": "10"}
-	items[2].ExtraLists = map[string][]string{"watchers": {}}
+	items[1].ExtraScalars = map[string]datamodel.Rendered{"team": "'infra core'", "points": "8"}
+	items[1].ExtraLists = map[string][]datamodel.Rendered{"watchers": {"alice", "'b c'"}}
+	items[2].ExtraScalars = map[string]datamodel.Rendered{"team": "qa", "points": "10"}
+	items[2].ExtraLists = map[string][]datamodel.Rendered{"watchers": {}}
 	return items, opts, cfg
 }
 
@@ -85,7 +85,7 @@ func TestQuotedExtraValueDecodesBeforeMatching(t *testing.T) {
 // query spanning types matches only where it is declared.
 func TestExtraUndeclaredForItemType(t *testing.T) {
 	items, opts, cfg := extrasFixture()
-	items[0].ExtraScalars = map[string]string{"team": "qa"}
+	items[0].ExtraScalars = map[string]datamodel.Rendered{"team": "qa"}
 	if got := matchNums(t, "team=qa", items, opts, cfg); strings.Join(got, ",") != "KIRA-2" {
 		t.Errorf("team=qa matched %v, want only the ticket that declares team", got)
 	}

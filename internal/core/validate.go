@@ -64,7 +64,7 @@ func newValidationCtxWithEnums(cfg *datamodel.Config, byID map[string]*datamodel
 }
 
 func (c *validationCtx) validateItem(it *datamodel.Item) (errs, warns []error) {
-	values := entityschema.ProjectItem(c.schema, it, codec.DecodeExtraScalar, codec.DecodeScalar)
+	values := entityschema.ProjectItem(c.schema, it, codec.Decoder{})
 
 	var refs entityschema.RefResolver
 	if c.resolver != nil {
@@ -301,7 +301,7 @@ func normalizeRefExtras(it *datamodel.Item, resolver *id.Resolver, schema entity
 		}
 		if ref, ok := it.ExtraScalars[f.Name]; ok {
 			if ulid, ok := normalize(label, codec.DecodeScalar(ref)); ok {
-				it.ExtraScalars[f.Name] = codec.EmitScalar(ulid)
+				it.ExtraScalars[f.Name] = datamodel.Rendered(codec.EmitScalar(ulid))
 			}
 		}
 	}

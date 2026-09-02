@@ -132,7 +132,7 @@ func fieldChange(repo gitx.Repo, from, to *datamodel.Item, field string) (datamo
 // the quoting that distinguishes a string from the scalar it looks like.
 func storedFieldString(it *datamodel.Item, field string) string {
 	if v, ok := it.ExtraScalars[field]; ok {
-		return v
+		return string(v)
 	}
 	if v, ok := it.ExtraLists[field]; ok {
 		return codec.EmitRenderedList(v)

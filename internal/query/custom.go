@@ -63,7 +63,7 @@ func (cf customField) declaredBy(it *datamodel.Item) bool { return cf.declaringT
 // values yields each extra as its stored rendering — the faithful YAML of the
 // frontmatter node — so every comparison decodes before matching rather than
 // testing a quoted scalar against a bare one.
-func (cf customField) values(it *datamodel.Item) []string {
+func (cf customField) values(it *datamodel.Item) []datamodel.Rendered {
 	if !cf.declaredBy(it) {
 		return nil
 	}
@@ -71,7 +71,7 @@ func (cf customField) values(it *datamodel.Item) []string {
 		return it.ExtraLists[cf.def.Name]
 	}
 	if v, ok := it.ExtraScalars[cf.def.Name]; ok {
-		return []string{v}
+		return []datamodel.Rendered{v}
 	}
 	return nil
 }
@@ -95,7 +95,7 @@ func (c *compiler) compileCustomPred(n *predExpr, cf customField) (Predicate, er
 		eq := n.op.kind == tokEq
 		want := n.value
 		return func(it *datamodel.Item, _ *datamodel.Config) bool {
-			return slices.ContainsFunc(cf.values(it), func(v string) bool {
+			return slices.ContainsFunc(cf.values(it), func(v datamodel.Rendered) bool {
 				return codec.DecodeScalar(v) == want
 			}) == eq
 		}, nil
