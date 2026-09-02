@@ -58,6 +58,7 @@ func newListCmd(g *globalFlags) *cobra.Command {
 	f.StringVar(&opts.Category, "category", "", "filter by category (todo|doing|done)")
 	f.StringVar(&opts.Owner, "owner", "", "filter by owner ('@me' resolves to the git user)")
 	f.StringVar(&opts.Label, "label", "", "filter by label")
+	f.StringVar(&opts.Board, "board", "", "filter to one board")
 	f.StringVar(&opts.Epic, "epic", "", "filter by parent epic")
 	f.StringVar(&opts.Priority, "priority", "", "filter by priority")
 	f.StringVar(&opts.Sprint, "sprint", "", "filter by sprint key ('active' resolves the active sprint)")

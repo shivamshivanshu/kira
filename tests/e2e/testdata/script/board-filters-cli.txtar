@@ -1,0 +1,43 @@
+# core.BoardOpts declares eleven filters; the cobra adapter wired six, so five
+# were implemented but unreachable. --board was create-only: you could put a
+# ticket on a board and then had no flag to look at that board.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key WEB
+exec kira board create OPS --name Ops
+exec kira create ticket --title web1 --no-edit
+exec kira create ticket --title ops1 --board OPS --no-edit
+exec kira create epic --title bigthing --no-edit
+
+# kira list --board
+exec kira list --board OPS --no-color
+stdout 'OPS-1'
+! stdout 'WEB-1'
+exec kira list --board WEB --no-color
+stdout 'WEB-1'
+! stdout 'OPS-1'
+
+# kira board --board
+exec kira board --board OPS --plain --no-color
+stdout 'OPS-1'
+! stdout 'web1'
+
+# kira board was hardwired to tickets: an entity type could never have a board
+exec kira board --type epic --plain --json
+stdout '"type": "epic"'
+stdout '"state": "PLANNED"'
+! stdout 'PLANNED.*IN_PROGRESS'
+
+# the remaining filters reach core now
+exec kira board --state TODO --plain --json
+stdout '"number": "WEB-1"'
+exec kira board --priority P0 --plain --json
+! stdout '"number":'
+
+# completion for the new flag comes from the flag-name walk
+exec kira __complete list --board ''
+stdout 'OPS'
