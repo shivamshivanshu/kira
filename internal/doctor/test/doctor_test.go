@@ -949,3 +949,29 @@ func TestWipOverrunsQuietAtOrUnderLimit(t *testing.T) {
 		t.Fatalf("expected no findings at the limit, got %+v", f)
 	}
 }
+
+func TestSchemaIconsWarnsOnlyOnGlyphsTooWideToBeGlyphs(t *testing.T) {
+	cases := []struct {
+		icon string
+		warn bool
+	}{
+		{"ticket", true},
+		{"board", true},
+		{"epic", true},
+		{"", false},
+		{"\U0001F680", false},
+		{"[T]", false},
+		{"", false},
+	}
+	for _, c := range cases {
+		schemas := map[string]entityschema.Schema{
+			"x": {Name: "x", Representation: entityschema.Representation{Icon: c.icon}},
+		}
+
+		findings := doctor.SchemaIcons(schemas)
+
+		if got := len(findings) > 0; got != c.warn {
+			t.Errorf("icon %q: warned = %v, want %v", c.icon, got, c.warn)
+		}
+	}
+}
