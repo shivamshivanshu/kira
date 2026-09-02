@@ -4,13 +4,13 @@ number: KIRA-163
 aliases: []
 type: ticket
 title: "An unparseable ticket is invisible to the number allocator, so create issues a duplicate"
-state: TODO
+state: IN_PROGRESS
 priority: P0
 labels: []
 epic: null
 blocked_by: []
 created: 2026-09-02T09:47:01+02:00
-updated: 2026-09-02T09:47:01+02:00
+updated: 2026-09-02T10:58:35+02:00
 ---
 
 ## Description
