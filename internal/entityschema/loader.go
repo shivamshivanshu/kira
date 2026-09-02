@@ -11,6 +11,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
@@ -184,9 +185,40 @@ func parseSchema(filename string, data []byte) (Schema, error) {
 	return s, nil
 }
 
+// Displayed schema text must be a single printable run, because every renderer
+// measures it in display cells and then trusts that measurement for layout. A
+// newline defeats that at the root: it measures as the widest line while
+// occupying two, so the tui wraps rather than clips (doubling every tree row
+// and pushing the status bar off screen) and the cli's tabwriter loses column
+// sync for the whole table, not just the offending row. Format characters are
+// rejected for the same reason from the other direction -- they measure zero,
+// so U+202E reorders the rest of the line invisibly -- and a leading combining
+// mark composes onto whatever the renderer emitted before it.
+func checkDisplayText(schemaName, field, text string) error {
+	for i, r := range text {
+		switch {
+		case unicode.IsControl(r):
+			return fmt.Errorf("schema %q: representation %s contains a control character %q", schemaName, field, r)
+		case unicode.Is(unicode.Cf, r):
+			return fmt.Errorf("schema %q: representation %s contains the zero-width format character %q", schemaName, field, r)
+		case i == 0 && unicode.In(r, unicode.Mn, unicode.Me, unicode.Mc):
+			return fmt.Errorf("schema %q: representation %s starts with the combining mark %q, which composes onto the preceding character", schemaName, field, r)
+		}
+	}
+	return nil
+}
+
 func checkSchemaShape(s Schema) error {
 	if s.Name == "" {
 		return errors.New(`schema missing "name"`)
+	}
+	for _, text := range []struct{ field, value string }{
+		{"icon", s.Representation.Icon},
+		{"label", s.Representation.Label},
+	} {
+		if err := checkDisplayText(s.Name, text.field, text.value); err != nil {
+			return err
+		}
 	}
 	seen := make(map[string]bool, len(s.Fields))
 	for _, f := range s.Fields {

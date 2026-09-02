@@ -85,6 +85,46 @@ func TestLoadRejectsStateFieldWithoutStates(t *testing.T) {
 	}
 }
 
+// A newline in either field desynchronises every row after it -- the tui wraps
+// instead of clipping, and the cli's tabwriter loses column sync for the whole
+// table. U+202E is the zero-width case: it measures nothing and reorders the
+// rest of the line.
+func TestLoadRejectsUndisplayableRepresentationText(t *testing.T) {
+	bad := []string{`a\nb`, `\t`, `a\rb`, `\u001b[31mX`, `\u200b`, `\u202e`, `\u0301a`}
+	for _, field := range []string{"icon", "label"} {
+		for _, value := range bad {
+			dir := t.TempDir()
+			custom := `{"name": "bad", "representation": {"` + field + `": "` + value + `"}}`
+			if err := os.WriteFile(filepath.Join(dir, "bad.json"), []byte(custom), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			_, err := Load(dir)
+
+			if err == nil {
+				t.Errorf("%s %q: expected a load error", field, value)
+			}
+		}
+	}
+}
+
+// "[T]" is the pinned guard against reintroducing a two-cell bound: the ascii
+// glyphs this project shipped before icons moved into schemas were all three
+// cells wide.
+func TestLoadAcceptsDisplayableRepresentationText(t *testing.T) {
+	for _, icon := range []string{"\U0001F680", "\uf41b", "[T]", "", "a b"} {
+		dir := t.TempDir()
+		custom := `{"name": "ok", "representation": {"icon": "` + icon + `", "label": "a ticket"}}`
+		if err := os.WriteFile(filepath.Join(dir, "ok.json"), []byte(custom), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		if _, err := Load(dir); err != nil {
+			t.Errorf("icon %q: unexpected error: %v", icon, err)
+		}
+	}
+}
+
 func TestLoadRejectsUnknownFieldType(t *testing.T) {
 	dir := t.TempDir()
 	custom := `{"name": "bad", "fields": [{"name": "title", "type": "nonsense"}]}`
