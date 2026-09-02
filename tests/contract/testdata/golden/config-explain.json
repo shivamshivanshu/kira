@@ -97,8 +97,7 @@
       "name": "git",
       "provenance": "default",
       "lines": [
-        "landed_ref: (unset)",
-        "scan_since: (unset)"
+        "landed_ref: (unset)"
       ]
     },
     {
