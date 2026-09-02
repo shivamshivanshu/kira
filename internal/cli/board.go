@@ -35,6 +35,11 @@ func newBoardCmd(g *globalFlags) *cobra.Command {
 	var label string
 	var query string
 	var filter string
+	var itemType string
+	var state string
+	var priority string
+	var board string
+	var sprint string
 	cmd := &cobra.Command{
 		Use:   "board [<epic-id>]",
 		Short: "Kanban board of tickets grouped by workflow state",
@@ -48,12 +53,16 @@ func newBoardCmd(g *globalFlags) *cobra.Command {
 			if len(args) == 1 {
 				epic = args[0]
 			}
-			noFilters := epic == "" && at == "" && owner == "" && label == "" && query == "" && filter == ""
+			noFilters := epic == "" && at == "" && owner == "" && label == "" && query == "" && filter == "" &&
+				itemType == "" && state == "" && priority == "" && board == "" && sprint == ""
 			shouldLaunchBoardTUI := shouldAutoTUI(cmd, g, cfg) && !plain && noFilters
 			if shouldLaunchBoardTUI {
 				return tui.Run(s.WithPrompter(core.SilentPrompter()), cfg, tui.Options{NoColor: g.noColor, RunCommand: commandRunner(g), InitialView: tui.ViewBoard})
 			}
-			res, err := s.Board(cfg, core.BoardOpts{Epic: epic, Owner: owner, Label: label, Query: query, Filter: filter, At: at})
+			res, err := s.Board(cfg, core.BoardOpts{
+				Type: itemType, Epic: epic, State: state, Owner: owner, Priority: priority,
+				Label: label, Board: board, Sprint: sprint, Query: query, Filter: filter, At: at,
+			})
 			if err != nil {
 				return err
 			}
@@ -64,6 +73,11 @@ func newBoardCmd(g *globalFlags) *cobra.Command {
 		},
 	}
 	f := cmd.Flags()
+	f.StringVar(&itemType, "type", "", "board for this entity type instead of tickets")
+	f.StringVar(&state, "state", "", "filter by state")
+	f.StringVar(&priority, "priority", "", "filter by priority")
+	f.StringVar(&board, "board", "", "filter to one board")
+	f.StringVar(&sprint, "sprint", "", "filter by sprint key, or 'active'")
 	f.StringVar(&owner, "owner", "", "filter to one owner ('@me' resolves to the git user)")
 	f.StringVar(&label, "label", "", "filter by label")
 	f.StringVar(&filter, "filter", "", "apply a named saved query from config filters")
