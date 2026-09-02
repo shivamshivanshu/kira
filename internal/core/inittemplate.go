@@ -77,7 +77,6 @@ filters:
 
 # git: relate kira items to the commits and branches that touch them.
 #   landed_ref — ref (e.g. origin/main) whose history marks work as merged/landed
-#   scan_since — limit commit scanning to history after this ref or date
 #git: {}
 `
 

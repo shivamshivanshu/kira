@@ -38,7 +38,6 @@ func Explain(cfg *datamodel.Config) *datamodel.ExplainResult {
 func explainGit(cfg, def *datamodel.Config) datamodel.ExplainSection {
 	lines := []string{
 		"landed_ref: " + cmp.Or(cfg.Git.LandedRef, "(unset)"),
-		"scan_since: " + cmp.Or(cfg.Git.ScanSince, "(unset)"),
 	}
 	return datamodel.ExplainSection{Name: "git", Provenance: tierOf(changed(cfg.Git, def.Git), datamodel.ProvenanceRepo), Lines: lines}
 }

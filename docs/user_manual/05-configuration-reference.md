@@ -963,7 +963,6 @@ git:
 | Key | Type | Default |
 |---|---|---|
 | `landed_ref` | git ref | resolved `origin/HEAD`, falling back to `main` |
-| `scan_since` | string | — see below |
 
 **`landed_ref`** is the ref whose history means "this work has reached
 mainline". It is what drives automatic closing: when kira scans commits and
@@ -978,13 +977,6 @@ handles.
 
 kira remembers a watermark per landed ref, so repeated scans only walk commits
 it has not already seen.
-
-**`scan_since`** — be aware that this key is **accepted but not currently
-implemented**. It parses without error and appears in the config struct, but no
-code reads it, so setting it has no effect. The intent, per the comment in
-kira's own `init` template, is to bound how far back the first trailer scan
-walks on a repo with a large pre-existing history. Until that lands, treat it
-as absent.
 
 ---
 

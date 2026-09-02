@@ -102,7 +102,6 @@ type UITui struct {
 }
 
 type Git struct {
-	ScanSince string `yaml:"scan_since,omitempty"`
 	LandedRef string `yaml:"landed_ref,omitempty"`
 }
 
