@@ -139,8 +139,8 @@
     }
   ],
   "representation": {
-    "label": "Ticket",
-    "icon": "ticket",
+    "label": "ticket",
+    "icon": "",
     "list_columns": [
       "number",
       "state",
