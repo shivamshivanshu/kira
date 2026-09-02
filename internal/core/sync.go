@@ -22,12 +22,9 @@ type SyncOpts struct {
 
 // Sync pulls and rebases against the remote, reconciles and reindexes local
 // tickets, and optionally pushes, reporting the outcome of each step.
-func (s *Store) Sync(cfg *datamodel.Config, opts SyncOpts, reindexer syncx.Reindexer) (report *syncx.Report, err error) {
+func (s *Store) Sync(cfg *datamodel.Config, opts SyncOpts) (report *syncx.Report, err error) {
 	if err := s.requireRepo(); err != nil {
 		return nil, err
-	}
-	if reindexer == nil {
-		reindexer = storeReindexer{store: s, cfg: cfg}
 	}
 	repo := s.repo()
 	report = &syncx.Report{}
@@ -61,7 +58,7 @@ func (s *Store) Sync(cfg *datamodel.Config, opts SyncOpts, reindexer syncx.Reind
 	}
 	report.Add("reconcile", syncx.StepDone, detail)
 
-	reindexStep := reindexer.Reindex()
+	reindexStep := storeReindexer{store: s, cfg: cfg}.Reindex()
 	report.Steps = append(report.Steps, reindexStep)
 	if reindexStep.Status == syncx.StepDone {
 		report.Steps = append(report.Steps, s.syncCloses(cfg))

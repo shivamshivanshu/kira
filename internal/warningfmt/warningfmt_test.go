@@ -42,3 +42,20 @@ func TestMessageExhaustive(t *testing.T) {
 		}
 	}
 }
+
+// Message pads short Args through a fixed-size array, so every code must still
+// render with fewer args than it uses. This is the canary for that guard: index
+// w.Args directly instead and this panics.
+func TestMessageRendersWithMissingArgs(t *testing.T) {
+	t.Parallel()
+	for _, code := range datamodel.WarnCodes {
+		for _, args := range [][]string{nil, {"one"}} {
+			got := Message(datamodel.Warning{Code: code, Args: args})
+			// A literal warning's message IS its argument, so with none it is
+			// legitimately empty. Every other code carries its own prose.
+			if got == "" && code != datamodel.WarnLiteral {
+				t.Errorf("code %q with %d args: rendered empty", code, len(args))
+			}
+		}
+	}
+}

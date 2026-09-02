@@ -42,7 +42,7 @@ func TestSyncSkipsPatchEmptiedByAutoResolve(t *testing.T) {
 	}
 
 	s, cfg := discoverStore(t, ours.root)
-	if _, err := s.Sync(cfg, core.SyncOpts{}, nil); err != nil {
+	if _, err := s.Sync(cfg, core.SyncOpts{}); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
 	if ours.repo.RebaseInProgress() {

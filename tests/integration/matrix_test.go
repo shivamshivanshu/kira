@@ -329,7 +329,7 @@ func runSyncPath(t *testing.T, sc scenario, policy datamodel.MergePolicy) (*worl
 	ours.commit("ours")
 
 	s, cfg := discoverStore(t, ours.root)
-	_, syncErr := s.Sync(cfg, core.SyncOpts{}, nil)
+	_, syncErr := s.Sync(cfg, core.SyncOpts{})
 	return ours, s, cfg, syncErr
 }
 
