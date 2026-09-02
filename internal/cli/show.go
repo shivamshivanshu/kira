@@ -1,13 +1,13 @@
 package cli
 
 import (
-	"cmp"
 	"fmt"
 	"io"
 	"maps"
 	"slices"
 	"strings"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
@@ -90,7 +90,7 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 		}
 	}
 	line("id", r.ID)
-	line("type", cmp.Or(r.TypeLabel, r.Type))
+	line("type", r.TypeLabel)
 	line("subtype", ptr.Deref(r.Subtype))
 	line("category", r.Category)
 	line("priority", ptr.Deref(r.Priority))
@@ -116,10 +116,11 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 	}
 	width := 0
 	for _, rw := range rows {
-		width = max(width, len(rw.label))
+		width = max(width, ansi.StringWidth(rw.label))
 	}
 	for _, rw := range rows {
-		_, _ = fmt.Fprintf(w, "%-*s %s\n", width, rw.label, rw.value)
+		gutter := strings.Repeat(" ", width-ansi.StringWidth(rw.label)+1)
+		_, _ = fmt.Fprintf(w, "%s%s%s\n", rw.label, gutter, rw.value)
 	}
 	if desc := codec.Description(r.Body); strings.TrimSpace(desc) != "" {
 		_, _ = fmt.Fprintf(w, "\n%s\n", desc)
