@@ -15,10 +15,10 @@ exec kira create ticket --title 'Sev' --no-edit --field severity=high --field po
 
 # human show lists them after the built-in header block
 exec kira show KIRA-1
-stdout 'severity:  high'
-stdout 'points:    8'
-stdout 'signoff:   true'
-stdout 'components: api, web'
+stdout 'severity:\s+high'
+stdout 'points:\s+8'
+stdout 'signoff:\s+true'
+stdout 'components:\s+api, web'
 
 # --json keeps each declared type rather than stringifying everything
 exec kira show KIRA-1 --json

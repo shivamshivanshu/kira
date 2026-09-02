@@ -1865,7 +1865,19 @@
           },
           "type": "array"
         },
+        "blocked_by_numbers": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "blocks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "blocks_numbers": {
           "items": {
             "type": "string"
           },
@@ -1896,6 +1908,12 @@
           ]
         },
         "epic": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "epic_number": {
           "type": [
             "string",
             "null"
@@ -2037,6 +2055,9 @@
         "blocked_by",
         "links",
         "blocks",
+        "epic_number",
+        "blocked_by_numbers",
+        "blocks_numbers",
         "estimate",
         "created",
         "updated",

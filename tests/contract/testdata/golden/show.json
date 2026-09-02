@@ -30,6 +30,11 @@
     ]
   },
   "blocks": [],
+  "epic_number": "KIRA-1",
+  "blocked_by_numbers": [
+    "KIRA-3"
+  ],
+  "blocks_numbers": [],
   "estimate": 3,
   "created": "<TS>",
   "updated": "<TS>",
