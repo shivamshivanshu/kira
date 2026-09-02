@@ -191,23 +191,6 @@ func TestWriteDefaultsIsIdempotentAndPreservesEdits(t *testing.T) {
 	}
 }
 
-func TestBuiltinNames(t *testing.T) {
-	names, err := BuiltinNames()
-
-	if err != nil {
-		t.Fatalf("BuiltinNames: %v", err)
-	}
-	want := []string{"board", "epic", "ticket"}
-	if len(names) != len(want) {
-		t.Fatalf("got %v, want %v", names, want)
-	}
-	for i, n := range want {
-		if names[i] != n {
-			t.Fatalf("got %v, want %v", names, want)
-		}
-	}
-}
-
 func TestLoadRejectsCrossSchemaExtrasConflict(t *testing.T) {
 	dir := t.TempDir()
 	bug := `{"name": "bug", "fields": [{"name": "severity", "type": "enum", "enum": "sev", "placement": "frontmatter"}]}`

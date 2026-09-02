@@ -68,15 +68,16 @@ func (s *Store) mutateAgainst(vctx *validationCtx, orig *datamodel.Item, items [
 }
 
 type Batch struct {
-	cfg       *datamodel.Config
-	store     *Store
-	release   func()
-	items     []*datamodel.Item
-	resolver  *id.Resolver
-	byID      map[string]*datamodel.Item
-	positions map[string]int
-	schemas   map[string]entityschema.Schema
-	enums     map[string]map[string][]string
+	cfg        *datamodel.Config
+	store      *Store
+	release    func()
+	items      []*datamodel.Item
+	resolver   *id.Resolver
+	byID       map[string]*datamodel.Item
+	positions  map[string]int
+	schemas    map[string]entityschema.Schema
+	containers map[string]bool
+	enums      map[string]map[string][]string
 }
 
 func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
@@ -95,6 +96,7 @@ func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
 		return nil, err
 	}
 	vocab := entityschema.ConfigVocab(cfg)
+	containers := entityschema.ContainerTypes(schemas)
 	enums := make(map[string]map[string][]string, len(schemas))
 	for typ, schema := range schemas {
 		enums[typ] = entityschema.ResolveEnums(schema, vocab)
@@ -106,15 +108,16 @@ func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
 		}
 	}
 	return &Batch{
-		cfg:       cfg,
-		store:     s,
-		release:   release,
-		items:     ld.items,
-		resolver:  ld.resolver,
-		byID:      datamodel.IndexByID(ld.items),
-		positions: positions,
-		schemas:   schemas,
-		enums:     enums,
+		cfg:        cfg,
+		store:      s,
+		release:    release,
+		items:      ld.items,
+		resolver:   ld.resolver,
+		byID:       datamodel.IndexByID(ld.items),
+		positions:  positions,
+		schemas:    schemas,
+		containers: containers,
+		enums:      enums,
 	}, nil
 }
 
@@ -149,7 +152,7 @@ func (b *Batch) Mutate(ref string, force bool, apply applyFn, subjectOf func(ori
 	if err := guardWritable(orig); err != nil {
 		return nil, nil, nil, err
 	}
-	vctx := newValidationCtxWithEnums(b.cfg, b.byID, b.resolver, b.schemas[orig.Type], entityschema.ContainerTypes(b.schemas), b.enums[orig.Type], force)
+	vctx := newValidationCtxWithEnums(b.cfg, b.byID, b.resolver, b.schemas[orig.Type], b.containers, b.enums[orig.Type], force)
 	updated, changed, warns, err := b.store.mutateAgainst(vctx, orig, b.items, apply, subjectOf, source)
 	if err != nil {
 		// A write may succeed before its Git commit fails. Later operations

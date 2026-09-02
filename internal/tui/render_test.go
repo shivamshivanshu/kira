@@ -22,7 +22,7 @@ func asciiTheme() theme.Theme {
 	return theme.New(r)
 }
 
-func sampleTree() ([]datamodel.TreeNode, map[string]datamodel.ListItem, map[string]datamodel.EpicProgress) {
+func sampleTree() ([]datamodel.TreeNode, map[string]datamodel.ListItem, map[string]datamodel.ContainerProgress) {
 	nodes := []datamodel.TreeNode{{
 		ID: "E1", Number: "KIRA-100", Type: datamodel.TypeEpic, Title: "Order book hardening",
 		Children: []datamodel.TreeNode{
@@ -35,7 +35,7 @@ func sampleTree() ([]datamodel.TreeNode, map[string]datamodel.ListItem, map[stri
 		"T1": {ID: "T1", Number: "KIRA-140", State: "TODO", Category: "todo", Type: datamodel.TypeTicket, Parent: new("E1")},
 		"T2": {ID: "T2", Number: "KIRA-142", State: "IN_PROGRESS", Category: "doing", Type: datamodel.TypeTicket, Parent: new("E1")},
 	}
-	progress := map[string]datamodel.EpicProgress{"E1": {Done: 1, Total: 2}}
+	progress := map[string]datamodel.ContainerProgress{"E1": {Done: 1, Total: 2}}
 	return nodes, fields, progress
 }
 
@@ -203,7 +203,7 @@ func TestTreeRowPlumbsPriorityAndResolution(t *testing.T) {
 		"T1": {ID: "T1", Number: "KIRA-1", State: "WONT_DO", Category: "done", Type: datamodel.TypeTicket, Priority: &p0, Resolution: &dropped},
 	}
 	tm := newTreeModel()
-	(&tm).load(nodes, fields, map[string]datamodel.EpicProgress{})
+	(&tm).load(nodes, fields, map[string]datamodel.ContainerProgress{})
 	out := tm.render(asciiTheme(), iconSet{mode: datamodel.IconText, priorities: []string{"P0", "P1", "P2", "P3"}, dropped: []string{dropped}}, 100, 3, true, false)
 	if !strings.Contains(out, "!") {
 		t.Errorf("P0 priority marker missing from row:\n%s", out)

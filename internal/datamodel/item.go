@@ -184,7 +184,7 @@ type Comment struct {
 	Body   string
 }
 
-type EpicProgress struct {
+type ContainerProgress struct {
 	Done  int
 	Total int
 }

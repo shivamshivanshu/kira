@@ -63,11 +63,6 @@ func HighestN(snap Snapshot, key string) int {
 	return highest
 }
 
-// Allocate returns the next sequential number for the snapshot's key.
-func Allocate(snap Snapshot) Number {
-	return Number{Key: snap.Key, N: HighestN(snap, snap.Key) + 1}
-}
-
 func takenNumbers(snap Snapshot) map[string]bool {
 	taken := make(map[string]bool, len(snap.Items))
 	for _, it := range snap.Items {

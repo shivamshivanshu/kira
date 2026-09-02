@@ -57,7 +57,7 @@ func TestTreeRowPriorityMarksFromVocab(t *testing.T) {
 		"T1": {ID: "T1", Number: "KIRA-1", State: "TODO", Category: "todo", Type: datamodel.TypeTicket, Priority: &high},
 	}
 	tm := newTreeModel()
-	(&tm).load(nodes, fields, map[string]datamodel.EpicProgress{})
+	(&tm).load(nodes, fields, map[string]datamodel.ContainerProgress{})
 	out := tm.render(asciiTheme(), iconSet{mode: datamodel.IconText, priorities: []string{"high", "medium", "low"}}, 100, 3, true, false)
 	if !strings.Contains(out, "!!!") {
 		t.Errorf("an index-0 priority must render three marks in the row:\n%s", out)

@@ -37,13 +37,11 @@ func newEditCmd(g *globalFlags) *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts := core.EditOpts{FromFile: fromFile, Force: force}
-			for _, f := range fields {
-				k, v, ok := strings.Cut(f, "=")
-				if !ok {
-					return errx.User("--field %q: expected key=value", f).WithHint("example: --field priority=P1")
-				}
-				opts.Fields = append(opts.Fields, core.FieldEdit{Key: k, Value: v})
+			edits, err := parseFieldEdits(fields, "priority=P1")
+			if err != nil {
+				return err
 			}
+			opts.Fields = edits
 			for _, tf := range typedFlags {
 				if cmd.Flags().Changed(tf.name) {
 					opts.Fields = append(opts.Fields, core.FieldEdit{Key: tf.name, Value: *tf.value})

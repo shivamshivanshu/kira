@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 	"unicode"
 
@@ -110,19 +109,6 @@ func fieldTrait(f FieldDef) string {
 		return "list of " + string(f.Type)
 	}
 	return string(f.Type)
-}
-
-func BuiltinNames() ([]string, error) {
-	schemas, err := loadBuiltins()
-	if err != nil {
-		return nil, err
-	}
-	names := make([]string, 0, len(schemas))
-	for name := range schemas {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names, nil
 }
 
 // WriteDefaults materializes the embedded built-in schemas into dir, never

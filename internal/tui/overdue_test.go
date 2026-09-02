@@ -13,7 +13,7 @@ func treeWithDue(state, category, due string) treeModel {
 		"T1": {ID: "T1", Number: "KIRA-1", State: state, Category: category, Type: datamodel.TypeTicket, Due: &due},
 	}
 	tm := newTreeModel()
-	(&tm).load(nodes, fields, map[string]datamodel.EpicProgress{})
+	(&tm).load(nodes, fields, map[string]datamodel.ContainerProgress{})
 	return tm
 }
 

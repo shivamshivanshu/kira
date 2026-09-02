@@ -99,7 +99,7 @@ func (s *Store) itemsMetrics(cfg *datamodel.Config, items []*datamodel.Item) ([]
 func metricsFrom(cfg *datamodel.Config, it *datamodel.Item, evs []stateTransition, committed bool) metricItem {
 	mi := metricItem{
 		number:  it.Number,
-		dropped: isDropped(cfg, it),
+		dropped: datamodel.IsDropped(it.Resolution, cfg.ResolutionsDropped),
 	}
 	mi.category, _ = cfg.CategoryOf(it.Type, it.State)
 	if c, cerr := it.CreatedTime(); cerr == nil {

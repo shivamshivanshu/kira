@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -22,7 +23,6 @@ const (
 	msgNoItems = "no items"
 )
 
-// Main is the CLI entry point invoked by cmd/kira.
 func Main() int {
 	root, g := newRootCmd()
 	if err := root.Execute(); err != nil {
@@ -176,6 +176,18 @@ func stripGlobalPrefix(argv, args []string, cmdName string) (chdir string, rest 
 	return "", args
 }
 
+func parseFieldEdits(fields []string, hintExample string) ([]core.FieldEdit, error) {
+	var edits []core.FieldEdit
+	for _, f := range fields {
+		k, v, ok := strings.Cut(f, "=")
+		if !ok {
+			return nil, errx.User("--field %q: expected key=value", f).WithHint("example: --field %s", hintExample)
+		}
+		edits = append(edits, core.FieldEdit{Key: k, Value: v})
+	}
+	return edits, nil
+}
+
 func openStore(g *globalFlags) (*core.Store, *datamodel.Config, error) {
 	s, err := core.Discover(g.chdir, g.prompter())
 	if err != nil {
@@ -188,8 +200,6 @@ func openStore(g *globalFlags) (*core.Store, *datamodel.Config, error) {
 	return s, cfg, nil
 }
 
-// storeActionRunE adapts a store action into a cobra RunE: open the store,
-// run action, and either emit JSON or hand the result to render.
 func storeActionRunE[T any](g *globalFlags, action func(*core.Store, *datamodel.Config, []string) (T, error), render func(io.Writer, T)) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		s, cfg, err := openStore(g)
