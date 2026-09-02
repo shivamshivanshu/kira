@@ -4,13 +4,13 @@ number: KIRA-162
 aliases: []
 type: ticket
 title: "Bundle entityschema's injected decoders behind one parameter"
-state: IN_PROGRESS
+state: REVIEW
 priority: P3
 labels: []
 epic: null
 blocked_by: []
 created: 2026-09-01T18:03:41+02:00
-updated: 2026-09-02T00:26:42+02:00
+updated: 2026-09-02T09:36:57+02:00
 ---
 
 ## Description
