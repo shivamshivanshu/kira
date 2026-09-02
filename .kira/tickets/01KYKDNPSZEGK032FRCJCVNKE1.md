@@ -4,12 +4,13 @@ number: CORE-50
 aliases: []
 type: epic
 title: "CORE-3 follow-through: schema-aware reads and representation"
-state: ACTIVE
+state: DONE
+resolution: done
 labels: []
-epic: null
+parent: null
 blocked_by: []
 created: 2026-07-28T09:23:08+05:30
-updated: 2026-07-28T12:12:19+05:30
+updated: 2026-09-02T17:35:20+02:00
 ---
 
 Remaining work from CORE-3 (`docs/design/CORE-3-extensible-schema.md`),
