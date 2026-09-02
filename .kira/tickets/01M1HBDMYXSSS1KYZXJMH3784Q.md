@@ -4,13 +4,14 @@ number: DX-15
 aliases: []
 type: ticket
 title: "Cleanup pass: dead code, stale container naming, and a real test-coverage gap"
-state: TODO
+state: DONE
+resolution: done
 priority: P3
 labels: []
 parent: null
 blocked_by: []
 created: 2026-09-02T17:22:24+02:00
-updated: 2026-09-02T17:22:24+02:00
+updated: 2026-09-02T17:22:39+02:00
 ---
 Five read-only audits (low layers, mid layers x2, cli/tui/webui, cross-layer)
 reported. Most of what they found was that there was little to find -- no dead
