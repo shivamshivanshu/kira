@@ -291,10 +291,9 @@ func (i *Index) upsertCommitLinks(commits []gitx.Commit, numbers map[string]stri
 }
 
 func resolveItemRefs(c gitx.Commit, numbers map[string]string, pol linkPolicy) (linked, referenced []string) {
-	linkedSeen := map[string]bool{}
+	linkedSeen := setx.NewDeduper[string]()
 	addLinked := func(token string) {
-		if ulid, ok := numbers[strings.ToUpper(token)]; ok && !linkedSeen[ulid] {
-			linkedSeen[ulid] = true
+		if ulid, ok := numbers[strings.ToUpper(token)]; ok && linkedSeen.Add(ulid) {
 			linked = append(linked, ulid)
 		}
 	}
@@ -315,11 +314,10 @@ func resolveItemRefs(c gitx.Commit, numbers map[string]string, pol linkPolicy) (
 		}
 	}
 
-	refSeen := map[string]bool{}
+	refSeen := setx.NewDeduper[string]()
 	if pol.bare && pol.bareRef != nil {
 		for _, tok := range pol.bareRef.FindAllString(stripMarkers(bodyOutsideTrailers(c), pol.marker), -1) {
-			if ulid, ok := numbers[strings.ToUpper(tok)]; ok && !linkedSeen[ulid] && !refSeen[ulid] {
-				refSeen[ulid] = true
+			if ulid, ok := numbers[strings.ToUpper(tok)]; ok && !linkedSeen.Has(ulid) && refSeen.Add(ulid) {
 				referenced = append(referenced, ulid)
 			}
 		}

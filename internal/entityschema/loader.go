@@ -14,6 +14,7 @@ import (
 	"unicode"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 //go:embed builtin/*.json
@@ -220,15 +221,14 @@ func checkSchemaShape(s Schema) error {
 			return err
 		}
 	}
-	seen := make(map[string]bool, len(s.Fields))
+	seen := setx.NewDeduper[string]()
 	for _, f := range s.Fields {
 		if f.Name == "" {
 			return fmt.Errorf("schema %q: field missing \"name\"", s.Name)
 		}
-		if seen[f.Name] {
+		if !seen.Add(f.Name) {
 			return fmt.Errorf("schema %q: duplicate field %q", s.Name, f.Name)
 		}
-		seen[f.Name] = true
 		if !f.Type.Valid() {
 			return fmt.Errorf("schema %q: field %q: unknown type %q", s.Name, f.Name, f.Type)
 		}

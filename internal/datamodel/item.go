@@ -68,13 +68,12 @@ func (it *Item) ExtraKeys() []string {
 // separate because ChangedFields callers feed its output to schema lookups
 // that must see only built-in keys.
 func ChangedExtraKeys(a, b *Item) []string {
-	seen := map[string]bool{}
+	dedup := setx.NewDeduper[string]()
 	var out []string
 	for _, k := range append(a.ExtraKeys(), b.ExtraKeys()...) {
-		if seen[k] {
+		if !dedup.Add(k) {
 			continue
 		}
-		seen[k] = true
 		if a.ExtraScalars[k] != b.ExtraScalars[k] || !slices.Equal(a.ExtraLists[k], b.ExtraLists[k]) {
 			out = append(out, k)
 		}
