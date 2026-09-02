@@ -4,7 +4,8 @@ number: KIRA-161
 aliases: []
 type: ticket
 title: "Give the rendered extras form its own type so the compiler catches decode misuse"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P3
 labels: []
 epic: null
