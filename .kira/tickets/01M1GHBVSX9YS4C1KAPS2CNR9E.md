@@ -4,13 +4,13 @@ number: KIRA-165
 aliases: []
 type: ticket
 title: "kira list and kira board have no --board flag, and board is hardwired to ticket"
-state: IN_PROGRESS
+state: REVIEW
 priority: P1
 labels: []
 epic: null
 blocked_by: []
 created: 2026-09-02T09:47:02+02:00
-updated: 2026-09-02T11:09:42+02:00
+updated: 2026-09-02T11:16:31+02:00
 ---
 
 ## Description
