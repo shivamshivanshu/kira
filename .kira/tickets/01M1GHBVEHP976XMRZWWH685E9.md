@@ -4,13 +4,14 @@ number: KIRA-164
 aliases: []
 type: ticket
 title: "Forward compatibility covers only flat scalars and scalar lists"
-state: TODO
+state: DONE
+resolution: done
 priority: P1
 labels: []
-epic: null
+parent: null
 blocked_by: []
 created: 2026-09-02T09:47:02+02:00
-updated: 2026-09-02T09:47:02+02:00
+updated: 2026-09-03T00:00:06+02:00
 ---
 
 ## Description
