@@ -8,8 +8,8 @@
   "category": "todo",
   "owner": null,
   "labels": [],
-  "epic": null,
-  "epic_number": null,
+  "parent": null,
+  "parent_number": null,
   "priority": null,
   "resolution": null,
   "path": ".kira/tickets/<ULID-1>.md"

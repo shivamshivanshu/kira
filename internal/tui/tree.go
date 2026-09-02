@@ -146,16 +146,16 @@ func (tm *treeModel) expandAll() {
 func (tm *treeModel) rootAncestor(id string) string {
 	for {
 		f, ok := tm.fields[id]
-		if !ok || f.Epic == nil || *f.Epic == "" {
+		if !ok || f.Parent == nil || *f.Parent == "" {
 			return id
 		}
-		id = *f.Epic
+		id = *f.Parent
 	}
 }
 
 func (tm *treeModel) jumpToParent() {
-	if cur := tm.current(); cur != nil && cur.fields.Epic != nil {
-		tm.focusID(*cur.fields.Epic)
+	if cur := tm.current(); cur != nil && cur.fields.Parent != nil {
+		tm.focusID(*cur.fields.Parent)
 	}
 }
 

@@ -20,7 +20,7 @@
     "bug",
     "perf"
   ],
-  "epic": "<ULID-2>",
+  "parent": "<ULID-2>",
   "blocked_by": [
     "<ULID-3>"
   ],
@@ -31,7 +31,7 @@
     ]
   },
   "blocks": [],
-  "epic_number": "KIRA-1",
+  "parent_number": "KIRA-1",
   "blocked_by_numbers": [
     "KIRA-3"
   ],

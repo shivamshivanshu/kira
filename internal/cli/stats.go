@@ -16,13 +16,13 @@ import (
 func newStatsCmd(g *globalFlags) *cobra.Command {
 	var opts core.StatsOpts
 	cmd := &cobra.Command{
-		Use:   "stats [epic-id] [--since DATE] [--weeks N] [--sprint KEY]",
+		Use:   "stats [parent-id] [--since DATE] [--weeks N] [--sprint KEY]",
 		Short: "Project and sprint metrics: completion, cycle/lead time, throughput",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: storeActionRunE(g,
 			func(s *core.Store, cfg *datamodel.Config, args []string) (*datamodel.StatsResult, error) {
 				if len(args) == 1 {
-					opts.Epic = args[0]
+					opts.Parent = args[0]
 				}
 				return s.Stats(cfg, opts)
 			},
@@ -38,8 +38,8 @@ func newStatsCmd(g *globalFlags) *cobra.Command {
 func renderStats(out io.Writer, res *datamodel.StatsResult) {
 	if sc := res.Scope; sc != nil {
 		var parts []string
-		if sc.EpicNumber != "" {
-			parts = append(parts, "epic "+sc.EpicNumber)
+		if sc.ParentNumber != "" {
+			parts = append(parts, "parent "+sc.ParentNumber)
 		}
 		if sc.Sprint != "" {
 			parts = append(parts, "sprint "+sc.Sprint)

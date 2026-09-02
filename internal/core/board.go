@@ -26,7 +26,7 @@ func boardView(b datamodel.Board) datamodel.BoardView {
 // BoardOpts filters and scopes a Board query.
 type BoardOpts struct {
 	Type     string
-	Epic     string
+	Parent   string
 	State    string
 	Owner    string
 	Priority string
@@ -39,7 +39,7 @@ type BoardOpts struct {
 }
 
 // Board returns the workflow columns for opts.Type, populated with the
-// matching items (optionally scoped to opts.Epic) grouped by state.
+// matching items (optionally scoped to opts.Parent) grouped by state.
 func (s *Store) Board(cfg *datamodel.Config, opts BoardOpts) (*datamodel.BoardResult, error) {
 	ld, err := s.read(cfg, loadOpts{at: opts.At, useIndex: true})
 	if err != nil {
@@ -69,9 +69,9 @@ func boardResult(ld *loaded, opts BoardOpts, qopts query.Options) (*datamodel.Bo
 		return nil, err
 	}
 	shown := global
-	if opts.Epic != "" {
+	if opts.Parent != "" {
 		scoped := base
-		scoped.Epic = opts.Epic
+		scoped.Parent = opts.Parent
 		if shown, err = matchSorted(ld, scoped, qopts); err != nil {
 			return nil, err
 		}
@@ -81,10 +81,10 @@ func boardResult(ld *loaded, opts BoardOpts, qopts query.Options) (*datamodel.Bo
 	for _, it := range global {
 		counts[it.State]++
 	}
-	epicNumbers := epicNumberMap(ld.items)
+	parentNumbers := parentNumberMap(ld.items)
 	byState := map[string][]datamodel.ListItem{}
 	for _, it := range shown {
-		byState[it.State] = append(byState[it.State], listItemOf(cfg, it, epicNumbers, ld.schemas))
+		byState[it.State] = append(byState[it.State], listItemOf(cfg, it, parentNumbers, ld.schemas))
 	}
 
 	cols := make([]datamodel.BoardColumn, len(wf.States))

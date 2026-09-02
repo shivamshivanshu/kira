@@ -32,8 +32,8 @@ func sampleTree() ([]datamodel.TreeNode, map[string]datamodel.ListItem, map[stri
 	}}
 	fields := map[string]datamodel.ListItem{
 		"E1": {ID: "E1", Number: "KIRA-100", State: "OPEN", Category: "doing", Type: datamodel.TypeEpic},
-		"T1": {ID: "T1", Number: "KIRA-140", State: "TODO", Category: "todo", Type: datamodel.TypeTicket, Epic: new("E1")},
-		"T2": {ID: "T2", Number: "KIRA-142", State: "IN_PROGRESS", Category: "doing", Type: datamodel.TypeTicket, Epic: new("E1")},
+		"T1": {ID: "T1", Number: "KIRA-140", State: "TODO", Category: "todo", Type: datamodel.TypeTicket, Parent: new("E1")},
+		"T2": {ID: "T2", Number: "KIRA-142", State: "IN_PROGRESS", Category: "doing", Type: datamodel.TypeTicket, Parent: new("E1")},
 	}
 	progress := map[string]datamodel.EpicProgress{"E1": {Done: 1, Total: 2}}
 	return nodes, fields, progress

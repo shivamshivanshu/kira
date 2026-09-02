@@ -22,7 +22,7 @@ type draft struct {
 	Owner    *string  `yaml:"owner"`
 	Reporter *string  `yaml:"reporter"`
 	Labels   []string `yaml:"labels"`
-	Epic     *string  `yaml:"epic"`
+	Parent   *string  `yaml:"parent"`
 	Sprint   *string  `yaml:"sprint"`
 	Due      *string  `yaml:"due"`
 	Estimate *float64 `yaml:"estimate"`
@@ -60,7 +60,7 @@ func serializeDraft(d draft) string {
 	b.WriteString("owner: " + draftScalar(ptr.Deref(d.Owner)) + "\n")
 	b.WriteString("reporter: " + draftScalar(ptr.Deref(d.Reporter)) + "\n")
 	b.WriteString("labels: " + codec.EmitList(d.Labels) + "\n")
-	b.WriteString("epic: " + draftScalar(ptr.Deref(d.Epic)) + "\n")
+	b.WriteString("parent: " + draftScalar(ptr.Deref(d.Parent)) + "\n")
 	b.WriteString("sprint: " + draftScalar(ptr.Deref(d.Sprint)) + "\n")
 	b.WriteString("due: " + draftScalar(ptr.Deref(d.Due)) + "\n")
 	estimate := ""

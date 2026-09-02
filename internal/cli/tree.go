@@ -74,7 +74,7 @@ func renderTreeGroups(w io.Writer, res *datamodel.ListResult, columns []string) 
 	}
 	tw := newTabWriter(w)
 	for _, grp := range res.Tree {
-		switch label := epicLabel(grp); label {
+		switch label := parentLabel(grp); label {
 		case "":
 			_, _ = fmt.Fprintln(tw, "(no epic)")
 		default:
@@ -87,12 +87,12 @@ func renderTreeGroups(w io.Writer, res *datamodel.ListResult, columns []string) 
 	_ = tw.Flush()
 }
 
-func epicLabel(grp datamodel.TreeGroup) string {
+func parentLabel(grp datamodel.TreeGroup) string {
 	switch {
-	case grp.EpicNumber != nil:
-		return *grp.EpicNumber
-	case grp.Epic != nil:
-		return *grp.Epic
+	case grp.ParentNumber != nil:
+		return *grp.ParentNumber
+	case grp.Parent != nil:
+		return *grp.Parent
 	default:
 		return ""
 	}

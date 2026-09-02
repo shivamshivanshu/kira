@@ -18,10 +18,10 @@ func BenchmarkEpicProgress(b *testing.B) {
 			for i := range n {
 				items[i] = &datamodel.Item{ID: fmt.Sprint(i), Number: fmt.Sprintf("KIRA-%d", i+1), Type: datamodel.TypeEpic}
 				if i > 0 {
-					items[i].Epic = new(items[i-1].ID)
+					items[i].Parent = new(items[i-1].ID)
 				}
 			}
-			items[n] = &datamodel.Item{ID: "ticket", Number: "KIRA-99999", Type: datamodel.TypeTicket, State: "DONE", Epic: new(items[n-1].ID)}
+			items[n] = &datamodel.Item{ID: "ticket", Number: "KIRA-99999", Type: datamodel.TypeTicket, State: "DONE", Parent: new(items[n-1].ID)}
 			b.ReportAllocs()
 			for b.Loop() {
 				p, err := allEpicProgress(cfg, items)

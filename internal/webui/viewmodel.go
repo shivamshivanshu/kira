@@ -250,7 +250,7 @@ func (p pageData) HasRelationships() bool {
 	if p.Detail == nil {
 		return false
 	}
-	if p.Detail.Epic != nil || len(p.Detail.BlockedBy) > 0 || len(p.Detail.Blocks) > 0 {
+	if p.Detail.Parent != nil || len(p.Detail.BlockedBy) > 0 || len(p.Detail.Blocks) > 0 {
 		return true
 	}
 	for _, targets := range p.Detail.Links {

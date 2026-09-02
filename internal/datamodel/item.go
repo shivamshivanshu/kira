@@ -22,7 +22,7 @@ type Item struct {
 	Owner      *string
 	Reporter   *string
 	Labels     []string
-	Epic       *string
+	Parent     *string
 	BlockedBy  []string
 	Links      map[string][]string
 	Sprint     *string
@@ -141,7 +141,7 @@ const (
 	KeyOwner      = "owner"
 	KeyReporter   = "reporter"
 	KeyLabels     = "labels"
-	KeyEpic       = "epic"
+	KeyParent     = "parent"
 	KeyBlockedBy  = "blocked_by"
 	KeyLinks      = "links"
 	KeySprint     = "sprint"
@@ -155,7 +155,7 @@ const (
 var FrontmatterKeys = []string{
 	KeyID, KeyNumber, KeyAliases, KeyType, KeySubtype, KeyTitle, KeyState,
 	KeyResolution, KeyPriority, KeyRank, KeyOwner, KeyReporter, KeyLabels,
-	KeyEpic, KeyBlockedBy, KeyLinks, KeySprint, KeyDue, KeyEstimate,
+	KeyParent, KeyBlockedBy, KeyLinks, KeySprint, KeyDue, KeyEstimate,
 	KeyCreated, KeyUpdated,
 }
 

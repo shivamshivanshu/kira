@@ -89,9 +89,9 @@ func numberReferences(res *datamodel.ShowResult, items []*datamodel.Item) {
 		}
 		return it.Number, true
 	}
-	if res.Epic != nil {
-		if n, ok := numberOf(*res.Epic); ok {
-			res.EpicNumber = &n
+	if res.Parent != nil {
+		if n, ok := numberOf(*res.Parent); ok {
+			res.ParentNumber = &n
 		}
 	}
 	res.BlockedByNumbers = numbersFor(numberOf, res.BlockedBy)
@@ -185,7 +185,7 @@ func showResultOf(cfg *datamodel.Config, it *datamodel.Item) datamodel.ShowResul
 		Owner:         it.Owner,
 		Reporter:      it.Reporter,
 		Labels:        nonNil(it.Labels),
-		Epic:          it.Epic,
+		Parent:        it.Parent,
 		BlockedBy:     nonNil(it.BlockedBy),
 		Links:         linksView(it.Links),
 		Blocks:        []string{},

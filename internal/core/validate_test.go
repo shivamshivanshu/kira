@@ -29,13 +29,13 @@ func TestValidateGraph(t *testing.T) {
 	}
 
 	t.Run("epic parent allowed", func(t *testing.T) {
-		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Epic: new("E")}
+		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Parent: new("E")}
 		if errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{epic, child}), ticketSchema(t)); len(errs) != 0 {
 			t.Fatalf("epic parent must be allowed: %v", errs)
 		}
 	})
 	t.Run("non-epic parent rejected", func(t *testing.T) {
-		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Epic: new("T")}
+		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Parent: new("T")}
 		errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{ticket, child}), ticketSchema(t))
 		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "is type ticket, expected epic") {
 			t.Fatalf("non-epic parent must be rejected, got %v", errs)
@@ -239,7 +239,7 @@ func TestFieldPresentCoversMutableFields(t *testing.T) {
 	full := &datamodel.Item{
 		Title: "t", Subtype: ptr.NilIfEmpty("bug"), Resolution: ptr.NilIfEmpty("done"),
 		Priority: ptr.NilIfEmpty("P1"), Rank: ptr.NilIfEmpty("0|m:"), Owner: ptr.NilIfEmpty("shivam"),
-		Reporter: ptr.NilIfEmpty("alice"), Labels: []string{"x"}, Epic: ptr.NilIfEmpty("01X"),
+		Reporter: ptr.NilIfEmpty("alice"), Labels: []string{"x"}, Parent: ptr.NilIfEmpty("01X"),
 		Sprint: ptr.NilIfEmpty("2026-S14"), Due: ptr.NilIfEmpty("2026-07-20"), Estimate: &estimate,
 	}
 	empty := &datamodel.Item{}

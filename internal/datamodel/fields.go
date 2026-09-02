@@ -45,7 +45,7 @@ var Fields = []FieldDescriptor{
 	ptrField(KeyOwner, func(it *Item) **string { return &it.Owner }),
 	ptrField(KeyReporter, func(it *Item) **string { return &it.Reporter }),
 	listField(KeyLabels, func(it *Item) *[]string { return &it.Labels }),
-	ptrField(KeyEpic, func(it *Item) **string { return &it.Epic }),
+	ptrField(KeyParent, func(it *Item) **string { return &it.Parent }),
 	listField(KeyBlockedBy, func(it *Item) *[]string { return &it.BlockedBy }).withoutSet().withoutPresent(),
 	linksField(),
 	ptrField(KeySprint, func(it *Item) **string { return &it.Sprint }),
@@ -83,7 +83,16 @@ var fieldByKey = func() map[string]FieldDescriptor {
 	return m
 }()
 
+// fieldAliases maps legacy field names to their current key, so
+// `--field epic=...` keeps working against the field it was renamed from.
+var fieldAliases = map[string]string{
+	"epic": KeyParent,
+}
+
 func Field(key string) (FieldDescriptor, bool) {
+	if alias, ok := fieldAliases[key]; ok {
+		key = alias
+	}
 	d, ok := fieldByKey[key]
 	return d, ok
 }

@@ -55,7 +55,7 @@ func Parse(content string) (*datamodel.Item, error) {
 	it.Owner = optScalar(nodes, datamodel.KeyOwner, add)
 	it.Reporter = optScalar(nodes, datamodel.KeyReporter, add)
 	it.Labels = reqList(nodes, datamodel.KeyLabels, add)
-	it.Epic = reqNullableScalar(nodes, datamodel.KeyEpic, add)
+	it.Parent = parentField(nodes, add)
 	it.BlockedBy = reqList(nodes, datamodel.KeyBlockedBy, add)
 	it.Links, it.ExtraLinks = optLinks(nodes, datamodel.KeyLinks, add)
 	it.Sprint = optScalar(nodes, datamodel.KeySprint, add)
@@ -112,7 +112,7 @@ func ExtraFrontmatter(content string) (scalars map[string]datamodel.Rendered, li
 
 func captureExtras(nodes map[string]*yaml.Node, add addFunc) (scalars map[string]datamodel.Rendered, lists map[string][]datamodel.Rendered) {
 	for k, n := range nodes {
-		if datamodel.IsFrontmatterKey(k) {
+		if datamodel.IsFrontmatterKey(k) || k == legacyEpicKey {
 			continue
 		}
 		switch n.Kind {
@@ -302,6 +302,28 @@ func optScalar(nodes map[string]*yaml.Node, key string, add addFunc) *string {
 	}
 	v := n.Value
 	return &v
+}
+
+// legacyEpicKey is the frontmatter key `parent:` was renamed from. Read
+// support for it is permanent: this repo's own tickets, and any item file
+// written before the rename, carry `epic:` on disk forever.
+const legacyEpicKey = "epic"
+
+// parentField reads the parent pointer, accepting legacyEpicKey as an alias
+// for datamodel.KeyParent. A file carrying both is rejected rather than
+// silently preferring one.
+func parentField(nodes map[string]*yaml.Node, add addFunc) *string {
+	_, hasParent := nodes[datamodel.KeyParent]
+	_, hasEpic := nodes[legacyEpicKey]
+	switch {
+	case hasParent && hasEpic:
+		add("field %q: cannot be combined with legacy field %q", datamodel.KeyParent, legacyEpicKey)
+		return nil
+	case hasEpic:
+		return reqNullableScalar(nodes, legacyEpicKey, add)
+	default:
+		return reqNullableScalar(nodes, datamodel.KeyParent, add)
+	}
 }
 
 func reqNullableScalar(nodes map[string]*yaml.Node, key string, add addFunc) *string {

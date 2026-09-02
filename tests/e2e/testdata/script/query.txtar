@@ -1,5 +1,5 @@
 # list --query filters with the expression grammar; the default is a linear
-# list, --tree groups by epic.
+# list, --tree groups by parent.
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
@@ -11,7 +11,7 @@ exec kira init --key KIRA
 exec kira create epic --title Epic --no-edit
 exec kira create ticket --title 'race condition' --owner shivam --label bug --no-edit
 exec kira create ticket --title 'perf work' --owner alice --label perf --no-edit
-exec kira link KIRA-2 --epic KIRA-1
+exec kira link KIRA-2 --parent KIRA-1
 
 # comparison predicate
 exec kira list --query 'owner=shivam' --json
@@ -27,12 +27,17 @@ exec kira list --query 'race' --json
 stdout '"count": 1'
 stdout '"number": "KIRA-2"'
 
-# epic value resolves KIRA-n to the underlying ULID before matching
+# parent value resolves KIRA-n to the underlying ULID before matching
+exec kira list --query 'parent=KIRA-1' --json
+stdout '"count": 1'
+stdout '"number": "KIRA-2"'
+
+# legacy epic= alias still parses and evaluates against the same field
 exec kira list --query 'epic=KIRA-1' --json
 stdout '"count": 1'
 stdout '"number": "KIRA-2"'
 
-# --tree renders the epic tree
+# --tree renders the parent tree
 exec kira list --query 'type=ticket' --tree --json
 stdout '"tree"'
 

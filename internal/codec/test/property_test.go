@@ -168,7 +168,7 @@ func randItem(r *rand.Rand) *datamodel.Item {
 		Owner:        maybe(r),
 		Reporter:     maybe(r),
 		Labels:       randList(r),
-		Epic:         maybe(r),
+		Parent:       maybe(r),
 		BlockedBy:    randList(r),
 		Links:        randLinks(r),
 		Sprint:       maybe(r),

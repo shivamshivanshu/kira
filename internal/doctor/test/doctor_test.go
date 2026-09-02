@@ -289,7 +289,7 @@ func TestCheckEnumVocabFollowsStrict(t *testing.T) {
 func TestCheckDanglingAndSelfRef(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
-	it.Epic = new(ulidB)
+	it.Parent = new(ulidB)
 	it.BlockedBy = []string{ulidA}
 	findings := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
 	var dangling, selfRef bool
@@ -457,7 +457,7 @@ func TestCheckEmptyRankIsSchemaError(t *testing.T) {
 func TestRefTypeSkipsMissingParent(t *testing.T) {
 	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
-	child.Epic = new(ulidC)
+	child.Parent = new(ulidC)
 	items := []*datamodel.Item{child}
 	if f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...), builtinTypes()); len(f) != 0 {
 		t.Fatalf("a missing/unresolved parent must not raise a ref-type finding, got %+v", f)
@@ -502,8 +502,8 @@ func TestEpicCycle(t *testing.T) {
 	t.Parallel()
 	a := valid(ulidA, "KIRA-1")
 	b := valid(ulidB, "KIRA-2")
-	a.Epic = new(ulidB)
-	b.Epic = new(ulidA)
+	a.Parent = new(ulidB)
+	b.Parent = new(ulidA)
 	items := []*datamodel.Item{a, b}
 	findings := doctor.EpicCycles(items, resolver(items...))
 	if len(findings) != 2 {
@@ -520,7 +520,7 @@ func TestEpicChainAcyclic(t *testing.T) {
 	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
 	parent := valid(ulidB, "KIRA-2")
-	child.Epic = new(ulidB)
+	child.Parent = new(ulidB)
 	items := []*datamodel.Item{child, parent}
 	if f := doctor.EpicCycles(items, resolver(items...)); len(f) != 0 {
 		t.Fatalf("expected no cycle in a linear chain, got %+v", f)
@@ -531,10 +531,10 @@ func TestRefTypeEpicParentDetected(t *testing.T) {
 	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
 	parent := valid(ulidB, "KIRA-2")
-	child.Epic = new(ulidB)
+	child.Parent = new(ulidB)
 	items := []*datamodel.Item{child, parent}
 	f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...), builtinTypes())
-	if len(f) != 1 || f[0].Class != doctor.ClassRefType || f[0].ItemID != ulidA || f[0].Field != datamodel.KeyEpic {
+	if len(f) != 1 || f[0].Class != doctor.ClassRefType || f[0].ItemID != ulidA || f[0].Field != datamodel.KeyParent {
 		t.Fatalf("expected one ref-type finding on the child's epic, got %+v", f)
 	}
 }
@@ -544,7 +544,7 @@ func TestRefTypeEpicParentAccepted(t *testing.T) {
 	child := valid(ulidA, "KIRA-1")
 	parent := valid(ulidB, "KIRA-2")
 	parent.Type = datamodel.TypeEpic
-	child.Epic = new(ulidB)
+	child.Parent = new(ulidB)
 	items := []*datamodel.Item{child, parent}
 	if f := doctor.RefTypeMismatches(builtinSchemas(t), items, resolver(items...), builtinTypes()); len(f) != 0 {
 		t.Fatalf("an epic parent must be accepted, got %+v", f)
@@ -616,10 +616,10 @@ func TestCheckDanglingExtraRefField(t *testing.T) {
 func TestCheckReportsBuiltinDanglingRefOnce(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
-	it.Epic = new(ulidB)
+	it.Parent = new(ulidB)
 
 	f := doctor.Check(config.Default(), resolver(it), it, builtinSchemas(t))
-	if len(f) != 1 || f[0].Field != datamodel.KeyEpic {
+	if len(f) != 1 || f[0].Field != datamodel.KeyParent {
 		t.Fatalf("epic is both a built-in and schema-declared; it must be reported once, got %+v", f)
 	}
 }

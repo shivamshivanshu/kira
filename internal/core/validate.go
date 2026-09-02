@@ -81,10 +81,10 @@ func (c *validationCtx) validateItem(it *datamodel.Item) (errs, warns []error) {
 		case entityschema.CodeRequired, entityschema.CodeType:
 			errs = append(errs, viol)
 		case entityschema.CodeRef:
-			// epic/blocked_by existence and target-type are checked by
+			// parent/blocked_by existence and target-type are checked by
 			// normalizeAndCheckRefs and validateGraph with clearer messages;
 			// only declared ref extras need this generic check.
-			if viol.Field != datamodel.KeyEpic && viol.Field != datamodel.KeyBlockedBy {
+			if viol.Field != datamodel.KeyParent && viol.Field != datamodel.KeyBlockedBy {
 				errs = append(errs, viol)
 			}
 		}
@@ -172,7 +172,7 @@ func (c *validationCtx) validateBuffer(build func(string) (*datamodel.Item, []er
 
 // validateGraph overlays updated onto byID for the duration of the check and
 // restores the caller's entry afterwards, rather than cloning a map that grows
-// with the repository on every mutation, then checks epic-is-epic, blocked_by
+// with the repository on every mutation, then checks parent-is-epic, blocked_by
 // target-type, and cycles.
 func validateGraph(updated *datamodel.Item, byID map[string]*datamodel.Item, schema entityschema.Schema) []error {
 	prev, existed := byID[updated.ID]
@@ -198,8 +198,8 @@ func validateGraph(updated *datamodel.Item, byID map[string]*datamodel.Item, sch
 			}
 		}
 	}
-	if updated.Epic != nil && *updated.Epic != "" {
-		checkTargetType(datamodel.KeyEpic, []string{*updated.Epic})
+	if updated.Parent != nil && *updated.Parent != "" {
+		checkTargetType(datamodel.KeyParent, []string{*updated.Parent})
 	}
 	checkTargetType(datamodel.KeyBlockedBy, updated.BlockedBy)
 	for _, rel := range datamodel.CycleRelations() {
@@ -243,9 +243,9 @@ func normalizeAndCheckRefs(it *datamodel.Item, resolver *id.Resolver, schema ent
 		return ulid, true
 	}
 
-	if it.Epic != nil {
-		if ulid, ok := resolve(`field "epic"`, *it.Epic); ok {
-			it.Epic = &ulid
+	if it.Parent != nil {
+		if ulid, ok := resolve(`field "parent"`, *it.Parent); ok {
+			it.Parent = &ulid
 		}
 	}
 	for i, b := range it.BlockedBy {
@@ -267,7 +267,7 @@ func normalizeAndCheckRefs(it *datamodel.Item, resolver *id.Resolver, schema ent
 // normalizeRefExtras binds a schema-declared entity-target ref extra (Source
 // == "" distinguishes it from a config-backed ref like owner/reporter, which
 // normalizeAndCheckRefs's config-driven fields already handle elsewhere) to
-// its immutable ULID on write, the same as the built-in epic/blocked_by
+// its immutable ULID on write, the same as the built-in parent/blocked_by
 // fields above, so it survives a renumber instead of going stale. A ref that
 // does not resolve is left as-is for validateItem's CodeRef check to report,
 // so a bad extra is not flagged twice; only the self-reference case, which

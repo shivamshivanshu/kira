@@ -29,7 +29,7 @@ func Serialize(it *datamodel.Item) string {
 	writeOptScalar(&b, datamodel.KeyOwner, it.Owner)
 	writeOptScalar(&b, datamodel.KeyReporter, it.Reporter)
 	writeLine(&b, datamodel.KeyLabels, EmitList(it.Labels))
-	writeReqNullableScalar(&b, datamodel.KeyEpic, it.Epic)
+	writeReqNullableScalar(&b, datamodel.KeyParent, it.Parent)
 	writeLine(&b, datamodel.KeyBlockedBy, EmitList(it.BlockedBy))
 	writeLinks(&b, it.Links, it.ExtraLinks)
 	writeOptScalar(&b, datamodel.KeySprint, it.Sprint)

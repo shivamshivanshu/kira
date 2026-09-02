@@ -38,6 +38,55 @@ func TestGoldenRoundTrip(t *testing.T) {
 	}
 }
 
+// legacyEpicExample swaps example.md's parent: key for the epic: key it was
+// renamed from, so tests below exercise the same fixture through the alias.
+func legacyEpicExample(tb testing.TB) string {
+	tb.Helper()
+	src := readExample(tb)
+	replaced := strings.Replace(src, "parent: 01J8X7B1Q2W3E4R5T6Y7U8I9O0", "epic: 01J8X7B1Q2W3E4R5T6Y7U8I9O0", 1)
+	if replaced == src {
+		tb.Fatal("fixture's parent: line not found to replace")
+	}
+	return replaced
+}
+
+func TestParseAcceptsLegacyEpicKeyAsParentAlias(t *testing.T) {
+	it, err := codec.Parse(legacyEpicExample(t))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if it.Parent == nil || *it.Parent != "01J8X7B1Q2W3E4R5T6Y7U8I9O0" {
+		t.Fatalf("parent = %v, want the legacy epic: value", it.Parent)
+	}
+}
+
+func TestParseRejectsBothParentAndLegacyEpicKeys(t *testing.T) {
+	src := strings.Replace(legacyEpicExample(t), "epic: 01J8X7B1Q2W3E4R5T6Y7U8I9O0",
+		"parent: 01J8X7B1Q2W3E4R5T6Y7U8I9O0\nepic: 01J8X7B1Q2W3E4R5T6Y7U8I9O0", 1)
+	_, err := codec.Parse(src)
+	var pe *datamodel.ParseError
+	if !errors.As(err, &pe) {
+		t.Fatalf("parent: and legacy epic: together must be a parse error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "legacy field") {
+		t.Fatalf("error must name the conflict: %v", err)
+	}
+}
+
+func TestSerializeNormalizesLegacyEpicKeyToParent(t *testing.T) {
+	it, err := codec.Parse(legacyEpicExample(t))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	out := codec.Serialize(it)
+	if !strings.Contains(out, "\nparent: 01J8X7B1Q2W3E4R5T6Y7U8I9O0\n") {
+		t.Fatalf("serialize must write the legacy epic: value back out under parent:\n%s", out)
+	}
+	if strings.Contains(out, "epic:") {
+		t.Fatalf("serialize must not re-emit the legacy epic: key:\n%s", out)
+	}
+}
+
 func TestParseToleratesCRLFForReads(t *testing.T) {
 	lf := readExample(t)
 	crlf := strings.ReplaceAll(lf, "\n", "\r\n")
@@ -108,8 +157,8 @@ func TestParseFields(t *testing.T) {
 	if !reflect.DeepEqual(it.Links, wantLinks) {
 		t.Errorf("links = %v, want %v", it.Links, wantLinks)
 	}
-	if it.Epic == nil || *it.Epic != "01J8X7B1Q2W3E4R5T6Y7U8I9O0" {
-		t.Errorf("epic = %v", it.Epic)
+	if it.Parent == nil || *it.Parent != "01J8X7B1Q2W3E4R5T6Y7U8I9O0" {
+		t.Errorf("parent = %v", it.Parent)
 	}
 	if it.Estimate == nil || *it.Estimate != 3 {
 		t.Errorf("estimate = %v, want 3", it.Estimate)
@@ -174,7 +223,7 @@ func TestLinksCanonicalization(t *testing.T) {
 		"title: \"t\"\n" +
 		"state: TODO\n" +
 		"labels: []\n" +
-		"epic: null\n" +
+		"parent: null\n" +
 		"blocked_by: []\n" +
 		"links:\n" +
 		"  duplicate_of: [01J8XC4M0N1P2Q3R4S5T6U7V8W]\n" +
@@ -226,7 +275,7 @@ func TestParseRejectsNonULIDID(t *testing.T) {
 		"title: \"t\"\n" +
 		"state: TODO\n" +
 		"labels: []\n" +
-		"epic: null\n" +
+		"parent: null\n" +
 		"blocked_by: []\n" +
 		"created: 2026-07-10T09:14:00+05:30\n" +
 		"updated: 2026-07-12T11:02:00+05:30\n" +
@@ -254,7 +303,7 @@ func TestExtraFieldsRoundTripLosslessly(t *testing.T) {
 		"title: \"t\"\n" +
 		"state: TODO\n" +
 		"labels: []\n" +
-		"epic: null\n" +
+		"parent: null\n" +
 		"blocked_by: []\n" +
 		"future_field: whatever\n" +
 		"another_future: 42\n" +
@@ -295,7 +344,7 @@ func TestExtraScalarTypesRoundTripFaithfully(t *testing.T) {
 		"title: \"t\"\n" +
 		"state: TODO\n" +
 		"labels: []\n" +
-		"epic: null\n" +
+		"parent: null\n" +
 		"blocked_by: []\n" +
 		"created: 2026-07-10T09:14:00+05:30\n" +
 		"updated: 2026-07-12T11:02:00+05:30\n" +
@@ -345,7 +394,7 @@ func TestExtraMappingFieldRejected(t *testing.T) {
 		"title: \"t\"\n" +
 		"state: TODO\n" +
 		"labels: []\n" +
-		"epic: null\n" +
+		"parent: null\n" +
 		"blocked_by: []\n" +
 		"nested_extra:\n  a: 1\n" +
 		"created: 2026-07-10T09:14:00+05:30\n" +
@@ -393,7 +442,7 @@ func TestParseCollectsAllErrors(t *testing.T) {
 		"aliases: []\n" +
 		"type: ticket\n" +
 		"labels: []\n" +
-		"epic: null\n" +
+		"parent: null\n" +
 		"blocked_by: []\n" +
 		"created: not-a-timestamp\n" +
 		"updated: 2026-07-12T11:02:00+05:30\n" +

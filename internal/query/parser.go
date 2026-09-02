@@ -101,7 +101,7 @@ const (
 	fieldLabel      = "label"
 	fieldType       = "type"
 	fieldSubtype    = "subtype"
-	fieldEpic       = "epic"
+	fieldParent     = "parent"
 	fieldPriority   = "priority"
 	fieldRank       = "rank"
 	fieldSprint     = "sprint"
@@ -119,11 +119,28 @@ const (
 
 var fields = map[string]bool{
 	fieldState: true, fieldCategory: true, fieldOwner: true, fieldReporter: true,
-	fieldLabel: true, fieldType: true, fieldSubtype: true, fieldEpic: true,
+	fieldLabel: true, fieldType: true, fieldSubtype: true, fieldParent: true,
 	fieldPriority: true, fieldRank: true, fieldSprint: true, fieldDue: true,
 	fieldEstimate: true, fieldBlockedBy: true, fieldBlocked: true, fieldLinks: true,
 	fieldResolution: true, fieldCreated: true, fieldUpdated: true,
 	fieldActivity: true, fieldBoard: true,
+}
+
+// fieldAliases maps a legacy field name to the builtin field it was renamed
+// to, so a query written before the rename keeps parsing and evaluating
+// against the same field.
+var fieldAliases = map[string]string{
+	"epic": fieldParent,
+}
+
+// canonicalField resolves f to its current name if f is a legacy alias,
+// otherwise returns f unchanged (including schema-defined custom fields,
+// which this package does not know the names of).
+func canonicalField(f string) string {
+	if c, ok := fieldAliases[f]; ok {
+		return c
+	}
+	return f
 }
 
 func isDateField(f string) bool {
@@ -209,16 +226,17 @@ func (p *parser) parseOrder() (*Order, error) {
 	if f.kind != tokWord {
 		return nil, &Error{Pos: f.pos, Msg: "expected a field after ORDER BY"}
 	}
-	if fields[f.text] {
-		if isListField(f.text) {
+	name := canonicalField(f.text)
+	if fields[name] {
+		if isListField(name) {
 			return nil, &Error{Pos: f.pos, Msg: "cannot order by list field " + f.text}
 		}
-		if isBoolField(f.text) {
+		if isBoolField(name) {
 			return nil, &Error{Pos: f.pos, Msg: "cannot order by boolean field " + f.text}
 		}
 	}
 	p.next()
-	ord := &Order{Field: f.text, pos: f.pos}
+	ord := &Order{Field: name, pos: f.pos}
 	if d := p.peek(); isKeyword(d, "asc") || isKeyword(d, "desc") {
 		ord.Desc = strings.EqualFold(d.text, "desc")
 		p.next()
@@ -306,24 +324,24 @@ func (p *parser) parsePrimary() (Expr, error) {
 		if p.atOrderBy() {
 			return nil, &Error{Pos: t.pos, Msg: "expected an expression before ORDER BY"}
 		}
-		if fields[t.text] {
+		if name := canonicalField(t.text); fields[name] {
 			switch {
 			case p.peek2().isCmp():
-				if isBoolField(t.text) {
+				if isBoolField(name) {
 					return p.parseBool()
 				}
 				return p.parsePredicate()
 			case isKeyword(p.peek2(), "IN") && p.toks[p.i+2].kind == tokLParen:
-				if isBoolField(t.text) {
+				if isBoolField(name) {
 					return nil, &Error{Pos: t.pos, Msg: "field " + t.text + " is boolean; use " + t.text + " or NOT " + t.text}
 				}
 				return p.parseIn()
 			case isKeyword(p.peek2(), "IS"):
 				return p.parseIsEmpty()
 			}
-			if isBoolField(t.text) {
+			if isBoolField(name) {
 				p.next()
-				return &boolExpr{field: t.text, want: true}, nil
+				return &boolExpr{field: name, want: true}, nil
 			}
 		} else if p.startsFieldPredicate() {
 			// A schema may declare this field; only the compiler knows, so
@@ -349,6 +367,7 @@ func (p *parser) parsePrimary() (Expr, error) {
 
 func (p *parser) parsePredicate() (Expr, error) {
 	field := p.next()
+	field.text = canonicalField(field.text)
 	op := p.next()
 	builtin := fields[field.text]
 	if builtin && !allowsOrderedCmp(field.text) && op.kind != tokEq && op.kind != tokNe {
@@ -371,6 +390,7 @@ func (p *parser) parsePredicate() (Expr, error) {
 
 func (p *parser) parseBool() (Expr, error) {
 	field := p.next()
+	field.text = canonicalField(field.text)
 	op := p.next()
 	if op.kind != tokEq && op.kind != tokNe {
 		return nil, &Error{Pos: op.pos, Msg: "operator " + op.cmpText() + " is not valid on boolean field " + field.text}
@@ -425,6 +445,7 @@ func typeCheckValue(field string, val token, date *time.Time, num *float64) erro
 
 func (p *parser) parseIn() (Expr, error) {
 	field := p.next()
+	field.text = canonicalField(field.text)
 	p.next()
 	p.next()
 	e := &inExpr{field: field.text, fieldPos: field.pos}
@@ -455,6 +476,7 @@ func (p *parser) parseIn() (Expr, error) {
 
 func (p *parser) parseIsEmpty() (Expr, error) {
 	field := p.next()
+	field.text = canonicalField(field.text)
 	is := p.next()
 	e := &emptyExpr{field: field.text}
 	if isKeyword(p.peek(), "NOT") {

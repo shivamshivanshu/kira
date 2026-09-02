@@ -30,7 +30,7 @@ priority:
 owner:
 reporter:
 labels: []
-epic:
+parent:
 estimate:
 ---
 

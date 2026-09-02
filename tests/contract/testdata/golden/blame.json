@@ -73,7 +73,7 @@
       "source_kind": "commit"
     },
     {
-      "field": "epic",
+      "field": "parent",
       "value": "<ULID-2>",
       "when": "<TS>",
       "by": "tester",

@@ -226,7 +226,7 @@ func prepareItemStmts(tx *sql.Tx) (itemStmts, error) {
 
 	item, err := prepare(`INSERT INTO items
 		(id, number, type, subtype, title, state, resolution, priority, rank,
-		 owner, reporter, epic, sprint, due, estimate, created, updated, activity, extras)
+		 owner, reporter, parent, sprint, due, estimate, created, updated, activity, extras)
 		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, "item insert")
 	if err != nil {
 		return itemStmts{}, err
@@ -261,7 +261,7 @@ func (s itemStmts) insert(it *datamodel.Item) error {
 	if _, err := s.item.Exec(
 		it.ID, it.Number, it.Type, nullable(it.Subtype), it.Title, it.State,
 		nullable(it.Resolution), nullable(it.Priority), nullable(it.Rank), nullable(it.Owner),
-		nullable(it.Reporter), nullable(it.Epic), nullable(it.Sprint), nullable(it.Due),
+		nullable(it.Reporter), nullable(it.Parent), nullable(it.Sprint), nullable(it.Due),
 		nullable(it.Estimate), it.Created, it.Updated, it.Updated, extras); err != nil {
 		return errx.Env("inserting index item %s: %v", it.ID, err)
 	}

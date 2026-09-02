@@ -19,10 +19,12 @@ func newLinkCmd(g *globalFlags) *cobra.Command {
 		target   core.LinkTarget
 		linkType string
 		value    *string
+		hidden   bool
 	}
 	edges := []edge{
-		{"epic", "epic parent to set (or clear with --remove)", core.LinkEpic, "", new(string)},
-		{"blocked-by", "blocking item to add (or remove with --remove)", core.LinkBlockedBy, "", new(string)},
+		{"parent", "parent to set (or clear with --remove)", core.LinkParent, "", new(string), false},
+		{"epic", "deprecated alias for --parent", core.LinkParent, "", new(string), true},
+		{"blocked-by", "blocking item to add (or remove with --remove)", core.LinkBlockedBy, "", new(string), false},
 	}
 	for _, typ := range datamodel.LinkTypes {
 		edges = append(edges, edge{
@@ -33,13 +35,15 @@ func newLinkCmd(g *globalFlags) *cobra.Command {
 			value:    new(string),
 		})
 	}
-	flagNames := make([]string, len(edges))
-	for i, e := range edges {
-		flagNames[i] = "--" + e.flag
+	var flagNames []string
+	for _, e := range edges {
+		if !e.hidden {
+			flagNames = append(flagNames, "--"+e.flag)
+		}
 	}
 	cmd := &cobra.Command{
 		Use:   "link <id>",
-		Short: "Set or remove an epic parent, blocked-by dependency, or typed link",
+		Short: "Set or remove a parent, blocked-by dependency, or typed link",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			given := 0
@@ -75,6 +79,9 @@ func newLinkCmd(g *globalFlags) *cobra.Command {
 	f := cmd.Flags()
 	for _, e := range edges {
 		f.StringVar(e.value, e.flag, "", e.usage)
+		if e.hidden {
+			_ = f.MarkHidden(e.flag)
+		}
 	}
 	f.BoolVar(&opts.Remove, "remove", false, "remove the given edge instead of adding it")
 	f.BoolVar(&opts.Force, "force", false, "accept field values outside the configured vocabulary")

@@ -11,7 +11,7 @@ import (
 )
 
 type StatsOpts struct {
-	Epic   string
+	Parent string
 	Since  string
 	Weeks  int
 	Sprint string
@@ -63,13 +63,13 @@ func (s *Store) resolveScope(cfg *datamodel.Config, opts StatsOpts, items []*dat
 	}
 
 	set := items
-	if opts.Epic != "" {
-		epic, err := findItem(items, resolver, opts.Epic)
+	if opts.Parent != "" {
+		parent, err := findItem(items, resolver, opts.Parent)
 		if err != nil {
 			return nil, nil, err
 		}
-		scope.Epic, scope.EpicNumber = epic.ID, epic.Number
-		set, err = descendants(items, epic.ID)
+		scope.Parent, scope.ParentNumber = parent.ID, parent.Number
+		set, err = descendants(items, parent.ID)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -100,9 +100,9 @@ func (s *Store) resolveScope(cfg *datamodel.Config, opts StatsOpts, items []*dat
 	return scope, set, nil
 }
 
-func descendants(items []*datamodel.Item, epicULID string) ([]*datamodel.Item, error) {
+func descendants(items []*datamodel.Item, parentULID string) ([]*datamodel.Item, error) {
 	var out []*datamodel.Item
-	err := walkEpic(epicChildren(items), epicULID, func(*datamodel.Item) bool { return true }, func(c *datamodel.Item) {
+	err := walkEpic(parentChildren(items), parentULID, func(*datamodel.Item) bool { return true }, func(c *datamodel.Item) {
 		out = append(out, c)
 	})
 	if err != nil {

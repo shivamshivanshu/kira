@@ -7,7 +7,7 @@
     {{if and .Wip (gt .Count .Wip)}}<p class="wip-warning">WIP limit exceeded</p>{{end}}
     <div class="column-cards">
       {{range .Items}}
-      <article class="work-card {{if or (eq $.Selected .ID) (eq $.Selected .Number)}}is-selected{{end}}" data-nav-item data-item="{{.ID}}" data-number="{{.Number}}" data-copy-values="{{$.CopyValues .ID .Number .Title}}" {{if .Epic}}data-parent-url="{{$.Link "item" (str .Epic)}}"{{end}} tabindex="-1">
+      <article class="work-card {{if or (eq $.Selected .ID) (eq $.Selected .Number)}}is-selected{{end}}" data-nav-item data-item="{{.ID}}" data-number="{{.Number}}" data-copy-values="{{$.CopyValues .ID .Number .Title}}" {{if .Parent}}data-parent-url="{{$.Link "item" (str .Parent)}}"{{end}} tabindex="-1">
         <label class="item-checkbox"><input type="checkbox" name="ids" value="{{.ID}}" form="bulk-form" {{if $.BulkSelected .ID}}checked{{end}} aria-label="Select {{.Number}} for bulk action"></label>
         <a class="card-link" data-item-link href="{{$.Link "item" .ID}}">
           <div class="card-top"><code>{{.Number}}</code><span class="card-type">{{.Type}}</span></div>

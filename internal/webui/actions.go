@@ -143,7 +143,7 @@ func (s *server) mutate(cfg *datamodel.Config, action string, f url.Values) (mes
 		opts := core.LinkOpts{Ref: f.Get("target"), Remove: f.Get("remove") != "" && f.Get("remove") != "false"}
 		switch f.Get("kind") {
 		case "parent":
-			opts.Target = core.LinkEpic
+			opts.Target = core.LinkParent
 		case "blocked-by":
 			opts.Target = core.LinkBlockedBy
 		case "relates", "duplicate-of":

@@ -279,13 +279,13 @@ func TestLinkRejections(t *testing.T) {
 	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkBlockedBy, Ref: a.Number}); err == nil {
 		t.Fatal("self blocked-by: expected rejection")
 	}
-	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkEpic, Ref: a.Number}); err == nil {
+	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkParent, Ref: a.Number}); err == nil {
 		t.Fatal("self epic: expected rejection")
 	}
-	if _, err := s.Link(cfg, epicRes.Number, core.LinkOpts{Target: core.LinkEpic, Ref: a.Number}); err == nil {
+	if _, err := s.Link(cfg, epicRes.Number, core.LinkOpts{Target: core.LinkParent, Ref: a.Number}); err == nil {
 		t.Fatal("epic-on-epic: expected rejection")
 	}
-	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkEpic, Ref: "KIRA-999"}); err == nil {
+	if _, err := s.Link(cfg, a.Number, core.LinkOpts{Target: core.LinkParent, Ref: "KIRA-999"}); err == nil {
 		t.Fatal("dangling epic: expected rejection")
 	}
 }
@@ -356,7 +356,7 @@ func TestEditPathSelfLinkRejected(t *testing.T) {
 	if err := editWith(func(it *datamodel.Item) { it.BlockedBy = []string{a.ID} }); err == nil {
 		t.Fatal("edit-path self blocked_by: expected rejection")
 	}
-	if err := editWith(func(it *datamodel.Item) { it.Epic = &a.ID }); err == nil {
+	if err := editWith(func(it *datamodel.Item) { it.Parent = &a.ID }); err == nil {
 		t.Fatal("edit-path self epic: expected rejection")
 	}
 }

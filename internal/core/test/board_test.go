@@ -76,7 +76,7 @@ func TestBoardCountsAreGlobalWhileItemsAreEpicScoped(t *testing.T) {
 		}
 	}
 
-	res, err := s.Board(cfg, core.BoardOpts{Epic: epic.ID})
+	res, err := s.Board(cfg, core.BoardOpts{Parent: epic.ID})
 	if err != nil {
 		t.Fatal(err)
 	}

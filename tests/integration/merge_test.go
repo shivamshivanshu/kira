@@ -61,7 +61,7 @@ func mergeItem(mut func(*datamodel.Item)) *datamodel.Item {
 		Title:     "Merge subject",
 		State:     "TODO",
 		Labels:    []string{},
-		Epic:      nil,
+		Parent:    nil,
 		BlockedBy: []string{},
 		Created:   "2026-01-01T00:00:00Z",
 		Updated:   "2026-01-01T00:00:00Z",

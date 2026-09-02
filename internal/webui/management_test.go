@@ -162,7 +162,7 @@ func TestStatsScope(t *testing.T) {
 	s := &server{store: d.store, token: d.token}
 	u, _ := url.Parse("/?view=stats&epic=" + epic.ID + "&weeks=4&since=2020-01-01")
 	p, err := s.loadPage(t.Context(), u)
-	if err != nil || p.Stats.Scope.Epic != epic.ID || p.Stats.Scope.Weeks != 4 || p.Stats.Scope.Since != "2020-01-01" || p.Stats.Completion.Total != 1 {
+	if err != nil || p.Stats.Scope.Parent != epic.ID || p.Stats.Scope.Weeks != 4 || p.Stats.Scope.Since != "2020-01-01" || p.Stats.Completion.Total != 1 {
 		t.Fatalf("stats scope not forwarded: %+v %v", p.Stats, err)
 	}
 	for _, path := range []string{"/?view=stats&weeks=invalid", "/?view=stats&weeks=999999", "/?view=stats&since=yesterday"} {

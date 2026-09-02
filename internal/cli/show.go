@@ -99,7 +99,7 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 	if len(r.Labels) > 0 {
 		line("labels", strings.Join(r.Labels, ", "))
 	}
-	line("epic", ptr.DerefOr(r.EpicNumber, ptr.Deref(r.Epic)))
+	line("parent", ptr.DerefOr(r.ParentNumber, ptr.Deref(r.Parent)))
 	if len(r.BlockedByNumbers) > 0 {
 		line("blocked_by", strings.Join(r.BlockedByNumbers, ", "))
 	}
