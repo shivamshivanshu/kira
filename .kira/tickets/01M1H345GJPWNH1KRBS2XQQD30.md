@@ -4,13 +4,14 @@ number: CORE-60
 aliases: []
 type: ticket
 title: "Schema representation text was unvalidated, so one bad label corrupted whole tables"
-state: TODO
+state: DONE
+resolution: done
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-09-02T14:57:24+02:00
-updated: 2026-09-02T14:57:24+02:00
+updated: 2026-09-02T15:10:55+02:00
 ---
 `checkSchemaShape` validated name, fields, placement, enums, states and refs,
 and never touched `representation` at all. Every renderer measures that text
