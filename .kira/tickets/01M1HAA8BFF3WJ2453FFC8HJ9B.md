@@ -4,13 +4,14 @@ number: CORE-63
 aliases: []
 type: ticket
 title: "Make container a declared capability instead of a hardcoded epic type"
-state: TODO
+state: DONE
+resolution: done
 priority: P2
 labels: []
 parent: null
 blocked_by: []
 created: 2026-09-02T17:03:04+02:00
-updated: 2026-09-02T17:03:04+02:00
+updated: 2026-09-02T17:03:16+02:00
 ---
 Nine sites across `internal/core` and `internal/cli` compared an item's type
 against `datamodel.TypeEpic` to decide behaviour: progress rollup, tree
