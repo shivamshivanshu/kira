@@ -354,6 +354,7 @@ func listItemOf(cfg *datamodel.Config, it *datamodel.Item, epicNumbers map[strin
 		Board:      boardKeyOf(it.Number),
 		Title:      it.Title,
 		Type:       it.Type,
+		TypeLabel:  schemas[it.Type].TypeLabel(it.Type),
 		Subtype:    it.Subtype,
 		State:      it.State,
 		Category:   categoryString(cfg, it.Type, it.State),
