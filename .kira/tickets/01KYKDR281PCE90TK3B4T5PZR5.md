@@ -4,7 +4,8 @@ number: CORE-55
 aliases: []
 type: ticket
 title: "Representation-driven labels and icons"
-state: REVIEW
+state: DONE
+resolution: done
 priority: P3
 labels: []
 epic: 01KYKDNPSZEGK032FRCJCVNKE1
