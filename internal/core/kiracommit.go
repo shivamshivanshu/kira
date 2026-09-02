@@ -8,6 +8,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/storage"
+	"github.com/shivamshivanshu/kira/internal/timex"
 )
 
 const (
@@ -101,7 +102,7 @@ func renderCommitSubject(template string, count int, numbers []string) string {
 	return strings.NewReplacer(
 		"{count}", strconv.Itoa(count),
 		"{numbers}", cappedNumbers(numbers),
-		"{date}", time.Now().Format("2006-01-02"),
+		"{date}", timex.Now().Format(time.DateOnly),
 	).Replace(template)
 }
 

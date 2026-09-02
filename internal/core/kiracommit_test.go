@@ -100,6 +100,14 @@ func TestRenderCommitSubject(t *testing.T) {
 	}
 }
 
+func TestRenderCommitSubjectReadsDateFromTheClockSeam(t *testing.T) {
+	t.Setenv("KIRA_NOW", "2026-07-15T09:00:00Z")
+	const want = "kira: 2026-07-15"
+	if got := renderCommitSubject("kira: {date}", 1, nil); got != want {
+		t.Errorf("renderCommitSubject({date}) = %q, want %q", got, want)
+	}
+}
+
 func TestCommitTrailersCapped(t *testing.T) {
 	numbers := make([]string, commitTrailerCap+5)
 	for i := range numbers {
