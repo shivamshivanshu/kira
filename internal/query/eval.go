@@ -99,6 +99,7 @@ func (c *compiler) bindOrder(o *Order) error {
 }
 
 func Match(field, value string, opts Options) (Predicate, []datamodel.WarnCode, error) {
+	field = canonicalField(field)
 	if isDateField(field) {
 		return nil, nil, &Error{Pos: 0, Msg: "field " + field + " is a date; use the query grammar instead"}
 	}
@@ -206,8 +207,8 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 		return func(it *datamodel.Item, _ *datamodel.Config) bool {
 			return slices.Contains(it.Labels, want) == eq
 		}, nil
-	case fieldEpic:
-		return c.compileRefPred(n, eq, func(it *datamodel.Item, u string) bool { return it.Epic != nil && *it.Epic == u })
+	case fieldParent:
+		return c.compileRefPred(n, eq, func(it *datamodel.Item, u string) bool { return it.Parent != nil && *it.Parent == u })
 	case fieldBlockedBy:
 		return c.compileRefPred(n, eq, func(it *datamodel.Item, u string) bool { return slices.Contains(it.BlockedBy, u) })
 	case fieldLinks:
@@ -433,7 +434,7 @@ var accessors = map[string]func(*datamodel.Item, *datamodel.Config) string{
 	fieldRank:       func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Rank) },
 	fieldSprint:     func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Sprint) },
 	fieldDue:        func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Due) },
-	fieldEpic:       func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Epic) },
+	fieldParent:     func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Parent) },
 	fieldCreated:    func(it *datamodel.Item, _ *datamodel.Config) string { return it.Created },
 	fieldUpdated:    func(it *datamodel.Item, _ *datamodel.Config) string { return it.Updated },
 	fieldActivity:   func(it *datamodel.Item, _ *datamodel.Config) string { return it.Activity },

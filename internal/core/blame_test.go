@@ -63,23 +63,23 @@ func TestBlameNullFieldOmittedUnlessEvent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if f := blameField(res, "epic"); f != nil {
-		t.Errorf("never-set epic emitted a row: %+v", f)
+	if f := blameField(res, "parent"); f != nil {
+		t.Errorf("never-set parent emitted a row: %+v", f)
 	}
 
 	epic := "01HZZ0EPIC0000000000000000"
-	it.Epic = &epic
+	it.Parent = &epic
 	commit("2026-01-06T10:00:00Z")
-	it.Epic = nil
+	it.Parent = nil
 	commit("2026-01-07T10:00:00Z")
 
 	res, err = s.Blame(cfg, it.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := blameField(res, "epic")
+	f := blameField(res, "parent")
 	if f == nil || f.Value != "null" || f.SourceKind != datamodel.BlameSourceCommit {
-		t.Errorf("set-then-cleared epic = %+v, want null via commit", f)
+		t.Errorf("set-then-cleared parent = %+v, want null via commit", f)
 	}
 }
 

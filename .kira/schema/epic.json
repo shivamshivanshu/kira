@@ -16,7 +16,7 @@
     { "name": "owner", "type": "ref", "target": "person", "source": "people" },
     { "name": "reporter", "type": "ref", "target": "person", "source": "people" },
     { "name": "labels", "type": "enum", "enum": "label", "source": "labels", "list": true, "unique": true },
-    { "name": "epic", "type": "ref", "target": "epic" },
+    { "name": "parent", "type": "ref", "target": "epic" },
     { "name": "blocked_by", "type": "ref", "target": "epic", "list": true, "unique": true },
     { "name": "sprint", "type": "ref", "target": "sprint", "source": "sprints" },
     { "name": "due", "type": "date" },

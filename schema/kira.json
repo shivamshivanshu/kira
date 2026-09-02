@@ -616,18 +616,6 @@
         "category": {
           "type": "string"
         },
-        "epic": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "epic_number": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "id": {
           "type": "string"
         },
@@ -641,6 +629,18 @@
           "type": "string"
         },
         "owner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parent": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parent_number": {
           "type": [
             "string",
             "null"
@@ -681,8 +681,8 @@
         "category",
         "owner",
         "labels",
-        "epic",
-        "epic_number",
+        "parent",
+        "parent_number",
         "priority",
         "resolution",
         "path"
@@ -1351,18 +1351,6 @@
             "null"
           ]
         },
-        "epic": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "epic_number": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "fields": {
           "additionalProperties": {},
           "type": "object"
@@ -1380,6 +1368,18 @@
           "type": "string"
         },
         "owner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parent": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parent_number": {
           "type": [
             "string",
             "null"
@@ -1428,8 +1428,8 @@
         "category",
         "owner",
         "labels",
-        "epic",
-        "epic_number",
+        "parent",
+        "parent_number",
         "priority",
         "resolution",
         "due"
@@ -1911,18 +1911,6 @@
             "null"
           ]
         },
-        "epic": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "epic_number": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "estimate": {
           "type": [
             "number",
@@ -1976,6 +1964,18 @@
           "type": "string"
         },
         "owner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parent": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parent_number": {
           "type": [
             "string",
             "null"
@@ -2068,11 +2068,11 @@
         "owner",
         "reporter",
         "labels",
-        "epic",
+        "parent",
         "blocked_by",
         "links",
         "blocks",
-        "epic_number",
+        "parent_number",
         "blocked_by_numbers",
         "blocks_numbers",
         "links_numbers",
@@ -2320,10 +2320,10 @@
     "StatsScope": {
       "additionalProperties": false,
       "properties": {
-        "epic": {
+        "parent": {
           "type": "string"
         },
-        "epic_number": {
+        "parent_number": {
           "type": "string"
         },
         "since": {
@@ -2387,28 +2387,28 @@
     "TreeGroup": {
       "additionalProperties": false,
       "properties": {
-        "epic": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "epic_number": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "items": {
           "items": {
             "type": "string"
           },
           "type": "array"
+        },
+        "parent": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parent_number": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "required": [
-        "epic",
-        "epic_number",
+        "parent",
+        "parent_number",
         "items"
       ],
       "type": "object"

@@ -19,7 +19,7 @@ func docWithExtras(extraLines string) string {
 		"title: \"t\"\n" +
 		"state: TODO\n" +
 		"labels: []\n" +
-		"epic: null\n" +
+		"parent: null\n" +
 		"blocked_by: []\n" +
 		extraLines +
 		"created: 2026-07-10T09:14:00+05:30\n" +

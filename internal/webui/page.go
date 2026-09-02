@@ -77,7 +77,7 @@ func (s *server) loadPage(ctx context.Context, u *url.URL) (pageData, error) {
 				return p, errx.User("weeks must be between 1 and 260")
 			}
 		}
-		p.Stats, err = snapshot.Stats(core.StatsOpts{Sprint: p.Sprint, Epic: p.Epic, Since: p.Since, Weeks: p.Weeks})
+		p.Stats, err = snapshot.Stats(core.StatsOpts{Sprint: p.Sprint, Parent: p.Epic, Since: p.Since, Weeks: p.Weeks})
 		if err == nil && p.Stats.Scope != nil {
 			p.Weeks = p.Stats.Scope.Weeks
 		}

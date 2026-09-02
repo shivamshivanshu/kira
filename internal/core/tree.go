@@ -17,10 +17,10 @@ func (s *Store) Tree(cfg *datamodel.Config, ref, at string) (*datamodel.TreeResu
 func treeResult(ld *loaded, ref string) (*datamodel.TreeResult, error) {
 	items, resolver, idxNotes := ld.items, ld.resolver, ld.notes
 
-	byID, children := indexByEpic(items)
+	byID, children := indexByParent(items)
 	roots := make([]*datamodel.Item, 0)
 	for _, it := range items {
-		if it.Epic == nil || byID[*it.Epic] == nil {
+		if it.Parent == nil || byID[*it.Parent] == nil {
 			roots = append(roots, it)
 		}
 	}
@@ -58,8 +58,8 @@ func treeResult(ld *loaded, ref string) (*datamodel.TreeResult, error) {
 	return &datamodel.TreeResult{Root: nil, Nodes: nodes, StderrNotes: idxNotes}, nil
 }
 
-func epicChildren(items []*datamodel.Item) map[string][]*datamodel.Item {
-	_, children := indexByEpic(items)
+func parentChildren(items []*datamodel.Item) map[string][]*datamodel.Item {
+	_, children := indexByParent(items)
 	return children
 }
 

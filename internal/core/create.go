@@ -120,8 +120,8 @@ func (s *Store) resolveHere(_ *datamodel.Config, opts *CreateOpts) (string, erro
 	if opts.Parent == "" {
 		if active.Type == datamodel.TypeEpic {
 			opts.Parent = active.ID
-		} else if active.Epic != nil {
-			opts.Parent = *active.Epic
+		} else if active.Parent != nil {
+			opts.Parent = *active.Parent
 		}
 	}
 	if opts.Sprint == "" {
@@ -205,7 +205,7 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 		Category:   categoryString(cfg, finalItem.Type, finalItem.State),
 		Owner:      finalItem.Owner,
 		Labels:     nonNil(finalItem.Labels),
-		Epic:       finalItem.Epic,
+		Parent:     finalItem.Parent,
 		Priority:   finalItem.Priority,
 		Resolution: finalItem.Resolution,
 		Path:       path,
@@ -213,9 +213,9 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 		// here rather than only on list.
 		Warnings: append(literalWarnings(ld.warnings), warningsFromErrors(warns)...),
 	}
-	if finalItem.Epic != nil {
-		if num, ok := epicNumberMap(ld.items)[*finalItem.Epic]; ok {
-			res.EpicNumber = &num
+	if finalItem.Parent != nil {
+		if num, ok := parentNumberMap(ld.items)[*finalItem.Parent]; ok {
+			res.ParentNumber = &num
 		}
 	}
 	return res, nil
@@ -296,7 +296,7 @@ func itemFromDraft(d draft, sys systemFields) *datamodel.Item {
 		Owner:        normPtr(d.Owner),
 		Reporter:     normPtr(d.Reporter),
 		Labels:       nonNil(d.Labels),
-		Epic:         normPtr(d.Epic),
+		Parent:       normPtr(d.Parent),
 		BlockedBy:    []string{},
 		Sprint:       normPtr(d.Sprint),
 		Due:          normPtr(d.Due),
@@ -375,7 +375,7 @@ func applyFlags(d draft, opts CreateOpts) draft {
 		d.Labels = opts.Labels
 	}
 	if opts.Parent != "" {
-		d.Epic = &opts.Parent
+		d.Parent = &opts.Parent
 	}
 	if opts.Sprint != "" {
 		d.Sprint = &opts.Sprint

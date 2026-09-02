@@ -12,7 +12,7 @@ import (
 type LinkTarget int
 
 const (
-	LinkEpic LinkTarget = iota
+	LinkParent LinkTarget = iota
 	LinkBlockedBy
 	LinkTyped
 )
@@ -28,8 +28,8 @@ type LinkOpts struct {
 func (s *Store) Link(cfg *datamodel.Config, ref string, opts LinkOpts) (*datamodel.MutationResult, error) {
 	apply := func(it *datamodel.Item, resolver *id.Resolver, _ []*datamodel.Item) (hard, warns []error) {
 		switch opts.Target {
-		case LinkEpic:
-			return linkEpic(it, resolver, opts), nil
+		case LinkParent:
+			return linkParent(it, resolver, opts), nil
 		case LinkTyped:
 			return linkTyped(it, resolver, opts), nil
 		default:
@@ -41,7 +41,7 @@ func (s *Store) Link(cfg *datamodel.Config, ref string, opts LinkOpts) (*datamod
 		if opts.Remove {
 			verb = "unlink"
 		}
-		if opts.Target == LinkEpic && opts.Remove {
+		if opts.Target == LinkParent && opts.Remove {
 			return fmt.Sprintf("%s%s %s %s", cfg.Commit.SubjectPrefix, orig.Number, verb, edge)
 		}
 		return fmt.Sprintf("%s%s %s %s %s", cfg.Commit.SubjectPrefix, orig.Number, verb, edge, opts.Ref)
@@ -54,19 +54,19 @@ func (s *Store) Link(cfg *datamodel.Config, ref string, opts LinkOpts) (*datamod
 	return &datamodel.MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed, Warnings: warningsFromErrors(warns)}, nil
 }
 
-func linkEpic(it *datamodel.Item, resolver *id.Resolver, opts LinkOpts) []error {
+func linkParent(it *datamodel.Item, resolver *id.Resolver, opts LinkOpts) []error {
 	if opts.Remove {
-		it.Epic = nil
+		it.Parent = nil
 		return nil
 	}
 	if it.Type == datamodel.TypeEpic {
-		return []error{fmt.Errorf("an epic cannot have an epic parent")}
+		return []error{fmt.Errorf("an epic cannot have a parent")}
 	}
-	ulid, err := resolveTarget(resolver, "epic", opts.Ref)
+	ulid, err := resolveTarget(resolver, "parent", opts.Ref)
 	if err != nil {
 		return []error{err}
 	}
-	it.Epic = &ulid
+	it.Parent = &ulid
 	return nil
 }
 
@@ -126,8 +126,8 @@ func resolveTarget(resolver *id.Resolver, edge, ref string) (string, error) {
 
 func edgeLabel(opts LinkOpts) string {
 	switch opts.Target {
-	case LinkEpic:
-		return "epic"
+	case LinkParent:
+		return "parent"
 	case LinkTyped:
 		return FlagForLinkType(opts.Type)
 	default:

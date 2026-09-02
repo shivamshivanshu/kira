@@ -38,7 +38,7 @@ func Merge(base, ours, theirs *datamodel.Item, remote Side, tm TextMerger) Resul
 		Owner:        threeWayPtr(base.Owner, ours.Owner, theirs.Owner, winner),
 		Reporter:     threeWayPtr(base.Reporter, ours.Reporter, theirs.Reporter, winner),
 		Labels:       setMerge(base.Labels, ours.Labels, theirs.Labels),
-		Epic:         threeWayPtr(base.Epic, ours.Epic, theirs.Epic, winner),
+		Parent:       threeWayPtr(base.Parent, ours.Parent, theirs.Parent, winner),
 		BlockedBy:    setMerge(base.BlockedBy, ours.BlockedBy, theirs.BlockedBy),
 		Links:        linkMerge(base.Links, ours.Links, theirs.Links),
 		ExtraLinks:   linkMerge(base.ExtraLinks, ours.ExtraLinks, theirs.ExtraLinks),

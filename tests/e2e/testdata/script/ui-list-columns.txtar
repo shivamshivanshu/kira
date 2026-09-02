@@ -53,7 +53,7 @@ project:
         { "key": "WONT_DO", "category": "done" }
       ] },
     { "name": "labels", "type": "enum", "enum": "label", "source": "labels", "list": true, "unique": true },
-    { "name": "epic", "type": "ref", "target": "epic" },
+    { "name": "parent", "type": "ref", "target": "epic" },
     { "name": "blocked_by", "type": "ref", "target": "ticket", "list": true, "unique": true },
     { "name": "aliases", "type": "string", "list": true, "unique": true, "required": true, "system": true },
     { "name": "created", "type": "datetime", "required": true, "system": true, "immutable": true },

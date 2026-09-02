@@ -42,7 +42,7 @@ priority:
 owner:
 reporter:
 labels: []
-epic:
+parent:
 estimate:
 ---
 
@@ -59,7 +59,7 @@ priority:
 owner:
 reporter:
 labels: []
-epic:
+parent:
 estimate:
 ---
 
@@ -76,7 +76,7 @@ priority:
 owner:
 reporter:
 labels: []
-epic:
+parent:
 estimate:
 ---
 

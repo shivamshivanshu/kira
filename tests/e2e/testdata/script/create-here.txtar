@@ -25,7 +25,7 @@ stderr 'requires --no-edit and --title'
 # capture inherits the active ticket's epic (KIRA-1) and stamps captured.
 exec kira create ticket --here --no-edit --title 'Captured idea' --json
 stdout '"number": "KIRA-3"'
-stdout '"epic_number": "KIRA-1"'
+stdout '"parent_number": "KIRA-1"'
 stdout '"captured"'
 
 # --blocking appends the new item to the active ticket's blocked_by.

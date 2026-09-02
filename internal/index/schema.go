@@ -6,7 +6,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-const schemaVersion = 9
+const schemaVersion = 10
 
 const ddl = `
 CREATE TABLE IF NOT EXISTS items (
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS items (
   rank     TEXT,
   owner    TEXT,
   reporter TEXT,
-  epic     TEXT,
+  parent   TEXT,
   sprint   TEXT,
   due      TEXT,
   estimate REAL,

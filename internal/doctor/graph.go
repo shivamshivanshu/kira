@@ -13,14 +13,14 @@ import (
 func EpicCycles(items []*datamodel.Item, resolver *id.Resolver) []Finding {
 	byID := itemsByID(items)
 	edges := func(it *datamodel.Item) []string {
-		if it.Epic == nil || *it.Epic == "" {
+		if it.Parent == nil || *it.Parent == "" {
 			return nil
 		}
-		return []string{resolveRef(*it.Epic, resolver)}
+		return []string{resolveRef(*it.Parent, resolver)}
 	}
 	var out []Finding
 	for _, cycle := range datamodel.FindCycles(byID, edges) {
-		out = append(out, cyclePathFindings(ClassCycle, datamodel.KeyEpic, cycle, byID)...)
+		out = append(out, cyclePathFindings(ClassCycle, datamodel.KeyParent, cycle, byID)...)
 	}
 	return out
 }

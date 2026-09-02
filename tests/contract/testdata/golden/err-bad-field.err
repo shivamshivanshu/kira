@@ -1,1 +1,1 @@
-{"error":"invalid item: --field: unknown or immutable field \"nope\"","hint":"editable fields: acceptance, description, due, epic, estimate, labels, owner, priority, rank, reporter, resolution, sprint, state, subtype, title","code":1}
+{"error":"invalid item: --field: unknown or immutable field \"nope\"","hint":"editable fields: acceptance, description, due, estimate, labels, owner, parent, priority, rank, reporter, resolution, sprint, state, subtype, title","code":1}

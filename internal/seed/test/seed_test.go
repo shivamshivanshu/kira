@@ -91,15 +91,15 @@ func TestSeedProducesItems(t *testing.T) {
 		numbers[it.Number] = it
 	}
 	for _, it := range items {
-		if it.Epic == nil {
+		if it.Parent == nil {
 			continue
 		}
-		parent, ok := numbers[*it.Epic]
+		parent, ok := numbers[*it.Parent]
 		if !ok {
-			t.Fatalf("item %s epic %q resolves to nothing", it.Number, *it.Epic)
+			t.Fatalf("item %s parent %q resolves to nothing", it.Number, *it.Parent)
 		}
 		if parent.Type != datamodel.TypeEpic {
-			t.Fatalf("item %s epic %q is not an epic", it.Number, *it.Epic)
+			t.Fatalf("item %s parent %q is not an epic", it.Number, *it.Parent)
 		}
 	}
 

@@ -1,5 +1,5 @@
 {{define "detail"}}{{$p := .}}{{$item := .Detail}}
-<aside class="detail-pane" aria-labelledby="detail-title" data-detail-item data-item="{{$item.ID}}" data-number="{{$item.Number}}" data-copy-values="{{$.CopyValues $item.ID $item.Number $item.Title}}" {{if $item.Epic}}data-parent-url="{{.Link "item" (str $item.Epic)}}"{{end}}>
+<aside class="detail-pane" aria-labelledby="detail-title" data-detail-item data-item="{{$item.ID}}" data-number="{{$item.Number}}" data-copy-values="{{$.CopyValues $item.ID $item.Number $item.Title}}" {{if $item.Parent}}data-parent-url="{{.Link "item" (str $item.Parent)}}"{{end}}>
   <header class="detail-top">
     <div>
       <span class="item-kind kind-{{$item.Type}}">{{if eq $item.Type "epic"}}◇{{else}}○{{end}}</span><code>{{$item.Number}}</code><span class="card-type">{{$item.Type}}</span>
@@ -66,9 +66,9 @@
       </form>
     </details>
     <section class="detail-section">
-      <h3>Relationships</h3>{{if $item.Epic}}
+      <h3>Relationships</h3>{{if $item.Parent}}
       <div class="relationship">
-        <span>Parent</span><a href="{{.Link "item" (str $item.Epic)}}">{{.ItemName (str $item.Epic)}} ↗</a>
+        <span>Parent</span><a href="{{.Link "item" (str $item.Parent)}}">{{.ItemName (str $item.Parent)}} ↗</a>
       </div>
       {{end}}{{range $item.BlockedBy}}
       <div class="relationship">

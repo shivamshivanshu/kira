@@ -35,7 +35,7 @@ func ProjectItem(schema Schema, it *datamodel.Item, dec ExtraDecoder) map[string
 	setIfPresent(values, "rank", it.Rank)
 	setIfPresent(values, "owner", it.Owner)
 	setIfPresent(values, "reporter", it.Reporter)
-	setIfPresent(values, "epic", it.Epic)
+	setIfPresent(values, "parent", it.Parent)
 	setIfPresent(values, "sprint", it.Sprint)
 	setIfPresent(values, "due", it.Due)
 	setIfPresent(values, "estimate", it.Estimate)

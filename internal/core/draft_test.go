@@ -69,12 +69,12 @@ func TestItemFromDraftEmptyScalarsAreAbsent(t *testing.T) {
 	d := draft{
 		Title: "t", Type: "ticket",
 		Subtype: &empty, Priority: &empty, Rank: &empty, Owner: &empty,
-		Reporter: &empty, Epic: &empty, Sprint: &empty, Due: &empty,
+		Reporter: &empty, Parent: &empty, Sprint: &empty, Due: &empty,
 	}
 	it := itemFromDraft(d, systemFields{ulid: "X", number: "KIRA-1", typ: "ticket", state: "TODO", created: "2026-07-12T00:00:00Z"})
 	for name, got := range map[string]*string{
 		"subtype": it.Subtype, "priority": it.Priority, "rank": it.Rank,
-		"owner": it.Owner, "reporter": it.Reporter, "epic": it.Epic,
+		"owner": it.Owner, "reporter": it.Reporter, "parent": it.Parent,
 		"sprint": it.Sprint, "due": it.Due,
 	} {
 		if got != nil {
@@ -98,8 +98,8 @@ func TestApplyFlagsOverridesTemplate(t *testing.T) {
 	if got.Title != "T" || got.Owner == nil || *got.Owner != "alice" {
 		t.Fatalf("flags not applied: %+v", got)
 	}
-	if got.Epic == nil || *got.Epic != "KIRA-9" {
-		t.Fatalf("parent not applied: %v", got.Epic)
+	if got.Parent == nil || *got.Parent != "KIRA-9" {
+		t.Fatalf("parent not applied: %v", got.Parent)
 	}
 }
 

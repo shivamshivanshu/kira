@@ -8,7 +8,7 @@
   </div>
   {{range .Tree}}
   {{$item := .Item}}
-  <div class="tree-row {{if or (eq $.Selected $item.ID) (eq $.Selected $item.Number)}}is-selected{{end}}" role="row" data-nav-item data-depth="{{.Depth}}" data-item="{{$item.ID}}" data-number="{{$item.Number}}" data-copy-values="{{$.CopyValues $item.ID $item.Number $item.Title}}" {{if $item.Epic}}data-parent-url="{{$.Link "item" (str $item.Epic)}}"{{end}} tabindex="-1">
+  <div class="tree-row {{if or (eq $.Selected $item.ID) (eq $.Selected $item.Number)}}is-selected{{end}}" role="row" data-nav-item data-depth="{{.Depth}}" data-item="{{$item.ID}}" data-number="{{$item.Number}}" data-copy-values="{{$.CopyValues $item.ID $item.Number $item.Title}}" {{if $item.Parent}}data-parent-url="{{$.Link "item" (str $item.Parent)}}"{{end}} tabindex="-1">
     <div class="tree-title depth-{{depth .Depth}}" role="cell">
       <label class="item-checkbox"><input type="checkbox" name="ids" value="{{$item.ID}}" form="bulk-form" {{if $.BulkSelected $item.ID}}checked{{end}} aria-label="Select {{$item.Number}} for bulk action"></label>
       <button type="button" class="tree-toggle" hidden aria-expanded="true" aria-label="Collapse children of {{$item.Number}}">⌄</button>
@@ -17,7 +17,7 @@
         <span class="item-title-group">
           <span class="item-topline">
             <code>{{$item.Number}}</code>
-            {{if $item.EpicNumber}}<span class="parent-label">↳ {{str $item.EpicNumber}}</span>{{end}}
+            {{if $item.ParentNumber}}<span class="parent-label">↳ {{str $item.ParentNumber}}</span>{{end}}
             {{if overdue $item.Due $item.Category}}<span class="due overdue">Overdue {{str $item.Due}}</span>{{else if $item.Due}}<span class="due">Due {{str $item.Due}}</span>{{end}}
           </span>
           <span class="item-title">{{$item.Title}}</span>

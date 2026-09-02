@@ -46,10 +46,10 @@ func TestBatchedHistoryMatchesPerFile(t *testing.T) {
 func TestAllEpicProgressMatchesIndependentWalks(t *testing.T) {
 	items := []*datamodel.Item{
 		{ID: "e", Number: "E-1", Type: "epic"},
-		{ID: "sub", Number: "E-2", Type: "epic", Epic: new("e")},
-		{ID: "done", Type: "ticket", State: "DONE", Epic: new("sub")},
-		{ID: "open", Type: "ticket", State: "TODO", Epic: new("e")},
-		{ID: "invalid-child", Type: "ticket", State: "DONE", Epic: new("open")},
+		{ID: "sub", Number: "E-2", Type: "epic", Parent: new("e")},
+		{ID: "done", Type: "ticket", State: "DONE", Parent: new("sub")},
+		{ID: "open", Type: "ticket", State: "TODO", Parent: new("e")},
+		{ID: "invalid-child", Type: "ticket", State: "DONE", Parent: new("open")},
 	}
 	cfg := progressCfg()
 	got, err := allEpicProgress(cfg, items)
@@ -57,12 +57,12 @@ func TestAllEpicProgressMatchesIndependentWalks(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, id := range []string{"e", "sub"} {
-		want, err := epicProgress(cfg, epicChildren(items), id)
+		want, err := epicProgress(cfg, parentChildren(items), id)
 		if err != nil || got[id] != want {
 			t.Fatalf("progress %s: %v != %v (%v)", id, got[id], want, err)
 		}
 	}
-	items[0].Epic = new("sub")
+	items[0].Parent = new("sub")
 	if _, err := allEpicProgress(cfg, items); err == nil {
 		t.Fatal("memoized progress missed a cycle")
 	}

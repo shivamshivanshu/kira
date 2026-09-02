@@ -24,7 +24,7 @@ func fixture() (items []*datamodel.Item, cfg *datamodel.Config) {
 	it1 := &datamodel.Item{
 		ID: it1ID, Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "Fix race in snapshot",
 		State: "IN_PROGRESS", Owner: new("shivam"), Priority: new("P1"),
-		Labels: []string{"bug"}, Epic: new(epicID),
+		Labels: []string{"bug"}, Parent: new(epicID),
 		Subtype: new("bug"), Rank: new("aam"), Sprint: new("2026-S14"),
 		Due: new("2026-07-20"), Estimate: new(3.0),
 		BlockedBy: []string{it2ID}, Links: map[string][]string{string(datamodel.LinkRelates): {it3ID}},

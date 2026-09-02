@@ -1,4 +1,4 @@
-# link sets single-sided epic/blocked-by edges and rejects illegal links.
+# link sets single-sided parent/blocked-by edges and rejects illegal links.
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
@@ -21,24 +21,29 @@ exec kira show KIRA-2 --json
 stdout '"blocks": \[\n    "[0-9A-Z]{26}"\n  \]'
 ! stdout '"blocked_by": \[\n'
 
-# epic parent
-exec kira link KIRA-1 --epic KIRA-3
+# parent
+exec kira link KIRA-1 --parent KIRA-3
 exec kira show KIRA-1 --json
-stdout '"epic": "[0-9A-Z]{26}"'
+stdout '"parent": "[0-9A-Z]{26}"'
 
 # self-link is rejected
 ! exec kira link KIRA-1 --blocked-by KIRA-1
 stderr 'cannot link to itself'
 
-# an epic may not be given an epic parent
-! exec kira link KIRA-3 --epic KIRA-1
-stderr 'epic cannot have an epic parent'
+# an epic may not be given a parent
+! exec kira link KIRA-3 --parent KIRA-1
+stderr 'epic cannot have a parent'
 
 # giving both or neither edge flag is a usage error
 ! exec kira link KIRA-1
 stderr 'exactly one'
 
 # --remove clears the edge
-exec kira link KIRA-1 --epic KIRA-3 --remove
+exec kira link KIRA-1 --parent KIRA-3 --remove
 exec kira show KIRA-1 --json
-stdout '"epic": null'
+stdout '"parent": null'
+
+# --epic is a deprecated but still-functioning alias for --parent
+exec kira link KIRA-1 --epic KIRA-3
+exec kira show KIRA-1 --json
+stdout '"parent": "[0-9A-Z]{26}"'

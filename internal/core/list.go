@@ -27,7 +27,7 @@ type ListOpts struct {
 	Category string
 	Owner    string
 	Label    string
-	Epic     string
+	Parent   string
 	Priority string
 	Sprint   string
 	Board    string
@@ -56,10 +56,10 @@ func listResult(ld *loaded, opts ListOpts, qopts query.Options) (*datamodel.List
 
 	matched := ld.match(opts, pred, order)
 
-	epicNumbers := epicNumberMap(items)
+	parentNumbers := parentNumberMap(items)
 	rows := make([]datamodel.ListItem, len(matched))
 	for i, it := range matched {
-		rows[i] = listItemOf(cfg, it, epicNumbers, ld.schemas)
+		rows[i] = listItemOf(cfg, it, parentNumbers, ld.schemas)
 	}
 	res := &datamodel.ListResult{
 		Items:       rows,
@@ -68,7 +68,7 @@ func listResult(ld *loaded, opts ListOpts, qopts query.Options) (*datamodel.List
 		StderrNotes: slices.Concat(ld.notes, notes),
 	}
 	if opts.Tree {
-		res.Tree = groupByEpic(rows, epicNumbers)
+		res.Tree = groupByParent(rows, parentNumbers)
 	}
 	return res, nil
 }
@@ -166,11 +166,11 @@ func listWithMatches(cfg *datamodel.Config, items []*datamodel.Item, expr string
 	if err != nil {
 		return nil, nil, queryError(err)
 	}
-	epicNumbers := epicNumberMap(items)
+	parentNumbers := parentNumberMap(items)
 	rows := make([]datamodel.ListItem, len(items))
 	matched := make(map[string]bool, len(items))
 	for i, it := range items {
-		rows[i] = listItemOf(cfg, it, epicNumbers, qopts.Schemas)
+		rows[i] = listItemOf(cfg, it, parentNumbers, qopts.Schemas)
 		if pred == nil || pred(it, cfg) {
 			matched[it.ID] = true
 		}
@@ -212,7 +212,7 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 	var notes []datamodel.Warning
 	flat := []FieldFilter{
 		{"type", opts.Type}, {"subtype", opts.Subtype}, {"state", opts.State}, {"category", opts.Category},
-		{"owner", opts.Owner}, {"label", opts.Label}, {"epic", opts.Epic},
+		{"owner", opts.Owner}, {"label", opts.Label}, {"parent", opts.Parent},
 		{"priority", opts.Priority}, {"sprint", opts.Sprint}, {"board", opts.Board},
 	}
 	addMatch := func(f FieldFilter) error {
@@ -282,7 +282,7 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 	return pred, order, notes, nil
 }
 
-func groupByEpic(rows []datamodel.ListItem, epicNumbers map[string]string) []datamodel.TreeGroup {
+func groupByParent(rows []datamodel.ListItem, parentNumbers map[string]string) []datamodel.TreeGroup {
 	order := make([]string, 0)
 	buckets := map[string][]string{}
 	ensureGroup := func(key string) {
@@ -297,27 +297,27 @@ func groupByEpic(rows []datamodel.ListItem, epicNumbers map[string]string) []dat
 			continue
 		}
 		key := ""
-		if r.Epic != nil {
-			key = *r.Epic
+		if r.Parent != nil {
+			key = *r.Parent
 		}
 		ensureGroup(key)
 		buckets[key] = append(buckets[key], r.ID)
 	}
-	sortByKey(order, func(key string) epicGroupKey {
+	sortByKey(order, func(key string) parentGroupKey {
 		if key == "" {
-			return epicGroupKey{orphan: true}
+			return parentGroupKey{orphan: true}
 		}
-		return epicGroupKey{k: id.NewSortKey(epicNumbers[key], key)}
+		return parentGroupKey{k: id.NewSortKey(parentNumbers[key], key)}
 	})
 	groups := make([]datamodel.TreeGroup, 0, len(order))
 	for _, key := range order {
 		g := datamodel.TreeGroup{Items: buckets[key]}
 		if key != "" {
-			epic := key
-			g.Epic = &epic
-			if num, ok := epicNumbers[key]; ok {
+			parent := key
+			g.Parent = &parent
+			if num, ok := parentNumbers[key]; ok {
 				n := num
-				g.EpicNumber = &n
+				g.ParentNumber = &n
 			}
 		}
 		groups = append(groups, g)
@@ -325,19 +325,19 @@ func groupByEpic(rows []datamodel.ListItem, epicNumbers map[string]string) []dat
 	return groups
 }
 
-type epicGroupKey struct {
+type parentGroupKey struct {
 	orphan bool
 	k      id.SortKey
 }
 
-func (a epicGroupKey) Less(b epicGroupKey) bool {
+func (a parentGroupKey) Less(b parentGroupKey) bool {
 	if a.orphan != b.orphan {
 		return !a.orphan
 	}
 	return a.k.Less(b.k)
 }
 
-func epicNumberMap(items []*datamodel.Item) map[string]string {
+func parentNumberMap(items []*datamodel.Item) map[string]string {
 	m := make(map[string]string)
 	for _, it := range items {
 		if it.Type == datamodel.TypeEpic {
@@ -347,7 +347,7 @@ func epicNumberMap(items []*datamodel.Item) map[string]string {
 	return m
 }
 
-func listItemOf(cfg *datamodel.Config, it *datamodel.Item, epicNumbers map[string]string, schemas map[string]entityschema.Schema) datamodel.ListItem {
+func listItemOf(cfg *datamodel.Config, it *datamodel.Item, parentNumbers map[string]string, schemas map[string]entityschema.Schema) datamodel.ListItem {
 	li := datamodel.ListItem{
 		ID:         it.ID,
 		Number:     it.Number,
@@ -360,15 +360,15 @@ func listItemOf(cfg *datamodel.Config, it *datamodel.Item, epicNumbers map[strin
 		Category:   categoryString(cfg, it.Type, it.State),
 		Owner:      it.Owner,
 		Labels:     nonNil(it.Labels),
-		Epic:       it.Epic,
+		Parent:     it.Parent,
 		Priority:   it.Priority,
 		Resolution: it.Resolution,
 		Due:        it.Due,
 		Fields:     entityschema.CustomFields(schemas[it.Type], it, codec.Decoder{}),
 	}
-	if it.Epic != nil {
-		if num, ok := epicNumbers[*it.Epic]; ok {
-			li.EpicNumber = &num
+	if it.Parent != nil {
+		if num, ok := parentNumbers[*it.Parent]; ok {
+			li.ParentNumber = &num
 		}
 	}
 	return li

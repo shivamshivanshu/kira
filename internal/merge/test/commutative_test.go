@@ -129,7 +129,7 @@ func randSide(r *rand.Rand) *datamodel.Item {
 	it.Rank = pickPtr(r, []string{"0|a:", "0|b:"})
 	it.Owner = pickPtr(r, []string{"alice", "bob"})
 	it.Reporter = pickPtr(r, []string{"carol", "dave"})
-	it.Epic = pickPtr(r, []string{"01EPIC0000000000000000000A", "01EPIC0000000000000000000B"})
+	it.Parent = pickPtr(r, []string{"01EPIC0000000000000000000A", "01EPIC0000000000000000000B"})
 	it.Sprint = pickPtr(r, []string{"2026-S1", "2026-S2"})
 	it.Due = pickPtr(r, []string{"2026-01-01", "2026-02-02"})
 	if e := r.Intn(4); e < 3 {

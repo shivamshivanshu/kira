@@ -29,42 +29,42 @@ type Skew struct {
 }
 
 type CreateResult struct {
-	ID         string   `json:"id"`
-	Number     string   `json:"number"`
-	Board      string   `json:"board"`
-	Type       string   `json:"type"`
-	Title      string   `json:"title"`
-	State      string   `json:"state"`
-	Category   string   `json:"category"`
-	Owner      *string  `json:"owner"`
-	Labels     []string `json:"labels"`
-	Epic       *string  `json:"epic"`
-	EpicNumber *string  `json:"epic_number"`
-	Priority   *string  `json:"priority"`
-	Resolution *string  `json:"resolution"`
-	Path       string   `json:"path"`
+	ID           string   `json:"id"`
+	Number       string   `json:"number"`
+	Board        string   `json:"board"`
+	Type         string   `json:"type"`
+	Title        string   `json:"title"`
+	State        string   `json:"state"`
+	Category     string   `json:"category"`
+	Owner        *string  `json:"owner"`
+	Labels       []string `json:"labels"`
+	Parent       *string  `json:"parent"`
+	ParentNumber *string  `json:"parent_number"`
+	Priority     *string  `json:"priority"`
+	Resolution   *string  `json:"resolution"`
+	Path         string   `json:"path"`
 
 	Warnings []Warning `json:"-"`
 }
 
 type ListItem struct {
-	ID         string         `json:"id"`
-	Number     string         `json:"number"`
-	Board      string         `json:"board"`
-	Title      string         `json:"title"`
-	Type       string         `json:"type"`
-	TypeLabel  string         `json:"type_label"`
-	Subtype    *string        `json:"subtype"`
-	State      string         `json:"state"`
-	Category   string         `json:"category"`
-	Owner      *string        `json:"owner"`
-	Labels     []string       `json:"labels"`
-	Epic       *string        `json:"epic"`
-	EpicNumber *string        `json:"epic_number"`
-	Priority   *string        `json:"priority"`
-	Resolution *string        `json:"resolution"`
-	Due        *string        `json:"due"`
-	Fields     map[string]any `json:"fields,omitempty"`
+	ID           string         `json:"id"`
+	Number       string         `json:"number"`
+	Board        string         `json:"board"`
+	Title        string         `json:"title"`
+	Type         string         `json:"type"`
+	TypeLabel    string         `json:"type_label"`
+	Subtype      *string        `json:"subtype"`
+	State        string         `json:"state"`
+	Category     string         `json:"category"`
+	Owner        *string        `json:"owner"`
+	Labels       []string       `json:"labels"`
+	Parent       *string        `json:"parent"`
+	ParentNumber *string        `json:"parent_number"`
+	Priority     *string        `json:"priority"`
+	Resolution   *string        `json:"resolution"`
+	Due          *string        `json:"due"`
+	Fields       map[string]any `json:"fields,omitempty"`
 }
 
 type ListResult struct {
@@ -77,9 +77,9 @@ type ListResult struct {
 }
 
 type TreeGroup struct {
-	Epic       *string  `json:"epic"`
-	EpicNumber *string  `json:"epic_number"`
-	Items      []string `json:"items"`
+	Parent       *string  `json:"parent"`
+	ParentNumber *string  `json:"parent_number"`
+	Items        []string `json:"items"`
 }
 
 type TreeNode struct {
@@ -137,15 +137,15 @@ type ShowResult struct {
 	Owner      *string             `json:"owner"`
 	Reporter   *string             `json:"reporter"`
 	Labels     []string            `json:"labels"`
-	Epic       *string             `json:"epic"`
+	Parent     *string             `json:"parent"`
 	BlockedBy  []string            `json:"blocked_by"`
 	Links      map[string][]string `json:"links"`
 	Blocks     []string            `json:"blocks"`
 
-	// Display numbers for the ULIDs above, following ListItem's epic/epic_number
+	// Display numbers for the ULIDs above, following ListItem's parent/parent_number
 	// pairing. A reference that resolves to no item has no entry, so a dangling
 	// ULID stays visible rather than silently rendering as blank.
-	EpicNumber       *string             `json:"epic_number"`
+	ParentNumber     *string             `json:"parent_number"`
 	BlockedByNumbers []string            `json:"blocked_by_numbers"`
 	BlocksNumbers    []string            `json:"blocks_numbers"`
 	LinksNumbers     map[string][]string `json:"links_numbers"`
@@ -426,11 +426,11 @@ type StatsResult struct {
 }
 
 type StatsScope struct {
-	Epic       string `json:"epic,omitempty"`
-	EpicNumber string `json:"epic_number,omitempty"`
-	Sprint     string `json:"sprint,omitempty"`
-	Since      string `json:"since,omitempty"`
-	Weeks      int    `json:"weeks"`
+	Parent       string `json:"parent,omitempty"`
+	ParentNumber string `json:"parent_number,omitempty"`
+	Sprint       string `json:"sprint,omitempty"`
+	Since        string `json:"since,omitempty"`
+	Weeks        int    `json:"weeks"`
 }
 
 type Completion struct {

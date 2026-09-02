@@ -59,13 +59,15 @@ func newListCmd(g *globalFlags) *cobra.Command {
 	f.StringVar(&opts.Owner, "owner", "", "filter by owner ('@me' resolves to the git user)")
 	f.StringVar(&opts.Label, "label", "", "filter by label")
 	f.StringVar(&opts.Board, "board", "", "filter to one board")
-	f.StringVar(&opts.Epic, "epic", "", "filter by parent epic")
+	f.StringVar(&opts.Parent, "parent", "", "filter by parent")
+	f.StringVar(&opts.Parent, "epic", "", "deprecated alias for --parent")
+	_ = f.MarkHidden("epic")
 	f.StringVar(&opts.Priority, "priority", "", "filter by priority")
 	f.StringVar(&opts.Sprint, "sprint", "", "filter by sprint key ('active' resolves the active sprint)")
 	f.StringVar(&opts.Filter, "filter", "", "apply a named saved query from config filters")
 	f.StringVar(&opts.Query, "query", "", "filter by a query expression (ANDed with the flags)")
 	f.StringArrayVar(&fields, "field", nil, "key=value equality filter on any schema field (repeatable, ANDed)")
-	f.BoolVar(&opts.Tree, "tree", false, "group results by epic")
+	f.BoolVar(&opts.Tree, "tree", false, "group results by parent")
 	f.StringVar(&opts.At, "at", "", "read state at a git ref or date (YYYY-MM-DD), anchored on HEAD")
 	return cmd
 }
@@ -198,18 +200,18 @@ func itemCell(column string, it datamodel.ListItem) string {
 }
 
 var listCells = map[string]func(datamodel.ListItem) string{
-	"number":      func(it datamodel.ListItem) string { return it.Number },
-	"title":       func(it datamodel.ListItem) string { return it.Title },
-	"type":        func(it datamodel.ListItem) string { return it.TypeLabel },
-	"subtype":     func(it datamodel.ListItem) string { return ptr.DerefOr(it.Subtype, "-") },
-	"state":       func(it datamodel.ListItem) string { return it.State },
-	"category":    func(it datamodel.ListItem) string { return it.Category },
-	"priority":    func(it datamodel.ListItem) string { return ptr.DerefOr(it.Priority, "-") },
-	"owner":       func(it datamodel.ListItem) string { return ptr.DerefOr(it.Owner, "-") },
-	"labels":      func(it datamodel.ListItem) string { return strings.Join(it.Labels, ",") },
-	"epic":        func(it datamodel.ListItem) string { return ptr.DerefOr(it.Epic, "-") },
-	"epic_number": func(it datamodel.ListItem) string { return ptr.DerefOr(it.EpicNumber, "-") },
-	"resolution":  func(it datamodel.ListItem) string { return ptr.DerefOr(it.Resolution, "-") },
-	"due":         func(it datamodel.ListItem) string { return ptr.DerefOr(it.Due, "-") },
-	"id":          func(it datamodel.ListItem) string { return it.ID },
+	"number":        func(it datamodel.ListItem) string { return it.Number },
+	"title":         func(it datamodel.ListItem) string { return it.Title },
+	"type":          func(it datamodel.ListItem) string { return it.TypeLabel },
+	"subtype":       func(it datamodel.ListItem) string { return ptr.DerefOr(it.Subtype, "-") },
+	"state":         func(it datamodel.ListItem) string { return it.State },
+	"category":      func(it datamodel.ListItem) string { return it.Category },
+	"priority":      func(it datamodel.ListItem) string { return ptr.DerefOr(it.Priority, "-") },
+	"owner":         func(it datamodel.ListItem) string { return ptr.DerefOr(it.Owner, "-") },
+	"labels":        func(it datamodel.ListItem) string { return strings.Join(it.Labels, ",") },
+	"parent":        func(it datamodel.ListItem) string { return ptr.DerefOr(it.Parent, "-") },
+	"parent_number": func(it datamodel.ListItem) string { return ptr.DerefOr(it.ParentNumber, "-") },
+	"resolution":    func(it datamodel.ListItem) string { return ptr.DerefOr(it.Resolution, "-") },
+	"due":           func(it datamodel.ListItem) string { return ptr.DerefOr(it.Due, "-") },
+	"id":            func(it datamodel.ListItem) string { return it.ID },
 }

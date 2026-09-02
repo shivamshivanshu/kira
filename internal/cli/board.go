@@ -41,7 +41,7 @@ func newBoardCmd(g *globalFlags) *cobra.Command {
 	var board string
 	var sprint string
 	cmd := &cobra.Command{
-		Use:   "board [<epic-id>]",
+		Use:   "board [<parent-id>]",
 		Short: "Kanban board of tickets grouped by workflow state",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -49,18 +49,18 @@ func newBoardCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			epic := ""
+			parent := ""
 			if len(args) == 1 {
-				epic = args[0]
+				parent = args[0]
 			}
-			noFilters := epic == "" && at == "" && owner == "" && label == "" && query == "" && filter == "" &&
+			noFilters := parent == "" && at == "" && owner == "" && label == "" && query == "" && filter == "" &&
 				itemType == "" && state == "" && priority == "" && board == "" && sprint == ""
 			shouldLaunchBoardTUI := shouldAutoTUI(cmd, g, cfg) && !plain && noFilters
 			if shouldLaunchBoardTUI {
 				return tui.Run(s.WithPrompter(core.SilentPrompter()), cfg, tui.Options{NoColor: g.noColor, RunCommand: commandRunner(g), InitialView: tui.ViewBoard})
 			}
 			res, err := s.Board(cfg, core.BoardOpts{
-				Type: itemType, Epic: epic, State: state, Owner: owner, Priority: priority,
+				Type: itemType, Parent: parent, State: state, Owner: owner, Priority: priority,
 				Label: label, Board: board, Sprint: sprint, Query: query, Filter: filter, At: at,
 			})
 			if err != nil {

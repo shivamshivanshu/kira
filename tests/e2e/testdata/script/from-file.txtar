@@ -29,7 +29,7 @@ exec kira create epic --title 'Parent' --no-edit
 exec kira create ticket --from-file draft.md --parent KIRA-2 --priority P1 --json
 exec kira show KIRA-3 --json
 stdout '"priority": "P1"'
-stdout '"epic": "[0-9A-Z]{26}"'
+stdout '"parent": "[0-9A-Z]{26}"'
 stdout '"title": "FF ticket"'
 
 # a value the file sets loses to the flag, and survives when no flag competes

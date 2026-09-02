@@ -9,7 +9,7 @@ priority: P1
 owner: shivam
 reporter: shivam
 labels: [bug, orderbook]
-epic: 01J8X7B1Q2W3E4R5T6Y7U8I9O0
+parent: 01J8X7B1Q2W3E4R5T6Y7U8I9O0
 blocked_by: [01J8X9F2M3W7VJQK8N5R6T1B0C]
 estimate: 3
 created: 2026-07-10T09:14:00+05:30

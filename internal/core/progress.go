@@ -7,13 +7,13 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-func indexByEpic(items []*datamodel.Item) (map[string]*datamodel.Item, map[string][]*datamodel.Item) {
+func indexByParent(items []*datamodel.Item) (map[string]*datamodel.Item, map[string][]*datamodel.Item) {
 	byID := datamodel.IndexByID(items)
 	children := map[string][]*datamodel.Item{}
 	for _, it := range items {
-		if it.Epic != nil {
-			if _, ok := byID[*it.Epic]; ok {
-				children[*it.Epic] = append(children[*it.Epic], it)
+		if it.Parent != nil {
+			if _, ok := byID[*it.Parent]; ok {
+				children[*it.Parent] = append(children[*it.Parent], it)
 			}
 		}
 	}
@@ -30,7 +30,7 @@ func (s *Store) EpicProgress(cfg *datamodel.Config) (map[string]datamodel.EpicPr
 }
 
 func allEpicProgress(cfg *datamodel.Config, items []*datamodel.Item) (map[string]datamodel.EpicProgress, error) {
-	_, children := indexByEpic(items)
+	_, children := indexByParent(items)
 	out := make(map[string]datamodel.EpicProgress)
 	visiting := make(map[string]bool)
 	var count func(*datamodel.Item) (datamodel.EpicProgress, error)
