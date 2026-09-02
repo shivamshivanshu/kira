@@ -23,7 +23,7 @@ type activateMsg struct{}
 type treeData struct {
 	nodes    []datamodel.TreeNode
 	fields   map[string]datamodel.ListItem
-	progress map[string]datamodel.EpicProgress
+	progress map[string]datamodel.ContainerProgress
 }
 
 type treeLoadedMsg struct {

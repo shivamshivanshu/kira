@@ -113,7 +113,7 @@ func (s *server) loadPage(ctx context.Context, u *url.URL) (pageData, error) {
 		needsProgress = slices.ContainsFunc(p.Items, func(item datamodel.ListItem) bool { return item.Type == datamodel.TypeEpic })
 	}
 	if needsProgress {
-		p.Progress, err = snapshot.EpicProgress()
+		p.Progress, err = snapshot.ContainerProgress()
 		if err != nil {
 			return p, err
 		}

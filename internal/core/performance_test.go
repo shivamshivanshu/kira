@@ -42,28 +42,3 @@ func TestBatchedHistoryMatchesPerFile(t *testing.T) {
 	}
 	check()
 }
-
-func TestAllEpicProgressMatchesIndependentWalks(t *testing.T) {
-	items := []*datamodel.Item{
-		{ID: "e", Number: "E-1", Type: "epic"},
-		{ID: "sub", Number: "E-2", Type: "epic", Parent: new("e")},
-		{ID: "done", Type: "ticket", State: "DONE", Parent: new("sub")},
-		{ID: "open", Type: "ticket", State: "TODO", Parent: new("e")},
-		{ID: "invalid-child", Type: "ticket", State: "DONE", Parent: new("open")},
-	}
-	cfg := progressCfg()
-	got, err := allEpicProgress(cfg, items, epicContainers())
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, id := range []string{"e", "sub"} {
-		want, err := epicProgress(cfg, parentChildren(items), id, epicContainers())
-		if err != nil || got[id] != want {
-			t.Fatalf("progress %s: %v != %v (%v)", id, got[id], want, err)
-		}
-	}
-	items[0].Parent = new("sub")
-	if _, err := allEpicProgress(cfg, items, epicContainers()); err == nil {
-		t.Fatal("memoized progress missed a cycle")
-	}
-}

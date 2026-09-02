@@ -32,7 +32,7 @@ func loadFilteredTree(store *core.Store, cfg *datamodel.Config, expr string) (tr
 		}
 		nodes = pruneNodes(tr.Nodes, matched)
 	}
-	pr, err := snapshot.EpicProgress()
+	pr, err := snapshot.ContainerProgress()
 	if err != nil {
 		return treeData{}, err
 	}

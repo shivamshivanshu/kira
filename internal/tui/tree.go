@@ -24,7 +24,7 @@ func (ti treeItem) isEpic() bool { return len(ti.node.Children) > 0 }
 type treeModel struct {
 	nodes     []datamodel.TreeNode
 	fields    map[string]datamodel.ListItem
-	progress  map[string]datamodel.EpicProgress
+	progress  map[string]datamodel.ContainerProgress
 	collapsed map[string]bool
 
 	rows   []treeItem
@@ -33,10 +33,10 @@ type treeModel struct {
 }
 
 func newTreeModel() treeModel {
-	return treeModel{fields: map[string]datamodel.ListItem{}, progress: map[string]datamodel.EpicProgress{}, collapsed: map[string]bool{}}
+	return treeModel{fields: map[string]datamodel.ListItem{}, progress: map[string]datamodel.ContainerProgress{}, collapsed: map[string]bool{}}
 }
 
-func (tm *treeModel) load(nodes []datamodel.TreeNode, fields map[string]datamodel.ListItem, progress map[string]datamodel.EpicProgress) {
+func (tm *treeModel) load(nodes []datamodel.TreeNode, fields map[string]datamodel.ListItem, progress map[string]datamodel.ContainerProgress) {
 	tm.nodes = nodes
 	tm.fields = fields
 	tm.progress = progress

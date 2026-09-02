@@ -1,4 +1,3 @@
-// Command kira is the CLI entry point.
 package main
 
 import (

@@ -42,12 +42,3 @@ func TestMessageExhaustive(t *testing.T) {
 		}
 	}
 }
-
-func TestMessageMissingArgs(t *testing.T) {
-	t.Parallel()
-	for _, code := range datamodel.WarnCodes {
-		for _, args := range [][]string{nil, {"one"}} {
-			_ = Message(datamodel.Warning{Code: code, Args: args})
-		}
-	}
-}

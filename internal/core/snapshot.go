@@ -71,8 +71,8 @@ func (v *Snapshot) SprintList() *datamodel.SprintListResult {
 	return sprintList(v.data.cfg, v.data.items, v.query.ActiveSprint)
 }
 
-func (v *Snapshot) EpicProgress() (map[string]datamodel.EpicProgress, error) {
-	return allEpicProgress(v.data.cfg, v.data.items, entityschema.ContainerTypes(v.data.schemas))
+func (v *Snapshot) ContainerProgress() (map[string]datamodel.ContainerProgress, error) {
+	return allContainerProgress(v.data.cfg, v.data.items, entityschema.ContainerTypes(v.data.schemas))
 }
 
 func (v *Snapshot) Now() (*datamodel.NowResult, error) {

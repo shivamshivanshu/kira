@@ -28,13 +28,11 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Type = args[0]
 			opts.NoEdit = opts.NoEdit || g.nonInteractive
-			for _, f := range fields {
-				k, v, ok := strings.Cut(f, "=")
-				if !ok {
-					return errx.User("--field %q: expected key=value", f).WithHint("example: --field severity=high")
-				}
-				opts.Fields = append(opts.Fields, core.FieldEdit{Key: k, Value: v})
+			edits, err := parseFieldEdits(fields, "severity=high")
+			if err != nil {
+				return err
 			}
+			opts.Fields = edits
 			if err := g.rejectStdinSource(opts.FromFile); err != nil {
 				return err
 			}

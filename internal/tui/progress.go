@@ -9,7 +9,7 @@ import (
 
 const progressBarWidth = 7
 
-func progressParts(rich bool, p datamodel.EpicProgress) (bar, label string) {
+func progressParts(rich bool, p datamodel.ContainerProgress) (bar, label string) {
 	if p.Total == 0 {
 		return "", ""
 	}

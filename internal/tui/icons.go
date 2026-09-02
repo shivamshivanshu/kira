@@ -140,7 +140,7 @@ func (ic iconSet) categoryGlyph(cat datamodel.Category, resolution *string) stri
 	case datamodel.CategoryDoing:
 		return glyphDoing.pick(ic.mode)
 	case datamodel.CategoryDone:
-		if resolution != nil && slices.Contains(ic.dropped, *resolution) {
+		if datamodel.IsDropped(resolution, ic.dropped) {
 			return glyphDropped.pick(ic.mode)
 		}
 		return glyphDone.pick(ic.mode)

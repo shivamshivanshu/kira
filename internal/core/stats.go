@@ -102,7 +102,7 @@ func (s *Store) resolveScope(cfg *datamodel.Config, opts StatsOpts, items []*dat
 
 func descendants(items []*datamodel.Item, parentULID string) ([]*datamodel.Item, error) {
 	var out []*datamodel.Item
-	err := walkEpic(parentChildren(items), parentULID, func(*datamodel.Item) bool { return true }, func(c *datamodel.Item) {
+	err := walkDescendants(parentChildren(items), parentULID, func(*datamodel.Item) bool { return true }, func(c *datamodel.Item) {
 		out = append(out, c)
 	})
 	if err != nil {

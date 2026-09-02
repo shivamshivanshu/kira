@@ -30,7 +30,7 @@ type pageData struct {
 	Detail                                            *datamodel.ShowResult
 	Active                                            *core.ActiveItemSummary
 	Sprints                                           []datamodel.SprintListRow
-	Progress                                          map[string]datamodel.EpicProgress
+	Progress                                          map[string]datamodel.ContainerProgress
 	Targets                                           []string
 	Settings                                          []string
 	Explain                                           *datamodel.ExplainResult

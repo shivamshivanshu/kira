@@ -1,5 +1,7 @@
 package datamodel
 
+import "slices"
+
 type Workflow struct {
 	States      []State   `yaml:"states"`
 	Initial     string    `yaml:"initial"`
@@ -21,6 +23,12 @@ func (w Workflow) StateByKey(key string) (State, bool) {
 		}
 	}
 	return State{}, false
+}
+
+// IsDropped takes the dropped set rather than a Config because the renderer
+// copies it in once and never carries config any further.
+func IsDropped(resolution *string, dropped []string) bool {
+	return resolution != nil && slices.Contains(dropped, *resolution)
 }
 
 func (c *Config) CategoryOf(typ, state string) (Category, bool) {

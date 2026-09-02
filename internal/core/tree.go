@@ -63,7 +63,7 @@ func parentChildren(items []*datamodel.Item) map[string][]*datamodel.Item {
 	return children
 }
 
-func walkEpic(children map[string][]*datamodel.Item, root string, recurseInto func(*datamodel.Item) bool, visit func(*datamodel.Item)) error {
+func walkDescendants(children map[string][]*datamodel.Item, root string, recurseInto func(*datamodel.Item) bool, visit func(*datamodel.Item)) error {
 	onPath := map[string]bool{root: true}
 	var firstCycle error
 	var walk func(string)
@@ -71,7 +71,7 @@ func walkEpic(children map[string][]*datamodel.Item, root string, recurseInto fu
 		for _, c := range children[parentID] {
 			if onPath[c.ID] {
 				if firstCycle == nil {
-					firstCycle = errx.Conflict("epic cycle detected at %s", c.Number)
+					firstCycle = errx.Conflict("parent cycle detected at %s", c.Number)
 				}
 				continue
 			}
@@ -98,7 +98,7 @@ func newTreeBuilder(children map[string][]*datamodel.Item) *treeBuilder {
 
 func (b *treeBuilder) node(it *datamodel.Item) (datamodel.TreeNode, error) {
 	if b.onPath[it.ID] {
-		return datamodel.TreeNode{}, errx.Conflict("epic cycle detected at %s", it.Number)
+		return datamodel.TreeNode{}, errx.Conflict("parent cycle detected at %s", it.Number)
 	}
 	b.onPath[it.ID] = true
 	defer delete(b.onPath, it.ID)

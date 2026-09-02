@@ -176,8 +176,8 @@ func (c *validationCtx) validateBuffer(build func(string) (*datamodel.Item, []er
 
 // validateGraph overlays updated onto byID for the duration of the check and
 // restores the caller's entry afterwards, rather than cloning a map that grows
-// with the repository on every mutation, then checks parent-is-epic, blocked_by
-// target-type, and cycles.
+// with the repository on every mutation, then checks ref target types and
+// cycles.
 func validateGraph(updated *datamodel.Item, byID map[string]*datamodel.Item, schema entityschema.Schema, containers map[string]bool) []error {
 	prev, existed := byID[updated.ID]
 	byID[updated.ID] = updated

@@ -9,31 +9,28 @@ import (
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
-func TestAllocateEmptyStartsAtOne(t *testing.T) {
+func TestHighestNEmptyIsZero(t *testing.T) {
 	t.Parallel()
-	if got := id.Allocate(id.Snapshot{Key: "KIRA"}); got.N != 1 || got.String() != "KIRA-1" {
-		t.Fatalf("Allocate(empty) = %v, want KIRA-1", got)
+	if got := id.HighestN(id.Snapshot{Key: "KIRA"}, "KIRA"); got != 0 {
+		t.Fatalf("HighestN(empty) = %d, want 0", got)
 	}
 }
 
-func TestAllocateIsMaxUnionPlusOne(t *testing.T) {
+func TestHighestNIsMaxOfNumbersAndAliases(t *testing.T) {
 	t.Parallel()
 	rng := rand.New(rand.NewSource(1))
 	for trial := range 500 {
 		var items []id.Item
-		union := map[int]bool{}
 		highest := 0
 		nItems := rng.Intn(8)
 		for range nItems {
 			num := rng.Intn(1000) + 1
-			union[num] = true
 			if num > highest {
 				highest = num
 			}
 			var aliases []string
 			for range rng.Intn(4) {
 				a := rng.Intn(1000) + 1
-				union[a] = true
 				if a > highest {
 					highest = a
 				}
@@ -45,18 +42,13 @@ func TestAllocateIsMaxUnionPlusOne(t *testing.T) {
 				Aliases: aliases,
 			})
 		}
-		got := id.Allocate(id.Snapshot{Key: "KIRA", Items: items})
-		want := highest + 1
-		if got.N != want {
-			t.Fatalf("trial %d: Allocate.N = %d, want max+1 = %d", trial, got.N, want)
-		}
-		if union[got.N] {
-			t.Fatalf("trial %d: allocated %d is already in the union", trial, got.N)
+		if got := id.HighestN(id.Snapshot{Key: "KIRA", Items: items}, "KIRA"); got != highest {
+			t.Fatalf("trial %d: HighestN = %d, want max %d", trial, got, highest)
 		}
 	}
 }
 
-func TestAllocateCountsAliasesAndIgnoresForeignKeys(t *testing.T) {
+func TestHighestNCountsAliasesAndIgnoresForeignKeys(t *testing.T) {
 	t.Parallel()
 	snap := id.Snapshot{Key: "KIRA", Items: []id.Item{
 		{Number: "KIRA-3"},
@@ -65,8 +57,8 @@ func TestAllocateCountsAliasesAndIgnoresForeignKeys(t *testing.T) {
 		{Number: "OTHER-9000"},
 		{Number: "not-a-number"},
 	}}
-	if got := id.Allocate(snap); got.N != 41 {
-		t.Fatalf("Allocate.N = %d, want 41 (max alias 40 + 1)", got.N)
+	if got := id.HighestN(snap, "KIRA"); got != 40 {
+		t.Fatalf("HighestN = %d, want 40 (max alias)", got)
 	}
 }
 

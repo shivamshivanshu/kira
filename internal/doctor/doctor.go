@@ -1,5 +1,5 @@
 // Package doctor runs read-only consistency checks over a kira repo — id
-// collisions, dangling refs, schema/state/vocab violations, epic cycles, index
+// collisions, dangling refs, schema/state/vocab violations, parent cycles, index
 // freshness, and hook/binary presence — and reports structured findings that a
 // future fixer can consume. It performs no writes.
 package doctor
