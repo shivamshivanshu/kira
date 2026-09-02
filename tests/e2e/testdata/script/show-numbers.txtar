@@ -1,0 +1,31 @@
+# internal/id keeps ULIDs internal and KIRA-n for humans, but ShowResult carried
+# only ULIDs for epic/blocked_by, so kira show printed them raw and the user's
+# only recourse was to copy one back in.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key SC
+exec kira create epic --title Parent --no-edit
+exec kira create ticket --title Child --no-edit
+exec kira create ticket --title Blocker --no-edit
+exec kira link SC-2 --epic SC-1
+exec kira link SC-2 --blocked-by SC-3
+
+exec kira show SC-2 --no-color
+stdout 'epic:\s+SC-1'
+stdout 'blocked_by:\s+SC-3'
+! stdout 'epic:\s+01'
+! stdout 'blocked_by:\s+01'
+
+# the reverse edge was computed into JSON and never rendered
+exec kira show SC-3 --no-color
+stdout 'blocks:\s+SC-2'
+
+# --json keeps the ULID and adds the number alongside, as ListItem does
+exec kira show SC-2 --json
+stdout '"epic": "01'
+stdout '"epic_number": "SC-1"'
+stdout '"blocked_by_numbers"'

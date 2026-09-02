@@ -78,9 +78,11 @@ func printShow(cmd *cobra.Command, g *globalFlags, res *datamodel.ShowResult) er
 
 func renderShow(w io.Writer, r *datamodel.ShowResult) {
 	_, _ = fmt.Fprintf(w, "%s  %s  [%s]\n", r.Number, r.Title, r.State)
+	// blocked_by: is 11 characters, so a 10-wide label column misaligns the
+	// one row most likely to sit next to epic:.
 	line := func(label, value string) {
 		if value != "" {
-			_, _ = fmt.Fprintf(w, "%-10s %s\n", label+":", value)
+			_, _ = fmt.Fprintf(w, "%-12s %s\n", label+":", value)
 		}
 	}
 	line("id", r.ID)
@@ -93,9 +95,12 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 	if len(r.Labels) > 0 {
 		line("labels", strings.Join(r.Labels, ", "))
 	}
-	line("epic", ptr.Deref(r.Epic))
-	if len(r.BlockedBy) > 0 {
-		line("blocked_by", strings.Join(r.BlockedBy, ", "))
+	line("epic", ptr.DerefOr(r.EpicNumber, ptr.Deref(r.Epic)))
+	if len(r.BlockedByNumbers) > 0 {
+		line("blocked_by", strings.Join(r.BlockedByNumbers, ", "))
+	}
+	if len(r.BlocksNumbers) > 0 {
+		line("blocks", strings.Join(r.BlocksNumbers, ", "))
 	}
 	line("created", r.Created)
 	line("updated", r.Updated)

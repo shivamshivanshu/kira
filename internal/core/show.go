@@ -43,6 +43,7 @@ func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResu
 	}
 	res := showResultOf(ld.cfg, it)
 	res.Blocks = blocksOf(ld.items, ulid)
+	numberReferences(&res, ld.items)
 	res.Fields = entityschema.CustomFields(ld.schemas[it.Type], it, codec.Decoder{})
 	res.Skew = s.skew(cfg, ref, ulid, at)
 	return &res, nil
@@ -65,6 +66,7 @@ func (s *Store) detail(ld *loaded, ref string) (*ItemDetail, error) {
 	}
 	res := showResultOf(ld.cfg, it)
 	res.Blocks = blocksOf(ld.items, ulid)
+	numberReferences(&res, ld.items)
 	res.Fields = entityschema.CustomFields(ld.schemas[it.Type], it, codec.Decoder{})
 	res.StderrNotes = ld.notes
 
@@ -81,6 +83,41 @@ func (s *Store) detail(ld *loaded, ref string) (*ItemDetail, error) {
 // blocksOf derives the reverse of blocked_by: the items that name ulid as a
 // blocker. It is not stored on the item itself, so it is recomputed from the
 // loaded set rather than read from the file.
+// numberReferences fills in the display number for every ULID the result
+// points at. internal/id keeps ULIDs internal and numbers for humans, but
+// ShowResult carried only the ULIDs, so kira show printed them raw.
+func numberReferences(res *datamodel.ShowResult, items []*datamodel.Item) {
+	byULID := datamodel.IndexByID(items)
+	numberOf := func(ulid string) (string, bool) {
+		it, ok := byULID[ulid]
+		if !ok {
+			return "", false
+		}
+		return it.Number, true
+	}
+	if res.Epic != nil {
+		if n, ok := numberOf(*res.Epic); ok {
+			res.EpicNumber = &n
+		}
+	}
+	res.BlockedByNumbers = numbersFor(numberOf, res.BlockedBy)
+	res.BlocksNumbers = numbersFor(numberOf, res.Blocks)
+}
+
+// numbersFor keeps the ULID where it resolves to nothing: a dangling reference
+// should stay visible, not render as a gap.
+func numbersFor(numberOf func(string) (string, bool), ulids []string) []string {
+	out := make([]string, len(ulids))
+	for i, u := range ulids {
+		if n, ok := numberOf(u); ok {
+			out[i] = n
+			continue
+		}
+		out[i] = u
+	}
+	return out
+}
+
 func blocksOf(items []*datamodel.Item, ulid string) []string {
 	out := []string{}
 	for _, it := range items {
