@@ -46,3 +46,7 @@ Design questions to settle first, not to guess:
 - whether inheritance is single or multiple, and how deep chains resolve,
 - interaction with schema overlays, since a repo file would then layer over a
   builtin that itself extends another type.
+
+<!-- kira:comment id=01M1J1B79ATJ5X1HXB986N94J3 author=Shivam-Shivanshu ts=2026-09-02T23:45:33+02:00 -->
+Dropped by the owner, 2026-09-02: the machinery (field-merge semantics, removal, cycle detection, overlay interaction, and an inheritable *bool to make default-true actually work) costs more than the ~17 duplicated fields per type it would save. Redundant fields per type are accepted deliberately. CORE-65 is unaffected and still wanted: blocked_by targeting any item cannot be expressed by naming a type, which is independent of inheritance.
+<!-- /kira:comment -->
