@@ -4,13 +4,14 @@ number: CORE-64
 aliases: []
 type: ticket
 title: "Types cannot inherit, so every new type copies ticket's whole field list"
-state: TODO
+state: WONT_DO
+resolution: dropped
 priority: P3
 labels: []
 parent: null
 blocked_by: []
 created: 2026-09-02T17:37:25+02:00
-updated: 2026-09-02T17:37:25+02:00
+updated: 2026-09-02T23:45:08+02:00
 ---
 `.kira/schema/epic.json` is 36 lines and **17 of its 19 fields are
 byte-identical to ticket.json**. Its genuine content is five things: a
