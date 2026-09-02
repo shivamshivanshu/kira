@@ -498,31 +498,31 @@ func TestEnvOptionalBinsAndHookFindings(t *testing.T) {
 	}
 }
 
-func TestEpicCycle(t *testing.T) {
+func TestParentCycle(t *testing.T) {
 	t.Parallel()
 	a := valid(ulidA, "KIRA-1")
 	b := valid(ulidB, "KIRA-2")
 	a.Parent = new(ulidB)
 	b.Parent = new(ulidA)
 	items := []*datamodel.Item{a, b}
-	findings := doctor.EpicCycles(items, resolver(items...))
+	findings := doctor.RefCycles(items, resolver(items...))
 	if len(findings) != 2 {
 		t.Fatalf("expected a finding per cycle member, got %+v", findings)
 	}
 	for _, f := range findings {
-		if f.Class != doctor.ClassCycle || f.Severity != doctor.SeverityError {
+		if f.Class != doctor.ClassRefCycle || f.Field != datamodel.KeyParent || f.Severity != doctor.SeverityError {
 			t.Fatalf("unexpected finding %+v", f)
 		}
 	}
 }
 
-func TestEpicChainAcyclic(t *testing.T) {
+func TestParentChainAcyclic(t *testing.T) {
 	t.Parallel()
 	child := valid(ulidA, "KIRA-1")
 	parent := valid(ulidB, "KIRA-2")
 	child.Parent = new(ulidB)
 	items := []*datamodel.Item{child, parent}
-	if f := doctor.EpicCycles(items, resolver(items...)); len(f) != 0 {
+	if f := doctor.RefCycles(items, resolver(items...)); len(f) != 0 {
 		t.Fatalf("expected no cycle in a linear chain, got %+v", f)
 	}
 }

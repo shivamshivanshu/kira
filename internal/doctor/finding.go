@@ -18,7 +18,6 @@ const (
 	ClassVocab         Class = "vocab"
 	ClassRef           Class = "dangling-ref"
 	ClassCollision     Class = "id-collision"
-	ClassCycle         Class = "epic-cycle"
 	ClassRefCycle      Class = "ref-cycle"
 	ClassRefType       Class = "ref-type"
 	ClassComment       Class = "comment"
@@ -43,7 +42,7 @@ const (
 var Severities = []Severity{SeverityError, SeverityWarning, SeverityInfo}
 
 var Classes = []Class{
-	ClassSchema, ClassState, ClassVocab, ClassRef, ClassCollision, ClassCycle,
+	ClassSchema, ClassState, ClassVocab, ClassRef, ClassCollision,
 	ClassRefCycle, ClassRefType, ClassComment, ClassFreshness, ClassHooks,
 	ClassEnv, ClassBoard, ClassNumberOutlier, ClassStray, ClassStateDrift,
 	ClassWipLimit,
