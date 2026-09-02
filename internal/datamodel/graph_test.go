@@ -64,12 +64,14 @@ func TestFindCycles(t *testing.T) {
 
 func TestCycleRelations(t *testing.T) {
 	rels := CycleRelations()
-	if len(rels) != 2 {
-		t.Fatalf("CycleRelations len = %d, want 2", len(rels))
+	if len(rels) != 3 {
+		t.Fatalf("CycleRelations len = %d, want 3", len(rels))
 	}
+	parent := "C"
 	it := &Item{
 		BlockedBy: []string{"A"},
 		Links:     map[string][]string{string(LinkDuplicateOf): {"B"}},
+		Parent:    &parent,
 	}
 	if rels[0].Field != KeyBlockedBy {
 		t.Errorf("rels[0].Field = %q, want %q", rels[0].Field, KeyBlockedBy)
@@ -82,5 +84,18 @@ func TestCycleRelations(t *testing.T) {
 	}
 	if got := rels[1].Edges(it); !reflect.DeepEqual(got, []string{"B"}) {
 		t.Errorf("duplicate_of edges = %v, want [B]", got)
+	}
+	if rels[2].Field != KeyParent {
+		t.Errorf("rels[2].Field = %q, want %q", rels[2].Field, KeyParent)
+	}
+	if got := rels[2].Edges(it); !reflect.DeepEqual(got, []string{"C"}) {
+		t.Errorf("parent edges = %v, want [C]", got)
+	}
+	empty := ""
+	if got := rels[2].Edges(&Item{}); got != nil {
+		t.Errorf("unset parent edges = %v, want nil", got)
+	}
+	if got := rels[2].Edges(&Item{Parent: &empty}); got != nil {
+		t.Errorf("empty parent edges = %v, want nil", got)
 	}
 }
