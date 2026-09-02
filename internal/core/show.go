@@ -102,6 +102,12 @@ func numberReferences(res *datamodel.ShowResult, items []*datamodel.Item) {
 	}
 	res.BlockedByNumbers = numbersFor(numberOf, res.BlockedBy)
 	res.BlocksNumbers = numbersFor(numberOf, res.Blocks)
+	if len(res.Links) > 0 {
+		res.LinksNumbers = make(map[string][]string, len(res.Links))
+		for typ, targets := range res.Links {
+			res.LinksNumbers[typ] = numbersFor(numberOf, targets)
+		}
+	}
 }
 
 // numbersFor keeps the ULID where it resolves to nothing: a dangling reference

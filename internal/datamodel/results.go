@@ -143,19 +143,20 @@ type ShowResult struct {
 	// Display numbers for the ULIDs above, following ListItem's epic/epic_number
 	// pairing. A reference that resolves to no item has no entry, so a dangling
 	// ULID stays visible rather than silently rendering as blank.
-	EpicNumber       *string        `json:"epic_number"`
-	BlockedByNumbers []string       `json:"blocked_by_numbers"`
-	BlocksNumbers    []string       `json:"blocks_numbers"`
-	Fields           map[string]any `json:"fields,omitempty"`
-	Estimate         *float64       `json:"estimate"`
-	Created          string         `json:"created"`
-	Updated          string         `json:"updated"`
-	Body             string         `json:"body"`
-	Comments         []CommentView  `json:"comments"`
-	LinkedCommits    []CommitLink   `json:"linked_commits"`
-	ReferencedBy     []CommitLink   `json:"referenced_by"`
-	HistoryTail      []HistoryEvent `json:"history_tail"`
-	Skew             *Skew          `json:"skew,omitempty"`
+	EpicNumber       *string             `json:"epic_number"`
+	BlockedByNumbers []string            `json:"blocked_by_numbers"`
+	BlocksNumbers    []string            `json:"blocks_numbers"`
+	LinksNumbers     map[string][]string `json:"links_numbers"`
+	Fields           map[string]any      `json:"fields,omitempty"`
+	Estimate         *float64            `json:"estimate"`
+	Created          string              `json:"created"`
+	Updated          string              `json:"updated"`
+	Body             string              `json:"body"`
+	Comments         []CommentView       `json:"comments"`
+	LinkedCommits    []CommitLink        `json:"linked_commits"`
+	ReferencedBy     []CommitLink        `json:"referenced_by"`
+	HistoryTail      []HistoryEvent      `json:"history_tail"`
+	Skew             *Skew               `json:"skew,omitempty"`
 
 	StderrNotes []Warning `json:"-"`
 }

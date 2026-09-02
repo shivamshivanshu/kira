@@ -1959,6 +1959,15 @@
           },
           "type": "object"
         },
+        "links_numbers": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "object"
+        },
         "number": {
           "type": "string"
         },
@@ -2058,6 +2067,7 @@
         "epic_number",
         "blocked_by_numbers",
         "blocks_numbers",
+        "links_numbers",
         "estimate",
         "created",
         "updated",

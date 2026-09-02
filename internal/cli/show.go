@@ -78,11 +78,14 @@ func printShow(cmd *cobra.Command, g *globalFlags, res *datamodel.ShowResult) er
 
 func renderShow(w io.Writer, r *datamodel.ShowResult) {
 	_, _ = fmt.Fprintf(w, "%s  %s  [%s]\n", r.Number, r.Title, r.State)
-	// blocked_by: is 11 characters, so a 10-wide label column misaligns the
-	// one row most likely to sit next to epic:.
+	// The label column is sized from the labels actually present: link types
+	// and schema-declared field names are both arbitrary, so any fixed width
+	// eventually misaligns.
+	type row struct{ label, value string }
+	var rows []row
 	line := func(label, value string) {
 		if value != "" {
-			_, _ = fmt.Fprintf(w, "%-12s %s\n", label+":", value)
+			rows = append(rows, row{label + ":", value})
 		}
 	}
 	line("id", r.ID)
@@ -102,10 +105,20 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 	if len(r.BlocksNumbers) > 0 {
 		line("blocks", strings.Join(r.BlocksNumbers, ", "))
 	}
+	for _, typ := range slices.Sorted(maps.Keys(r.LinksNumbers)) {
+		line(typ, strings.Join(r.LinksNumbers[typ], ", "))
+	}
 	line("created", r.Created)
 	line("updated", r.Updated)
 	for _, name := range slices.Sorted(maps.Keys(r.Fields)) {
 		line(name, typedFieldValueAsText(r.Fields[name]))
+	}
+	width := 0
+	for _, rw := range rows {
+		width = max(width, len(rw.label))
+	}
+	for _, rw := range rows {
+		_, _ = fmt.Fprintf(w, "%-*s %s\n", width, rw.label, rw.value)
 	}
 	if desc := codec.Description(r.Body); strings.TrimSpace(desc) != "" {
 		_, _ = fmt.Fprintf(w, "\n%s\n", desc)

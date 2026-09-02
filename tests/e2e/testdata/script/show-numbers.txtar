@@ -24,6 +24,14 @@ stdout 'blocked_by:\s+SC-3'
 exec kira show SC-3 --no-color
 stdout 'blocks:\s+SC-2'
 
+# every relation kind kira can write is rendered: --relates and --duplicate-of
+# were write-only, present in JSON and invisible to a human
+exec kira link SC-2 --relates SC-3
+exec kira link SC-2 --duplicate-of SC-3
+exec kira show SC-2 --no-color
+stdout 'relates:\s+SC-3'
+stdout 'duplicate_of:\s+SC-3'
+
 # --json keeps the ULID and adds the number alongside, as ListItem does
 exec kira show SC-2 --json
 stdout '"epic": "01'
