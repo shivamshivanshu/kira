@@ -34,7 +34,3 @@ const (
 	DirtyCommit DirtyPolicy = "commit"
 	DirtyStash  DirtyPolicy = "stash"
 )
-
-type Reindexer interface {
-	Reindex() Step
-}

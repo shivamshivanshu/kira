@@ -32,7 +32,7 @@ func newSyncCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			report, err := s.Sync(cfg, opts, nil)
+			report, err := s.Sync(cfg, opts)
 			if err != nil {
 				if report != nil {
 					printSyncReport(cmd.ErrOrStderr(), report)

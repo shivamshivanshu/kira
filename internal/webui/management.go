@@ -113,7 +113,7 @@ func (s *server) sync(cfg *datamodel.Config, f url.Values) (string, string, erro
 	}
 	requestConfig := *cfg
 	requestConfig.Sync.Push = false
-	report, err := s.store.Sync(&requestConfig, core.SyncOpts{Push: push, Dirty: dirty}, nil)
+	report, err := s.store.Sync(&requestConfig, core.SyncOpts{Push: push, Dirty: dirty})
 	var lines []string
 	if report != nil {
 		for _, step := range report.Steps {

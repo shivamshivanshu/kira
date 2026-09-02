@@ -52,7 +52,6 @@ func open(cacheDir string) (*Index, error) {
 	return idx, nil
 }
 
-// Close closes the index's underlying database connection.
 func (i *Index) Close() error { return i.db.Close() }
 
 // discard deletes the on-disk cache files so the next open rebuilds them from

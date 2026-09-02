@@ -106,7 +106,7 @@ func TestNestedRootSyncDirtyCommitAutoResolves(t *testing.T) {
 	writeNestedItem(t, oursSub, mine)
 
 	s, cfg := discoverStore(t, oursSub)
-	report, err := s.Sync(cfg, core.SyncOpts{Dirty: syncx.DirtyCommit}, nil)
+	report, err := s.Sync(cfg, core.SyncOpts{Dirty: syncx.DirtyCommit})
 	if err != nil {
 		t.Fatalf("Sync: %v (report %+v)", err, report)
 	}
