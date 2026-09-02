@@ -4,13 +4,13 @@ number: KIRA-166
 aliases: []
 type: ticket
 title: "kira show prints raw ULIDs for epic and blocked_by"
-state: IN_PROGRESS
+state: REVIEW
 priority: P2
 labels: []
 epic: null
 blocked_by: []
 created: 2026-09-02T09:47:02+02:00
-updated: 2026-09-02T11:16:47+02:00
+updated: 2026-09-02T11:27:25+02:00
 ---
 
 ## Description
