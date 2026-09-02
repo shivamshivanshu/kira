@@ -35,6 +35,12 @@
     "KIRA-3"
   ],
   "blocks_numbers": [],
+  "links_numbers": {
+    "duplicate_of": [],
+    "relates": [
+      "KIRA-3"
+    ]
+  },
   "estimate": 3,
   "created": "<TS>",
   "updated": "<TS>",
