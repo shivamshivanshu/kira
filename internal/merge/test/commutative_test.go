@@ -56,31 +56,39 @@ func randLinks(r *rand.Rand) map[string][]string {
 // but via separate maps, so side-swap symmetry has to be exercised over them
 // too. Empty and absent are distinct here: an untouched empty list is a value
 // merge must preserve, not a missing key.
-func randExtraScalars(r *rand.Rand) map[string]string {
-	var out map[string]string
+func randExtraScalars(r *rand.Rand) map[string]datamodel.Rendered {
+	var out map[string]datamodel.Rendered
 	for _, k := range []string{"severity", "team"} {
 		v := pickPtr(r, []string{"high", "low", "null"})
 		if v == nil {
 			continue
 		}
 		if out == nil {
-			out = map[string]string{}
+			out = map[string]datamodel.Rendered{}
 		}
-		out[k] = *v
+		out[k] = datamodel.Rendered(*v)
 	}
 	return out
 }
 
-func randExtraLists(r *rand.Rand) map[string][]string {
-	var out map[string][]string
+func renderedSubset(r *rand.Rand, pool []string) []datamodel.Rendered {
+	var out []datamodel.Rendered
+	for _, e := range pickSubset(r, pool) {
+		out = append(out, datamodel.Rendered(e))
+	}
+	return out
+}
+
+func randExtraLists(r *rand.Rand) map[string][]datamodel.Rendered {
+	var out map[string][]datamodel.Rendered
 	for _, k := range []string{"watchers", "tags"} {
 		if r.Intn(3) == 0 {
 			continue
 		}
 		if out == nil {
-			out = map[string][]string{}
+			out = map[string][]datamodel.Rendered{}
 		}
-		out[k] = pickSubset(r, []string{"alice", "bob", "carol"})
+		out[k] = renderedSubset(r, []string{"alice", "bob", "carol"})
 	}
 	return out
 }
@@ -100,11 +108,11 @@ func randExtraLinks(r *rand.Rand) map[string][]string {
 	return out
 }
 
-func sortedListMap(m map[string][]string) map[string][]string {
+func sortedListMap[T ~string](m map[string][]T) map[string][]T {
 	if m == nil {
 		return nil
 	}
-	out := make(map[string][]string, len(m))
+	out := make(map[string][]T, len(m))
 	for k, v := range m {
 		out[k] = sortedCopy(v)
 	}
@@ -140,7 +148,7 @@ func randSide(r *rand.Rand) *datamodel.Item {
 	return it
 }
 
-func sortedCopy(xs []string) []string {
+func sortedCopy[T ~string](xs []T) []T {
 	out := slices.Clone(xs)
 	slices.Sort(out)
 	return out

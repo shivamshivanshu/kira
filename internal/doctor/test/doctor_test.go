@@ -585,7 +585,7 @@ func TestRefTypeExtraRefFieldMismatch(t *testing.T) {
 	schemas[datamodel.TypeTicket] = ticketSchema
 
 	child := valid(ulidA, "KIRA-1")
-	child.ExtraScalars = map[string]string{"reviewer_of": ulidB}
+	child.ExtraScalars = map[string]datamodel.Rendered{"reviewer_of": ulidB}
 	other := valid(ulidB, "KIRA-2")
 	items := []*datamodel.Item{child, other}
 
@@ -605,7 +605,7 @@ func TestCheckDanglingExtraRefField(t *testing.T) {
 	schemas[datamodel.TypeTicket] = ticketSchema
 
 	it := valid(ulidA, "KIRA-1")
-	it.ExtraScalars = map[string]string{"reviewer_of": ulidB}
+	it.ExtraScalars = map[string]datamodel.Rendered{"reviewer_of": ulidB}
 
 	f := doctor.Check(config.Default(), resolver(it), it, schemas)
 	if len(f) != 1 || f[0].Class != doctor.ClassRef || f[0].Field != "reviewer_of" {
@@ -637,7 +637,7 @@ func TestRefChecksReachConfigOnlyTargetType(t *testing.T) {
 	types := map[string]bool{datamodel.TypeTicket: true, datamodel.TypeEpic: true, "saga": true}
 
 	dangling := valid(ulidA, "KIRA-1")
-	dangling.ExtraScalars = map[string]string{"saga_ref": ulidC}
+	dangling.ExtraScalars = map[string]datamodel.Rendered{"saga_ref": ulidC}
 	cfg := config.Default()
 	cfg.Workflows["saga"] = cfg.Workflows[datamodel.TypeTicket]
 
@@ -647,7 +647,7 @@ func TestRefChecksReachConfigOnlyTargetType(t *testing.T) {
 	}
 
 	wrongType := valid(ulidA, "KIRA-1")
-	wrongType.ExtraScalars = map[string]string{"saga_ref": ulidB}
+	wrongType.ExtraScalars = map[string]datamodel.Rendered{"saga_ref": ulidB}
 	items := []*datamodel.Item{wrongType, valid(ulidB, "KIRA-2")}
 	m := doctor.RefTypeMismatches(schemas, items, resolver(items...), types)
 	if len(m) != 1 || m[0].Field != "saga_ref" {

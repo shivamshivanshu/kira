@@ -40,11 +40,17 @@ type Item struct {
 	// rewrite unquoted. Read them through codec.Decode*, write them through
 	// codec.Encode*; comparing one against a raw value silently mismatches.
 	// ExtraLinks is the exception: link targets are bare refs, stored raw.
-	ExtraScalars map[string]string
-	ExtraLists   map[string][]string
+	ExtraScalars map[string]Rendered
+	ExtraLists   map[string][]Rendered
 	ExtraLinks   map[string][]string
 	CRLF         bool
 }
+
+// Rendered is frontmatter text exactly as it sits on disk, quoting and YAML
+// type intact. It is a distinct type so the compiler refuses to let it stand in
+// for a decoded value: passing one to something expecting the value behind it
+// is the mistake that caused every extras bug so far.
+type Rendered string
 
 func (it *Item) ExtraKeys() []string {
 	out := make([]string, 0, len(it.ExtraScalars)+len(it.ExtraLists))
@@ -106,11 +112,11 @@ var LinkTypes = []LinkType{LinkRelates, LinkDuplicateOf}
 
 func ValidLinkType(t string) bool { return slices.Contains(LinkTypes, LinkType(t)) }
 
-func CloneStringListMap(m map[string][]string) map[string][]string {
+func CloneStringListMap[T ~string](m map[string][]T) map[string][]T {
 	if m == nil {
 		return nil
 	}
-	out := make(map[string][]string, len(m))
+	out := make(map[string][]T, len(m))
 	for k, v := range m {
 		out[k] = slices.Clone(v)
 	}

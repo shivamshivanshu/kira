@@ -8,16 +8,20 @@ import (
 	"github.com/shivamshivanshu/kira/internal/merge"
 )
 
-func scalarExtras(kv ...string) map[string]string {
-	out := make(map[string]string, len(kv)/2)
+func scalarExtras(kv ...string) map[string]datamodel.Rendered {
+	out := make(map[string]datamodel.Rendered, len(kv)/2)
 	for i := 0; i+1 < len(kv); i += 2 {
-		out[kv[i]] = kv[i+1]
+		out[kv[i]] = datamodel.Rendered(kv[i+1])
 	}
 	return out
 }
 
-func watchers(vals ...string) map[string][]string {
-	return map[string][]string{"watchers": vals}
+func watchers(v ...string) map[string][]datamodel.Rendered {
+	out := make([]datamodel.Rendered, len(v))
+	for i, e := range v {
+		out[i] = datamodel.Rendered(e)
+	}
+	return map[string][]datamodel.Rendered{"watchers": out}
 }
 
 func TestExtraSurvivesUnrelatedFieldMerge(t *testing.T) {
@@ -41,7 +45,7 @@ func TestExtraListConcurrentAppendsUnion(t *testing.T) {
 	ours := base(func(it *datamodel.Item) { it.ExtraLists = watchers("alice", "bob") })
 	theirs := base(func(it *datamodel.Item) { it.ExtraLists = watchers("alice", "carol") })
 	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
-	want := []string{"alice", "bob", "carol"}
+	want := []datamodel.Rendered{"alice", "bob", "carol"}
 	if !slices.Equal(got.ExtraLists["watchers"], want) {
 		t.Fatalf("ExtraLists[watchers] = %v, want union %v", got.ExtraLists["watchers"], want)
 	}
@@ -77,7 +81,7 @@ func TestExtraDeletedOnOneSideStaysDeleted(t *testing.T) {
 
 func TestExtraUntouchedEmptyListSurvives(t *testing.T) {
 	t.Parallel()
-	emptyTags := func(it *datamodel.Item) { it.ExtraLists = map[string][]string{"tags": {}} }
+	emptyTags := func(it *datamodel.Item) { it.ExtraLists = map[string][]datamodel.Rendered{"tags": {}} }
 	b := base(emptyTags)
 	ours := base(func(it *datamodel.Item) { emptyTags(it); it.Title = "New title" })
 	theirs := base(func(it *datamodel.Item) { emptyTags(it); it.Owner = new("bob") })
@@ -92,7 +96,7 @@ func TestExtraListUnchangedKeptVerbatim(t *testing.T) {
 	t.Parallel()
 	withDupes := func(it *datamodel.Item) { it.ExtraLists = watchers("alice", "alice", "bob") }
 	got := merge.Merge(base(withDupes), base(withDupes), base(withDupes), merge.Theirs, conflictMerger).Item
-	if want := []string{"alice", "alice", "bob"}; !slices.Equal(got.ExtraLists["watchers"], want) {
+	if want := []datamodel.Rendered{"alice", "alice", "bob"}; !slices.Equal(got.ExtraLists["watchers"], want) {
 		t.Fatalf("ExtraLists[watchers] = %v, want unchanged input back verbatim %v", got.ExtraLists["watchers"], want)
 	}
 }
@@ -103,7 +107,7 @@ func TestExtraListOneSidedReorderTaken(t *testing.T) {
 	ours := base(func(it *datamodel.Item) { it.ExtraLists = watchers("alice", "bob") })
 	theirs := base(func(it *datamodel.Item) { it.ExtraLists = watchers("bob", "alice") })
 	got := merge.Merge(b, ours, theirs, merge.Theirs, conflictMerger).Item
-	if want := []string{"bob", "alice"}; !slices.Equal(got.ExtraLists["watchers"], want) {
+	if want := []datamodel.Rendered{"bob", "alice"}; !slices.Equal(got.ExtraLists["watchers"], want) {
 		t.Fatalf("ExtraLists[watchers] = %v, want theirs' reorder %v", got.ExtraLists["watchers"], want)
 	}
 }

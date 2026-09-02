@@ -87,8 +87,8 @@ func TestApplyFieldEditDeclaredExtraList(t *testing.T) {
 	if err := applyFieldEdit(it, "tags", "a, b", schema); err != nil {
 		t.Fatalf("set list extra: %v", err)
 	}
-	want := []string{"a", "b"}
-	if got := it.ExtraLists["tags"]; len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+	want := []datamodel.Rendered{"a", "b"}
+	if got := it.ExtraLists["tags"]; !slices.Equal(got, want) {
 		t.Errorf("ExtraLists[tags] = %v, want %v", got, want)
 	}
 
@@ -126,7 +126,7 @@ func TestApplyFieldEditListExtraMatchesParsedEncoding(t *testing.T) {
 			it.ExtraLists["tags"], reparsed.ExtraLists["tags"])
 	}
 	want := []string{"42", "null", "x[y", "plain"}
-	got, _ := entityschema.CustomFields(schema, it, codec.DecodeExtraScalar, codec.DecodeScalar)["tags"].([]string)
+	got, _ := entityschema.CustomFields(schema, it, codec.Decoder{})["tags"].([]string)
 	if !slices.Equal(got, want) {
 		t.Fatalf("tags read back as %v, want %v", got, want)
 	}

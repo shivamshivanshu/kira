@@ -206,7 +206,7 @@ func TestResolveInteractiveHonoursArbitratedExtraPick(t *testing.T) {
 
 	it := eventTicket()
 	commitSeverity := func(severity, date, msg string) {
-		it.ExtraScalars = map[string]string{"severity": severity}
+		it.ExtraScalars = map[string]datamodel.Rendered{"severity": datamodel.Rendered(severity)}
 		it.Updated = date + "T10:00:00Z"
 		if _, err := s.fs().WriteItem(it); err != nil {
 			t.Fatal(err)
@@ -286,20 +286,20 @@ func TestPickFieldsHonoursExtraFieldChoices(t *testing.T) {
 	s := &Store{prompter: &scriptedPrompter{answers: []string{"t", "o"}}}
 
 	target := eventTicket()
-	target.ExtraScalars = map[string]string{"reviewer": "auto"}
+	target.ExtraScalars = map[string]datamodel.Rendered{"reviewer": "auto"}
 	ours := eventTicket()
-	ours.ExtraScalars = map[string]string{"reviewer": "ours-reviewer"}
-	ours.ExtraLists = map[string][]string{"tags": {"ours"}}
+	ours.ExtraScalars = map[string]datamodel.Rendered{"reviewer": "ours-reviewer"}
+	ours.ExtraLists = map[string][]datamodel.Rendered{"tags": {"ours"}}
 	theirs := eventTicket()
-	theirs.ExtraScalars = map[string]string{"reviewer": "theirs-reviewer"}
-	theirs.ExtraLists = map[string][]string{"tags": {"theirs"}}
+	theirs.ExtraScalars = map[string]datamodel.Rendered{"reviewer": "theirs-reviewer"}
+	theirs.ExtraLists = map[string][]datamodel.Rendered{"tags": {"theirs"}}
 
 	s.pickFields(target, ours, theirs, []string{"reviewer", "tags"})
 
 	if target.ExtraScalars["reviewer"] != "theirs-reviewer" {
 		t.Errorf("reviewer = %q, want theirs pick", target.ExtraScalars["reviewer"])
 	}
-	if !slices.Equal(target.ExtraLists["tags"], []string{"ours"}) {
+	if !slices.Equal(target.ExtraLists["tags"], []datamodel.Rendered{"ours"}) {
 		t.Errorf("tags = %v, want ours pick", target.ExtraLists["tags"])
 	}
 }

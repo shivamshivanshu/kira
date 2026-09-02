@@ -43,7 +43,7 @@ func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResu
 	}
 	res := showResultOf(ld.cfg, it)
 	res.Blocks = blocksOf(ld.items, ulid)
-	res.Fields = entityschema.CustomFields(ld.schemas[it.Type], it, codec.DecodeExtraScalar, codec.DecodeScalar)
+	res.Fields = entityschema.CustomFields(ld.schemas[it.Type], it, codec.Decoder{})
 	res.Skew = s.skew(cfg, ref, ulid, at)
 	return &res, nil
 }
@@ -65,7 +65,7 @@ func (s *Store) detail(ld *loaded, ref string) (*ItemDetail, error) {
 	}
 	res := showResultOf(ld.cfg, it)
 	res.Blocks = blocksOf(ld.items, ulid)
-	res.Fields = entityschema.CustomFields(ld.schemas[it.Type], it, codec.DecodeExtraScalar, codec.DecodeScalar)
+	res.Fields = entityschema.CustomFields(ld.schemas[it.Type], it, codec.Decoder{})
 	res.StderrNotes = ld.notes
 
 	events, links, err := s.logEntries(ulid)

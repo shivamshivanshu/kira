@@ -76,32 +76,32 @@ var extraListKeys = []string{"custom_x", "custom_y"}
 
 var typedBareTokens = []string{"true", "false", "null", "123", "3.14", "2020-01-01T00:00:00Z"}
 
-func randExtraScalars(r *rand.Rand) map[string]string {
-	var out map[string]string
+func randExtraScalars(r *rand.Rand) map[string]datamodel.Rendered {
+	var out map[string]datamodel.Rendered
 	for _, k := range extraScalarKeys {
 		if r.Intn(2) == 0 {
 			continue
 		}
 		if out == nil {
-			out = map[string]string{}
+			out = map[string]datamodel.Rendered{}
 		}
 		if r.Intn(3) == 0 {
-			out[k] = typedBareTokens[r.Intn(len(typedBareTokens))]
+			out[k] = datamodel.Rendered(typedBareTokens[r.Intn(len(typedBareTokens))])
 		} else {
-			out[k] = codec.EmitScalar(pick(r))
+			out[k] = datamodel.Rendered(codec.EmitScalar(pick(r)))
 		}
 	}
 	return out
 }
 
-func randExtraLists(r *rand.Rand) map[string][]string {
-	var out map[string][]string
+func randExtraLists(r *rand.Rand) map[string][]datamodel.Rendered {
+	var out map[string][]datamodel.Rendered
 	for _, k := range extraListKeys {
 		if r.Intn(2) == 0 {
 			continue
 		}
 		if out == nil {
-			out = map[string][]string{}
+			out = map[string][]datamodel.Rendered{}
 		}
 		out[k] = randExtraList(r)
 	}
@@ -110,12 +110,12 @@ func randExtraLists(r *rand.Rand) map[string][]string {
 
 // a list extra stores each element's rendered YAML, the same as a scalar extra
 // stores its own, so generate elements in that form rather than raw.
-func randExtraList(r *rand.Rand) []string {
+func randExtraList(r *rand.Rand) []datamodel.Rendered {
 	n := r.Intn(4)
-	out := make([]string, 0, n)
+	out := make([]datamodel.Rendered, 0, n)
 	for range n {
 		if r.Intn(3) == 0 {
-			out = append(out, typedBareTokens[r.Intn(len(typedBareTokens))])
+			out = append(out, datamodel.Rendered(typedBareTokens[r.Intn(len(typedBareTokens))]))
 			continue
 		}
 		out = append(out, codec.EncodeExtraListElement(pick(r)))

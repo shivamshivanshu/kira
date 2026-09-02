@@ -156,7 +156,7 @@ func frontmatterField(line string, fields eventFields) (key, value string, ok bo
 	if !fields.tracked[key] {
 		return "", "", false
 	}
-	return key, codec.DecodeScalar(line[colon+1:]), true
+	return key, codec.DecodeScalar(datamodel.Rendered(line[colon+1:])), true
 }
 
 func fmEvents(created bool, minus, plus map[string]string, ts, sha string, fields eventFields) []datamodel.Event {

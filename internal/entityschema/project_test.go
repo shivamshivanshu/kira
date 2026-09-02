@@ -20,7 +20,7 @@ func TestProjectItemReadsMarkdownFromItsDeclaredSection(t *testing.T) {
 		Body: "## Notes\nsome prose\n\n## Comments\n<!-- kira:comment id=x author=a ts=t -->\nhi\n<!-- /kira:comment -->\n",
 	}
 
-	values := ProjectItem(schema, it, codec.DecodeExtraScalar, codec.DecodeScalar)
+	values := ProjectItem(schema, it, codec.Decoder{})
 
 	if values["notes"] != "some prose" {
 		t.Fatalf("got %q, want %q", values["notes"], "some prose")
@@ -36,12 +36,12 @@ func TestRequiredBodyFieldValidatesPresentAndErrorsAbsent(t *testing.T) {
 	}
 
 	present := &datamodel.Item{Body: "## Notes\nsome prose\n"}
-	if violations := Validate(schema, ProjectItem(schema, present, codec.DecodeExtraScalar, codec.DecodeScalar), nil, nil); len(violations) != 0 {
+	if violations := Validate(schema, ProjectItem(schema, present, codec.Decoder{}), nil, nil); len(violations) != 0 {
 		t.Fatalf("a present required body field must validate, got %v", violations)
 	}
 
 	absent := &datamodel.Item{Body: ""}
-	violations := Validate(schema, ProjectItem(schema, absent, codec.DecodeExtraScalar, codec.DecodeScalar), nil, nil)
+	violations := Validate(schema, ProjectItem(schema, absent, codec.Decoder{}), nil, nil)
 	if len(violations) != 1 || violations[0].Field != "notes" || violations[0].Code != CodeRequired {
 		t.Fatalf("an absent required body field must error required, got %v", violations)
 	}
@@ -50,7 +50,7 @@ func TestRequiredBodyFieldValidatesPresentAndErrorsAbsent(t *testing.T) {
 func TestProjectItemOmitsUnsetOptionalScalars(t *testing.T) {
 	it := &datamodel.Item{Title: "x"}
 
-	values := ProjectItem(Schema{}, it, codec.DecodeExtraScalar, codec.DecodeScalar)
+	values := ProjectItem(Schema{}, it, codec.Decoder{})
 
 	if _, present := values["priority"]; present {
 		t.Fatalf("unset priority should be absent, got %v", values["priority"])
@@ -60,7 +60,7 @@ func TestProjectItemOmitsUnsetOptionalScalars(t *testing.T) {
 func TestProjectItemIncludesPresentOptionalScalars(t *testing.T) {
 	it := &datamodel.Item{Priority: new("P1")}
 
-	values := ProjectItem(Schema{}, it, codec.DecodeExtraScalar, codec.DecodeScalar)
+	values := ProjectItem(Schema{}, it, codec.Decoder{})
 
 	if values["priority"] != "P1" {
 		t.Fatalf("got %v, want %q", values["priority"], "P1")
@@ -112,11 +112,11 @@ func TestProjectItemTypesDeclaredExtras(t *testing.T) {
 		},
 	}
 	it := &datamodel.Item{
-		ExtraScalars: map[string]string{"points": "42"},
-		ExtraLists:   map[string][]string{"tags": {"a", "b c"}},
+		ExtraScalars: map[string]datamodel.Rendered{"points": "42"},
+		ExtraLists:   map[string][]datamodel.Rendered{"tags": {"a", "b c"}},
 	}
 
-	values := ProjectItem(schema, it, codec.DecodeExtraScalar, codec.DecodeScalar)
+	values := ProjectItem(schema, it, codec.Decoder{})
 
 	if !isWholeNumber(values["points"]) {
 		t.Fatalf("points = %v (%T), want a whole number", values["points"], values["points"])
@@ -148,7 +148,7 @@ func TestValidateExtrasEnforcesDeclaredTypes(t *testing.T) {
 
 	valid := &datamodel.Item{
 		Type: "ticket",
-		ExtraScalars: map[string]string{
+		ExtraScalars: map[string]datamodel.Rendered{
 			"severity":     "LOW",
 			"story_points": "3",
 			"ratio":        "1.5",
@@ -157,16 +157,16 @@ func TestValidateExtrasEnforcesDeclaredTypes(t *testing.T) {
 			"seen":         "2026-01-02T03:04:05Z",
 			"undeclared":   "ignored",
 		},
-		ExtraLists: map[string][]string{"tags": {"a", "b"}},
+		ExtraLists: map[string][]datamodel.Rendered{"tags": {"a", "b"}},
 	}
-	if v := ValidateExtras(schemas, cfg, valid, codec.DecodeExtraScalar, codec.DecodeScalar); len(v) != 0 {
+	if v := ValidateExtras(schemas, cfg, valid, codec.Decoder{}); len(v) != 0 {
 		t.Fatalf("conforming extras must not violate (and builtin title must stay unchecked), got %v", v)
 	}
 
 	invalid := []struct {
 		field  string
-		scalar string
-		list   []string
+		scalar datamodel.Rendered
+		list   []datamodel.Rendered
 		want   string
 	}{
 		{field: "severity", scalar: "BOGUS", want: `not in the "sev" vocabulary`},
@@ -175,24 +175,24 @@ func TestValidateExtrasEnforcesDeclaredTypes(t *testing.T) {
 		{field: "urgent", scalar: "maybe", want: "expected type bool"},
 		{field: "starts", scalar: "not-a-date", want: "expected type date"},
 		{field: "seen", scalar: "2026-13-99", want: "expected type datetime"},
-		{field: "story_points", list: []string{"3"}, want: "expected type int"},
+		{field: "story_points", list: []datamodel.Rendered{"3"}, want: "expected type int"},
 		{field: "tags", scalar: "a", want: "expected a list"},
 	}
 	for _, tt := range invalid {
 		it := &datamodel.Item{Type: "ticket"}
 		if tt.list != nil {
-			it.ExtraLists = map[string][]string{tt.field: tt.list}
+			it.ExtraLists = map[string][]datamodel.Rendered{tt.field: tt.list}
 		} else {
-			it.ExtraScalars = map[string]string{tt.field: tt.scalar}
+			it.ExtraScalars = map[string]datamodel.Rendered{tt.field: tt.scalar}
 		}
-		v := ValidateExtras(schemas, cfg, it, codec.DecodeExtraScalar, codec.DecodeScalar)
+		v := ValidateExtras(schemas, cfg, it, codec.Decoder{})
 		if len(v) != 1 || v[0].Field != tt.field || !strings.Contains(v[0].Message, tt.want) {
 			t.Errorf("%s = %v: expected one violation containing %q", tt.field, v, tt.want)
 		}
 	}
 
-	noSchema := &datamodel.Item{Type: "gadget", ExtraScalars: map[string]string{"x": "y"}}
-	if v := ValidateExtras(schemas, cfg, noSchema, codec.DecodeExtraScalar, codec.DecodeScalar); v != nil {
+	noSchema := &datamodel.Item{Type: "gadget", ExtraScalars: map[string]datamodel.Rendered{"x": "y"}}
+	if v := ValidateExtras(schemas, cfg, noSchema, codec.Decoder{}); v != nil {
 		t.Fatalf("a type without a schema has nothing declared to validate, got %v", v)
 	}
 }

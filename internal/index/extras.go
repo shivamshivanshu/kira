@@ -11,8 +11,8 @@ import (
 // have no fixed column set — a repo defines them in .kira/schema — so they ride
 // as one JSON blob rather than a table the schema would have to keep up with.
 type itemExtras struct {
-	Scalars map[string]string   `json:"scalars,omitempty"`
-	Lists   map[string][]string `json:"lists,omitempty"`
+	Scalars map[string]datamodel.Rendered   `json:"scalars,omitempty"`
+	Lists   map[string][]datamodel.Rendered `json:"lists,omitempty"`
 }
 
 func encodeExtras(it *datamodel.Item) (any, error) {

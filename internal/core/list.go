@@ -363,7 +363,7 @@ func listItemOf(cfg *datamodel.Config, it *datamodel.Item, epicNumbers map[strin
 		Priority:   it.Priority,
 		Resolution: it.Resolution,
 		Due:        it.Due,
-		Fields:     entityschema.CustomFields(schemas[it.Type], it, codec.DecodeExtraScalar, codec.DecodeScalar),
+		Fields:     entityschema.CustomFields(schemas[it.Type], it, codec.Decoder{}),
 	}
 	if it.Epic != nil {
 		if num, ok := epicNumbers[*it.Epic]; ok {

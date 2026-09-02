@@ -79,7 +79,7 @@ func RefTypeMismatches(schemas map[string]entityschema.Schema, items []*datamode
 		if !ok {
 			continue
 		}
-		values := entityschema.ProjectItem(schema, it, codec.DecodeExtraScalar, codec.DecodeScalar)
+		values := entityschema.ProjectItem(schema, it, codec.Decoder{})
 		for _, f := range schema.Fields {
 			if !f.TargetsItemType(itemTypes) {
 				continue

@@ -6,14 +6,20 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
+// ExtraDecoder recovers the values behind the rendered YAML text that
+// Item.ExtraScalars and Item.ExtraLists hold. It is an interface rather than a
+// codec import because entityschema sits below codec, and Go's structural
+// typing means codec never has to name this type. List elements decode to
+// strings because a list field is string-valued by schema rule, which is what
+// the validator and doctor's refStrings both expect.
+type ExtraDecoder interface {
+	DecodeExtraScalar(datamodel.Rendered) any
+	DecodeExtraList([]datamodel.Rendered) []string
+}
+
 // ProjectItem converts an Item into the values map Validate expects. Slices are
 // cloned so a caller can't mutate the source Item through the returned map.
-// Extras are stored as their rendered YAML, so both decoders recover the value
-// behind that text (e.g. codec.DecodeExtraScalar and codec.DecodeScalar);
-// entityschema stays free of codec/yaml, so callers inject them. List elements
-// decode to strings because a list field's type is string-valued by schema
-// rule — which is what both the validator and doctor's refStrings expect.
-func ProjectItem(schema Schema, it *datamodel.Item, decodeScalar func(string) any, decodeListElement func(string) string) map[string]any {
+func ProjectItem(schema Schema, it *datamodel.Item, dec ExtraDecoder) map[string]any {
 	values := map[string]any{
 		"title":      it.Title,
 		"state":      it.State,
@@ -45,10 +51,10 @@ func ProjectItem(schema Schema, it *datamodel.Item, decodeScalar func(string) an
 	}
 
 	for k, v := range it.ExtraScalars {
-		values[k] = decodeScalar(v)
+		values[k] = dec.DecodeExtraScalar(v)
 	}
 	for k, v := range it.ExtraLists {
-		values[k] = decodeList(v, decodeListElement)
+		values[k] = dec.DecodeExtraList(v)
 	}
 	return values
 }
@@ -58,7 +64,7 @@ func ProjectItem(schema Schema, it *datamodel.Item, decodeScalar func(string) an
 // rather than going through ProjectItem: this runs per row on every listing,
 // and ProjectItem parses the whole body to build a map whose built-in keys are
 // all discarded here.
-func CustomFields(schema Schema, it *datamodel.Item, decodeScalar func(string) any, decodeListElement func(string) string) map[string]any {
+func CustomFields(schema Schema, it *datamodel.Item, dec ExtraDecoder) map[string]any {
 	var customValues map[string]any
 	put := func(name string, value any) {
 		if customValues == nil {
@@ -72,12 +78,12 @@ func CustomFields(schema Schema, it *datamodel.Item, decodeScalar func(string) a
 		}
 		if f.List {
 			if list, ok := it.ExtraLists[f.Name]; ok {
-				put(f.Name, decodeList(list, decodeListElement))
+				put(f.Name, dec.DecodeExtraList(list))
 			}
 			continue
 		}
 		if raw, ok := it.ExtraScalars[f.Name]; ok {
-			put(f.Name, decodeScalar(raw))
+			put(f.Name, dec.DecodeExtraScalar(raw))
 		}
 	}
 	return customValues
@@ -105,7 +111,7 @@ func (f FieldDef) IsCustomFrontmatter() bool {
 // schema declares — builtin fields keep their existing validators, so nothing
 // is double-reported. Enum vocabularies resolve through ResolveEnums: inline
 // schema enums, overridden by config vocab.
-func ValidateExtras(schemas map[string]Schema, cfg *datamodel.Config, it *datamodel.Item, decodeScalar func(string) any, decodeListElement func(string) string) []Violation {
+func ValidateExtras(schemas map[string]Schema, cfg *datamodel.Config, it *datamodel.Item, dec ExtraDecoder) []Violation {
 	schema, ok := schemas[it.Type]
 	if !ok {
 		return nil
@@ -114,15 +120,7 @@ func ValidateExtras(schemas map[string]Schema, cfg *datamodel.Config, it *datamo
 	if len(extras.Fields) == 0 {
 		return nil
 	}
-	return Validate(extras, ProjectItem(extras, it, decodeScalar, decodeListElement), ResolveEnums(schema, ConfigVocab(cfg)), nil)
-}
-
-func decodeList(stored []string, decodeListElement func(string) string) []string {
-	out := make([]string, len(stored))
-	for i, elem := range stored {
-		out[i] = decodeListElement(elem)
-	}
-	return out
+	return Validate(extras, ProjectItem(extras, it, dec), ResolveEnums(schema, ConfigVocab(cfg)), nil)
 }
 
 func extrasOnly(schema Schema) Schema {

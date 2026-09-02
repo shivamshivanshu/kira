@@ -36,7 +36,7 @@ func setExtraScalar(it *datamodel.Item, f entityschema.FieldDef, value string) e
 		return errx.User("--field %q: %v", f.Name, err)
 	}
 	if it.ExtraScalars == nil {
-		it.ExtraScalars = map[string]string{}
+		it.ExtraScalars = map[string]datamodel.Rendered{}
 	}
 	it.ExtraScalars[f.Name] = rendered
 	return nil
@@ -49,7 +49,7 @@ func setExtraList(it *datamodel.Item, f entityschema.FieldDef, value string) err
 		return nil
 	}
 	if it.ExtraLists == nil {
-		it.ExtraLists = map[string][]string{}
+		it.ExtraLists = map[string][]datamodel.Rendered{}
 	}
 	it.ExtraLists[f.Name] = codec.EncodeExtraList(datamodel.SplitCSV(value))
 	return nil

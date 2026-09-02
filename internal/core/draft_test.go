@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/editorx"
 	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
@@ -26,8 +27,8 @@ func TestDraftRoundTrip(t *testing.T) {
 		Sprint:       new("2026-S14"),
 		Due:          new("2026-07-20"),
 		Estimate:     &est,
-		ExtraScalars: map[string]string{"severity": "high"},
-		ExtraLists:   map[string][]string{"watchers": {"alice", "bob"}},
+		ExtraScalars: map[string]datamodel.Rendered{"severity": "high"},
+		ExtraLists:   map[string][]datamodel.Rendered{"watchers": {"alice", "bob"}},
 		Body:         "\n## Description\n\nbody text\n",
 	}
 	got, err := parseDraft(serializeDraft(d))
@@ -201,13 +202,13 @@ func TestDefaultTemplateSurvivesItsOwnRoundTrip(t *testing.T) {
 
 func TestDropUnsetDeclaredExtrasKeepsUndeclaredKeys(t *testing.T) {
 	d := draft{
-		ExtraScalars: map[string]string{
+		ExtraScalars: map[string]datamodel.Rendered{
 			"severity":    "null",
 			"set":         "high",
 			"from_newer":  "null",
 			"from_newer2": "value",
 		},
-		ExtraLists: map[string][]string{"watchers": {}, "kept": {"a"}},
+		ExtraLists: map[string][]datamodel.Rendered{"watchers": {}, "kept": {"a"}},
 	}
 	got := dropUnsetDeclaredExtras(d, draftSchema())
 	if _, ok := got.ExtraScalars["severity"]; ok {
@@ -216,7 +217,7 @@ func TestDropUnsetDeclaredExtrasKeepsUndeclaredKeys(t *testing.T) {
 	if _, ok := got.ExtraLists["watchers"]; ok {
 		t.Error("an unset declared list must be dropped")
 	}
-	if got.ExtraScalars["set"] != "high" || !reflect.DeepEqual(got.ExtraLists["kept"], []string{"a"}) {
+	if got.ExtraScalars["set"] != "high" || !reflect.DeepEqual(got.ExtraLists["kept"], []datamodel.Rendered{"a"}) {
 		t.Errorf("a set value must survive: %+v", got)
 	}
 	// an undeclared key is a newer kira's field: never dropped, null included
@@ -226,7 +227,7 @@ func TestDropUnsetDeclaredExtrasKeepsUndeclaredKeys(t *testing.T) {
 }
 
 func TestDropUnsetDoesNotMutateCaller(t *testing.T) {
-	d := draft{ExtraScalars: map[string]string{"severity": "null"}}
+	d := draft{ExtraScalars: map[string]datamodel.Rendered{"severity": "null"}}
 	schema := entityschema.Schema{Name: "ticket", Fields: []entityschema.FieldDef{
 		{Name: "severity", Type: entityschema.FieldString, Placement: entityschema.PlacementFrontmatter},
 	}}

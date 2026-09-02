@@ -33,38 +33,38 @@ func TestFrontmatterKeysOrder(t *testing.T) {
 func TestChangedExtraKeys(t *testing.T) {
 	tests := []struct {
 		name               string
-		aScalars, bScalars map[string]string
-		aLists, bLists     map[string][]string
+		aScalars, bScalars map[string]Rendered
+		aLists, bLists     map[string][]Rendered
 		want               []string
 	}{
 		{
 			name:     "equal",
-			aScalars: map[string]string{"team": "infra"}, bScalars: map[string]string{"team": "infra"},
-			aLists: map[string][]string{"watchers": {"a"}}, bLists: map[string][]string{"watchers": {"a"}},
+			aScalars: map[string]Rendered{"team": "infra"}, bScalars: map[string]Rendered{"team": "infra"},
+			aLists: map[string][]Rendered{"watchers": {"a"}}, bLists: map[string][]Rendered{"watchers": {"a"}},
 		},
 		{
 			name:     "added",
-			bScalars: map[string]string{"team": "infra"},
+			bScalars: map[string]Rendered{"team": "infra"},
 			want:     []string{"team"},
 		},
 		{
 			name:     "removed",
-			aScalars: map[string]string{"team": "infra"},
+			aScalars: map[string]Rendered{"team": "infra"},
 			want:     []string{"team"},
 		},
 		{
 			name:     "modified scalar",
-			aScalars: map[string]string{"team": "infra"}, bScalars: map[string]string{"team": "core"},
+			aScalars: map[string]Rendered{"team": "infra"}, bScalars: map[string]Rendered{"team": "core"},
 			want: []string{"team"},
 		},
 		{
 			name:   "modified list",
-			aLists: map[string][]string{"watchers": {"a"}}, bLists: map[string][]string{"watchers": {"a", "b"}},
+			aLists: map[string][]Rendered{"watchers": {"a"}}, bLists: map[string][]Rendered{"watchers": {"a", "b"}},
 			want: []string{"watchers"},
 		},
 		{
 			name:     "independent keys sorted",
-			aScalars: map[string]string{"k2": "y"}, bScalars: map[string]string{"k1": "x"},
+			aScalars: map[string]Rendered{"k2": "y"}, bScalars: map[string]Rendered{"k1": "x"},
 			want: []string{"k1", "k2"},
 		},
 	}
