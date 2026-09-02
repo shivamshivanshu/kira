@@ -9,8 +9,8 @@
     { "name": "archived", "type": "bool" }
   ],
   "representation": {
-    "label": "Board",
-    "icon": "board",
+    "label": "board",
+    "icon": "",
     "list_columns": ["key", "name", "default", "archived"]
   }
 }

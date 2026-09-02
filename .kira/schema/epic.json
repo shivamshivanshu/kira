@@ -131,8 +131,8 @@
     }
   ],
   "representation": {
-    "label": "Epic",
-    "icon": "epic",
+    "label": "epic",
+    "icon": "",
     "list_columns": [
       "number",
       "state",
