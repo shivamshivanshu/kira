@@ -135,7 +135,7 @@ func TestValidateStagedCatchesRenameToStray(t *testing.T) {
 	s, cfg, repo := stagedFixture(t)
 	it := eventTicket()
 	stageItem(t, s, repo, it)
-	if err := repo.Commit("add ticket", "", ""); err != nil {
+	if err := repo.CommitIn(nil, "add ticket", "", ""); err != nil {
 		t.Fatalf("commit: %v", err)
 	}
 	ticketsDir := filepath.Join(repo.Dir, ".kira", "tickets")

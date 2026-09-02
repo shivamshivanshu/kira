@@ -1,0 +1,39 @@
+# commit.mode auto must commit only what kira staged. A pathspec-less git commit
+# takes whatever else the user has staged, which would sweep their work into a
+# commit titled after a ticket. commit.txtar pins this for the manual path.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+
+# a pre-staged foreign file, present before kira has initialized
+cp mine.txt app.go
+exec git add app.go
+exec kira init --key AA
+
+# init commits its own files, including the .gitattributes it writes, and
+# leaves the user's staged file alone
+exec git show --name-only --format= HEAD
+stdout '.gitattributes'
+stdout '.kira/config.yaml'
+! stdout 'app.go'
+exec git diff --cached --name-only
+stdout 'app.go'
+
+# an auto-committed mutation touches only the ticket it wrote
+exec kira create ticket --title Scoped --no-edit
+exec git show --name-only --format= HEAD
+stdout '.kira/tickets/'
+! stdout 'app.go'
+
+# and the user's work is still staged, unmodified, after all of it
+exec git diff --cached --name-only
+stdout 'app.go'
+! exec git show HEAD:app.go
+stderr 'exists on disk, but not in'
+
+
+-- mine.txt --
+package main

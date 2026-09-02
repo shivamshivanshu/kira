@@ -108,11 +108,14 @@ func (r Repo) Unstage(paths ...string) error {
 
 // Commit runs `git commit` with subject as the first -m and, if trailerVal
 // is set, a second -m of "trailerKey: trailerVal".
-func (r Repo) Commit(subject, trailerKey, trailerVal string) error {
+// CommitIn commits only the given pathspecs. A pathspec-less `git commit` takes
+// whatever else the user happens to have staged, which is never what an
+// automatic commit should do.
+func (r Repo) CommitIn(pathspecs []string, subject, trailerKey, trailerVal string) error {
 	if trailerVal == "" {
-		return r.CommitParts(subject)
+		return r.CommitScoped(pathspecs, subject)
 	}
-	return r.CommitParts(subject, trailerKey+": "+trailerVal)
+	return r.CommitScoped(pathspecs, subject, trailerKey+": "+trailerVal)
 }
 
 // CommitParts runs `git commit` with each part as its own -m.
@@ -127,11 +130,23 @@ func (r Repo) CommitScoped(pathspecs []string, parts ...string) error {
 	for _, p := range parts {
 		args = append(args, "-m", p)
 	}
-	if len(pathspecs) > 0 {
+	// git refuses a partial commit while a merge is resolving, and it is right
+	// to: the index is the merge result, so committing anything less would
+	// record a tree that never existed. Drop the scope rather than fail.
+	if len(pathspecs) > 0 && !r.mergeInProgress() {
 		args = append(append(args, "--"), pathspecs...)
 	}
 	_, err := r.Output(args...)
 	return err
+}
+
+func (r Repo) mergeInProgress() bool {
+	for _, name := range []string{"MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD"} {
+		if _, err := r.Output("rev-parse", "--verify", "--quiet", name); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // Whole-file context is load-bearing, not a convenience: core's diff walker

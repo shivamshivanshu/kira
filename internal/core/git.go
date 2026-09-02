@@ -52,7 +52,7 @@ func (s *Store) finalize(mode datamodel.CommitMode, spec commitSpec, paths ...st
 		}
 		fallthrough
 	default:
-		if err := s.repo().Commit(spec.subject, spec.trailerKey, spec.trailerNumber); err != nil {
+		if err := s.repo().CommitIn(paths, spec.subject, spec.trailerKey, spec.trailerNumber); err != nil {
 			return "", errx.User("%s", err)
 		}
 		sha, _ := s.repo().Output("rev-parse", "HEAD")
