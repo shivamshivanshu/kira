@@ -28,36 +28,45 @@ func TestValidateGraph(t *testing.T) {
 		return map[string][]string{string(datamodel.LinkDuplicateOf): {target}}
 	}
 
-	t.Run("epic parent allowed", func(t *testing.T) {
+	t.Run("container parent allowed", func(t *testing.T) {
 		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Parent: new("E")}
-		if errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{epic, child}), ticketSchema(t)); len(errs) != 0 {
-			t.Fatalf("epic parent must be allowed: %v", errs)
+		if errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{epic, child}), ticketSchema(t), epicContainers()); len(errs) != 0 {
+			t.Fatalf("a container parent must be allowed: %v", errs)
 		}
 	})
-	t.Run("non-epic parent rejected", func(t *testing.T) {
+	t.Run("non-container parent rejected", func(t *testing.T) {
 		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Parent: new("T")}
-		errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{ticket, child}), ticketSchema(t))
-		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "is type ticket, expected epic") {
-			t.Fatalf("non-epic parent must be rejected, got %v", errs)
+		errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{ticket, child}), ticketSchema(t), epicContainers())
+		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "is type ticket, which does not group other items") {
+			t.Fatalf("a non-container parent must be rejected, got %v", errs)
+		}
+	})
+	// The rule is the declared capability, not the name "epic": a type kira
+	// ships no knowledge of must be a valid parent once it declares it.
+	t.Run("any type declaring the capability may parent", func(t *testing.T) {
+		feature := &datamodel.Item{ID: "F", Number: "KIRA-9", Type: "feature"}
+		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, Parent: new("F")}
+		if errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{feature, child}), ticketSchema(t), map[string]bool{"feature": true}); len(errs) != 0 {
+			t.Fatalf("a feature declaring the container capability must be a valid parent: %v", errs)
 		}
 	})
 	t.Run("blocked_by cross-type rejected", func(t *testing.T) {
 		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, BlockedBy: []string{"E"}}
-		errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{epic, child}), ticketSchema(t))
+		errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{epic, child}), ticketSchema(t), epicContainers())
 		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "expected ticket") {
 			t.Fatalf("a ticket blocked_by an epic must be rejected, got %v", errs)
 		}
 	})
 	t.Run("blocked_by same-type accepted", func(t *testing.T) {
 		child := &datamodel.Item{ID: "C", Number: "KIRA-3", Type: datamodel.TypeTicket, BlockedBy: []string{"T"}}
-		if errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{ticket, child}), ticketSchema(t)); len(errs) != 0 {
+		if errs := validateGraph(child, datamodel.IndexByID([]*datamodel.Item{ticket, child}), ticketSchema(t), epicContainers()); len(errs) != 0 {
 			t.Fatalf("a ticket blocked_by a ticket must be allowed: %v", errs)
 		}
 	})
 	t.Run("blocked_by cycle rejected", func(t *testing.T) {
 		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, BlockedBy: []string{"B"}}
 		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket, BlockedBy: []string{"A"}}
-		errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b}), ticketSchema(t))
+		errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b}), ticketSchema(t), epicContainers())
 		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "cycle") {
 			t.Fatalf("blocked_by cycle must be rejected, got %v", errs)
 		}
@@ -65,14 +74,14 @@ func TestValidateGraph(t *testing.T) {
 	t.Run("blocked_by acyclic allowed", func(t *testing.T) {
 		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, BlockedBy: []string{"B"}}
 		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket}
-		if errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b}), ticketSchema(t)); len(errs) != 0 {
+		if errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b}), ticketSchema(t), epicContainers()); len(errs) != 0 {
 			t.Fatalf("acyclic blocked_by must be allowed: %v", errs)
 		}
 	})
 	t.Run("duplicate_of cycle rejected", func(t *testing.T) {
 		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, Links: dupLinks("B")}
 		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket, Links: dupLinks("A")}
-		errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b}), ticketSchema(t))
+		errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b}), ticketSchema(t), epicContainers())
 		if len(errs) != 1 || !strings.Contains(errs[0].Error(), "cycle") {
 			t.Fatalf("duplicate_of cycle must be rejected, got %v", errs)
 		}
@@ -83,7 +92,7 @@ func TestValidateGraph(t *testing.T) {
 		}
 		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, Links: rel("B")}
 		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket, Links: rel("A")}
-		if errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b}), ticketSchema(t)); len(errs) != 0 {
+		if errs := validateGraph(a, datamodel.IndexByID([]*datamodel.Item{a, b}), ticketSchema(t), epicContainers()); len(errs) != 0 {
 			t.Fatalf("symmetric relates must not be treated as a cycle: %v", errs)
 		}
 	})
@@ -91,7 +100,7 @@ func TestValidateGraph(t *testing.T) {
 		a := &datamodel.Item{ID: "A", Number: "KIRA-4", Type: datamodel.TypeTicket, BlockedBy: []string{"B"}}
 		b := &datamodel.Item{ID: "B", Number: "KIRA-5", Type: datamodel.TypeTicket, BlockedBy: []string{"A"}}
 		other := &datamodel.Item{ID: "U", Number: "KIRA-6", Type: datamodel.TypeTicket}
-		if errs := validateGraph(other, datamodel.IndexByID([]*datamodel.Item{a, b, other}), ticketSchema(t)); len(errs) != 0 {
+		if errs := validateGraph(other, datamodel.IndexByID([]*datamodel.Item{a, b, other}), ticketSchema(t), epicContainers()); len(errs) != 0 {
 			t.Fatalf("a cycle not involving the written item must not block it: %v", errs)
 		}
 	})
@@ -152,7 +161,7 @@ func TestValidateItemVocabAndFields(t *testing.T) {
 			}
 			it := base
 			tc.mutate(&it)
-			errs, warns := newValidationCtx(cfg, nil, nil, schema, tc.force).validateItem(&it)
+			errs, warns := newValidationCtx(cfg, nil, nil, schema, epicContainers(), tc.force).validateItem(&it)
 			if gotErr := len(errs) > 0; gotErr != tc.wantErr {
 				t.Errorf("errs = %v, wantErr = %v", errs, tc.wantErr)
 			}
@@ -178,7 +187,7 @@ func TestValidateItemDeclaredExtraFields(t *testing.T) {
 	t.Run("valid declared enum extra passes", func(t *testing.T) {
 		it := base
 		it.ExtraScalars = map[string]datamodel.Rendered{"severity": "high"}
-		errs, warns := newValidationCtx(config.Default(), nil, nil, schema, false).validateItem(&it)
+		errs, warns := newValidationCtx(config.Default(), nil, nil, schema, epicContainers(), false).validateItem(&it)
 		if len(errs) != 0 || len(warns) != 0 {
 			t.Fatalf("errs = %v, warns = %v, want none", errs, warns)
 		}
@@ -187,7 +196,7 @@ func TestValidateItemDeclaredExtraFields(t *testing.T) {
 	t.Run("unknown declared enum extra warns when open", func(t *testing.T) {
 		it := base
 		it.ExtraScalars = map[string]datamodel.Rendered{"severity": "critical"}
-		errs, warns := newValidationCtx(config.Default(), nil, nil, schema, false).validateItem(&it)
+		errs, warns := newValidationCtx(config.Default(), nil, nil, schema, epicContainers(), false).validateItem(&it)
 		if len(errs) != 0 || len(warns) != 1 {
 			t.Fatalf("errs = %v, warns = %v, want 0 errs, 1 warn", errs, warns)
 		}
@@ -198,7 +207,7 @@ func TestValidateItemDeclaredExtraFields(t *testing.T) {
 		cfg.Labels.Strict = true
 		it := base
 		it.ExtraScalars = map[string]datamodel.Rendered{"severity": "critical"}
-		errs, warns := newValidationCtx(cfg, nil, nil, schema, false).validateItem(&it)
+		errs, warns := newValidationCtx(cfg, nil, nil, schema, epicContainers(), false).validateItem(&it)
 		if len(errs) != 1 || len(warns) != 0 {
 			t.Fatalf("errs = %v, warns = %v, want 1 err, 0 warn", errs, warns)
 		}
@@ -209,7 +218,7 @@ func TestValidateItemDeclaredExtraFields(t *testing.T) {
 		cfg.Labels.Strict = true
 		it := base
 		it.ExtraScalars = map[string]datamodel.Rendered{"severity": "critical"}
-		errs, warns := newValidationCtx(cfg, nil, nil, schema, true).validateItem(&it)
+		errs, warns := newValidationCtx(cfg, nil, nil, schema, epicContainers(), true).validateItem(&it)
 		if len(errs) != 0 || len(warns) != 1 {
 			t.Fatalf("errs = %v, warns = %v, want 0 errs, 1 warn", errs, warns)
 		}
@@ -218,7 +227,7 @@ func TestValidateItemDeclaredExtraFields(t *testing.T) {
 	t.Run("typed int extra rejects a non-int value", func(t *testing.T) {
 		it := base
 		it.ExtraScalars = map[string]datamodel.Rendered{"points": "abc"}
-		errs, _ := newValidationCtx(config.Default(), nil, nil, schema, false).validateItem(&it)
+		errs, _ := newValidationCtx(config.Default(), nil, nil, schema, epicContainers(), false).validateItem(&it)
 		if len(errs) != 1 {
 			t.Fatalf("errs = %v, want exactly one type violation", errs)
 		}
@@ -227,7 +236,7 @@ func TestValidateItemDeclaredExtraFields(t *testing.T) {
 	t.Run("typed int extra accepts an int value", func(t *testing.T) {
 		it := base
 		it.ExtraScalars = map[string]datamodel.Rendered{"points": "3"}
-		errs, warns := newValidationCtx(config.Default(), nil, nil, schema, false).validateItem(&it)
+		errs, warns := newValidationCtx(config.Default(), nil, nil, schema, epicContainers(), false).validateItem(&it)
 		if len(errs) != 0 || len(warns) != 0 {
 			t.Fatalf("errs = %v, warns = %v, want none", errs, warns)
 		}

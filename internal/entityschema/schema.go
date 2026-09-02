@@ -98,9 +98,14 @@ type FieldDef struct {
 	Enum      string       `json:"enum,omitempty"`
 	States    []StateValue `json:"states,omitempty"`
 	Target    string       `json:"target,omitempty"`
-	Source    string       `json:"source,omitempty"`
-	Placement Placement    `json:"placement,omitempty"`
-	Section   string       `json:"section,omitempty"`
+	// TargetsContainer says the ref points at any type declaring the container
+	// capability, rather than at the one type Target names. Naming a single type
+	// cannot express "any container", and leaving Target empty would drop this
+	// field out of TargetsItemType and silently stop reporting dangling refs.
+	TargetsContainer bool      `json:"targets_container,omitempty"`
+	Source           string    `json:"source,omitempty"`
+	Placement        Placement `json:"placement,omitempty"`
+	Section          string    `json:"section,omitempty"`
 }
 
 // TargetsItemType reports whether this field references another item. A type
@@ -110,16 +115,36 @@ type FieldDef struct {
 // a config vocabulary instead, so such a ref points at a vocabulary entry even
 // when its Target happens to name an item type.
 func (f FieldDef) TargetsItemType(itemTypes map[string]bool) bool {
-	return f.Type == FieldRef && f.Source == "" && itemTypes[f.Target]
+	return f.Type == FieldRef && f.Source == "" && (itemTypes[f.Target] || f.TargetsContainer)
 }
 
 type Schema struct {
 	Name           string         `json:"name"`
 	Workflow       string         `json:"workflow,omitempty"`
 	Identity       Identity       `json:"identity,omitempty"`
+	Container      bool           `json:"container,omitempty"`
 	Fields         []FieldDef     `json:"fields"`
 	Enums          []EnumDef      `json:"enums,omitempty"`
 	Representation Representation `json:"representation,omitempty"`
+}
+
+// IsContainer reports whether instances of this type may parent other items
+// and roll up their progress. It is what "epic" used to mean by name: any type
+// declaring it groups others, so nothing above needs to know which types those
+// are.
+func (s Schema) IsContainer() bool { return s.Container }
+
+// ContainerTypes is the set of types declaring the container capability,
+// shaped for the predicates that walk items without consulting schemas
+// themselves.
+func ContainerTypes(schemas map[string]Schema) map[string]bool {
+	out := make(map[string]bool, len(schemas))
+	for typ, schema := range schemas {
+		if schema.IsContainer() {
+			out[typ] = true
+		}
+	}
+	return out
 }
 
 func (s Schema) Field(name string) (FieldDef, bool) {

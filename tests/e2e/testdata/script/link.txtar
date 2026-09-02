@@ -30,9 +30,16 @@ stdout '"parent": "[0-9A-Z]{26}"'
 ! exec kira link KIRA-1 --blocked-by KIRA-1
 stderr 'cannot link to itself'
 
-# an epic may not be given a parent
+# a parent must declare the container capability, so a ticket is refused
 ! exec kira link KIRA-3 --parent KIRA-1
-stderr 'epic cannot have a parent'
+stderr 'does not group other items'
+
+# containers nest: an epic may be parented to another epic
+exec kira create epic --title 'E2' --no-edit
+exec kira link KIRA-3 --parent KIRA-4
+exec kira show KIRA-3 --json
+stdout '"parent": "[0-9A-Z]{26}"'
+exec kira link KIRA-3 --parent KIRA-4 --remove
 
 # giving both or neither edge flag is a usage error
 ! exec kira link KIRA-1

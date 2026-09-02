@@ -94,7 +94,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 		return nil, err
 	}
 	schema := schemas[orig.Type]
-	vctx := newValidationCtx(cfg, items, resolver, schema, opts.Force)
+	vctx := newValidationCtx(cfg, items, resolver, schema, entityschema.ContainerTypes(schemas), opts.Force)
 
 	var updated *datamodel.Item
 	var warns []error
@@ -197,7 +197,7 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 		return "", "", err
 	}
 	schema := schemas[orig.Type]
-	vctx := newValidationCtx(cfg, items, resolver, schema, opts.Force)
+	vctx := newValidationCtx(cfg, items, resolver, schema, entityschema.ContainerTypes(schemas), opts.Force)
 	content, err := runEditor(cfg.UI.Editor, opts.Stdio, codec.Serialize(orig), func(c string) []error {
 		it, errs := parseFullItem(c)
 		if len(errs) > 0 {

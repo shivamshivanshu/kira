@@ -46,21 +46,25 @@ type validationCtx struct {
 	cfg      *datamodel.Config
 	resolver *id.Resolver
 	schema   entityschema.Schema
-	enums    map[string][]string
-	byID     map[string]*datamodel.Item
-	force    bool
+	// containers is the set of types declaring the container capability, which
+	// is what a targets_container ref must point at. A single schema cannot
+	// answer that -- it is a property of the other types.
+	containers map[string]bool
+	enums      map[string][]string
+	byID       map[string]*datamodel.Item
+	force      bool
 }
 
-func newValidationCtx(cfg *datamodel.Config, items []*datamodel.Item, resolver *id.Resolver, schema entityschema.Schema, force bool) *validationCtx {
+func newValidationCtx(cfg *datamodel.Config, items []*datamodel.Item, resolver *id.Resolver, schema entityschema.Schema, containers map[string]bool, force bool) *validationCtx {
 	enums := entityschema.ResolveEnums(schema, entityschema.ConfigVocab(cfg))
-	return newValidationCtxWithEnums(cfg, datamodel.IndexByID(items), resolver, schema, enums, force)
+	return newValidationCtxWithEnums(cfg, datamodel.IndexByID(items), resolver, schema, containers, enums, force)
 }
 
 // newValidationCtxWithEnums takes an already-resolved enum vocab and item
 // index, for callers (a Batch) that build them once and reuse them across many
 // mutations rather than recomputing them per item.
-func newValidationCtxWithEnums(cfg *datamodel.Config, byID map[string]*datamodel.Item, resolver *id.Resolver, schema entityschema.Schema, enums map[string][]string, force bool) *validationCtx {
-	return &validationCtx{cfg: cfg, resolver: resolver, schema: schema, enums: enums, byID: byID, force: force}
+func newValidationCtxWithEnums(cfg *datamodel.Config, byID map[string]*datamodel.Item, resolver *id.Resolver, schema entityschema.Schema, containers map[string]bool, enums map[string][]string, force bool) *validationCtx {
+	return &validationCtx{cfg: cfg, resolver: resolver, schema: schema, containers: containers, enums: enums, byID: byID, force: force}
 }
 
 func (c *validationCtx) validateItem(it *datamodel.Item) (errs, warns []error) {
@@ -141,7 +145,7 @@ func (c *validationCtx) validateMutation(orig, it *datamodel.Item) (hard, warns 
 	hard, warns = c.validateAssembled(it)
 	hard = append(hard, validateResolutionState(c.cfg, orig, it)...)
 	if len(hard) == 0 {
-		hard = validateGraph(it, c.byID, c.schema)
+		hard = validateGraph(it, c.byID, c.schema, c.containers)
 	}
 	return hard, warns
 }
@@ -174,7 +178,7 @@ func (c *validationCtx) validateBuffer(build func(string) (*datamodel.Item, []er
 // restores the caller's entry afterwards, rather than cloning a map that grows
 // with the repository on every mutation, then checks parent-is-epic, blocked_by
 // target-type, and cycles.
-func validateGraph(updated *datamodel.Item, byID map[string]*datamodel.Item, schema entityschema.Schema) []error {
+func validateGraph(updated *datamodel.Item, byID map[string]*datamodel.Item, schema entityschema.Schema, containers map[string]bool) []error {
 	prev, existed := byID[updated.ID]
 	byID[updated.ID] = updated
 	defer func() {
@@ -188,11 +192,19 @@ func validateGraph(updated *datamodel.Item, byID map[string]*datamodel.Item, sch
 	var errs []error
 	checkTargetType := func(field string, refs []string) {
 		f, ok := schema.Field(field)
-		if !ok || f.Target == "" {
+		if !ok {
 			return
 		}
 		for _, ref := range refs {
-			if target := byID[ref]; target != nil && target.Type != f.Target {
+			target := byID[ref]
+			if target == nil {
+				continue
+			}
+			switch {
+			case f.TargetsContainer && !containers[target.Type]:
+				errs = append(errs, fmt.Errorf("field %q: %s is type %s, which does not group other items",
+					field, numberOrID(target, ref), target.Type))
+			case f.Target != "" && !f.TargetsContainer && target.Type != f.Target:
 				errs = append(errs, fmt.Errorf("field %q: %s is type %s, expected %s",
 					field, numberOrID(target, ref), target.Type, f.Target))
 			}

@@ -43,7 +43,7 @@ func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply appl
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	vctx := newValidationCtx(cfg, items, resolver, schemas[orig.Type], force)
+	vctx := newValidationCtx(cfg, items, resolver, schemas[orig.Type], entityschema.ContainerTypes(schemas), force)
 	return s.mutateAgainst(vctx, orig, items, apply, subjectOf, source)
 }
 
@@ -149,7 +149,7 @@ func (b *Batch) Mutate(ref string, force bool, apply applyFn, subjectOf func(ori
 	if err := guardWritable(orig); err != nil {
 		return nil, nil, nil, err
 	}
-	vctx := newValidationCtxWithEnums(b.cfg, b.byID, b.resolver, b.schemas[orig.Type], b.enums[orig.Type], force)
+	vctx := newValidationCtxWithEnums(b.cfg, b.byID, b.resolver, b.schemas[orig.Type], entityschema.ContainerTypes(b.schemas), b.enums[orig.Type], force)
 	updated, changed, warns, err := b.store.mutateAgainst(vctx, orig, b.items, apply, subjectOf, source)
 	if err != nil {
 		// A write may succeed before its Git commit fails. Later operations
