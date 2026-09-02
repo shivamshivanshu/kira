@@ -155,21 +155,11 @@ func splitDocument(content string) (front, body string, err error) {
 }
 
 func cutAfterFrontmatter(doc string) (head, body string, ok bool) {
-	doc = strings.ReplaceAll(doc, "\r\n", "\n")
-	rest, found := strings.CutPrefix(doc, FenceLine)
-	if !found {
+	front, body, err := splitDocument(doc)
+	if err != nil {
 		return "", "", false
 	}
-	if b, found := strings.CutPrefix(rest, FenceLine); found {
-		return doc[:len(doc)-len(b)], b, true
-	}
-	if _, b, found := strings.Cut(rest, closeFence); found {
-		return doc[:len(doc)-len(b)], b, true
-	}
-	if strings.HasSuffix(rest, "\n---") || rest == "---" {
-		return doc + "\n", "", true
-	}
-	return "", "", false
+	return FenceLine + front + FenceLine, body, true
 }
 
 func frontmatterNodes(doc *yaml.Node) (nodes map[string]*yaml.Node, duplicates []string) {

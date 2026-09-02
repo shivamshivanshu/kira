@@ -87,9 +87,7 @@ func (b *Batch) LabelSet(ref, label string, add, force bool) (*datamodel.Mutatio
 	cfg := b.cfg
 	apply := func(it *datamodel.Item, _ *id.Resolver, _ []*datamodel.Item) (hard, warns []error) {
 		if add {
-			if !slices.Contains(it.Labels, label) {
-				it.Labels = append(it.Labels, label)
-			}
+			it.Labels = setx.AppendUnique(it.Labels, label)
 			return nil, nil
 		}
 		it.Labels = slices.DeleteFunc(it.Labels, func(l string) bool { return l == label })

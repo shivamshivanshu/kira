@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 func Collisions(items []*datamodel.Item) []Finding {
@@ -26,12 +27,12 @@ func Collisions(items []*datamodel.Item) []Finding {
 		}
 		if it.Number != "" {
 			n := norm(it.Number)
-			live[n] = appendUnique(live[n], it.ID)
+			live[n] = setx.AppendUnique(live[n], it.ID)
 		}
 		for _, a := range it.Aliases {
 			if a != "" {
 				n := norm(a)
-				alias[n] = appendUnique(alias[n], it.ID)
+				alias[n] = setx.AppendUnique(alias[n], it.ID)
 			}
 		}
 	}
@@ -77,15 +78,6 @@ func sortedIDs(xs []string) []string {
 		return []string{}
 	}
 	return out
-}
-
-func appendUnique(xs []string, more ...string) []string {
-	for _, m := range more {
-		if !slices.Contains(xs, m) {
-			xs = append(xs, m)
-		}
-	}
-	return xs
 }
 
 func without(xs, remove []string) []string {

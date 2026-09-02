@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 type ViolationCode string
@@ -67,13 +68,12 @@ func validateField(f FieldDef, v any, enums map[string][]string, refs RefResolve
 			add(f.Name, CodeType, "expected a list, got %T", v)
 			return
 		}
-		seen := make(map[string]bool, len(list))
+		seen := setx.NewDeduper[string]()
 		for _, elem := range list {
 			if f.Unique {
-				if seen[elem] {
+				if !seen.Add(elem) {
 					add(f.Name, CodeType, "duplicate value %q in a unique list", elem)
 				}
-				seen[elem] = true
 			}
 			validateScalar(f, elem, enums, refs, add)
 		}

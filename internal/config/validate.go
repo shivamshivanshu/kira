@@ -11,6 +11,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/query"
+	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 // BoardKeyPattern is the regex pattern for valid board key identifiers.
@@ -116,7 +117,7 @@ func validateBoards(c *datamodel.Config) error {
 		return errx.User("config: boards require version %d, found %d", datamodel.BoardsSchemaVersion, c.Version).
 			WithHint("bump version to %d or remove the boards list", datamodel.BoardsSchemaVersion)
 	}
-	seen := make(map[string]bool, len(c.Boards))
+	seen := setx.NewDeduper[string]()
 	defaults := 0
 	for i, b := range c.Boards {
 		where := fmt.Sprintf("boards[%d]", i)
@@ -124,10 +125,9 @@ func validateBoards(c *datamodel.Config) error {
 			return errx.User("config: %s.key: %q must match %s", where, b.Key, BoardKeyPattern)
 		}
 		up := strings.ToUpper(b.Key)
-		if seen[up] {
+		if !seen.Add(up) {
 			return errx.User("config: boards: duplicate key %q", b.Key)
 		}
-		seen[up] = true
 		if strings.TrimSpace(b.Name) == "" {
 			return errx.User("config: %s.name: required", where)
 		}
@@ -241,15 +241,14 @@ func validateAutomationMatch(at string, h datamodel.AutomationHook) error {
 }
 
 func validateVocabList(key string, list []string) error {
-	seen := make(map[string]bool, len(list))
+	seen := setx.NewDeduper[string]()
 	for _, v := range list {
 		if v == "" {
 			return errx.User("config: %s: empty entry", key)
 		}
-		if seen[v] {
+		if !seen.Add(v) {
 			return errx.User("config: %s: duplicate entry %q", key, v)
 		}
-		seen[v] = true
 	}
 	return nil
 }

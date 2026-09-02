@@ -15,15 +15,14 @@ type Relation struct {
 // FindCycleFrom visits only nodes reachable from root and returns a cycle
 // containing root. An unrelated pre-existing cycle does not block a mutation.
 func FindCycleFrom(byID map[string]*Item, root string, edges func(*Item) []string) []string {
-	seen := map[string]bool{}
+	seen := setx.NewDeduper[string]()
 	var path []string
 	var walk func(string) bool
 	walk = func(id string) bool {
 		it := byID[id]
-		if it == nil || seen[id] {
+		if it == nil || !seen.Add(id) {
 			return false
 		}
-		seen[id] = true
 		path = append(path, id)
 		for _, target := range edges(it) {
 			if target == root || walk(target) {

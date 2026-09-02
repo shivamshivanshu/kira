@@ -2,10 +2,10 @@ package core
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/reconcile"
+	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
@@ -32,9 +32,7 @@ func (s *Store) Reconcile(cfg *datamodel.Config) (*datamodel.ReconcileResult, er
 			return nil, err
 		}
 		it.Number = r.To
-		if !slices.Contains(it.Aliases, r.From) {
-			it.Aliases = append(it.Aliases, r.From)
-		}
+		it.Aliases = setx.AppendUnique(it.Aliases, r.From)
 		// Deliberately bypasses the mutation pipeline, as in BoardMove — and a
 		// repair must also succeed on items that would fail validateMutation.
 		path, err := s.fs().WriteItem(it)

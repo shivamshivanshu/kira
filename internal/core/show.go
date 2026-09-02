@@ -41,11 +41,7 @@ func (s *Store) Show(cfg *datamodel.Config, ref, at string) (*datamodel.ShowResu
 	if it == nil {
 		return nil, errx.User("%s resolved to %s, which is absent at %s", ref, ulid, at)
 	}
-	res := showResultOf(ld.cfg, it)
-	res.Blocks = blocksOf(ld.items, ulid)
-	numberReferences(&res, ld.items)
-	res.Fields = entityschema.CustomFields(ld.schemas[it.Type], it, codec.Decoder{})
-	res.TypeLabel = ld.schemas[it.Type].TypeLabel(it.Type)
+	res := crossReferencedShowResultOf(ld, it, ulid)
 	res.Skew = s.skew(cfg, ref, ulid, at)
 	return &res, nil
 }
@@ -65,11 +61,7 @@ func (s *Store) detail(ld *loaded, ref string) (*ItemDetail, error) {
 		return nil, errx.User("reading %s from %s: %v", ref, path, err).
 			WithHint("the file is malformed; repair it in a text editor, then verify with `kira doctor`")
 	}
-	res := showResultOf(ld.cfg, it)
-	res.Blocks = blocksOf(ld.items, ulid)
-	numberReferences(&res, ld.items)
-	res.Fields = entityschema.CustomFields(ld.schemas[it.Type], it, codec.Decoder{})
-	res.TypeLabel = ld.schemas[it.Type].TypeLabel(it.Type)
+	res := crossReferencedShowResultOf(ld, it, ulid)
 	res.StderrNotes = ld.notes
 
 	events, links, err := s.logEntries(ulid)
@@ -156,6 +148,17 @@ func historyTailView(events []datamodel.Event) []datamodel.HistoryEvent {
 		out[i] = datamodel.HistoryEvent{Ts: e.Ts, Field: e.Field, From: ptr.NilIfEmpty(e.Old), To: ptr.NilIfEmpty(e.New)}
 	}
 	return out
+}
+
+// These fields depend on the whole loaded set and its schemas, not on the item
+// alone, which is what separates this from showResultOf.
+func crossReferencedShowResultOf(ld *loaded, it *datamodel.Item, ulid string) datamodel.ShowResult {
+	res := showResultOf(ld.cfg, it)
+	res.Blocks = blocksOf(ld.items, ulid)
+	numberReferences(&res, ld.items)
+	res.Fields = entityschema.CustomFields(ld.schemas[it.Type], it, codec.Decoder{})
+	res.TypeLabel = ld.schemas[it.Type].TypeLabel(it.Type)
+	return res
 }
 
 func showResultOf(cfg *datamodel.Config, it *datamodel.Item) datamodel.ShowResult {

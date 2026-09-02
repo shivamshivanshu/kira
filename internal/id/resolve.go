@@ -69,9 +69,7 @@ func NewResolver(snap Snapshot) *Resolver {
 	}
 	addBare := func(up string) {
 		if _, bare, ok := splitLastDash(up); ok {
-			if !slices.Contains(r.numberByBareN[bare], up) {
-				r.numberByBareN[bare] = append(r.numberByBareN[bare], up)
-			}
+			r.numberByBareN[bare] = setx.AppendUnique(r.numberByBareN[bare], up)
 		}
 	}
 	for i, it := range snap.Items {
@@ -84,9 +82,7 @@ func NewResolver(snap Snapshot) *Resolver {
 		addBare(live)
 		for _, a := range it.Aliases {
 			up := strings.ToUpper(a)
-			if !slices.Contains(r.aliasHolders[up], u) {
-				r.aliasHolders[up] = append(r.aliasHolders[up], u)
-			}
+			r.aliasHolders[up] = setx.AppendUnique(r.aliasHolders[up], u)
 			addBare(up)
 		}
 	}
@@ -159,9 +155,7 @@ func (r *Resolver) resolveBare(token, up string) (string, error) {
 	var holders []string
 	for _, f := range r.numberByBareN[up] {
 		for _, u := range r.holdersOf(f) {
-			if !slices.Contains(holders, u) {
-				holders = append(holders, u)
-			}
+			holders = setx.AppendUnique(holders, u)
 		}
 	}
 	switch len(holders) {
