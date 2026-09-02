@@ -2,9 +2,10 @@ package core
 
 import (
 	"fmt"
-	"github.com/shivamshivanshu/kira/internal/codec"
 	"slices"
+	"strconv"
 
+	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
@@ -136,6 +137,11 @@ func storedFieldString(it *datamodel.Item, field string) string {
 	}
 	if v, ok := it.ExtraLists[field]; ok {
 		return codec.EmitRenderedList(v)
+	}
+	// A block's on-disk form spans lines, which one-change-per-line output
+	// cannot show; quoting keeps the exact bytes to a single line.
+	if v, ok := it.ExtraBlocks[field]; ok {
+		return strconv.Quote(string(v))
 	}
 	return "-"
 }

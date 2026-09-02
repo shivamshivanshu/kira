@@ -1,7 +1,6 @@
 # A ticket that will not parse still owns its number. If the allocator cannot
-# see it, create hands out a duplicate -- and the states that produce an
-# unparseable file are ordinary: a conflict marker, or a field written by a
-# newer kira.
+# see it, create hands out a duplicate -- and an unparseable file is an
+# ordinary state: this is what an unresolved merge conflict leaves behind.
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
@@ -12,7 +11,7 @@ exec kira init --key XX
 exec kira create ticket --title one --no-edit
 exec kira create ticket --title two --no-edit
 
-# break XX-2 the way a newer kira's structured field would
+# break XX-9 the way an unresolved merge conflict would
 cp broken.md .kira/tickets/01J8X8Q7RZTN5Y3VXW2A9K4E7F.md
 exec kira list --no-color
 stderr 'skipped'
@@ -34,13 +33,16 @@ id: 01J8X8Q7RZTN5Y3VXW2A9K4E7F
 number: XX-9
 aliases: []
 type: ticket
-title: "from a newer kira"
+title: "left mid-conflict"
 state: TODO
 labels: []
 epic: null
 blocked_by: []
-structured:
-  key: value
+<<<<<<< HEAD
+owner: alice
+=======
+owner: bob
+>>>>>>> theirs
 created: 2026-07-10T09:14:00+05:30
 updated: 2026-07-10T09:14:00+05:30
 ---

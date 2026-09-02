@@ -29,6 +29,7 @@ func TestDraftRoundTrip(t *testing.T) {
 		Estimate:     &est,
 		ExtraScalars: map[string]datamodel.Rendered{"severity": "high"},
 		ExtraLists:   map[string][]datamodel.Rendered{"watchers": {"alice", "bob"}},
+		ExtraBlocks:  map[string]datamodel.Rendered{"sla": "response: 4h\nresolve: 24h"},
 		Body:         "\n## Description\n\nbody text\n",
 	}
 	got, err := parseDraft(serializeDraft(d))
@@ -56,8 +57,8 @@ func TestDraftRoundTrip(t *testing.T) {
 	if len(got.Labels) != 2 || got.Estimate == nil || *got.Estimate != est {
 		t.Fatalf("labels/estimate lost: %+v", got)
 	}
-	if !reflect.DeepEqual(got.ExtraScalars, d.ExtraScalars) || !reflect.DeepEqual(got.ExtraLists, d.ExtraLists) {
-		t.Fatalf("extras lost: scalars %+v lists %+v", got.ExtraScalars, got.ExtraLists)
+	if !reflect.DeepEqual(got.ExtraScalars, d.ExtraScalars) || !reflect.DeepEqual(got.ExtraLists, d.ExtraLists) || !reflect.DeepEqual(got.ExtraBlocks, d.ExtraBlocks) {
+		t.Fatalf("extras lost: scalars %+v lists %+v blocks %+v", got.ExtraScalars, got.ExtraLists, got.ExtraBlocks)
 	}
 	if got.Body != d.Body {
 		t.Fatalf("body = %q, want %q", got.Body, d.Body)

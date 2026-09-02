@@ -1,7 +1,6 @@
 package codec_test
 
 import (
-	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -59,14 +58,115 @@ func TestExtrasRoundTripIdempotent(t *testing.T) {
 	}
 }
 
-func TestExtraListWithNonScalarElementRejected(t *testing.T) {
-	_, err := codec.Parse(docWithExtras("weird: [{a: b}]\n"))
-	var pe *datamodel.ParseError
-	if !errors.As(err, &pe) {
-		t.Fatalf("a list extra with a mapping element must be a parse error, got %v", err)
+// A structured extra -- a mapping, or a sequence whose elements are not all
+// scalars -- rides as an opaque block. kira never interprets it, so a rewrite
+// must hand it back unchanged, and a second rewrite must change nothing at all.
+func TestNestedExtrasRoundTripAsBlocks(t *testing.T) {
+	tests := []struct {
+		name  string
+		lines string
+		want  datamodel.Rendered
+	}{
+		{
+			name:  "mapping",
+			lines: "sla:\n  response: 4h\n  resolve: 24h\n",
+			want:  "response: 4h\nresolve: 24h",
+		},
+		{
+			name:  "sequence of mappings",
+			lines: "steps:\n  - name: build\n    cmd: make\n  - name: test\n",
+			want:  "- name: build\n  cmd: make\n- name: test",
+		},
+		{
+			name:  "mapping holding a sequence of mappings three levels down",
+			lines: "policy:\n  escalation:\n    - after: 1h\n      notify: [oncall, lead]\n    - after: 4h\n  owner: sre\n",
+			want:  "escalation:\n  - after: 1h\n    notify: [oncall, lead]\n  - after: 4h\nowner: sre",
+		},
+		{
+			name:  "flow sequence with a mapping element",
+			lines: "weird: [{a: b}]\n",
+			want:  "[{a: b}]",
+		},
 	}
-	if !strings.Contains(err.Error(), "weird") {
-		t.Fatalf("error must name the offending field: %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			key, _, _ := strings.Cut(tt.lines, ":")
+			it, err := codec.Parse(docWithExtras(tt.lines))
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			if got := it.ExtraBlocks[key]; got != tt.want {
+				t.Fatalf("ExtraBlocks[%q] = %q, want %q", key, got, tt.want)
+			}
+			if _, isScalar := it.ExtraScalars[key]; isScalar {
+				t.Fatalf("%q must not also land in ExtraScalars", key)
+			}
+			if _, isList := it.ExtraLists[key]; isList {
+				t.Fatalf("%q must not also land in ExtraLists", key)
+			}
+
+			out := codec.Serialize(it)
+			if !strings.Contains(out, indentedBlock(key, string(tt.want))) {
+				t.Fatalf("serialized output lost the block for %q:\n%s", key, out)
+			}
+			again, err := codec.Parse(out)
+			if err != nil {
+				t.Fatalf("re-parse: %v", err)
+			}
+			if !reflect.DeepEqual(again.ExtraBlocks, it.ExtraBlocks) {
+				t.Fatalf("re-parsed blocks = %+v, want %+v", again.ExtraBlocks, it.ExtraBlocks)
+			}
+			if out2 := codec.Serialize(again); out2 != out {
+				t.Fatalf("serialize not idempotent\n--- first ---\n%s\n--- second ---\n%s", out, out2)
+			}
+		})
+	}
+}
+
+func indentedBlock(key, block string) string {
+	out := key + ":\n"
+	for _, line := range strings.Split(block, "\n") {
+		out += "  " + line + "\n"
+	}
+	return out
+}
+
+// Storing a block with the key's own indentation stripped is what lets merge
+// treat two files that say the same thing as unchanged, however each was
+// indented.
+func TestBlockStorageIgnoresSourceIndentation(t *testing.T) {
+	twoSpace, err := codec.Parse(docWithExtras("sla:\n  response: 4h\n  nested:\n    x: 1\n"))
+	if err != nil {
+		t.Fatalf("parse two-space: %v", err)
+	}
+	fourSpace, err := codec.Parse(docWithExtras("sla:\n    response: 4h\n    nested:\n        x: 1\n"))
+	if err != nil {
+		t.Fatalf("parse four-space: %v", err)
+	}
+	if !reflect.DeepEqual(twoSpace.ExtraBlocks, fourSpace.ExtraBlocks) {
+		t.Fatalf("blocks differ by source indentation: %+v vs %+v", twoSpace.ExtraBlocks, fourSpace.ExtraBlocks)
+	}
+	if codec.Serialize(twoSpace) != codec.Serialize(fourSpace) {
+		t.Fatal("two files differing only in indentation must serialize identically")
+	}
+}
+
+func TestScalarSequenceStaysAList(t *testing.T) {
+	for _, lines := range []string{"tags: [a, b]\n", "tags:\n  - a\n  - b\n"} {
+		it, err := codec.Parse(docWithExtras(lines))
+		if err != nil {
+			t.Fatalf("parse %q: %v", lines, err)
+		}
+		if _, isBlock := it.ExtraBlocks["tags"]; isBlock {
+			t.Fatalf("%q: a sequence of scalars must stay in ExtraLists, got a block", lines)
+		}
+		want := map[string][]datamodel.Rendered{"tags": {"a", "b"}}
+		if !reflect.DeepEqual(it.ExtraLists, want) {
+			t.Fatalf("%q: ExtraLists = %+v, want %+v", lines, it.ExtraLists, want)
+		}
+		if !strings.Contains(codec.Serialize(it), "tags: [a, b]\n") {
+			t.Fatalf("%q: a scalar list must still serialize to flow form", lines)
+		}
 	}
 }
 
@@ -151,8 +251,8 @@ func TestExtraCommentAndAnchorMetadataStripped(t *testing.T) {
 }
 
 func TestExtraFrontmatterReadsDraftFields(t *testing.T) {
-	draft := "---\ntitle: t\nteam: infra\nwatchers: [alice, bob]\n---\nbody\n"
-	scalars, lists, err := codec.ExtraFrontmatter(draft)
+	draft := "---\ntitle: t\nteam: infra\nwatchers: [alice, bob]\nsla:\n  response: 4h\n---\nbody\n"
+	scalars, lists, blocks, err := codec.ExtraFrontmatter(draft)
 	if err != nil {
 		t.Fatalf("ExtraFrontmatter: %v", err)
 	}
@@ -162,9 +262,12 @@ func TestExtraFrontmatterReadsDraftFields(t *testing.T) {
 	if !reflect.DeepEqual(lists, map[string][]datamodel.Rendered{"watchers": {"alice", "bob"}}) {
 		t.Fatalf("lists = %+v, want watchers", lists)
 	}
+	if !reflect.DeepEqual(blocks, map[string]datamodel.Rendered{"sla": "response: 4h"}) {
+		t.Fatalf("blocks = %+v, want sla", blocks)
+	}
 
-	if _, _, err := codec.ExtraFrontmatter("---\ntitle: t\nnested:\n  a: b\n---\n"); err == nil {
-		t.Fatal("a nested mapping must be reported rather than silently dropped")
+	if _, _, _, err := codec.ExtraFrontmatter("---\ntitle: t\nanchored: &a 1\naliasing:\n  x: *a\n---\n"); err == nil {
+		t.Fatal("a value kira cannot write back must be reported rather than silently dropped")
 	}
 }
 

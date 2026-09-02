@@ -64,7 +64,7 @@ func Parse(content string) (*datamodel.Item, error) {
 	it.Created = reqTimestamp(nodes, datamodel.KeyCreated, add)
 	it.Updated = reqTimestamp(nodes, datamodel.KeyUpdated, add)
 
-	it.ExtraScalars, it.ExtraLists = captureExtras(nodes, add)
+	it.ExtraScalars, it.ExtraLists, it.ExtraBlocks = captureExtras(nodes, add)
 
 	if len(errs) > 0 {
 		return it, &datamodel.ParseError{Errs: errs}
@@ -85,52 +85,101 @@ func DecodeFrontmatter(content string, out any) (body string, err error) {
 
 // ExtraFrontmatter reports content's non-builtin frontmatter in the shape
 // Parse captures it, for a partial document Parse itself would reject (an
-// editor draft). A value that is neither a scalar nor a scalar list is
+// editor draft). A value whose shape none of the three maps can hold is
 // reported as a ParseError rather than dropped.
-func ExtraFrontmatter(content string) (scalars map[string]datamodel.Rendered, lists map[string][]datamodel.Rendered, err error) {
+func ExtraFrontmatter(content string) (scalars map[string]datamodel.Rendered, lists map[string][]datamodel.Rendered, blocks map[string]datamodel.Rendered, err error) {
 	front, _, err := splitDocument(content)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	var doc yaml.Node
 	if err := yaml.Unmarshal([]byte(front), &doc); err != nil {
-		return nil, nil, fmt.Errorf("frontmatter yaml: %w", err)
+		return nil, nil, nil, fmt.Errorf("frontmatter yaml: %w", err)
 	}
 	if len(doc.Content) > 0 && doc.Content[0].Kind != yaml.MappingNode {
-		return nil, nil, fmt.Errorf("frontmatter: expected a mapping")
+		return nil, nil, nil, fmt.Errorf("frontmatter: expected a mapping")
 	}
 	nodes, _ := frontmatterNodes(&doc)
 	var errs []error
-	scalars, lists = captureExtras(nodes, func(format string, args ...any) {
+	scalars, lists, blocks = captureExtras(nodes, func(format string, args ...any) {
 		errs = append(errs, fmt.Errorf(format, args...))
 	})
 	if len(errs) > 0 {
-		return scalars, lists, &datamodel.ParseError{Errs: errs}
+		return scalars, lists, blocks, &datamodel.ParseError{Errs: errs}
 	}
-	return scalars, lists, nil
+	return scalars, lists, blocks, nil
 }
 
-func captureExtras(nodes map[string]*yaml.Node, add addFunc) (scalars map[string]datamodel.Rendered, lists map[string][]datamodel.Rendered) {
+func captureExtras(nodes map[string]*yaml.Node, add addFunc) (scalars map[string]datamodel.Rendered, lists map[string][]datamodel.Rendered, blocks map[string]datamodel.Rendered) {
 	for k, n := range nodes {
 		if datamodel.IsFrontmatterKey(k) || k == legacyEpicKey {
 			continue
 		}
-		switch n.Kind {
-		case yaml.ScalarNode:
+		switch {
+		case n.Kind == yaml.ScalarNode:
 			if scalars == nil {
 				scalars = map[string]datamodel.Rendered{}
 			}
 			scalars[k] = renderExtraScalar(n)
-		case yaml.SequenceNode:
+		// A sequence stays a list only while every element is a scalar, so the
+		// flow-list form every existing file uses is written back unchanged.
+		case n.Kind == yaml.SequenceNode && allElementsScalar(n):
 			if lists == nil {
 				lists = map[string][]datamodel.Rendered{}
 			}
 			lists[k] = extraScalarSeq(n, fmt.Sprintf("field %q", k), add)
+		case n.Kind == yaml.MappingNode || n.Kind == yaml.SequenceNode:
+			block, err := renderExtraBlock(n)
+			if err != nil {
+				add("field %q: %v", k, err)
+				continue
+			}
+			if blocks == nil {
+				blocks = map[string]datamodel.Rendered{}
+			}
+			blocks[k] = block
 		default:
-			add("field %q: unsupported extra field shape, expected a scalar or list", k)
+			add("field %q: unsupported extra field shape, expected a scalar, a list, or a nested block", k)
 		}
 	}
-	return scalars, lists
+	return scalars, lists, blocks
+}
+
+func allElementsScalar(n *yaml.Node) bool {
+	for _, c := range n.Content {
+		if c.Kind != yaml.ScalarNode {
+			return false
+		}
+	}
+	return true
+}
+
+// renderExtraBlock captures a structured extra as YAML text at zero
+// indentation, which writeExtras shifts back under its key. The text is
+// re-parsed before being accepted because an alias to an anchor defined
+// elsewhere in the frontmatter emits as a dangling reference once the value
+// stands alone -- writing that would produce a file kira can no longer read.
+func renderExtraBlock(n *yaml.Node) (datamodel.Rendered, error) {
+	var b strings.Builder
+	enc := yaml.NewEncoder(&b)
+	enc.SetIndent(len(blockIndent))
+	if err := enc.Encode(n); err != nil {
+		return "", err
+	}
+	if err := enc.Close(); err != nil {
+		return "", err
+	}
+	block := strings.TrimRight(b.String(), "\n")
+	// A block is stored on its own and rewritten on its own, so it has to parse
+	// on its own. Re-reading it here rejects a value that only resolves in the
+	// context of the whole document -- an alias to an anchor defined under some
+	// other key encodes as a bare *ref and would be carried out as a fragment
+	// that no longer means anything.
+	var standalone yaml.Node
+	if err := yaml.Unmarshal([]byte(block), &standalone); err != nil {
+		return "", err
+	}
+	return datamodel.Rendered(block), nil
 }
 
 func splitDocument(content string) (front, body string, err error) {

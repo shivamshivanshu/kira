@@ -82,19 +82,24 @@ func TestLintMalformedFrontmatter(t *testing.T) {
 
 func TestLintUnknownFieldWarns(t *testing.T) {
 	t.Parallel()
-	content := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
-		"state: TODO\nlabels: []\nblocked_by: []\nepic: null\nbogus_key: 1\n" +
-		"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n## Description\n"
-	_, parsed, findings := doctor.Lint(content, builtinSchemas(t))
-	if !parsed {
-		t.Fatalf("expected a well-formed item to parse, got findings %+v", findings)
-	}
-	for _, f := range findings {
-		if f.Class == doctor.ClassSchema && f.Field == "bogus_key" && f.Severity == doctor.SeverityWarning {
-			return
+	for _, undeclared := range []string{"bogus_key: 1\n", "bogus_key: [a, b]\n", "bogus_key:\n  a: 1\n"} {
+		content := "---\nid: " + ulidA + "\nnumber: KIRA-1\naliases: []\ntype: ticket\ntitle: t\n" +
+			"state: TODO\nlabels: []\nblocked_by: []\nepic: null\n" + undeclared +
+			"created: 2026-07-01T00:00:00Z\nupdated: 2026-07-01T00:00:00Z\n---\n## Description\n"
+		_, parsed, findings := doctor.Lint(content, builtinSchemas(t))
+		if !parsed {
+			t.Fatalf("%q: expected a well-formed item to parse, got findings %+v", undeclared, findings)
+		}
+		warned := false
+		for _, f := range findings {
+			if f.Class == doctor.ClassSchema && f.Field == "bogus_key" && f.Severity == doctor.SeverityWarning {
+				warned = true
+			}
+		}
+		if !warned {
+			t.Fatalf("%q: expected an unknown-field warning for bogus_key, got %+v", undeclared, findings)
 		}
 	}
-	t.Fatalf("expected an unknown-field warning for bogus_key, got %+v", findings)
 }
 
 func TestLintDeclaredExtraDoesNotWarn(t *testing.T) {

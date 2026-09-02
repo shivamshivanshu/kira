@@ -23,6 +23,7 @@ func setSchemaExtra(it *datamodel.Item, f entityschema.FieldDef, value string) e
 
 func setExtraScalar(it *datamodel.Item, f entityschema.FieldDef, value string) error {
 	delete(it.ExtraLists, f.Name)
+	delete(it.ExtraBlocks, f.Name)
 	if value == "" {
 		delete(it.ExtraScalars, f.Name)
 		return nil
@@ -44,6 +45,7 @@ func setExtraScalar(it *datamodel.Item, f entityschema.FieldDef, value string) e
 
 func setExtraList(it *datamodel.Item, f entityschema.FieldDef, value string) error {
 	delete(it.ExtraScalars, f.Name)
+	delete(it.ExtraBlocks, f.Name)
 	if strings.TrimSpace(value) == "" {
 		delete(it.ExtraLists, f.Name)
 		return nil
