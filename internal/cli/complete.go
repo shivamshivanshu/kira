@@ -9,6 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/showfmt"
 )
@@ -18,8 +19,8 @@ const completionCap = 200
 type completer = func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective)
 
 func attachCompletions(root *cobra.Command, g *globalFlags) {
-	items := completeItems(g, "")
-	epics := completeItems(g, datamodel.TypeEpic)
+	items := completeItems(g, anyItem)
+	containers := completeItems(g, containerItemsOnly)
 	people := completeVocab(g, func(c *datamodel.Config) []string { return c.People.Names() })
 	labels := completeVocab(g, func(c *datamodel.Config) []string { return c.Labels.Known })
 	subtypes := completeVocab(g, func(c *datamodel.Config) []string { return c.Subtypes.Values })
@@ -46,7 +47,7 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 		c.ValidArgsFunction = positional(items)
 	}
 	if c := subCmd(root, "stats"); c != nil {
-		c.ValidArgsFunction = positional(epics)
+		c.ValidArgsFunction = positional(containers)
 	}
 	if c := subCmd(subCmd(root, "config"), "set"); c != nil {
 		c.ValidArgsFunction = positional(completeStatic(config.SetKeys()))
@@ -63,7 +64,7 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 		setArgs(sp, "close", positional(sprints))
 	}
 	if b := subCmd(root, "board"); b != nil {
-		b.ValidArgsFunction = positional(epics)
+		b.ValidArgsFunction = positional(containers)
 		setArgs(b, "rename", positional(allBoards))
 		setArgs(b, "archive", positional(activeBoards))
 		setArgs(b, "unarchive", positional(allBoards))
@@ -83,8 +84,8 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 		"format":     completeStatic(showfmt.Names()),
 		"category":   completeStatic(categoryValues()),
 		"type":       completeVocab(g, workflowTypes),
-		"epic":       epics,
-		"parent":     epics,
+		"epic":       containers,
+		"parent":     containers,
 		"blocked-by": items,
 		"board":      activeBoards,
 	}
@@ -150,16 +151,23 @@ func setArgs(parent *cobra.Command, name string, fn completer) {
 	}
 }
 
-func completeItems(g *globalFlags, typ string) completer {
+type itemScope int
+
+const (
+	anyItem itemScope = iota
+	containerItemsOnly
+)
+
+func completeItems(g *globalFlags, scope itemScope) completer {
 	return func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		items, _, ok := cachedItems(g)
+		items, _, containers, ok := cachedItemsAndContainers(g)
 		if !ok {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 		pref := strings.ToLower(toComplete)
 		out := make([]string, 0, completionCap)
 		for _, it := range items {
-			if typ != "" && it.Type != typ {
+			if scope == containerItemsOnly && !containers[it.Type] {
 				continue
 			}
 			if !strings.HasPrefix(strings.ToLower(it.Number), pref) {
@@ -205,15 +213,24 @@ func completeStatic(values []string) completer {
 }
 
 func cachedItems(g *globalFlags) ([]*datamodel.Item, *datamodel.Config, bool) {
+	items, cfg, _, ok := cachedItemsAndContainers(g)
+	return items, cfg, ok
+}
+
+func cachedItemsAndContainers(g *globalFlags) ([]*datamodel.Item, *datamodel.Config, map[string]bool, bool) {
 	s, cfg, err := openStore(g)
 	if err != nil {
-		return nil, nil, false
+		return nil, nil, nil, false
 	}
 	items, err := s.CachedItems()
 	if err != nil {
-		return nil, nil, false
+		return nil, nil, nil, false
 	}
-	return items, cfg, true
+	schemas, err := s.Schemas()
+	if err != nil {
+		return nil, nil, nil, false
+	}
+	return items, cfg, entityschema.ContainerTypes(schemas), true
 }
 
 func findCached(items []*datamodel.Item, ref string) *datamodel.Item {

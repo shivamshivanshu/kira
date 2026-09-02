@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
@@ -26,10 +27,10 @@ func (s *Store) EpicProgress(cfg *datamodel.Config) (map[string]datamodel.EpicPr
 	if err != nil {
 		return nil, err
 	}
-	return allEpicProgress(cfg, ld.items)
+	return allEpicProgress(cfg, ld.items, entityschema.ContainerTypes(ld.schemas))
 }
 
-func allEpicProgress(cfg *datamodel.Config, items []*datamodel.Item) (map[string]datamodel.EpicProgress, error) {
+func allEpicProgress(cfg *datamodel.Config, items []*datamodel.Item, containers map[string]bool) (map[string]datamodel.EpicProgress, error) {
 	_, children := indexByParent(items)
 	out := make(map[string]datamodel.EpicProgress)
 	visiting := make(map[string]bool)
@@ -44,7 +45,7 @@ func allEpicProgress(cfg *datamodel.Config, items []*datamodel.Item) (map[string
 		visiting[it.ID] = true
 		var p datamodel.EpicProgress
 		for _, child := range children[it.ID] {
-			if child.Type == datamodel.TypeEpic {
+			if containers[child.Type] {
 				sub, err := count(child)
 				if err != nil {
 					return p, err
@@ -63,7 +64,7 @@ func allEpicProgress(cfg *datamodel.Config, items []*datamodel.Item) (map[string
 		return p, nil
 	}
 	for _, it := range items {
-		if it.Type == datamodel.TypeEpic {
+		if containers[it.Type] {
 			_, err := count(it)
 			if err != nil {
 				return nil, err
@@ -73,10 +74,10 @@ func allEpicProgress(cfg *datamodel.Config, items []*datamodel.Item) (map[string
 	return out, nil
 }
 
-func epicProgress(cfg *datamodel.Config, children map[string][]*datamodel.Item, epicID string) (datamodel.EpicProgress, error) {
+func epicProgress(cfg *datamodel.Config, children map[string][]*datamodel.Item, containerID string, containers map[string]bool) (datamodel.EpicProgress, error) {
 	var p datamodel.EpicProgress
-	err := walkEpic(children, epicID, func(c *datamodel.Item) bool { return c.Type == datamodel.TypeEpic }, func(c *datamodel.Item) {
-		if c.Type == datamodel.TypeEpic {
+	err := walkEpic(children, containerID, func(c *datamodel.Item) bool { return containers[c.Type] }, func(c *datamodel.Item) {
+		if containers[c.Type] {
 			return
 		}
 		p.Total++

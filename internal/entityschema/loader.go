@@ -262,8 +262,11 @@ func checkSchemaShape(s Schema) error {
 				}
 			}
 		case FieldRef:
-			if f.Target == "" {
-				return fmt.Errorf("schema %q: field %q: type \"ref\" requires \"target\"", s.Name, f.Name)
+			switch {
+			case f.Target == "" && !f.TargetsContainer:
+				return fmt.Errorf("schema %q: field %q: type \"ref\" requires \"target\" or \"targets_container\"", s.Name, f.Name)
+			case f.Target != "" && f.TargetsContainer:
+				return fmt.Errorf("schema %q: field %q: \"target\" and \"targets_container\" are alternatives, not both", s.Name, f.Name)
 			}
 		}
 	}

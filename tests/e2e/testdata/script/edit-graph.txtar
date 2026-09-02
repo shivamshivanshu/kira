@@ -14,11 +14,11 @@ exec kira create ticket --title B --no-edit
 
 # --field parent pointed at a ticket is refused, as link would.
 ! exec kira edit KIRA-2 --field parent=KIRA-3
-stderr 'expected epic'
+stderr 'does not group other items'
 # --force does not bypass the graph refusal.
 ! exec kira edit KIRA-2 --field parent=KIRA-3 --force
-stderr 'expected epic'
-# a valid epic parent is accepted.
+stderr 'does not group other items'
+# a parent whose type declares the container capability is accepted.
 exec kira edit KIRA-2 --field parent=KIRA-1
 exec kira show KIRA-2 --json
 stdout '"parent": "[0-9A-Z]{26}"'

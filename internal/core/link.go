@@ -59,9 +59,6 @@ func linkParent(it *datamodel.Item, resolver *id.Resolver, opts LinkOpts) []erro
 		it.Parent = nil
 		return nil
 	}
-	if it.Type == datamodel.TypeEpic {
-		return []error{fmt.Errorf("an epic cannot have a parent")}
-	}
 	ulid, err := resolveTarget(resolver, "parent", opts.Ref)
 	if err != nil {
 		return []error{err}

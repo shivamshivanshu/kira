@@ -68,7 +68,7 @@ func listResult(ld *loaded, opts ListOpts, qopts query.Options) (*datamodel.List
 		StderrNotes: slices.Concat(ld.notes, notes),
 	}
 	if opts.Tree {
-		res.Tree = groupByParent(rows, parentNumbers)
+		res.Tree = groupByParent(rows, parentNumbers, entityschema.ContainerTypes(ld.schemas))
 	}
 	return res, nil
 }
@@ -282,7 +282,7 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 	return pred, order, notes, nil
 }
 
-func groupByParent(rows []datamodel.ListItem, parentNumbers map[string]string) []datamodel.TreeGroup {
+func groupByParent(rows []datamodel.ListItem, parentNumbers map[string]string, containers map[string]bool) []datamodel.TreeGroup {
 	order := make([]string, 0)
 	buckets := map[string][]string{}
 	ensureGroup := func(key string) {
@@ -292,7 +292,7 @@ func groupByParent(rows []datamodel.ListItem, parentNumbers map[string]string) [
 		}
 	}
 	for _, r := range rows {
-		if r.Type == datamodel.TypeEpic {
+		if containers[r.Type] {
 			ensureGroup(r.ID)
 			continue
 		}
@@ -337,12 +337,12 @@ func (a parentGroupKey) Less(b parentGroupKey) bool {
 	return a.k.Less(b.k)
 }
 
+// Callers only ever look this up by an item's parent id, so it needs no notion
+// of which types may be parents.
 func parentNumberMap(items []*datamodel.Item) map[string]string {
-	m := make(map[string]string)
+	m := make(map[string]string, len(items))
 	for _, it := range items {
-		if it.Type == datamodel.TypeEpic {
-			m[it.ID] = it.Number
-		}
+		m[it.ID] = it.Number
 	}
 	return m
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/editorx"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/ptr"
@@ -117,8 +118,12 @@ func (s *Store) resolveHere(_ *datamodel.Config, opts *CreateOpts) (string, erro
 	if !ok {
 		return "", errx.User("active ticket %s resolves to no item", ap.Ticket).WithHint("start one with kira workon <id>")
 	}
+	schemas, err := s.schemas()
+	if err != nil {
+		return "", err
+	}
 	if opts.Parent == "" {
-		if active.Type == datamodel.TypeEpic {
+		if entityschema.ContainerTypes(schemas)[active.Type] {
 			opts.Parent = active.ID
 		} else if active.Parent != nil {
 			opts.Parent = *active.Parent
@@ -175,7 +180,7 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 	if errs := s.applyFieldEdits(cfg, finalItem, opts.Fields, schemas[finalItem.Type]); len(errs) > 0 {
 		return nil, errx.Invalid(invalidItemPrefix, errs)
 	}
-	hard, warns := newValidationCtx(cfg, ld.items, ld.resolver, schemas[finalItem.Type], opts.Force).validateMutation(nil, finalItem)
+	hard, warns := newValidationCtx(cfg, ld.items, ld.resolver, schemas[finalItem.Type], entityschema.ContainerTypes(schemas), opts.Force).validateMutation(nil, finalItem)
 	if len(hard) > 0 {
 		return nil, errx.Invalid(invalidItemPrefix, hard)
 	}
@@ -247,7 +252,7 @@ func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, boardKey,
 			return draft{}, err
 		}
 		sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, initialState)
-		vctx := newValidationCtx(cfg, ld.items, ld.resolver, schemas[opts.Type], opts.Force)
+		vctx := newValidationCtx(cfg, ld.items, ld.resolver, schemas[opts.Type], entityschema.ContainerTypes(schemas), opts.Force)
 		content, err := runEditor(cfg.UI.Editor, editorx.Stdio{}, serializeDraft(base), vctx.validateBuffer(func(c string) (*datamodel.Item, []error) {
 			d, perr := parseDraft(c)
 			if perr != nil {

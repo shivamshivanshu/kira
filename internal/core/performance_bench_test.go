@@ -24,7 +24,7 @@ func BenchmarkEpicProgress(b *testing.B) {
 			items[n] = &datamodel.Item{ID: "ticket", Number: "KIRA-99999", Type: datamodel.TypeTicket, State: "DONE", Parent: new(items[n-1].ID)}
 			b.ReportAllocs()
 			for b.Loop() {
-				p, err := allEpicProgress(cfg, items)
+				p, err := allEpicProgress(cfg, items, epicContainers())
 				if err != nil {
 					b.Fatal(err)
 				}

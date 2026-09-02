@@ -70,6 +70,7 @@ func RefCycles(items []*datamodel.Item, resolver *id.Resolver) []Finding {
 
 func RefTypeMismatches(schemas map[string]entityschema.Schema, items []*datamodel.Item, resolver *id.Resolver, itemTypes map[string]bool) []Finding {
 	byID := itemsByID(items)
+	containers := entityschema.ContainerTypes(schemas)
 	var out []Finding
 	for _, it := range items {
 		if it.ID == "" {
@@ -86,16 +87,28 @@ func RefTypeMismatches(schemas map[string]entityschema.Schema, items []*datamode
 			}
 			for _, ref := range refStrings(values[f.Name]) {
 				target := resolveRef(ref, resolver)
-				if parent := byID[target]; parent != nil && parent.Type != f.Target {
-					out = append(out, Finding{
-						Class:    ClassRefType,
-						Severity: SeverityError,
-						ItemID:   it.ID,
-						Number:   it.Number,
-						Field:    f.Name,
-						Message:  fmt.Sprintf("%s points at %s of type %s, expected %s", f.Name, numberOf(target, byID), parent.Type, f.Target),
-					})
+				parent := byID[target]
+				if parent == nil {
+					continue
 				}
+				mismatch := ""
+				switch {
+				case f.TargetsContainer && !containers[parent.Type]:
+					mismatch = fmt.Sprintf("%s points at %s of type %s, which does not group other items", f.Name, numberOf(target, byID), parent.Type)
+				case f.Target != "" && !f.TargetsContainer && parent.Type != f.Target:
+					mismatch = fmt.Sprintf("%s points at %s of type %s, expected %s", f.Name, numberOf(target, byID), parent.Type, f.Target)
+				}
+				if mismatch == "" {
+					continue
+				}
+				out = append(out, Finding{
+					Class:    ClassRefType,
+					Severity: SeverityError,
+					ItemID:   it.ID,
+					Number:   it.Number,
+					Field:    f.Name,
+					Message:  mismatch,
+				})
 			}
 		}
 	}

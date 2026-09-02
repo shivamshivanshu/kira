@@ -6,6 +6,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/id"
@@ -106,7 +107,7 @@ func (s *Store) ValidateStaged(cfg *datamodel.Config) error {
 			problems = append(problems, fmt.Errorf("%s: %w", p, err))
 			continue
 		}
-		errs, _ := newValidationCtx(cfg, nil, nil, schemas[it.Type], false).validateItem(it)
+		errs, _ := newValidationCtx(cfg, nil, nil, schemas[it.Type], entityschema.ContainerTypes(schemas), false).validateItem(it)
 		for _, e := range errs {
 			problems = append(problems, fmt.Errorf("%s: %w", p, e))
 		}

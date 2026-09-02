@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/query"
 )
@@ -71,7 +72,7 @@ func (v *Snapshot) SprintList() *datamodel.SprintListResult {
 }
 
 func (v *Snapshot) EpicProgress() (map[string]datamodel.EpicProgress, error) {
-	return allEpicProgress(v.data.cfg, v.data.items)
+	return allEpicProgress(v.data.cfg, v.data.items, entityschema.ContainerTypes(v.data.schemas))
 }
 
 func (v *Snapshot) Now() (*datamodel.NowResult, error) {

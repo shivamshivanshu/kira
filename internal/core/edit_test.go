@@ -72,7 +72,7 @@ func TestApplyFieldEditDeclaredExtraDateRoundTripsAndValidates(t *testing.T) {
 	if it.ExtraScalars["due_custom"] != `"2026-07-24"` {
 		t.Errorf("ExtraScalars[due_custom] = %q, want a quoted date so it decodes back as a string", it.ExtraScalars["due_custom"])
 	}
-	errs, _ := newValidationCtx(config.Default(), nil, nil, schema, false).validateItem(it)
+	errs, _ := newValidationCtx(config.Default(), nil, nil, schema, epicContainers(), false).validateItem(it)
 	for _, e := range errs {
 		if strings.Contains(e.Error(), "due_custom") {
 			t.Errorf("declared date extra must validate, got: %v", e)
