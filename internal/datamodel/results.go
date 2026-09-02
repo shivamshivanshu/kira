@@ -53,6 +53,7 @@ type ListItem struct {
 	Board      string         `json:"board"`
 	Title      string         `json:"title"`
 	Type       string         `json:"type"`
+	TypeLabel  string         `json:"type_label"`
 	Subtype    *string        `json:"subtype"`
 	State      string         `json:"state"`
 	Category   string         `json:"category"`
@@ -123,6 +124,7 @@ type ShowResult struct {
 	Board      string              `json:"board"`
 	Aliases    []string            `json:"aliases"`
 	Type       string              `json:"type"`
+	TypeLabel  string              `json:"type_label"`
 	Subtype    *string             `json:"subtype"`
 	Title      string              `json:"title"`
 	State      string              `json:"state"`

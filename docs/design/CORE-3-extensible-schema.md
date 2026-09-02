@@ -32,10 +32,20 @@ user-defined types.
 - Replacing the `Item` struct wholesale (deferred to a late phase; may never be
   worth it — see Phasing).
 - Per-type identity (per-type ID sequences / display-number prefixes). Early
-  Phase 1 schemas declared a descriptive-only `identity` field that nothing
-  generated IDs from — every type shares the one project sequence — so it was
-  removed as inert (KIRA-141). The loader still tolerates the key in schema
-  files materialized by older versions. Remains open as a future feature.
+  Phase 1 schemas declared `identity: {style, prefix}` that nothing generated
+  IDs from — every type shares the one project sequence, and display numbers
+  come from `project.key` / `boards[].key`. The prefix was not merely inert but
+  wrong: a repo initialized with `--key PROJ` still got a schema file asserting
+  `KIRA`. Both it and the `sequential` style are gone (KIRA-141, restored in
+  error during the origin merge, removed again).
+
+  What survives is `identity.style: config` on `board.json`, which is read by
+  `Schema.ConfigBacked()` and marks a type whose instances live in
+  `config.yaml` rather than as files. That is a storage backend rather than an
+  identity scheme, and the key is misnamed for what it now does.
+
+  The loader tolerates the old keys in schema files materialized by older
+  versions. Per-type identity remains open as a future feature.
 
 ## Decisions (from brainstorm)
 

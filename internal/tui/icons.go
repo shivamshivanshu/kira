@@ -29,8 +29,6 @@ func (g glyph) pick(mode datamodel.IconMode) string {
 }
 
 var (
-	glyphEpic     = glyph{"", "📦", "[E]"}
-	glyphTicket   = glyph{"", "🎫", "[T]"}
 	glyphTodo     = glyph{"", "⬜", "[ ]"}
 	glyphDoing    = glyph{"", "🔄", "[~]"}
 	glyphDone     = glyph{"", "✅", "[x]"}
@@ -43,6 +41,22 @@ type iconSet struct {
 	mode       datamodel.IconMode
 	priorities []string
 	dropped    []string
+	// typeIcons is what each entity type's schema declared, keyed by type.
+	// Empty for a type that declared nothing. typeCell is the width they
+	// share, taken from the widest of them.
+	typeIcons map[string]string
+	typeCell  int
+}
+
+// withTypeIcons attaches the schema-declared icons and sizes the cell they
+// share. Only the tree draws a per-type glyph, so the plain board renderer
+// leaves this unset.
+func (ic iconSet) withTypeIcons(icons map[string]string) iconSet {
+	ic.typeIcons = icons
+	for _, g := range icons {
+		ic.typeCell = max(ic.typeCell, lipgloss.Width(g))
+	}
+	return ic
 }
 
 func (ic iconSet) rich() bool { return ic.mode != datamodel.IconText }
@@ -103,11 +117,21 @@ func utf8Locale(env func(string) string) bool {
 
 func osEnv(key string) string { return os.Getenv(key) }
 
+// typeGlyph draws whatever the type's schema declared. kira ships no per-type
+// glyph of its own: the shipped schemas declare theirs like any other, so a
+// user-defined type is not a second-class citizen. The cell is width-normalised
+// because the declared glyph is arbitrary and the tree column must not shift.
 func (ic iconSet) typeGlyph(typ string) string {
-	if typ == datamodel.TypeEpic {
-		return glyphEpic.pick(ic.mode)
+	return padToWidth(ic.typeIcons[typ], ic.typeCell)
+}
+
+// padToWidth trails spaces so a narrow or absent glyph still fills its cell;
+// fitWidth only truncates.
+func padToWidth(s string, width int) string {
+	if pad := width - lipgloss.Width(s); pad > 0 {
+		return s + strings.Repeat(" ", pad)
 	}
-	return glyphTicket.pick(ic.mode)
+	return s
 }
 
 func (ic iconSet) categoryGlyph(cat datamodel.Category, resolution *string) string {

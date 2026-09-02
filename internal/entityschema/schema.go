@@ -39,10 +39,13 @@ const (
 	PlacementBody        Placement = "body"
 )
 
-// Identity is descriptive only in phase 1 — nothing generates IDs from it yet.
+// Identity says where a type's instances live. Only "config" is read, by
+// ConfigBacked: board and sprint are config.yaml entries while ticket and epic
+// are files. Display numbers come from project.key and boards[].key, never from
+// here -- a prefix declared here was ignored, and wrong whenever project.key
+// differed, so the field is gone.
 type Identity struct {
-	Style  string `json:"style,omitempty"`
-	Prefix string `json:"prefix,omitempty"`
+	Style string `json:"style,omitempty"`
 }
 
 const IdentityStyleConfig = "config"
@@ -61,6 +64,16 @@ type Representation struct {
 	Label       string   `json:"label,omitempty"`
 	Icon        string   `json:"icon,omitempty"`
 	ListColumns []string `json:"list_columns,omitempty"`
+}
+
+// TypeLabel is how a type names itself in output. A schema that declares no
+// label is named by its type, which is the rule for every type -- kira holds no
+// display name of its own.
+func (s Schema) TypeLabel(typ string) string {
+	if s.Representation.Label != "" {
+		return s.Representation.Label
+	}
+	return typ
 }
 
 // StateValue pairs a state value with its category.

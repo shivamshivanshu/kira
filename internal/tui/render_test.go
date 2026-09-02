@@ -38,6 +38,21 @@ func sampleTree() ([]datamodel.TreeNode, map[string]datamodel.ListItem, map[stri
 	return nodes, fields, progress
 }
 
+// declaredIcons stands in for what the shipped schemas declare: kira has no
+// per-type glyph of its own, so a test that renders a tree has to say what the
+// schemas said.
+func declaredIcons(mode datamodel.IconMode) iconSet {
+	glyphs := map[datamodel.IconMode]map[string]string{
+		datamodel.IconNerd:  {datamodel.TypeEpic: "\uf45d", datamodel.TypeTicket: "\uf41b"},
+		datamodel.IconEmoji: {datamodel.TypeEpic: "\U0001F4E6", datamodel.TypeTicket: "\U0001F3AB"},
+	}
+	icons, ok := glyphs[mode]
+	if !ok {
+		icons = map[string]string{datamodel.TypeEpic: "[E]", datamodel.TypeTicket: "[T]"}
+	}
+	return iconSet{mode: mode}.withTypeIcons(icons)
+}
+
 func loadedTree() treeModel {
 	nodes, fields, progress := sampleTree()
 	tm := newTreeModel()
@@ -47,7 +62,7 @@ func loadedTree() treeModel {
 
 func newTestModel(w, h int, withData bool) model {
 	cfg := &datamodel.Config{UI: datamodel.UI{Tui: datamodel.UITui{Split: datamodel.DefaultSplit}}, Workon: datamodel.Workon{BranchPattern: "{key}/{number}-{slug}", Casing: datamodel.CasingKebab}}
-	m := newModel(nil, cfg, asciiTheme(), iconSet{mode: datamodel.IconText}, false)
+	m := newModel(nil, cfg, asciiTheme(), declaredIcons(datamodel.IconText), false)
 	m.width, m.height = w, h
 	if withData {
 		nodes, fields, progress := sampleTree()
@@ -84,41 +99,59 @@ func TestCollapseViaKey(t *testing.T) {
 	golden.RequireEqual(t, []byte(updated.(model).View()))
 }
 
-func TestIconsAsciiVsNerd(t *testing.T) {
+func TestTypeGlyphComesFromTheSchema(t *testing.T) {
 	t.Parallel()
 	th := asciiTheme()
 	tm := loadedTree()
 
-	ascii := tm.render(th, iconSet{mode: datamodel.IconText}, 100, 6, true, true)
-	if !strings.Contains(ascii, "[E]") || strings.Contains(ascii, glyphEpic.nerd) {
-		t.Errorf("ascii render must use [E], not the PUA glyph:\n%s", ascii)
+	// kira ships no per-type glyph of its own, so a tree rendered without
+	// schema icons draws none -- it does not fall back to a hardcoded one.
+	bare := tm.render(th, iconSet{mode: datamodel.IconNerd}, 100, 6, true, true)
+	if strings.ContainsAny(bare, "\uf41b\uf45d") {
+		t.Errorf("no schema icon was declared, so no type glyph should appear:\n%s", bare)
 	}
-	nerd := tm.render(th, iconSet{mode: datamodel.IconNerd}, 100, 6, true, true)
-	if !strings.Contains(nerd, glyphEpic.nerd) || strings.Contains(nerd, "[E]") {
-		t.Errorf("nerd render must use the PUA glyph, not [E]:\n%s", nerd)
+
+	// what a schema declares is what gets drawn, verbatim
+	declared := iconSet{mode: datamodel.IconNerd}.withTypeIcons(map[string]string{
+		datamodel.TypeEpic: "\uf45d", datamodel.TypeTicket: "@",
+	})
+	out := tm.render(th, declared, 100, 6, true, true)
+	if !strings.Contains(out, "\uf45d") {
+		t.Errorf("declared epic glyph missing:\n%s", out)
 	}
-	emoji := tm.render(th, iconSet{mode: datamodel.IconEmoji}, 100, 6, true, true)
-	if !strings.Contains(emoji, glyphEpic.emoji) || strings.Contains(emoji, "[E]") {
-		t.Errorf("emoji render must use the emoji glyph, not [E]:\n%s", emoji)
+}
+
+func TestTypeGlyphCellWidthIsUniform(t *testing.T) {
+	t.Parallel()
+	// A schema can declare any glyph, so the cell is normalised: a two-wide
+	// emoji in one schema must not shift the column against a one-wide glyph
+	// in another.
+	for _, mode := range []datamodel.IconMode{datamodel.IconNerd, datamodel.IconEmoji, datamodel.IconText} {
+		ic := iconSet{mode: mode}.withTypeIcons(map[string]string{"wide": "\U0001F680", "narrow": "@", "absent": ""})
+		want := lipgloss.Width(ic.typeGlyph("narrow"))
+		for _, typ := range []string{"wide", "absent"} {
+			if got := lipgloss.Width(ic.typeGlyph(typ)); got != want {
+				t.Errorf("mode %s: %s cell width = %d, want %d", mode, typ, got, want)
+			}
+		}
 	}
 }
 
 func TestTreeNerdIconsSnapshot(t *testing.T) {
 	t.Parallel()
 	tm := loadedTree()
-	golden.RequireEqual(t, []byte(tm.render(asciiTheme(), iconSet{mode: datamodel.IconNerd}, 100, 6, true, true)))
+	golden.RequireEqual(t, []byte(tm.render(asciiTheme(), declaredIcons(datamodel.IconNerd), 100, 6, true, true)))
 }
 
 func TestTreeEmojiIconsSnapshot(t *testing.T) {
 	t.Parallel()
 	tm := loadedTree()
-	golden.RequireEqual(t, []byte(tm.render(asciiTheme(), iconSet{mode: datamodel.IconEmoji}, 100, 6, true, true)))
+	golden.RequireEqual(t, []byte(tm.render(asciiTheme(), declaredIcons(datamodel.IconEmoji), 100, 6, true, true)))
 }
 
 func TestIconWidthsUniformPerMode(t *testing.T) {
 	t.Parallel()
 	groups := map[string][]glyph{
-		"type":     {glyphEpic, glyphTicket},
 		"category": {glyphTodo, glyphDoing, glyphDone, glyphDropped},
 	}
 	cellWidth := map[datamodel.IconMode]int{
