@@ -1,0 +1,64 @@
+# A container may parent another container: list --tree shows the nested one
+# both as a child row and as its own group header, kira tree nests it, and a
+# parent cycle forged straight into the files is a doctor ref-cycle finding.
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+
+exec kira create epic --title Platform --no-edit
+exec kira create epic --title Storage --no-edit --parent KIRA-1
+exec kira create ticket --title WAL --no-edit --parent KIRA-2
+
+exec kira list --tree
+stdout '(?m)^KIRA-1 +\(epic\)$'
+stdout '(?m)^  KIRA-2 +PLANNED +epic .*Storage$'
+stdout '(?m)^KIRA-2 +\(epic\)$'
+stdout '(?m)^  KIRA-3 +TODO +ticket .*WAL$'
+
+exec kira tree
+stdout '(?m)^KIRA-1 +epic +Platform$'
+stdout '(?m)^  KIRA-2 +epic +Storage$'
+stdout '(?m)^    KIRA-3 +ticket +WAL$'
+
+# closing the loop through the CLI is refused
+! exec kira link KIRA-1 --parent KIRA-2
+stderr 'cycle'
+
+cp cyca.md .kira/tickets/01HAAAAAAAAAAAAAAAAAAAAAAA.md
+cp cycb.md .kira/tickets/01HBBBBBBBBBBBBBBBBBBBBBBB.md
+! exec kira doctor
+stdout 'ref-cycle'
+stdout 'parent chain forms a cycle'
+
+-- cyca.md --
+---
+id: 01HAAAAAAAAAAAAAAAAAAAAAAA
+number: KIRA-50
+aliases: []
+type: epic
+title: cyca
+state: PLANNED
+labels: []
+parent: 01HBBBBBBBBBBBBBBBBBBBBBBB
+created: 2026-07-10T09:14:00+05:30
+updated: 2026-07-10T09:14:00+05:30
+---
+## Description
+-- cycb.md --
+---
+id: 01HBBBBBBBBBBBBBBBBBBBBBBB
+number: KIRA-51
+aliases: []
+type: epic
+title: cycb
+state: PLANNED
+labels: []
+parent: 01HAAAAAAAAAAAAAAAAAAAAAAA
+created: 2026-07-10T09:14:00+05:30
+updated: 2026-07-10T09:14:00+05:30
+---
+## Description

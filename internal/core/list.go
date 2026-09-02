@@ -282,6 +282,10 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 	return pred, order, notes, nil
 }
 
+// groupByParent buckets rows under their immediate parent. A container heads a
+// group of its own, and a container that itself has a parent additionally
+// appears as a row inside that parent's group — the flat two-level shape has
+// nowhere else to show the nesting.
 func groupByParent(rows []datamodel.ListItem, parentNumbers map[string]string, containers map[string]bool) []datamodel.TreeGroup {
 	order := make([]string, 0)
 	buckets := map[string][]string{}
@@ -292,13 +296,16 @@ func groupByParent(rows []datamodel.ListItem, parentNumbers map[string]string, c
 		}
 	}
 	for _, r := range rows {
-		if containers[r.Type] {
+		isContainer := containers[r.Type]
+		if isContainer {
 			ensureGroup(r.ID)
-			continue
 		}
 		key := ""
 		if r.Parent != nil {
 			key = *r.Parent
+		}
+		if isContainer && key == "" {
+			continue
 		}
 		ensureGroup(key)
 		buckets[key] = append(buckets[key], r.ID)
