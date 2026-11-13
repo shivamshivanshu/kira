@@ -73,11 +73,32 @@
       "source_kind": "commit"
     },
     {
+      "field": "labels",
+      "value": "[bug, perf]",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "created"
+    },
+    {
       "field": "parent",
       "value": "<ULID-2>",
       "when": "<TS>",
       "by": "tester",
       "source_kind": "created"
+    },
+    {
+      "field": "blocked_by",
+      "value": "[<ULID-3>]",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "commit"
+    },
+    {
+      "field": "links",
+      "value": "relates:[<ULID-3>]",
+      "when": "<TS>",
+      "by": "tester",
+      "source_kind": "commit"
     },
     {
       "field": "sprint",

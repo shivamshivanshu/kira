@@ -101,6 +101,18 @@
     },
     {
       "ts": "<TS>",
+      "field": "links",
+      "from": null,
+      "to": "relates:[<ULID-3>]"
+    },
+    {
+      "ts": "<TS>",
+      "field": "blocked_by",
+      "from": null,
+      "to": "[<ULID-3>]"
+    },
+    {
+      "ts": "<TS>",
       "field": "subtype",
       "from": null,
       "to": "bug"

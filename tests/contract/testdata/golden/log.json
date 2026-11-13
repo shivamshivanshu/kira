@@ -13,6 +13,20 @@
     {
       "kind": "event",
       "ts": "<TS>",
+      "field": "links",
+      "new": "relates:[<ULID-2>]",
+      "sha": "<SHA>"
+    },
+    {
+      "kind": "event",
+      "ts": "<TS>",
+      "field": "blocked_by",
+      "new": "[<ULID-2>]",
+      "sha": "<SHA>"
+    },
+    {
+      "kind": "event",
+      "ts": "<TS>",
       "field": "subtype",
       "new": "bug",
       "sha": "<SHA>"

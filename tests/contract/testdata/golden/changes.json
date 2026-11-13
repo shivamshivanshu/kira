@@ -43,6 +43,13 @@
         },
         {
           "ts": "<TS>",
+          "field": "aliases",
+          "old": "",
+          "new": "[KIRA-2]",
+          "commit": "<SHA>"
+        },
+        {
+          "ts": "<TS>",
           "field": "priority",
           "old": "",
           "new": "P1",
