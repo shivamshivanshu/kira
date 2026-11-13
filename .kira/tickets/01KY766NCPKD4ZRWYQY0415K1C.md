@@ -4,13 +4,14 @@ number: CORE-39
 aliases: []
 type: ticket
 title: "Migrate config-backed entities (board, sprint) to file-backed entity storage"
-state: TODO
+state: WONT_DO
+resolution: dropped
 priority: P3
 labels: []
-epic: null
+parent: null
 blocked_by: []
 created: 2026-07-23T15:21:42+05:30
-updated: 2026-07-23T15:21:42+05:30
+updated: 2026-11-13T17:19:14+05:30
 ---
 
 ## Description
