@@ -198,8 +198,8 @@ kira config set <key> <value>
 Sets one scalar in `.kira/config.yaml` (never the user file), validated like
 the loader, rewriting only that line so comments survive. A key absent from
 the file (or only commented out) is appended as a new block. Committed under
-`commit.mode: auto`. Setting a key to its current value fails: see
-[Open bugs](../09-limitations-and-roadmap.md#open-bugs).
+`commit.mode: auto`. Setting a key to its current value is a no-op (exit 0,
+no commit).
 
 ```console
 $ kira config set ui.nope true

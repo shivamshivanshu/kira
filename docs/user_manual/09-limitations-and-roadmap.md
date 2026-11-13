@@ -23,4 +23,3 @@ Boards and sprints are entries in `.kira/config.yaml`, so:
 | CORE-67 | `kira blame`, `kira log`, `kira changes` and `show --json` `history_tail` omit list-valued fields (`labels`, `blocked_by`, `links`, `aliases`). `kira diff` reports them. |
 | CORE-66 | The `activity` query field differs between `--at HEAD` and a normal read of a clean tree, so `ORDER BY activity` can disagree. |
 | CLI-13 | Table columns are sized by rune count, so non-ASCII cells misalign. |
-| CORE-70 | A config-file mutation that changes nothing (`config set` to the current value, `init --force` on an unchanged store, `board unarchive` of an active board) fails with a raw `git commit … exit status 1`. |

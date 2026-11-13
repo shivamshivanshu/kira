@@ -36,6 +36,13 @@ func (s *Store) finalize(mode datamodel.CommitMode, spec commitSpec, paths ...st
 	if mode == datamodel.CommitManual {
 		return "", nil
 	}
+	changed, err := s.repo().HasStagedChangesIn(paths...)
+	if err != nil {
+		return "", errx.User("%s", err)
+	}
+	if !changed {
+		return "", nil
+	}
 	if err := s.repo().CommitIn(paths, spec.subject, datamodel.TicketTrailerKey, spec.trailerNumber); err != nil {
 		return "", errx.User("%s", err)
 	}

@@ -25,6 +25,10 @@ grep 'name: My Project' .kira/config.yaml
 exec kira config set sync.push true
 grep 'push: true' .kira/config.yaml
 
+# setting the current value again is a no-op, not a failed empty commit (CORE-70)
+exec kira config set sync.push true
+! stderr .
+
 # absent (commented-out) block is created in place; its doc comment is kept
 exec kira config set git.landed_ref origin/main
 grep 'landed_ref: origin/main' .kira/config.yaml
