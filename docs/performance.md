@@ -1,8 +1,8 @@
 # Performance changes
 
-This implements the concrete code improvements identified in a performance
-review. Measurements are local to an Apple M3 Max with
-Go 1.26.5 on darwin/arm64; they are workload-specific, not universal speedups.
+Results of the performance pass in commit `36c7fae`. Measurements are local to
+an Apple M3 Max with Go 1.26.5 on darwin/arm64; they are workload-specific, not
+universal speedups.
 
 | Workload | Before | After |
 | --- | --- | --- |
@@ -11,11 +11,9 @@ Go 1.26.5 on darwin/arm64; they are workload-specific, not universal speedups.
 | Load a 1,000-item board page | 64.7 ms | 31.9 ms |
 | Compute progress for 1,000 nested epics | 54.8 ms, 44.0 MB allocated | 0.296 ms, 0.522 MB allocated |
 | Evaluate a selective AND query over 1,000 items | 132.6 µs, 1,000 allocations | 3.92 µs, zero allocations |
-| Validate an extra with a 1,000-line description | 3.46 ms, 41.5 MB allocated | 0.275 µs, 528 bytes allocated |
 | Render a 1,000-item tree page, excluding loading | 35.4 ms, 2.39 MB HTML | 22.7 ms, 1.60 MB HTML |
 
-Before values and methodology are in the review. After values are medians of
-three 200 ms benchmark samples. Page-load baseline measurements used three timed
+After values are medians of three 200 ms benchmark samples. Page-load baseline measurements used three timed
 iterations; comparisons are directional rather than controlled confidence bounds.
 
 ## Implementation
@@ -58,7 +56,7 @@ keyboard navigation, filtering, ancestor expansion and bulk selection.
 
 ```sh
 go test ./internal/query ./internal/core ./internal/webui \
-  -run '^$' -bench 'Benchmark(SelectiveQuery|EpicProgress|LoadPage|RenderPage)$' \
+  -run '^$' -bench 'Benchmark(SelectiveQuery|ContainerProgress|LoadPage|RenderPage)$' \
   -benchtime=200ms -count=3 -p=1
 
 go test ./tests/perf -run '^$' \
@@ -69,9 +67,9 @@ KIRA_PERF=1 go test ./tests/perf -run TestColdStatsSpawnScaling -v
 
 Fixtures live in temporary repositories. Mutation and stats-cache benchmarks
 exclude fixture copying and cleanup, and separately measure cold, warm and
-one-item-changed caches. CI alternates base and HEAD samples, compares mutation
-and bulk latency as well as read commands, and runs the same query, schema,
-deep-epic and rendering benchmarks against both revisions.
+one-item-changed caches. CI (`.github/workflows/perf.yml`, non-gating) runs no
+benchmarks: only the deterministic spawn-count, scaling and cold-start
+tripwires in `tests/perf`.
 
 ## PGO experiments
 

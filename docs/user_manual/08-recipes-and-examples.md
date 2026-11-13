@@ -1,462 +1,249 @@
 # Recipes and Examples
 
-Short, working answers to "how do I do X". Every command sequence on this page
-was run against a real repository — the output is what you will see.
+Task-oriented sequences; flags and full semantics live in the
+[CLI reference](04-cli-reference/README.md). Samples come from one repository,
+key `CORE`, run in order; `@me` resolves to the git user `Demo User` →
+`Demo-User`.
 
-Part 1 covers the things you will do every day. Part 2 surfaces options that
-are genuinely useful but easy to never discover.
-
-This page trades depth for breadth. Where a recipe only shows one flag of many,
-it links to the reference page that documents the rest.
-
----
-
-## Part 1 — Everyday workflows
-
-### Take a ticket from idea to done
+## Idea to done
 
 ```console
-$ kira create ticket --title 'Fix flaky retry backoff' --no-edit
+$ kira create ticket "Fix flaky retry backoff" --no-edit
 Created CORE-1 Fix flaky retry backoff
-
 $ kira workon CORE-1
 Created branch core/core-1-fix-flaky-retry-backoff for CORE-1
 Moved CORE-1: TODO -> IN_PROGRESS
-
-... write the code, commit as usual ...
-
 $ kira move CORE-1 REVIEW
 Moved CORE-1: IN_PROGRESS -> REVIEW
-
-$ kira move CORE-1 DONE --resolution done
+$ kira move CORE-1 DONE
 Moved CORE-1: REVIEW -> DONE
 ```
 
-`kira workon` does three things at once: creates (or switches to) a per-ticket
-branch, records it as your active ticket, and advances the state to the first
-`doing` state. It is idempotent — running it again on the same ticket just
-switches back to the branch.
+`workon` creates or switches to the item's branch, sets it active and moves it
+to doing ([`workon`](04-cli-reference/git-integration.md#kira-workon)). The
+state commits land on the branch and reach `main` with it.
 
-Because the state changes happened on the branch, they reach the main line when
-the branch does. Omit `--no-edit` to open the new ticket in `$EDITOR` first.
+## Epics, nested
 
-### See what to work on next
+```console
+$ kira create epic "Order gateway rewrite" --no-edit
+Created CORE-2 Order gateway rewrite
+$ kira create ticket "Drain in-flight orders on shutdown" --no-edit --parent CORE-2 --priority P1
+Created CORE-3 Drain in-flight orders on shutdown
+$ kira tree
+CORE-1      ticket  Fix flaky retry backoff
+CORE-2      epic    Order gateway rewrite
+  CORE-3    ticket  Drain in-flight orders on shutdown
+  CORE-4    ticket  Replace legacy session cache
+  CORE-5    epic    Wire protocol v3
+    CORE-6  ticket  Bump protocol version to v3
+CORE-7      ticket  Audit log retention policy
+```
+
+`CORE-5` is an epic under an epic. Reparent with
+`kira link <id> --parent <epic>`.
+
+## What next, and what is mine
 
 ```console
 $ kira list --filter next
 NUMBER  STATE  TYPE    PRIORITY  TITLE
-CORE-5  TODO   ticket  P0        Bump protocol version to v3
+CORE-6  TODO   ticket  P0        Bump protocol version to v3
 CORE-3  TODO   ticket  P1        Drain in-flight orders on shutdown
-CORE-6  TODO   ticket  -         Audit log retention policy
-```
-
-`next` is a saved filter that ships in every new repository; it expands to
-`state = TODO AND NOT blocked ORDER BY priority`. Saved filters live under
-`filters:` in `.kira/config.yaml`, and `kira config filters` lists the ones your
-repository defines.
-
-Narrow it to yourself with `--owner @me`, which resolves to your git user:
-
-```console
+CORE-4  TODO   ticket  P2        Replace legacy session cache
+CORE-7  TODO   ticket  -         Audit log retention policy
 $ kira list --owner @me --state TODO
 NUMBER  STATE  TYPE    PRIORITY  TITLE
-CORE-5  TODO   ticket  P0        Bump protocol version to v3
+CORE-6  TODO   ticket  P0        Bump protocol version to v3
 CORE-3  TODO   ticket  P1        Drain in-flight orders on shutdown
 ```
 
-Flags AND together, and `--query` ANDs on top of them, so
-`kira list --filter next --owner @me --label perf` is a valid narrowing. The
-query grammar — `IN`, `IS EMPTY`, ranked comparisons, `ORDER BY` — is covered in
-[views and queries](04-cli-reference/views-and-queries.md).
+`next` is the filter `kira init` writes. Flags, `--filter` and `--query` AND
+together.
 
-### Capture a follow-up without losing your place
+## Blockers
 
 ```console
-$ kira create ticket --here --no-edit --title 'Benchmark the new cache path'
-Created CORE-7 Benchmark the new cache path
-
-$ kira create ticket --here --no-edit --title 'Pick a cache eviction policy' --blocking
-Created CORE-8 Pick a cache eviction policy
-```
-
-`--here` inherits the active ticket's epic and sprint and stamps a `captured`
-label, so a thought you had mid-task lands in the right place with one command.
-Adding `--blocking` also records the new item as a blocker of the ticket you are
-on. It requires an active ticket (`kira workon`), plus `--no-edit` and
-`--title`, so it never interrupts you with an editor.
-
-### Block work, then unblock it
-
-```console
-$ kira link CORE-4 --blocked-by CORE-5
+$ kira link CORE-4 --blocked-by CORE-6
 Linked CORE-4
-
 $ kira list --query blocked
 NUMBER  STATE  TYPE    PRIORITY  TITLE
 CORE-4  TODO   ticket  P2        Replace legacy session cache
-```
-
-The dependency is stored only on the dependent item — the blocker's own file
-records nothing. To ask the reverse question, "what is waiting on this?", query
-for it:
-
-```console
-$ kira list --query 'blocked_by = CORE-5'
+$ kira list --query "blocked_by = CORE-6"
 NUMBER  STATE  TYPE    PRIORITY  TITLE
 CORE-4  TODO   ticket  P2        Replace legacy session cache
+$ kira show CORE-6 --json | jq -c ".blocks_numbers"
+["CORE-4"]
 ```
 
-`kira show <blocker> --json` answers the same question in its `blocks` array,
-derived the same way (the human-readable `kira show` does not print it):
+Only the dependent stores the edge; `blocks` is derived. `blocked` clears when
+every blocker is in a done state. Remove the edge with `--remove`.
+
+## Capture a follow-up mid-task
 
 ```console
-$ kira show CORE-5 --json | jq .blocks
-[
-  "01KYKD7DK3A2VGB40VAF3715BZ"
-]
+$ kira workon CORE-3
+Created branch core/core-3-drain-in-flight-orders-on-shutdown for CORE-3
+Moved CORE-3: TODO -> IN_PROGRESS
+$ kira create ticket --here --no-edit --title "Benchmark the drain path"
+Created CORE-8 Benchmark the drain path
+$ kira create ticket --here --no-edit --title "Pick a drain timeout" --blocking
+Created CORE-9 Pick a drain timeout
+$ kira show CORE-9 --format number-title; kira list --query "blocked_by = CORE-9"
+CORE-9 Pick a drain timeout
+NUMBER  STATE        TYPE    PRIORITY  TITLE
+CORE-3  IN_PROGRESS  ticket  P1        Drain in-flight orders on shutdown
 ```
 
-`blocked` is computed, not a field: an item is blocked while any of its
-blockers is still open. Closing the blocker is what unblocks it — no bookkeeping
-step. To retract the dependency itself, use
-`kira link CORE-4 --blocked-by CORE-5 --remove`.
+`--here` copies the active item's parent and sprint and adds the `captured`
+label; `--blocking` makes the new item block the active one
+([`--here`](04-cli-reference/item-lifecycle.md#--here----blocking)).
 
-### Group tickets under an epic
-
-```console
-$ kira create epic --title 'Order gateway rewrite' --no-edit
-Created CORE-2 Order gateway rewrite
-
-$ kira create ticket --title 'Drain in-flight orders on shutdown' --no-edit --parent CORE-2
-Created CORE-3 Drain in-flight orders on shutdown
-
-$ kira tree
-CORE-1    ticket  Fix flaky retry backoff
-CORE-2    epic    Order gateway rewrite
-  CORE-3  ticket  Drain in-flight orders on shutdown
-  CORE-4  ticket  Replace legacy session cache
-  CORE-5  ticket  Bump protocol version to v3
-CORE-6    ticket  Audit log retention policy
-```
-
-`kira tree CORE-2` scopes the render to one epic's subtree. To reparent an
-existing ticket, use `kira link CORE-6 --parent CORE-2`. Epics cannot be nested
-inside other epics — the hierarchy is deliberately one level deep. See
-[item lifecycle](04-cli-reference/item-lifecycle.md) for the rest of `create`,
-`link`, and `move`.
-
-### Run a sprint, including the spillover
+## A sprint with spillover
 
 ```console
-$ kira sprint create --key 2026-S30 --name 'Sprint 30' --start 2026-07-27 --end 2026-08-09
-Created sprint 2026-S30 (2026-07-27 -> 2026-08-09)
-
-$ kira sprint activate 2026-S30
-Activated sprint 2026-S30
-
-$ kira edit CORE-3 CORE-5 CORE-6 --field sprint=2026-S30
-Edited CORE-3: sprint
-Edited CORE-5: sprint
+$ kira sprint create --key 2026-S46 --name "Sprint 46" --start 2026-11-09 --end 2026-11-20
+Created sprint 2026-S46 (2026-11-09 -> 2026-11-20)
+$ kira sprint activate 2026-S46
+Activated sprint 2026-S46
+$ kira edit CORE-4 CORE-6 --sprint 2026-S46
+Edited CORE-4: sprint
 Edited CORE-6: sprint
-
 $ kira sprint list
-* 2026-S30  Sprint 30  2026-07-27 -> 2026-08-09  0/3 done
-  2026-S31  Sprint 31  2026-08-10 -> 2026-08-23  0/0 done
-```
-
-Work the sprint, then close it and push whatever did not finish into the next
-one:
-
-```console
-$ kira sprint close 2026-S30 --move-to 2026-S31
-Closed sprint 2026-S30
-  unfinished: CORE-6
-Moved 1 unfinished item(s) to 2026-S31
+* 2026-S46  Sprint 46  2026-11-09 -> 2026-11-20  1/2 done
+  2026-S48  Sprint 48  2026-11-23 -> 2026-12-04  0/0 done
+$ kira sprint close 2026-S46 --move-to 2026-S48
+Closed sprint 2026-S46
+  unfinished: CORE-4
+Moved 1 unfinished item(s) to 2026-S48
 Cleared the active-sprint pointer
 ```
 
-Once a sprint is active, `--sprint active` works everywhere a sprint key does —
-`kira list --sprint active --owner @me` is your board for the week. Dropping
-`--move-to` closes the sprint and reports the spillover without reassigning it.
-See [boards and sprints](04-cli-reference/boards-and-sprints.md) for the full
-command set.
+While a sprint is active, `--sprint active` works wherever a sprint key does.
 
-### Review what a branch does to the backlog
+## Review a branch's effect on the backlog
 
 ```console
 $ kira diff --incoming feature/gateway
-CORE-1  Cache warmup on boot
+CORE-4  Replace legacy session cache
   state: TODO -> IN_PROGRESS
-CORE-2  Retire v1 endpoint
+CORE-7  Audit log retention policy
   priority: - -> P1
-created CORE-3  Add gateway metrics
+created CORE-10  Add gateway metrics
+$ kira changes --since HEAD~2
+CORE-4  Replace legacy session cache
+  2026-11-13T09:35:00+05:30  sprint: 2026-S46 -> 2026-S48
+CORE-6  Bump protocol version to v3
+  2026-11-13T09:33:00+05:30  state: TODO -> DONE
+  2026-11-13T09:33:00+05:30  resolution:  -> done
 ```
 
-This is the ticket-level equivalent of reading a pull request: it reports what
-the branch changes relative to the merge base, in fields rather than diff
-hunks. Drop `--incoming` to see the mirror image — *your* changes versus the
-merge base — which is the useful direction while you are on the branch.
+`diff --incoming` shows what the branch would bring in, per field; plain
+`diff` shows yours. `changes` lists field events since a ref or date.
 
-To review a window of history instead of a branch, `kira changes --since` takes
-a git ref or a date and reports every field event across the whole backlog:
+## Merge conflict on an item file
 
-```console
-$ kira changes --since 2026-07-01
-CORE-6  Audit log retention policy
-  2026-07-27T19:21:36+05:30  sprint: 2026-S30 -> 2026-S31
-  2026-07-27T19:21:29+05:30  sprint:  -> 2026-S30
-```
-
-### Resolve a merge conflict on a ticket file
+Without the merge driver, both sides set `CORE-7`'s priority:
 
 ```console
-$ git merge teammate
-Auto-merging .kira/tickets/01KYHXJKTR99JC2KMANSKD6PKW.md
-CONFLICT (content): Merge conflict in .kira/tickets/01KYHXJKTR99JC2KMANSKD6PKW.md
+$ git merge --no-edit teammate
+Auto-merging .kira/tickets/01M7APKGZ28XD31HHB43CPMAYT.md
+CONFLICT (content): Merge conflict in .kira/tickets/01M7APKGZ28XD31HHB43CPMAYT.md
 Automatic merge failed; fix conflicts and then commit the result.
-
 $ kira resolve
-Resolved CORE-1 (auto-merged: priority)
-
-$ git commit
-```
-
-`kira resolve` re-merges the conflicted ticket files field by field and stages
-the results, so you never hand-edit YAML conflict markers. Edits to *different*
-fields union; edits to the *same* field take the later one.
-
-Better still, prevent the conflict:
-
-```console
+Resolved CORE-7 (auto-merged: priority)
 $ kira hooks install
 hook post-merge: installed
 hook prepare-commit-msg: installed
 merge driver: registered
 ```
 
-With the merge driver registered, git resolves ticket files field by field
-during the merge itself and never produces markers. `kira resolve` is the
-cleanup path for merges that ran without it — a teammate's clone, or a merge
-made before you installed the hooks. See
-[git integration](04-cli-reference/git-integration.md).
+`resolve` merges per field and stages; on a same-field clash the side with the
+later `updated` wins (here this branch's `P0`; a tie goes to the incoming
+side). Then `git commit`. With the merge driver installed, git does this
+during the merge.
 
-### Check throughput and cycle time
+## Throughput and cycle time
 
 ```console
 $ kira stats
 Stats (project)
-  completion: 3/6 done (50%)
-  cycle time (days): p50 0  p90 0  n=3
-  lead time (days): p50 0  p90 0  n=3
-  throughput/week: 0 0 0 0 0 0 0 3
+  completion: 2/9 done (22%)
+  cycle time (days): p50 0  p90 0  n=1
+  lead time (days): p50 0  p90 0  n=2
+  throughput/week: 0 0 0 0 0 0 0 2
 ```
 
-Every number is derived from commit dates in git history, so there is nothing to
-maintain and nothing that can drift from reality. Cycle time measures first
-`doing` state to done; lead time measures creation to done. Scope to one sprint
-with `kira stats --sprint 2026-S30`, or to the running one with
-`--sprint active`.
+Scope with `--sprint <key|active>` ([`stats`](04-cli-reference/views-and-queries.md#kira-stats)).
 
----
-
-## Part 2 — Niche and power-user options
-
-### See the tracker as it was on a past date
+## The backlog at a past point
 
 ```console
-$ kira list --at 2026-07-01
-$ kira list --at HEAD~40
-$ kira show CORE-3 --at v1.4.0
-$ kira tree --at 2026-07-01
-$ kira board --plain --at HEAD~40
+$ kira list --at v0.1.0 --state DONE
+NUMBER  STATE  TYPE    PRIORITY  TITLE
+CORE-1  DONE   ticket  -         Fix flaky retry backoff
 ```
 
-`--at` takes a git ref or a `YYYY-MM-DD` date and reads the whole backlog as it
-stood at that point — useful for "what did we commit to at the start of the
-quarter?" and for sprint retrospectives. Read commands accept it; mutating
-commands reject it outright, so there is no way to accidentally write to the
-past.
+`--at` takes a ref or `YYYY-MM-DD` on `list`, `show`, `tree` and `board`
+(read-only).
 
-### Preview the editor template before you commit to flags
-
-```console
-$ kira create ticket --title 'Preview me' --priority P1 --label perf --print-template
----
-title: Preview me
-type: ticket
-subtype:
-priority: P1
-rank:
-owner:
-reporter:
-labels: [perf]
-epic:
-sprint:
-due:
-estimate:
----
-
-## Description
-
-## Acceptance criteria
-```
-
-`--print-template` prints exactly what the editor would open, with your flags
-already filled in, and creates nothing. It is the fastest way to see which
-fields a type offers and how a `--field` value will land. It also resolves
-per-subtype templates, so `kira create ticket --subtype bug --print-template`
-shows you which of `.kira/templates/ticket.bug.md` or `ticket.md` will win.
-
-### Generate a branch name or a link for scripting
+## Scripting
 
 ```console
 $ kira show CORE-4 --format branch
-core-4-replace-legacy-session-cache
-
-$ kira show CORE-4 --format markdown
-[CORE-4 Replace legacy session cache](CORE-4)
-
-$ kira show CORE-4 --format number-title
-CORE-4 Replace legacy session cache
-```
-
-`--format` prints one bare reference form with no decoration, which makes it
-safe to interpolate: `git checkout -b "$(kira show CORE-4 --format branch)"`.
-The available forms are `id`, `number`, `number-title`, `markdown`, and
-`branch`.
-
-### Build a custom report with `--json` and `jq`
-
-```console
-$ kira list --json | jq -r '.items | group_by(.state)[] | "\(.[0].state): \(length)"'
-DONE: 3
-PLANNED: 1
-TODO: 2
-
-$ kira list --json | jq -r '.items[] | select(.category != "done") | "\(.number)\t\(.priority // "-")\t\(.title)"'
+core/core-4-replace-legacy-session-cache
+$ kira list --json | jq -r ".items | group_by(.state)[] | \"\(.[0].state): \(length)\""
+DONE: 2
+IN_PROGRESS: 1
+PLANNED: 2
+TODO: 4
+$ kira list --json | jq -r ".items[] | select(.category != \"done\") | \"\(.number)\t\(.priority // \"-\")\t\(.title)\""
+CORE-7	P0	Audit-log retention policy
+CORE-3	P1	Drain in-flight orders on shutdown
 CORE-4	P2	Replace legacy session cache
 CORE-2	-	Order gateway rewrite
-CORE-6	-	Audit log retention policy
+CORE-5	-	Wire protocol v3
+CORE-8	-	Benchmark the drain path
+CORE-9	-	Pick a drain timeout
 ```
 
-Every command accepts `--json`, and the stream discipline is strict: JSON goes
-to stdout, warnings and errors go to stderr, and stdout stays empty when the
-command fails. A `jq` pipeline therefore never has to filter noise out of its
-input. `kira schema` prints the JSON Schema for these shapes.
+`--json` goes to stdout, errors to stderr; shapes from `kira schema`. To preview
+a new item's file without creating it: `kira create <type> --print-template`.
 
-### Full-text search across ticket bodies
+## Search item text
 
 ```console
-$ kira find 'session cache'
+$ kira find "session cache"
 CORE-4:6:title: "Replace legacy session cache"
-
-$ kira find -i 'RETRY'
+$ kira find -i RETRY
 CORE-1:6:title: "Fix flaky retry backoff"
 ```
 
-`kira find` is a regex search scoped to your ticket files, reporting hits by
-ticket number and line instead of by path. `-i` ignores case and `-w` matches
-whole words only. Use it
-when you remember a phrase from the description but not the number — `kira list
---query` only searches titles.
+Regex over item files, hits as `NUMBER:LINE:text`; `--query` matches fields,
+`find` matches text, bodies included.
 
-### Run any CLI command from inside the TUI
-
-Press `:` in the TUI to open a command bar that accepts any kira command line,
-and `.` inside it expands to the item you have selected:
-
-```
-:move . REVIEW
-:label add . perf
-:assign . @me
-```
-
-The screen refreshes with the result, so you never leave the UI to make a
-change. `/` opens the filter bar instead. See the
-[TUI guide](07-tui-guide.md) for the full key map.
-
-### Move an item to another board without breaking old links
+## Move an item to another board
 
 ```console
-$ kira board move CORE-6 INFRA
-Moved CORE-6 -> INFRA-1
-
-$ kira show INFRA-1 --format number-title
-INFRA-1 Audit log retention policy
-
-$ kira show CORE-6 --format number-title
-INFRA-1 Audit log retention policy
+$ kira board move CORE-7 INFRA
+Moved CORE-7 -> INFRA-1
+$ kira show CORE-7 --format number-title
+INFRA-1 Audit-log retention policy
 ```
 
-The item is renumbered into the target board's own sequence, and the old number
-is kept as a permanent alias. Every commit message, code comment, and chat
-message that mentions `CORE-6` keeps resolving — forever. Boards each carry an
-independent numbering sequence; see
-[boards and sprints](04-cli-reference/boards-and-sprints.md).
+The old number stays an alias, so references to `CORE-7` keep resolving.
 
-### Catch malformed tickets in CI or a pre-commit hook
+## Validate hand-edited files
 
 ```console
-$ kira validate .kira/tickets/*.md
-ok: 0 errors, 0 warnings, 0 info
-see `kira config explain` for the rules these checks enforce
-```
-
-Hand-edit a ticket into an invalid state and the exit code turns non-zero:
-
-```console
-$ kira validate .kira/tickets/01KYHXXFYP9VE2S3QZC6C1MWKG.md
+$ kira validate CORE-4; echo "exit=$?"
 error   state           CORE-4 state: "SHIPPED" is not a state in the ticket workflow
 problems found: 1 error, 0 warnings, 0 info
 see `kira config explain` for the rules these checks enforce
 kira: validate: 1 problem found
-
-$ echo $?
-1
+exit=1
 ```
 
-`kira validate` checks files against kira's item shape and states and
-exits non-zero on any error, which is all a CI step needs:
-
-```yaml
-- run: kira validate .kira/tickets/*.md
-```
-
-It accepts ticket numbers and ULID prefixes as well as paths, so a pre-commit
-hook can validate only the files being committed. Use it for hand-edited
-tickets — the ones a text editor or a merge produced rather than the CLI.
-For whole-repository consistency (duplicate numbers, dangling references) run
-`kira doctor` instead; both are documented in
-[setup and schema commands](04-cli-reference/setup-and-schema-commands.md).
-
-### Ask why kira refused something
-
-```console
-$ kira config explain
-identity (repo)
-  project: CORE (demo)
-  board: CORE (demo) [default]
-  board: INFRA (Infrastructure)
-
-vocab (default)
-  ...
-```
-
-`kira config explain` renders your repository's effective rules in prose, with
-the provenance of each one — so when a value is rejected as outside a strict vocabulary, this tells you the rule that stopped it and whether it came from
-the repository config, your user config, or the built-in default.
-It is the fastest answer to "why did that not work".
-
----
-
-## See also
-
-- [Overview](01-overview.md) — what kira is and why tickets live in git.
-- [Concepts](03-concepts.md) — identity, states, vocabularies, relationships.
-- [Item lifecycle](04-cli-reference/item-lifecycle.md) — `create`, `edit`, `move`, `link`.
-- [Views and queries](04-cli-reference/views-and-queries.md) — the query grammar, `list`, `tree`, `board`.
-- [Boards and sprints](04-cli-reference/boards-and-sprints.md) — numbering namespaces and sprint commands.
-- [Git integration](04-cli-reference/git-integration.md) — hooks, merge driver, `sync`, `resolve`.
-- [Setup and schema commands](04-cli-reference/setup-and-schema-commands.md) — `init`, `validate`, `doctor`, `schema`.
-- [Configuration reference](05-configuration-reference.md) — every key in `.kira/config.yaml`.
-- [TUI guide](07-tui-guide.md) — the interactive interface.
+In CI: `kira validate .kira/tickets/*.md`; for cross-item checks,
+`kira doctor`. When a value is refused, `kira config explain` shows the rule
+and which config tier set it.

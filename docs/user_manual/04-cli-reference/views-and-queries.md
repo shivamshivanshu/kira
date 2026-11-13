@@ -193,7 +193,7 @@ kira show <id> [--at <ref>] [--format <form>]
 
 Prints the header, the set fields and the body. The human view omits `due`,
 `sprint`, `estimate` and `resolution`; `--json` has every field plus derived
-`blocks`, `*_number` companions, `comments`, `linked_commits`,
+`blocks`, `parent_number` and `*_numbers` companions, `comments`, `linked_commits`,
 `referenced_by` and `history_tail`.
 
 ```console
