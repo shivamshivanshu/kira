@@ -18,4 +18,6 @@ Boards and sprints are entries in `.kira/config.yaml`, so:
 
 ## Open bugs
 
-None.
+| Ticket | Effect |
+| --- | --- |
+| CORE-72 | `kira show --at <ref>` returns empty `linked_commits` and `history_tail`, with no note that they were not computed. |
