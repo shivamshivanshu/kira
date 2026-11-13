@@ -6,7 +6,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-const schemaVersion = 11
+const schemaVersion = 12
 
 const ddl = `
 CREATE TABLE IF NOT EXISTS items (

@@ -54,10 +54,7 @@ func (s *Store) Blame(cfg *datamodel.Config, ref string) (*datamodel.BlameResult
 				bf.SourceKind, bf.Degraded, bf.When, bf.By = datamodel.BlameSourceSynthetic, true, newest.ts, newest.author
 			}
 			res.Fields = append(res.Fields, bf)
-		case hasVal:
-			if val == "null" {
-				continue
-			}
+		case hasVal && val != "null":
 			res.Fields = append(res.Fields, datamodel.BlameField{Field: field, Value: val, When: creation.ts, By: creation.author, SourceKind: datamodel.BlameSourceCreated})
 		}
 	}
@@ -95,11 +92,5 @@ func trackedFieldValues(it *datamodel.Item) map[string]string {
 	if i := strings.Index(front, codec.FenceLine); i >= 0 {
 		front = front[:i]
 	}
-	v := map[string]string{}
-	for line := range strings.SplitSeq(front, "\n") {
-		if k, val, ok := frontmatterField(line); ok {
-			v[k] = val
-		}
-	}
-	return v
+	return frontmatterValues(strings.Split(front, "\n"))
 }

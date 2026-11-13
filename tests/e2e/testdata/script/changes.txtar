@@ -17,9 +17,11 @@ exec git tag base
 exec kira changes --since HEAD --json
 stdout '"items": \[\]'
 
-# a state change, a scalar field edit, a body-only edit, and a new item
+# a state change, a scalar field edit, list field edits, a body-only edit, and a new item
 exec kira move KIRA-1 IN_PROGRESS
 exec kira edit KIRA-2 --field priority=P1
+exec kira label add KIRA-2 alpha
+exec kira link KIRA-2 --relates KIRA-1
 env EDITOR='sh editor.sh'
 exec kira edit KIRA-3
 env EDITOR=true
@@ -42,6 +44,8 @@ stdout 'KIRA-3  Third'
 stdout 'body: \+\d+/-\d+ lines'
 stdout 'created KIRA-4  Fourth'
 stdout 'state: TODO -> IN_PROGRESS'
+stdout 'labels:  -> \[alpha\]'
+stdout 'links:  -> relates:\[\w+\]'
 
 # --since is required
 ! exec kira changes

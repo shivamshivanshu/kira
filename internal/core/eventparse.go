@@ -1,6 +1,7 @@
 package core
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
@@ -13,8 +14,8 @@ import (
 
 const fmFence = "---"
 
-// eventFields is the frontmatter key set the diff walker reports on: the
-// builtin scalars, in report order.
+// eventFields is the frontmatter key set the diff walker reports on, in
+// report order: every key except the created/updated timestamps.
 type eventFields struct {
 	tracked map[string]bool
 	order   []string
@@ -23,9 +24,10 @@ type eventFields struct {
 var trackedEventFields = newEventFields()
 
 func newEventFields() eventFields {
-	f := eventFields{tracked: make(map[string]bool, len(scalarFields))}
+	untracked := map[string]bool{datamodel.KeyCreated: true, datamodel.KeyUpdated: true}
+	f := eventFields{tracked: map[string]bool{}}
 	for _, key := range datamodel.FrontmatterKeys {
-		if scalarFields[key] {
+		if !untracked[key] {
 			f.tracked[key] = true
 			f.order = append(f.order, key)
 		}
@@ -36,11 +38,9 @@ func newEventFields() eventFields {
 func walkPatch(stream string, emit func(path string, events []datamodel.Event)) {
 	var d fmDiffState
 	var sha, ts, path string
-	minus, plus := map[string]string{}, map[string]string{}
 	flush := func() {
-		emit(path, fmEvents(d.created, minus, plus, ts, sha))
-		d.reset()
-		minus, plus = map[string]string{}, map[string]string{}
+		emit(path, d.events(ts, sha))
+		d = fmDiffState{}
 	}
 	for line := range strings.SplitSeq(stream, "\n") {
 		switch {
@@ -56,103 +56,106 @@ func walkPatch(stream string, emit func(path string, events []datamodel.Event)) 
 		case strings.HasPrefix(line, "+++ b/"):
 			path = line[len("+++ b/"):]
 		default:
-			if added, k, v, ok := d.step(line); ok {
-				if added {
-					plus[k] = v
-				} else {
-					minus[k] = v
-				}
-			}
+			d.step(line)
 		}
 	}
 	flush()
 }
 
-// Counting fences to find the frontmatter block only works because
-// gitx.logPatch asks git for whole-file context; under a narrower -U a hunk
-// can open mid-frontmatter and every field change in it is dropped silently.
+// fmDiffState rebuilds the before and after frontmatter of one file from its
+// patch. That only works because gitx.logPatch asks git for whole-file
+// context; under a narrower -U a hunk can open mid-frontmatter and every field
+// change in it is dropped silently.
 type fmDiffState struct {
-	fences  int
 	created bool
+	before  frontmatterLines
+	after   frontmatterLines
 }
 
-func (d *fmDiffState) reset() {
-	d.fences = 0
-	d.created = false
+type frontmatterLines struct {
+	fences int
+	lines  []string
 }
 
-func (d *fmDiffState) step(line string) (added bool, key, value string, isField bool) {
+func (f *frontmatterLines) add(content string) {
+	if content == fmFence {
+		f.fences++
+		return
+	}
+	if f.fences == 1 {
+		f.lines = append(f.lines, content)
+	}
+}
+
+func (d *fmDiffState) step(line string) {
 	if strings.HasPrefix(line, "--- /dev/null") {
 		d.created = true
 		return
 	}
-	if line == "" || strings.HasPrefix(line, "--- ") || strings.HasPrefix(line, "+++ ") ||
-		strings.HasPrefix(line, "@@") || strings.HasPrefix(line, "diff ") ||
-		strings.HasPrefix(line, "index ") {
+	if line == "" || strings.HasPrefix(line, "--- ") || strings.HasPrefix(line, "+++ ") {
 		return
 	}
 	op, content := line[0], line[1:]
-	if content == fmFence {
-		if op == ' ' || op == '+' {
-			d.fences++
-		}
-		return
+	if op == ' ' || op == '-' {
+		d.before.add(content)
 	}
-	if op != '+' && op != '-' {
-		return
+	if op == ' ' || op == '+' {
+		d.after.add(content)
 	}
-	if d.fences != 1 {
-		return
-	}
-	k, v, ok := frontmatterField(content)
-	if !ok {
-		return
-	}
-	return op == '+', k, v, true
 }
 
-var scalarFields = scalarFieldSet()
-
-func scalarFieldSet() map[string]bool {
-	nonScalar := map[string]bool{
-		datamodel.KeyAliases: true, datamodel.KeyLabels: true,
-		datamodel.KeyBlockedBy: true, datamodel.KeyLinks: true,
-		datamodel.KeyCreated: true, datamodel.KeyUpdated: true,
-	}
-	scalar := map[string]bool{}
-	for _, k := range datamodel.FrontmatterKeys {
-		if !nonScalar[k] {
-			scalar[k] = true
-		}
-	}
-	return scalar
-}
-
-func frontmatterField(line string) (key, value string, ok bool) {
-	colon := strings.IndexByte(line, ':')
-	if colon <= 0 {
-		return "", "", false
-	}
-	key = line[:colon]
-	if !trackedEventFields.tracked[key] {
-		return "", "", false
-	}
-	return key, codec.DecodeScalar(line[colon+1:]), true
-}
-
-func fmEvents(created bool, minus, plus map[string]string, ts, sha string) []datamodel.Event {
-	if created {
+func (d *fmDiffState) events(ts, sha string) []datamodel.Event {
+	if d.created {
 		return nil
 	}
+	before, after := frontmatterValues(d.before.lines), frontmatterValues(d.after.lines)
 	var events []datamodel.Event
 	for _, field := range trackedEventFields.order {
-		mv, hadMinus := minus[field]
-		pv, hadPlus := plus[field]
-		if (hadMinus || hadPlus) && mv != pv {
-			events = append(events, datamodel.Event{Ts: ts, Field: field, Old: mv, New: pv, CommitSHA: sha})
+		if before[field] != after[field] {
+			events = append(events, datamodel.Event{Ts: ts, Field: field, Old: before[field], New: after[field], CommitSHA: sha})
 		}
 	}
 	return events
+}
+
+// frontmatterValues renders each tracked field of a frontmatter block as a
+// comparable string. An empty list reads as absent, so a format migration that
+// only adds `labels: []` lines records no event. Links span a nested block of
+// `  <type>: [...]` lines and render like their `kira diff` form.
+func frontmatterValues(lines []string) map[string]string {
+	values := map[string]string{}
+	var links []string
+	inLinks := false
+	for _, line := range lines {
+		if inLinks && strings.HasPrefix(line, " ") {
+			if typ, targets, ok := strings.Cut(strings.TrimSpace(line), ":"); ok {
+				if v := nonEmptyList(codec.DecodeScalar(targets)); v != "" {
+					links = append(links, typ+":"+v)
+				}
+			}
+			continue
+		}
+		key, raw, ok := strings.Cut(line, ":")
+		inLinks = ok && key == datamodel.KeyLinks
+		if !ok || !trackedEventFields.tracked[key] {
+			continue
+		}
+		if v := nonEmptyList(codec.DecodeScalar(raw)); v != "" {
+			values[key] = v
+		}
+	}
+	if len(links) > 0 {
+		slices.Sort(links)
+		values[datamodel.KeyLinks] = strings.Join(links, " ")
+	}
+	return values
+}
+
+func nonEmptyList(value string) string {
+	if value == "[]" {
+		return ""
+	}
+	return value
 }
 
 func (s *Store) deriveEvents(ulid string) ([]datamodel.Event, error) {
