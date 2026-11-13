@@ -19,8 +19,8 @@ func installedHookPath(t *testing.T, s *Store, name string) string {
 }
 
 func TestInstallHooksRepairsMangledShim(t *testing.T) {
-	s, cfg, _ := stagedFixture(t)
-	if _, err := s.InstallHooks(cfg, HooksInstallOpts{}); err != nil {
+	s, _, _ := stagedFixture(t)
+	if _, err := s.InstallHooks(HooksInstallOpts{}); err != nil {
 		t.Fatalf("install: %v", err)
 	}
 	dst := installedHookPath(t, s, "post-merge")
@@ -33,7 +33,7 @@ func TestInstallHooksRepairsMangledShim(t *testing.T) {
 		if err := os.WriteFile(dst, []byte(mangled), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := s.InstallHooks(cfg, HooksInstallOpts{}); err != nil {
+		if _, err := s.InstallHooks(HooksInstallOpts{}); err != nil {
 			t.Fatalf("reinstall over %s shim: %v", name, err)
 		}
 		got, err := os.ReadFile(dst)
@@ -46,13 +46,13 @@ func TestInstallHooksRepairsMangledShim(t *testing.T) {
 	}
 }
 
-func assertHookRefused(t *testing.T, s *Store, cfg *datamodel.Config, dst, content string) {
+func assertHookRefused(t *testing.T, s *Store, dst, content string) {
 	t.Helper()
 	if err := os.WriteFile(dst, []byte(content), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	res, err := s.InstallHooks(cfg, HooksInstallOpts{})
+	res, err := s.InstallHooks(HooksInstallOpts{})
 	if err != nil {
 		t.Fatalf("install: %v", err)
 	}
@@ -81,10 +81,10 @@ func assertHookRefused(t *testing.T, s *Store, cfg *datamodel.Config, dst, conte
 }
 
 func TestInstallHooksRefusesHandRolledKiraHook(t *testing.T) {
-	s, cfg, _ := stagedFixture(t)
+	s, _, _ := stagedFixture(t)
 	dst := installedHookPath(t, s, hooks.PostMerge)
 	handRolled := "#!/bin/sh\nmy-linter --staged\nexec kira hooks run post-merge \"$@\"\n"
-	assertHookRefused(t, s, cfg, dst, handRolled)
+	assertHookRefused(t, s, dst, handRolled)
 }
 
 func TestUninstallHooksLeavesHandRolledKiraHook(t *testing.T) {
@@ -121,22 +121,22 @@ func TestInstallHooksRefusesHookEndingInExecOrExit(t *testing.T) {
 		"exit": "#!/bin/sh\nmy-other-tool\nexit $?\n",
 	} {
 		t.Run(name, func(t *testing.T) {
-			s, cfg, _ := stagedFixture(t)
+			s, _, _ := stagedFixture(t)
 			dst := installedHookPath(t, s, hooks.PostMerge)
-			assertHookRefused(t, s, cfg, dst, content)
+			assertHookRefused(t, s, dst, content)
 		})
 	}
 }
 
 func TestInstallHooksNeverRewritesChainedUserHook(t *testing.T) {
-	s, cfg, _ := stagedFixture(t)
+	s, _, _ := stagedFixture(t)
 	dst := installedHookPath(t, s, "post-merge")
 	userHook := "#!/bin/sh\necho user-hook-ran\n"
 	if err := os.WriteFile(dst, []byte(userHook), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := s.InstallHooks(cfg, HooksInstallOpts{}); err != nil {
+	if _, err := s.InstallHooks(HooksInstallOpts{}); err != nil {
 		t.Fatalf("install: %v", err)
 	}
 	chained, err := os.ReadFile(dst)
@@ -147,7 +147,7 @@ func TestInstallHooksNeverRewritesChainedUserHook(t *testing.T) {
 		t.Fatalf("user content lost on chain:\n%q", chained)
 	}
 
-	if _, err := s.InstallHooks(cfg, HooksInstallOpts{}); err != nil {
+	if _, err := s.InstallHooks(HooksInstallOpts{}); err != nil {
 		t.Fatalf("reinstall: %v", err)
 	}
 	after, err := os.ReadFile(dst)
@@ -158,11 +158,11 @@ func TestInstallHooksNeverRewritesChainedUserHook(t *testing.T) {
 		t.Errorf("reinstall modified a chained hook:\nbefore %q\nafter  %q", chained, after)
 	}
 
-	mangledChain := strings.Replace(string(chained), ".kira/hooks/post-merge", "edited-line", 1)
+	mangledChain := strings.Replace(string(chained), "kira hooks run post-merge", "edited-line", 1)
 	if err := os.WriteFile(dst, []byte(mangledChain), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.InstallHooks(cfg, HooksInstallOpts{}); err != nil {
+	if _, err := s.InstallHooks(HooksInstallOpts{}); err != nil {
 		t.Fatalf("reinstall over mangled chain: %v", err)
 	}
 	got, err := os.ReadFile(dst)

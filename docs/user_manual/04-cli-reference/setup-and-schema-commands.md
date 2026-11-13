@@ -564,9 +564,8 @@ informational lines:
 
 ```console
 $ kira doctor
-info    hooks           no tracked hooks in .kira/hooks
 info    index-freshness index not built yet; it builds on first read
-ok: 0 errors, 0 warnings, 2 info
+ok: 0 errors, 0 warnings, 1 info
 see `kira config explain` for the rules these checks enforce
 ```
 
@@ -577,9 +576,8 @@ as an error, and the command exits non-zero:
 ```console
 $ kira doctor
 error   dangling-ref    ACME-1 blocked_by: blocked_by references "01HAAAAAAAAAAAAAAAAAAAAAAA", which resolves to no item
-info    hooks           no tracked hooks in .kira/hooks
 info    index-freshness index not built yet; it builds on first read
-problems found: 1 error, 0 warnings, 2 info
+problems found: 1 error, 0 warnings, 1 info
 see `kira config explain` for the rules these checks enforce
 kira: doctor: 1 problem found
 ```
@@ -601,7 +599,7 @@ $ kira doctor --json
       "message": "blocked_by references \"01HAAAAAAAAAAAAAAAAAAAAAAA\", which resolves to no item"
     }
   ],
-  "summary": { "error": 1, "warning": 0, "info": 2 }
+  "summary": { "error": 1, "warning": 0, "info": 1 }
 }
 ```
 

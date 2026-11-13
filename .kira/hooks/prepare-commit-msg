@@ -1,3 +1,0 @@
-#!/bin/sh
-# kira prepare-commit-msg hook — delegates to the kira binary
-exec kira hooks prepare-commit-msg "$@"

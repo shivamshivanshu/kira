@@ -54,7 +54,7 @@ func newHooksInstallCmd(g *globalFlags) *cobra.Command {
 				printHooksValidate(cmd.OutOrStdout(), res)
 				return nil
 			}
-			res, err := s.InstallHooks(cfg, opts)
+			res, err := s.InstallHooks(opts)
 			if err != nil {
 				return err
 			}

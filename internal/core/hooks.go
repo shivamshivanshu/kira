@@ -21,7 +21,7 @@ type HooksInstallOpts struct {
 	IntoHooksPath bool
 }
 
-func (s *Store) InstallHooks(cfg *datamodel.Config, opts HooksInstallOpts) (*datamodel.HooksInstallResult, error) {
+func (s *Store) InstallHooks(opts HooksInstallOpts) (*datamodel.HooksInstallResult, error) {
 	if err := s.requireRepo(); err != nil {
 		return nil, err
 	}
@@ -36,18 +36,11 @@ func (s *Store) InstallHooks(cfg *datamodel.Config, opts HooksInstallOpts) (*dat
 	}
 
 	result := &datamodel.HooksInstallResult{}
-	var tracked []string
 	for _, name := range names {
 		script, ok := hooks.Script(name)
 		if !ok {
 			return nil, errx.User("no embedded script for hook %q", name)
 		}
-		trackedPath, err := s.materializeTrackedHook(name, script)
-		if err != nil {
-			return nil, err
-		}
-		tracked = append(tracked, trackedPath)
-
 		status, err := s.installGitHook(repo, name, script)
 		if err != nil {
 			return nil, err
@@ -59,26 +52,7 @@ func (s *Store) InstallHooks(cfg *datamodel.Config, opts HooksInstallOpts) (*dat
 		return nil, err
 	}
 	result.MergeDriver = true
-
-	if err := s.commitTrackedHooks(cfg, repo, tracked); err != nil {
-		return nil, err
-	}
 	return result, nil
-}
-
-func (s *Store) materializeTrackedHook(name, script string) (string, error) {
-	dir := filepath.Join(s.fs().KiraDir(), "hooks")
-	if err := os.MkdirAll(dir, dirPerm); err != nil {
-		return "", errx.Env("creating %s: %v", s.fs().RelToRoot(dir), err)
-	}
-	path := filepath.Join(dir, name)
-	if existing, err := os.ReadFile(path); err == nil && string(existing) == script {
-		return path, nil
-	}
-	if err := os.WriteFile(path, []byte(script), execPerm); err != nil {
-		return "", errx.Env("writing %s: %v", s.fs().RelToRoot(path), err)
-	}
-	return path, nil
 }
 
 func (s *Store) installGitHook(repo gitx.Repo, name, script string) (datamodel.HookStatus, error) {
@@ -150,18 +124,6 @@ func writeExecutable(path, content string) error {
 		return errx.Env("writing %s: %v", path, err)
 	}
 	return os.Chmod(path, execPerm)
-}
-
-func (s *Store) commitTrackedHooks(cfg *datamodel.Config, repo gitx.Repo, tracked []string) error {
-	dirty, err := repo.DirtyPaths(tracked...)
-	if err != nil {
-		return errx.User("%v", err)
-	}
-	if len(dirty) == 0 {
-		return nil
-	}
-	_, err = s.finalize(cfg.Commit.Mode, commitSpec{subject: cfg.Commit.SubjectPrefix + "install hooks"}, tracked...)
-	return err
 }
 
 func (s *Store) ValidateHooks(_ *datamodel.Config) (*datamodel.HooksValidateResult, error) {

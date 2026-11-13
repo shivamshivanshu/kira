@@ -24,17 +24,18 @@ func runChainedHook(t *testing.T, dir, userScript, shimScript string) int {
 	if err := os.WriteFile(hookPath, []byte(chained), 0o755); err != nil {
 		t.Fatalf("write hook: %v", err)
 	}
+	binDir := filepath.Join(dir, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir bin dir: %v", err)
+	}
 	if shimScript != "" {
-		shimDir := filepath.Join(dir, ".kira", "hooks")
-		if err := os.MkdirAll(shimDir, 0o755); err != nil {
-			t.Fatalf("mkdir shim dir: %v", err)
-		}
-		if err := os.WriteFile(filepath.Join(shimDir, hooks.PostMerge), []byte(shimScript), 0o755); err != nil {
-			t.Fatalf("write shim: %v", err)
+		if err := os.WriteFile(filepath.Join(binDir, "kira"), []byte(shimScript), 0o755); err != nil {
+			t.Fatalf("write kira stub: %v", err)
 		}
 	}
 	cmd := exec.Command("sh", hookPath)
 	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "PATH="+binDir)
 	err := cmd.Run()
 	if err == nil {
 		return 0
@@ -49,7 +50,7 @@ func runChainedHook(t *testing.T, dir, userScript, shimScript string) int {
 func TestChainedHookMissingShimExitsZero(t *testing.T) {
 	code := runChainedHook(t, t.TempDir(), userHookSucceeds, "")
 	if code != 0 {
-		t.Errorf("exit code = %d, want 0 (a checkout predating kira must not abort the chain)", code)
+		t.Errorf("exit code = %d, want 0 (a machine without kira on PATH must not abort the chain)", code)
 	}
 }
 

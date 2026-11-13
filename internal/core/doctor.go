@@ -9,7 +9,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/doctor"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
-	"github.com/shivamshivanshu/kira/internal/hooks"
 	"github.com/shivamshivanshu/kira/internal/index"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
@@ -82,10 +81,6 @@ func (s *Store) doctorEnv() doctor.Env {
 	if !env.InsideWorkTree {
 		return env
 	}
-	env.TrackedHooks = s.trackedHookNames()
-	env.InstalledHooks, env.DriftedHooks = s.classifyTrackedHooks(repo, env.TrackedHooks)
-	env.MergeDriverRegistered = repo.ConfigValue("merge.kira.driver") != ""
-	env.TicketAttrRegistered = repo.InfoAttributeHasLine(mergeAttrLine)
 	env.Freshness = doctor.ResolveFreshness(indexFreshness{store: s.fs(), repo: repo})
 	return env
 }
@@ -93,32 +88,6 @@ func (s *Store) doctorEnv() doctor.Env {
 func (s *Store) legacySchemaDirPresent() bool {
 	fi, err := os.Stat(s.fs().LegacySchemaDir())
 	return err == nil && fi.IsDir()
-}
-
-func (s *Store) trackedHookNames() []string {
-	entries, err := os.ReadDir(filepath.Join(s.fs().KiraDir(), "hooks"))
-	if err != nil {
-		return nil
-	}
-	var out []string
-	for _, e := range entries {
-		if !e.IsDir() {
-			out = append(out, e.Name())
-		}
-	}
-	return out
-}
-
-func (s *Store) classifyTrackedHooks(repo gitx.Repo, tracked []string) (installed, drifted []string) {
-	for _, name := range tracked {
-		switch state := s.hookState(repo, name); {
-		case state.Installed():
-			installed = append(installed, name)
-		case state == hooks.StateDrifted:
-			drifted = append(drifted, name)
-		}
-	}
-	return installed, drifted
 }
 
 type indexFreshness struct {

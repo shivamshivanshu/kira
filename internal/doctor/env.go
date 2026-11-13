@@ -1,7 +1,5 @@
 package doctor
 
-import "github.com/shivamshivanshu/kira/internal/setx"
-
 type Freshness struct {
 	Built  bool   `json:"built"`
 	Fresh  bool   `json:"fresh"`
@@ -24,15 +22,10 @@ func ResolveFreshness(r FreshnessReporter) *Freshness {
 }
 
 type Env struct {
-	GitInstalled          bool
-	InsideWorkTree        bool
-	TrackedHooks          []string
-	InstalledHooks        []string
-	DriftedHooks          []string
-	MergeDriverRegistered bool
-	TicketAttrRegistered  bool
-	MissingOptionalBins   []string
-	Freshness             *Freshness
+	GitInstalled        bool
+	InsideWorkTree      bool
+	MissingOptionalBins []string
+	Freshness           *Freshness
 	// LegacySchemaDirPresent reports a leftover .kira/schema directory from
 	// when item types were declared there.
 	LegacySchemaDirPresent bool
@@ -59,35 +52,9 @@ func envFindings(env Env) []Finding {
 		out = append(out, info(ClassEnv, bin+" not found on PATH; the feature that uses it falls back to a slower pure-Go path"))
 	}
 	if !env.InsideWorkTree {
-		return append(out, info(ClassEnv, "not inside a git work tree; skipping hook, merge-driver, and index-freshness checks"))
+		return append(out, info(ClassEnv, "not inside a git work tree; skipping the index-freshness check"))
 	}
-	out = append(out, hookFindings(env)...)
 	out = append(out, freshnessFinding(env.Freshness))
-	return out
-}
-
-func hookFindings(env Env) []Finding {
-	if len(env.TrackedHooks) == 0 {
-		return []Finding{info(ClassHooks, "no tracked hooks in .kira/hooks")}
-	}
-	installed := setx.ToSet(env.InstalledHooks)
-	drifted := setx.ToSet(env.DriftedHooks)
-	var out []Finding
-	for _, h := range env.TrackedHooks {
-		switch {
-		case installed[h]:
-		case drifted[h]:
-			out = append(out, warn(ClassHooks, "tracked hook "+h+" already runs kira alongside other commands; remove kira's lines and re-run `kira hooks install`, or keep managing it by hand"))
-		default:
-			out = append(out, info(ClassHooks, "tracked hook "+h+" is not installed in .git/hooks; run `kira hooks install`"))
-		}
-	}
-	if !env.MergeDriverRegistered {
-		out = append(out, info(ClassHooks, "kira merge driver is not registered in .git/config; run `kira hooks install`"))
-	}
-	if !env.TicketAttrRegistered {
-		out = append(out, info(ClassHooks, "ticket merge attribute is not registered in .git/info/attributes; run `kira hooks install`"))
-	}
 	return out
 }
 

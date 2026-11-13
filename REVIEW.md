@@ -233,7 +233,7 @@ Look hard at: doctor staying pure (IO only in cli); collision Keep semantics mat
 - [ ] internal/doctor/check.go — Checks one item's state/vocab/scalars/refs against config, returns findings.
 - [ ] internal/doctor/collision.go — Detects display-number collisions across items (live/alias) with a keeper.
 - [ ] internal/doctor/doctor.go — Read-only repo consistency runner aggregating all checks into a Report; also scoped Validate.
-- [ ] internal/doctor/env.go — Derives environment/hook/index-freshness findings from an Env snapshot.
+- [ ] internal/doctor/env.go — Derives environment/index-freshness findings from an Env snapshot.
 - [ ] internal/doctor/epic.go — Detects cycles in the epic parent chain, one finding per member.
 - [ ] internal/doctor/finding.go — Defines Finding/Severity/Class/Collision/Report types and report summarization.
 - [ ] internal/doctor/lint.go — Parses/lints one item's content: schema errors, unknown keys, bad comments.

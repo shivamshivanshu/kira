@@ -182,10 +182,6 @@ repository but not the kira binary — or you, inside a container that does not
 ship it — still gets working `git merge` and `git commit`; the hook simply does
 nothing. kira never makes git unusable by being absent.
 
-`install` also writes tracked copies of the same scripts to `.kira/hooks/` and
-commits them (`kira: install hooks`). Those tracked copies are what a chained
-hook calls, and they let a clone see the shim text even before installing.
-
 ### Chaining onto hooks you already have
 
 `install` never clobbers an existing hook. If `.git/hooks/post-merge` already
@@ -206,8 +202,8 @@ $ cat .git/hooks/post-merge
 echo "[house] post-merge ran"
 # kira:chain v1
 rc=$?
-if [ -x ".kira/hooks/post-merge" ]; then
-  ".kira/hooks/post-merge" "$@" || exit
+if command -v kira >/dev/null 2>&1; then
+  kira hooks run post-merge "$@" || exit
 fi
 exit $rc
 # /kira:chain
@@ -402,10 +398,6 @@ $ git config --get-regexp '^merge\.kira\.'      # no output
 
 $ cat .git/info/attributes                       # no output
 ```
-
-The tracked copies under `.kira/hooks/` are left in place — they are committed
-files shared with the whole team, not local state, so removing them is a
-deliberate commit you make yourself.
 
 ### `kira hooks run`
 

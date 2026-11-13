@@ -7,11 +7,6 @@
       "message": "rg not found on PATH; the feature that uses it falls back to a slower pure-Go path"
     },
     {
-      "class": "hooks",
-      "severity": "info",
-      "message": "no tracked hooks in .kira/hooks"
-    },
-    {
       "class": "index-freshness",
       "severity": "info",
       "message": "index not built yet; it builds on first read"
@@ -20,6 +15,6 @@
   "summary": {
     "error": 0,
     "warning": 0,
-    "info": 3
+    "info": 2
   }
 }

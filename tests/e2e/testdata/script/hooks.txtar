@@ -12,7 +12,7 @@ exec kira hooks install
 stdout 'hook post-merge: installed'
 stdout 'merge driver: registered'
 exists .git/hooks/post-merge
-exists .kira/hooks/post-merge
+! exists .kira/hooks
 
 # validate is read-only and reports both reachable.
 exec kira hooks install --validate

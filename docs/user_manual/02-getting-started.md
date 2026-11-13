@@ -353,7 +353,6 @@ f105046 kira: DEMO-3 edit priority
 6f16580 kira: DEMO-3 create "Add search to the docs site"
 9a26938 kira: DEMO-2 create "Fix broken anchor links"
 08f8842 kira: DEMO-1 create "Write the getting-started guide"
-13772a5 kira: install hooks
 f209bfd kira: init
 1625437 initial commit
 ```

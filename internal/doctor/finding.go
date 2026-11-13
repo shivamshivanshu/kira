@@ -22,7 +22,6 @@ const (
 	ClassRefType   Class = "ref-type"
 	ClassComment   Class = "comment"
 	ClassFreshness Class = "index-freshness"
-	ClassHooks     Class = "hooks"
 	ClassEnv       Class = "environment"
 	ClassBoard     Class = "board"
 	ClassStray     Class = "stray-file"
@@ -41,7 +40,7 @@ var Severities = []Severity{SeverityError, SeverityWarning, SeverityInfo}
 
 var Classes = []Class{
 	ClassSchema, ClassState, ClassVocab, ClassRef, ClassCollision,
-	ClassRefCycle, ClassRefType, ClassComment, ClassFreshness, ClassHooks,
+	ClassRefCycle, ClassRefType, ClassComment, ClassFreshness,
 	ClassEnv, ClassBoard, ClassStray,
 	ClassWipLimit,
 }

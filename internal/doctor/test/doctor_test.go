@@ -338,38 +338,16 @@ func TestRefTypeSkipsMissingParent(t *testing.T) {
 	}
 }
 
-func TestEnvOptionalBinsAndHookFindings(t *testing.T) {
+func TestEnvOptionalBinFinding(t *testing.T) {
 	t.Parallel()
-	env := doctor.Env{
-		GitInstalled:        true,
-		InsideWorkTree:      true,
-		MissingOptionalBins: []string{"rg"},
-		TrackedHooks:        []string{"post-merge", "pre-commit"},
-		InstalledHooks:      []string{"post-merge"},
-	}
+	env := doctor.Env{GitInstalled: true, InsideWorkTree: true, MissingOptionalBins: []string{"rg"}}
 	report := doctor.Run(config.Default(), nil, nil, env)
-	var optionalBin, missingHook, mergeDriver, ticketAttr bool
 	for _, f := range report.Findings {
-		switch {
-		case f.Class == doctor.ClassEnv && strings.Contains(f.Message, "rg not found"):
-			optionalBin = true
-		case f.Class == doctor.ClassHooks && strings.Contains(f.Message, "pre-commit is not installed"):
-			missingHook = true
-		case f.Class == doctor.ClassHooks && strings.Contains(f.Message, "merge driver"):
-			mergeDriver = true
-		case f.Class == doctor.ClassHooks && strings.Contains(f.Message, "ticket merge attribute"):
-			ticketAttr = true
+		if f.Class == doctor.ClassEnv && strings.Contains(f.Message, "rg not found") {
+			return
 		}
 	}
-	if !optionalBin {
-		t.Error("expected an optional-bin info finding for rg")
-	}
-	if !missingHook {
-		t.Error("expected an uninstalled-hook finding for pre-commit")
-	}
-	if !mergeDriver || !ticketAttr {
-		t.Errorf("expected merge-driver and ticket-attr findings, got %+v", report.Findings)
-	}
+	t.Errorf("expected an optional-bin info finding for rg, got %+v", report.Findings)
 }
 
 func TestParentCycle(t *testing.T) {

@@ -1,4 +1,4 @@
-// Package hooks holds kira's tracked git-hook shim scripts and the pure logic
+// Package hooks holds kira's embedded git-hook shim scripts and the pure logic
 // for chaining kira's hooks onto pre-existing ones without clobbering them.
 package hooks
 
@@ -155,10 +155,9 @@ func chainBlockAddedNewline(name string) string {
 
 // git treats a 127 exit from a hook script as failure.
 func chainTail(name string) string {
-	shim := ".kira/hooks/" + name
 	return "rc=$?\n" +
-		"if [ -x \"" + shim + "\" ]; then\n" +
-		"  \"" + shim + "\" \"$@\" || exit\n" +
+		"if command -v kira >/dev/null 2>&1; then\n" +
+		"  kira hooks run " + name + " \"$@\" || exit\n" +
 		"fi\n" +
 		"exit $rc\n" +
 		markerEnd + "\n"
