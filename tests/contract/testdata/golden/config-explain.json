@@ -25,8 +25,7 @@
         "people: none (advisory)",
         "priorities: P0, P1, P2, P3 (advisory)",
         "subtypes: bug, task, feature, support (advisory)",
-        "resolutions: done, dropped, duplicate, cannot-reproduce (advisory)",
-        "resolutions_dropped: dropped (a done-category resolution treated as a non-completion outcome for epic progress)"
+        "resolutions: done, dropped, duplicate, cannot-reproduce (advisory)"
       ]
     },
     {

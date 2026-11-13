@@ -122,8 +122,6 @@ func explainVocab(cfg, def *datamodel.Config) datamodel.ExplainSection {
 		describeVocab("priorities", datamodel.Priorities, cfg.Labels.Strict),
 		describeVocab("subtypes", datamodel.Subtypes, cfg.Labels.Strict),
 		describeVocab("resolutions", datamodel.Resolutions, cfg.Labels.Strict),
-		"resolutions_dropped: " + datamodel.ResolutionDropped +
-			" (a done-category resolution treated as a non-completion outcome for epic progress)",
 	}
 	differs := vocabChanged(cfg.Labels, def.Labels) || peopleChanged(cfg.People, def.People)
 	return datamodel.ExplainSection{Name: "vocab", Provenance: tierOf(differs, datamodel.ProvenanceRepo), Lines: lines}

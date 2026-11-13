@@ -124,7 +124,6 @@ vocab (default)
   priorities: P0, P1, P2, P3 (advisory)
   subtypes: bug, task, feature, support (advisory)
   resolutions: done, dropped, duplicate, cannot-reproduce (advisory)
-  resolutions_dropped: dropped (a done-category resolution treated as a non-completion outcome for epic progress)
 
 ui (default)
   icons: auto (override with the KIRA_ICONS env var: nerd|emoji|text)
@@ -150,8 +149,6 @@ estimate (default)
 filters (repo)
   next: state = TODO AND NOT blocked ORDER BY priority
 ```
-
-The `resolutions_dropped` line is wrong: see [Open bugs](../09-limitations-and-roadmap.md#open-bugs).
 
 With a user file pinning `ui.icons: text` and `workon.worktree: true`, plus a
 repo-only key it ignores:
