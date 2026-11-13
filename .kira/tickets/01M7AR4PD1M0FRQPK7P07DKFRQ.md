@@ -5,13 +5,14 @@ aliases: []
 type: ticket
 subtype: bug
 title: "Config-file mutations that change nothing fail with a raw git commit error"
-state: TODO
+state: DONE
+resolution: done
 priority: P2
 labels: []
 parent: null
 blocked_by: []
 created: 2026-11-13T20:54:12+05:30
-updated: 2026-11-13T20:54:12+05:30
+updated: 2026-11-13T21:44:16+05:30
 ---
 
 ## Description
