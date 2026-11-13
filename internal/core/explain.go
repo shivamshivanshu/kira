@@ -219,7 +219,6 @@ func explainMerge(cfg, def *datamodel.Config) datamodel.ExplainSection {
 func explainSync(cfg, def *datamodel.Config) datamodel.ExplainSection {
 	lines := []string{
 		fmt.Sprintf("push: %t", cfg.Sync.Push),
-		"dirty: " + string(cfg.Sync.Dirty),
 	}
 	return datamodel.ExplainSection{Name: "sync", Provenance: tierOf(changed(cfg.Sync, def.Sync), datamodel.ProvenanceRepo), Lines: lines}
 }

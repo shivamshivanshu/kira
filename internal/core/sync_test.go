@@ -1,13 +1,10 @@
 package core
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/config"
-	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/syncx"
 )
@@ -30,29 +27,8 @@ func dirtyKira(t *testing.T, s *Store, state string) {
 
 func TestPrepareTreeCleanTree(t *testing.T) {
 	s, repo := seededSyncRepo(t)
-	stashed, err := s.prepareTree(config.Default(), repo, SyncOpts{}, &syncx.Report{})
-	if err != nil {
+	if err := s.prepareTree(config.Default(), repo, SyncOpts{}, &syncx.Report{}); err != nil {
 		t.Fatalf("prepareTree clean: %v", err)
-	}
-	if stashed {
-		t.Fatal("clean tree must not stash")
-	}
-}
-
-func TestPrepareTreeStashesDirty(t *testing.T) {
-	s, repo := seededSyncRepo(t)
-	dirtyKira(t, s, "IN_PROGRESS")
-
-	stashed, err := s.prepareTree(config.Default(), repo, SyncOpts{Dirty: syncx.DirtyStash}, &syncx.Report{})
-	if err != nil {
-		t.Fatalf("prepareTree stash: %v", err)
-	}
-	if !stashed {
-		t.Fatal("dirty tree with stash policy must report stashed")
-	}
-	dirty, _ := repo.DirtyPaths(".kira")
-	if len(dirty) != 0 {
-		t.Fatalf("stash left dirty paths: %v", dirty)
 	}
 }
 
@@ -60,12 +36,8 @@ func TestPrepareTreeCommitsDirty(t *testing.T) {
 	s, repo := seededSyncRepo(t)
 	dirtyKira(t, s, "IN_PROGRESS")
 
-	stashed, err := s.prepareTree(config.Default(), repo, SyncOpts{Dirty: syncx.DirtyCommit}, &syncx.Report{})
-	if err != nil {
+	if err := s.prepareTree(config.Default(), repo, SyncOpts{Dirty: syncx.DirtyCommit}, &syncx.Report{}); err != nil {
 		t.Fatalf("prepareTree commit: %v", err)
-	}
-	if stashed {
-		t.Fatal("commit policy must not stash")
 	}
 	dirty, _ := repo.DirtyPaths(".kira")
 	if len(dirty) != 0 {
@@ -73,160 +45,12 @@ func TestPrepareTreeCommitsDirty(t *testing.T) {
 	}
 }
 
-func TestPrepareTreeManualCommitRefusesDirty(t *testing.T) {
+func TestPrepareTreeRefusesDirtyWithoutCommit(t *testing.T) {
 	s, repo := seededSyncRepo(t)
 	dirtyKira(t, s, "IN_PROGRESS")
 
-	cfg := config.Default()
-	cfg.Commit.Mode = datamodel.CommitManual
-	_, err := s.prepareTree(cfg, repo, SyncOpts{Dirty: syncx.DirtyAuto}, &syncx.Report{})
-	if err == nil || !strings.Contains(err.Error(), "uncommitted kira changes") {
-		t.Fatalf("err = %v, want refusal on uncommitted changes under manual commit mode", err)
-	}
-}
-
-func TestPopStashRestoresCleanly(t *testing.T) {
-	s, repo := seededSyncRepo(t)
-	dirtyKira(t, s, "IN_PROGRESS")
-	if err := repo.Stash(); err != nil {
-		t.Fatalf("stash: %v", err)
-	}
-
-	if err := s.popStash(config.Default(), repo, &syncx.Report{}); err != nil {
-		t.Fatalf("popStash clean: %v", err)
-	}
-	dirty, _ := repo.DirtyPaths(".kira")
-	if len(dirty) == 0 {
-		t.Fatal("popStash must restore the stashed edit to the working tree")
-	}
-}
-
-func conflictingStash(t *testing.T) (*Store, gitx.Repo) {
-	t.Helper()
-	s, repo := seededSyncRepo(t)
-	dirtyKira(t, s, "IN_PROGRESS")
-	if err := repo.Stash(); err != nil {
-		t.Fatalf("stash: %v", err)
-	}
-	commitState(t, s, eventTicket(), "REVIEW", "2026-02-02")
-	return s, repo
-}
-
-func TestPopStashAutoResolvesAndCleansUpStash(t *testing.T) {
-	s, repo := conflictingStash(t)
-
-	if err := s.popStash(config.Default(), repo, &syncx.Report{}); err != nil {
-		t.Fatalf("popStash auto-resolve: %v", err)
-	}
-
-	staged, err := repo.StagedPaths()
-	if err != nil {
-		t.Fatalf("staged paths: %v", err)
-	}
-	if len(staged) != 0 {
-		t.Errorf("auto-resolved pop left staged paths: %v", staged)
-	}
-	stashes, err := repo.Output("stash", "list")
-	if err != nil {
-		t.Fatalf("stash list: %v", err)
-	}
-	if stashes != "" {
-		t.Errorf("auto-resolved pop left a stash entry: %q", stashes)
-	}
-}
-
-func TestPopStashAutoResolveUnstagesCleanDeletion(t *testing.T) {
-	s, repo := seededSyncRepo(t)
-	extraPath := filepath.Join(s.root, "extra.txt")
-	if err := os.WriteFile(extraPath, []byte("keep me\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	gitRun(t, s, "2026-02-01T11:00:00Z", "add", "extra.txt")
-	gitRun(t, s, "2026-02-01T11:00:00Z", "commit", "-m", "add extra")
-
-	dirtyKira(t, s, "IN_PROGRESS")
-	if err := os.Remove(extraPath); err != nil {
-		t.Fatal(err)
-	}
-	if err := repo.Stash(); err != nil {
-		t.Fatalf("stash: %v", err)
-	}
-	commitState(t, s, eventTicket(), "REVIEW", "2026-02-02")
-
-	if err := s.popStash(config.Default(), repo, &syncx.Report{}); err != nil {
-		t.Fatalf("popStash auto-resolve: %v", err)
-	}
-
-	// Not StagedPaths: it filters to ACM and would miss a staged deletion.
-	staged, err := repo.Output("diff", "--cached", "--name-only")
-	if err != nil {
-		t.Fatalf("diff --cached: %v", err)
-	}
-	if staged != "" {
-		t.Errorf("clean-merged deletion left staged: %q", staged)
-	}
-	if _, err := os.Stat(extraPath); !os.IsNotExist(err) {
-		t.Errorf("extra.txt still exists on disk, want it deleted")
-	}
-}
-
-func TestPopStashManualConflictSurfaces(t *testing.T) {
-	s, repo := seededSyncRepo(t)
-	dirtyKira(t, s, "IN_PROGRESS")
-	if err := repo.Stash(); err != nil {
-		t.Fatalf("stash: %v", err)
-	}
-	commitState(t, s, eventTicket(), "REVIEW", "2026-02-02")
-
-	cfg := config.Default()
-	cfg.Merge.Policy = datamodel.MergeManual
-	err := s.popStash(cfg, repo, &syncx.Report{})
-	if err == nil || !strings.Contains(err.Error(), "stash pop") {
-		t.Fatalf("err = %v, want manual-policy stash-pop conflict surfaced", err)
-	}
-}
-
-func TestPrepareTreeStashLeavesNonKiraWorkAlone(t *testing.T) {
-	s, repo := seededSyncRepo(t)
-	trackedPath := filepath.Join(s.root, "src.txt")
-	if err := os.WriteFile(trackedPath, []byte("v1\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	gitRun(t, s, "2026-02-01T11:00:00Z", "add", "src.txt")
-	gitRun(t, s, "2026-02-01T11:00:00Z", "commit", "-m", "add src")
-	if err := os.WriteFile(trackedPath, []byte("v2 wip\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	untrackedPath := filepath.Join(s.root, "notes.txt")
-	if err := os.WriteFile(untrackedPath, []byte("scratch\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	dirtyKira(t, s, "IN_PROGRESS")
-
-	stashed, err := s.prepareTree(config.Default(), repo, SyncOpts{Dirty: syncx.DirtyStash}, &syncx.Report{})
-	if err != nil {
-		t.Fatalf("prepareTree stash: %v", err)
-	}
-	if !stashed {
-		t.Fatal("dirty .kira with stash policy must report stashed")
-	}
-	if dirty, _ := repo.DirtyPaths(".kira"); len(dirty) != 0 {
-		t.Fatalf("stash left .kira dirty: %v", dirty)
-	}
-	if got, err := os.ReadFile(trackedPath); err != nil || string(got) != "v2 wip\n" {
-		t.Fatalf("tracked non-kira edit swept into stash: content=%q err=%v", got, err)
-	}
-	if got, err := os.ReadFile(untrackedPath); err != nil || string(got) != "scratch\n" {
-		t.Fatalf("untracked non-kira file swept into stash: content=%q err=%v", got, err)
-	}
-
-	if err := s.popStash(config.Default(), repo, &syncx.Report{}); err != nil {
-		t.Fatalf("popStash scoped stash: %v", err)
-	}
-	if dirty, _ := repo.DirtyPaths(".kira"); len(dirty) == 0 {
-		t.Fatal("popStash must restore the stashed .kira edit")
-	}
-	if got, _ := os.ReadFile(trackedPath); string(got) != "v2 wip\n" {
-		t.Fatalf("pop clobbered non-kira edit: %q", got)
+	err := s.prepareTree(config.Default(), repo, SyncOpts{}, &syncx.Report{})
+	if err == nil || !strings.Contains(err.Error(), "re-run with --commit") {
+		t.Fatalf("err = %v, want refusal on uncommitted changes even under commit.mode auto", err)
 	}
 }

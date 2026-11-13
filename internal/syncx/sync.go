@@ -1,6 +1,4 @@
-// Package syncx defines the report shape, dirty-tree policy, and seam interfaces
-// composed by `kira sync`. The reindex step is a seam: core injects a real
-// reindexer backed by the index.
+// Package syncx defines the report shape and dirty-tree policy of `kira sync`.
 package syncx
 
 type StepStatus string
@@ -29,8 +27,6 @@ func (r *Report) Add(name string, status StepStatus, detail string) {
 type DirtyPolicy string
 
 const (
-	DirtyAuto   DirtyPolicy = ""
 	DirtyFail   DirtyPolicy = "fail"
 	DirtyCommit DirtyPolicy = "commit"
-	DirtyStash  DirtyPolicy = "stash"
 )

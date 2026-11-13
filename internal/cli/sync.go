@@ -7,26 +7,19 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/core"
-	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/syncx"
 )
 
 func newSyncCmd(g *globalFlags) *cobra.Command {
 	var opts core.SyncOpts
-	var commit, stash bool
+	var commit bool
 	cmd := &cobra.Command{
 		Use:   "sync",
 		Short: "Get up to date with the remote (pull --rebase, reconcile, reindex) and optionally publish",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if commit && stash {
-				return errx.User("--commit and --stash are mutually exclusive")
-			}
-			switch {
-			case commit:
+			if commit {
 				opts.Dirty = syncx.DirtyCommit
-			case stash:
-				opts.Dirty = syncx.DirtyStash
 			}
 			s, cfg, err := openStore(g)
 			if err != nil {
@@ -50,7 +43,6 @@ func newSyncCmd(g *globalFlags) *cobra.Command {
 	f.BoolVar(&opts.Push, "push", false, "push to the remote after a clean sync")
 	f.StringVar(&opts.Remote, "remote", "", "remote to sync with (default: the branch's upstream)")
 	f.BoolVar(&commit, "commit", false, "commit dirty kira paths before pulling")
-	f.BoolVar(&stash, "stash", false, "stash dirty changes before pulling and restore after")
 	return cmd
 }
 

@@ -56,8 +56,7 @@ type Merge struct {
 }
 
 type Sync struct {
-	Push  bool      `yaml:"push"`
-	Dirty SyncDirty `yaml:"dirty"`
+	Push bool `yaml:"push"`
 }
 
 type Workon struct {

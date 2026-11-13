@@ -79,7 +79,7 @@ Look hard at: NUL-delimited git output parsing (forgery resistance — bodies/au
 - [ ] internal/gitx/index.go — Repo tree/status helpers: toplevel+HEAD, ancestry check, porcelain status, diff name-status.
 - [ ] internal/gitx/show.go — Repo.ShowCmd: builds a `git show <sha>` command for a repo.
 - [ ] internal/gitx/staged.go — Repo staged/dirty path listing and showing staged file content.
-- [ ] internal/gitx/sync.go — Repo remote/rebase/stash ops: pull-rebase, push, rebase continue/abort, stash push/pop.
+- [ ] internal/gitx/sync.go — Repo remote/rebase ops: pull-rebase, push, rebase continue/abort.
 - [ ] internal/gitx/trailer.go — Repo.AddTrailer: inserts a commit-message trailer into a file in place.
 - [ ] internal/gitx/trailers.go — Repo.LogTrailers: parses commit log into Commit records with ticket/close trailers.
 - [ ] internal/gitx/treeish.go — Repo treeish resolution: rev-parse, at-date, merge-base, ls-tree names, no-index numstat.
@@ -205,13 +205,13 @@ Look hard at: the frontmatter-fence gate in patchdiff (body text must never forg
 - [ ] internal/core/patchdiff_test.go — Tests that forged body "state:" lines don't fake transitions.
 
 ## 10d. Core: merge/sync orchestration + hints
-Look hard at: sync's deferred stash-pop on every error path; the unmerged-is-terminal guard in the resolve loop; MergeFile honoring merge.policy per merge.
+Look hard at: the unmerged-is-terminal guard in the resolve loop; MergeFile honoring merge.policy per merge.
 
 - [ ] internal/core/mergefile.go — Git merge-driver entry: field-level three-way merge of item files.
 - [ ] internal/core/mergedriver.go — Registers the kira git merge driver and gitattributes line.
 - [ ] internal/core/reconcile.go — Renumbers colliding item numbers, recording aliases, during doctor/sync.
 - [ ] internal/core/resolve.go — Auto-resolves unmerged ticket conflicts, optionally interactive field picking.
-- [ ] internal/core/sync.go — Orchestrates stash/commit, pull-rebase, reconcile, reindex, closes, push.
+- [ ] internal/core/sync.go — Orchestrates checkpoint commit, pull-rebase, reconcile, reindex, closes, push.
 - [ ] internal/core/hooks.go — Installs/validates git hooks and merge driver, chaining existing scripts.
 - [ ] internal/core/hookrun.go — Hook runtime: prepare-commit-msg trailer injection and staged-item validation.
 - [ ] internal/core/index.go — Loads/refreshes the item index with linear-scan fallback and closes.

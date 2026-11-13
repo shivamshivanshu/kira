@@ -100,12 +100,6 @@ func (r Repo) Stage(paths ...string) error {
 	return err
 }
 
-// Unstage runs `git restore --staged` on paths.
-func (r Repo) Unstage(paths ...string) error {
-	_, err := r.Output(append([]string{"restore", "--staged", "--"}, paths...)...)
-	return err
-}
-
 // Commit runs `git commit` with subject as the first -m and, if trailerVal
 // is set, a second -m of "trailerKey: trailerVal".
 // CommitIn commits only the given pathspecs. A pathspec-less `git commit` takes

@@ -22,25 +22,15 @@ type SyncOpts struct {
 
 // Sync pulls and rebases against the remote, reconciles and reindexes local
 // tickets, and optionally pushes, reporting the outcome of each step.
-func (s *Store) Sync(cfg *datamodel.Config, opts SyncOpts) (report *syncx.Report, err error) {
+func (s *Store) Sync(cfg *datamodel.Config, opts SyncOpts) (*syncx.Report, error) {
 	if err := s.requireRepo(); err != nil {
 		return nil, err
 	}
 	repo := s.repo()
-	report = &syncx.Report{}
+	report := &syncx.Report{}
 
-	stashed, perr := s.prepareTree(cfg, repo, opts, report)
-	if perr != nil {
-		return report, perr
-	}
-	if stashed {
-		// Restore the stashed working tree on every exit path, so a sync that
-		// fails after stashing never strands the user's edits on the stack.
-		defer func() {
-			if popErr := s.popStash(cfg, repo, report); popErr != nil && err == nil {
-				err = popErr
-			}
-		}()
+	if e := s.prepareTree(cfg, repo, opts, report); e != nil {
+		return report, e
 	}
 
 	if e := s.pullRebase(cfg, repo, opts, report); e != nil {
@@ -98,51 +88,23 @@ func (s *Store) syncCloses(cfg *datamodel.Config) syncx.Step {
 	return syncx.Step{Name: "closes", Status: syncx.StepDone, Detail: fmt.Sprintf("closed %s", strings.Join(res.Closed, ", "))}
 }
 
-func dirtyPolicyFor(cfg *datamodel.Config) syncx.DirtyPolicy {
-	switch cfg.Sync.Dirty {
-	case datamodel.SyncDirtyFail:
-		return syncx.DirtyFail
-	case datamodel.SyncDirtyCommit:
-		return syncx.DirtyCommit
-	case datamodel.SyncDirtyStash:
-		return syncx.DirtyStash
-	default:
-		if cfg.Commit.Mode != datamodel.CommitAuto {
-			return syncx.DirtyFail
-		}
-		return syncx.DirtyCommit
-	}
-}
-
-func (s *Store) prepareTree(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts, report *syncx.Report) (bool, error) {
+func (s *Store) prepareTree(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts, report *syncx.Report) error {
 	dirty, err := repo.DirtyPaths(storage.DirName)
 	if err != nil {
-		return false, errx.User("%v", err)
+		return errx.User("%v", err)
 	}
 	if len(dirty) == 0 {
 		report.Add("prepare", syncx.StepDone, "working tree clean")
-		return false, nil
+		return nil
 	}
-	policy := opts.Dirty
-	if policy == syncx.DirtyAuto {
-		policy = dirtyPolicyFor(cfg)
+	if opts.Dirty != syncx.DirtyCommit {
+		return errx.User("uncommitted kira changes; re-run with --commit")
 	}
-	switch policy {
-	case syncx.DirtyFail:
-		return false, errx.User("uncommitted kira changes; re-run with --commit or --stash")
-	case syncx.DirtyStash:
-		if err := repo.Stash(storage.DirName); err != nil {
-			return false, errx.User("%v", err)
-		}
-		report.Add("prepare", syncx.StepDone, fmt.Sprintf("stashed %d paths", len(dirty)))
-		return true, nil
-	default:
-		if _, err := s.finalize(datamodel.CommitAuto, commitSpec{trailerKey: cfg.Commit.Trailer, subject: cfg.Commit.SubjectPrefix + "sync checkpoint"}, dirty...); err != nil {
-			return false, err
-		}
-		report.Add("prepare", syncx.StepDone, fmt.Sprintf("committed %d paths", len(dirty)))
-		return false, nil
+	if _, err := s.finalize(datamodel.CommitAuto, commitSpec{trailerKey: cfg.Commit.Trailer, subject: cfg.Commit.SubjectPrefix + "sync checkpoint"}, dirty...); err != nil {
+		return err
 	}
+	report.Add("prepare", syncx.StepDone, fmt.Sprintf("committed %d paths", len(dirty)))
+	return nil
 }
 
 func (s *Store) pullRebase(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts, report *syncx.Report) error {
@@ -202,39 +164,6 @@ func (s *Store) pullRebase(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts,
 	_ = repo.RebaseAbort()
 	report.Add("pull", syncx.StepFailed, "did not converge")
 	return errx.Conflict("rebase did not converge")
-}
-
-func (s *Store) popStash(cfg *datamodel.Config, repo gitx.Repo, report *syncx.Report) error {
-	if err := repo.StashPop(); err == nil {
-		report.Add("stash-pop", syncx.StepDone, "")
-		return nil
-	}
-	if cfg.Merge.Policy != datamodel.MergeAuto {
-		report.Add("stash-pop", syncx.StepFailed, "conflicts on pop; resolve then `git stash drop`")
-		return errx.Conflict("stash pop conflicted (merge.policy: manual); resolve, then `git stash drop`")
-	}
-	unmerged, err := s.autoResolve(repo)
-	if err != nil {
-		report.Add("stash-pop", syncx.StepFailed, err.Error())
-		return errx.Conflict("stash pop conflicted and auto-resolve failed: %v", err)
-	}
-	if len(unmerged) > 0 {
-		report.Add("stash-pop", syncx.StepFailed, "unresolved: "+strings.Join(unmerged, ", "))
-		return errx.Conflict("stash pop left unresolved conflicts: %s (resolve, then `git stash drop`)", strings.Join(unmerged, ", "))
-	}
-	if err := finishAutoResolvedPop(repo); err != nil {
-		report.Add("stash-pop", syncx.StepFailed, err.Error())
-		return errx.Conflict("auto-resolved stash pop but cleanup failed: %v", err)
-	}
-	report.Add("stash-pop", syncx.StepDone, "auto-resolved conflicts")
-	return nil
-}
-
-func finishAutoResolvedPop(repo gitx.Repo) error {
-	if err := repo.Unstage(":/"); err != nil {
-		return err
-	}
-	return repo.StashDrop()
 }
 
 func (s *Store) autoResolve(repo gitx.Repo) ([]string, error) {

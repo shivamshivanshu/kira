@@ -1,5 +1,5 @@
-# kira sync --stash must not strand the user's edits when the sync fails after
-# stashing (here: no upstream configured, so pull --rebase fails).
+# a dirty .kira/ makes a bare sync refuse, even under commit.mode auto;
+# --commit checkpoints it before pulling (the pull then fails: no upstream).
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
@@ -16,15 +16,17 @@ cp dirtied.yaml .kira/config.yaml
 exec git status --porcelain
 stdout 'config.yaml'
 
-# the sync fails (no upstream), but the deferred pop restores the working tree.
-! exec kira sync --stash
-stderr 'prepare'
-
-# stash stack is empty and the dirty edit is back — nothing stranded.
-exec git stash list
-! stdout .
+! exec kira sync
+stderr 'uncommitted kira changes; re-run with --commit'
 exec git status --porcelain
 stdout 'config.yaml'
+
+! exec kira sync --commit
+stderr 'prepare'
+exec git log -1 --format=%s
+stdout 'sync checkpoint'
+exec git status --porcelain
+! stdout 'config.yaml'
 
 -- dirtied.yaml --
 version: 1

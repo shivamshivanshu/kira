@@ -75,12 +75,12 @@ func TestResolveSkipsFilenameIDMismatchInsteadOfMisreportingResolved(t *testing.
 	if err := os.WriteFile(wrongPath, []byte(codec.Serialize(mismatched)), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.Stash(); err != nil {
+	if _, err := repo.Output("stash", "push", "--include-untracked"); err != nil {
 		t.Fatalf("stash: %v", err)
 	}
 	writeAndCommit("REVIEW", "2026-02-03")
 
-	if err := repo.StashPop(); err == nil {
+	if _, err := repo.Output("stash", "pop"); err == nil {
 		t.Fatal("expected a stash pop conflict on the mismatched file")
 	}
 

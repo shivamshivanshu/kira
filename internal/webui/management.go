@@ -105,11 +105,11 @@ func (s *server) sync(cfg *datamodel.Config, f url.Values) (string, string, erro
 		return "", "", err
 	}
 	dirty := syncx.DirtyPolicy(f.Get("dirty"))
-	if dirty == syncx.DirtyAuto {
+	if dirty == "" {
 		dirty = syncx.DirtyFail
 	}
-	if dirty != syncx.DirtyFail && dirty != syncx.DirtyCommit && dirty != syncx.DirtyStash {
-		return "", "", errx.User("dirty policy must be fail, commit, or stash")
+	if dirty != syncx.DirtyFail && dirty != syncx.DirtyCommit {
+		return "", "", errx.User("dirty policy must be fail or commit")
 	}
 	requestConfig := *cfg
 	requestConfig.Sync.Push = false

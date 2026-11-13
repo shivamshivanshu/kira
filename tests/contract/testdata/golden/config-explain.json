@@ -63,8 +63,7 @@
       "name": "sync",
       "provenance": "default",
       "lines": [
-        "push: false",
-        "dirty: auto"
+        "push: false"
       ]
     },
     {

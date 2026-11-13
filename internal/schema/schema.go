@@ -93,7 +93,6 @@ var stringEnums = map[reflect.Type][]string{
 	reflect.TypeFor[datamodel.Background]():      enumValues(datamodel.Backgrounds),
 	reflect.TypeFor[datamodel.ColorMode]():       enumValues(datamodel.ColorModes),
 	reflect.TypeFor[datamodel.EstimateUnit]():    enumValues(datamodel.EstimateUnits),
-	reflect.TypeFor[datamodel.SyncDirty]():       enumValues(datamodel.SyncDirties),
 	reflect.TypeFor[datamodel.Category]():        enumValues(datamodel.Categories),
 	reflect.TypeFor[datamodel.LogKind]():         enumValues(datamodel.LogKinds),
 	reflect.TypeFor[datamodel.BlameSource]():     enumValues(datamodel.BlameSources),

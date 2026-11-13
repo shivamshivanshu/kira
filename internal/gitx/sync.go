@@ -64,22 +64,3 @@ func (r Repo) RebaseAbort() error {
 	_, err := r.Output("rebase", "--abort")
 	return err
 }
-
-func (r Repo) Stash(pathspecs ...string) error {
-	args := []string{"stash", "push", "--include-untracked"}
-	if len(pathspecs) > 0 {
-		args = append(append(args, "--"), pathspecs...)
-	}
-	_, err := r.Output(args...)
-	return err
-}
-
-func (r Repo) StashPop() error {
-	_, err := r.Output("stash", "pop")
-	return err
-}
-
-func (r Repo) StashDrop() error {
-	_, err := r.Output("stash", "drop")
-	return err
-}

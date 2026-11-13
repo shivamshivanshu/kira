@@ -19,7 +19,7 @@ func Default() *datamodel.Config {
 			ReferenceMarkers: []datamodel.ReferenceMarker{datamodel.ReferenceMarkerBare},
 		},
 		Merge:  datamodel.Merge{Policy: datamodel.MergeAuto},
-		Sync:   datamodel.Sync{Push: false, Dirty: datamodel.SyncDirtyAuto},
+		Sync:   datamodel.Sync{Push: false},
 		Workon: datamodel.Workon{BranchPattern: "{key}/{number}-{slug}", WorktreeDir: datamodel.DefaultWorktreeDir},
 		UI: datamodel.UI{
 			Icons:      datamodel.IconAuto,

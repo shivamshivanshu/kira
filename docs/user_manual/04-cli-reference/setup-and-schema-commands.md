@@ -278,7 +278,6 @@ merge (default)
 
 sync (default)
   push: false
-  dirty: auto
 ```
 
 **Reading the provenance tag.** The tag applies to the section as a whole, not

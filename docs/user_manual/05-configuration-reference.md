@@ -454,12 +454,6 @@ them; it aborts the rebase and says so:
 kira: rebase halted with conflicts (merge.policy: manual)
 ```
 
-and on a conflicted stash pop:
-
-```
-kira: stash pop conflicted (merge.policy: manual); resolve, then `git stash drop`
-```
-
 Choose `manual` if you would rather see every concurrent edit yourself than
 have a policy decide. Choose `auto` — the default — if you would rather the
 mechanical 90% of item conflicts never reach you.
@@ -471,34 +465,18 @@ mechanical 90% of item conflicts never reach you.
 ```yaml
 sync:
   push: false      # true | false
-  dirty: auto      # auto | fail | commit | stash
 ```
 
 | Key | Type | Default |
 |---|---|---|
 | `push` | bool | `false` |
-| `dirty` | `auto` \| `fail` \| `commit` \| `stash` | `auto` |
 
 **`push`** — when `true`, a bare `kira sync` publishes after a clean pull.
 Default is pull-only, so `sync` never puts anything on a remote unless you
 asked.
 
-**`dirty`** decides what `kira sync` does when `.kira/` has uncommitted changes
-before it pulls, since a rebase over a dirty tree will not start.
-
-| Value | Behaviour |
-|---|---|
-| `fail` | refuse to sync: *"uncommitted kira changes; re-run with `--commit` or `--stash`"* |
-| `commit` | commit them first as a `sync checkpoint` commit, then pull |
-| `stash` | stash them, pull, and pop afterwards |
-| `auto` | `commit` when `commit.mode: auto`, otherwise `fail` |
-
-The `auto` default is the right instinct in both directions: under
-`commit.mode: auto` an uncommitted `.kira/` change is an accident of timing and
-committing it is harmless, whereas under `manual` you are deliberately batching
-changes and kira should not commit them behind your back.
-
-The `--commit` and `--stash` flags on `kira sync` override this per run. See
+A dirty `.kira/` makes `kira sync` refuse; `kira sync --commit` commits it
+first as a `sync checkpoint`. See
 [Git integration](04-cli-reference/git-integration.md) for the full sync
 pipeline.
 

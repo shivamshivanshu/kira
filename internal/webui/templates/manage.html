@@ -130,7 +130,7 @@
         <p class="muted">Pull and rebase remote changes. Push only when selected below. This affects the current checkout.</p>
         <form action="/actions/sync" method="post" class="stack-form">
           {{template "csrf" .}}
-          <label>Uncommitted changes<select name="dirty"><option value="fail">Refuse dirty changes</option><option value="commit" {{if eq (.FormValue "sync" "dirty" "") "commit"}}selected{{end}}>Commit before sync</option><option value="stash" {{if eq (.FormValue "sync" "dirty" "") "stash"}}selected{{end}}>Stash and restore</option></select></label>
+          <label>Uncommitted changes<select name="dirty"><option value="fail">Refuse dirty changes</option><option value="commit" {{if eq (.FormValue "sync" "dirty" "") "commit"}}selected{{end}}>Commit before sync</option></select></label>
           <label class="checkbox-label"><input type="checkbox" name="push" value="true" {{if or (and (ne .Action "sync") .Config .Config.Sync.Push) (eq (.FormValue "sync" "push" "") "true")}}checked{{end}}>Push changes to remote for this sync</label>
           <div class="form-actions"><button class="button" type="submit">Synchronize now</button></div>
         </form>

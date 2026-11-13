@@ -73,17 +73,6 @@ const (
 
 var EstimateUnits = []EstimateUnit{EstimatePoints, EstimateHours}
 
-type SyncDirty string
-
-const (
-	SyncDirtyAuto   SyncDirty = "auto"
-	SyncDirtyFail   SyncDirty = "fail"
-	SyncDirtyCommit SyncDirty = "commit"
-	SyncDirtyStash  SyncDirty = "stash"
-)
-
-var SyncDirties = []SyncDirty{SyncDirtyAuto, SyncDirtyFail, SyncDirtyCommit, SyncDirtyStash}
-
 type Category string
 
 const (

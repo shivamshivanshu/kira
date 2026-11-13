@@ -52,9 +52,6 @@ func Validate(c *datamodel.Config) error {
 	if err := validateEnum("merge.policy", c.Merge.Policy, datamodel.MergePolicies...); err != nil {
 		return err
 	}
-	if err := validateEnum("sync.dirty", c.Sync.Dirty, datamodel.SyncDirties...); err != nil {
-		return err
-	}
 	if err := validateUISection(c.UI); err != nil {
 		return err
 	}

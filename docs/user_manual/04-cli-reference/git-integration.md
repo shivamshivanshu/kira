@@ -473,16 +473,15 @@ Usage: kira sync [flags]
 
 | Flag | Argument | Meaning |
 | --- | --- | --- |
-| `--commit` | — | Commit dirty paths under `.kira/` before pulling. Mutually exclusive with `--stash`. |
+| `--commit` | — | Commit dirty paths under `.kira/` before pulling. |
 | `--push` | — | Push to the remote after a clean sync. |
 | `--remote` | name | Remote to sync with. Defaults to the branch's upstream. |
-| `--stash` | — | Stash dirty changes before pulling, restore them after. Mutually exclusive with `--commit`. |
 
 The steps, in order, one report line each:
 
 | Step | What it does |
 | --- | --- |
-| `prepare` | Deal with a dirty `.kira/` working tree, per the flags and the `sync.dirty` policy. |
+| `prepare` | Refuse a dirty `.kira/` working tree, or commit it with `--commit`. |
 | `pull` | `git pull --rebase`, auto-resolving kira conflicts as the rebase replays. |
 | `reconcile` | Repair display-number collisions the pull introduced. |
 | `reindex` | Refresh the local cache index. |
@@ -542,15 +541,19 @@ collisions. `kira sync` does it whether or not hooks are installed.
 ### A dirty working tree
 
 If anything under `.kira/` is uncommitted when you sync, `prepare` has to do
-something with it — a rebase over dirty files will not start. The default
-depends on `commit.mode`: under `auto` a dirty tree is unexpected, so kira just
-commits it as a checkpoint; under `manual` your staged batch is deliberate, so kira refuses rather than committing a batch you were still
-assembling.
-
-Committing, the default under `commit.mode: auto`:
+something with it — a rebase over dirty files will not start. kira refuses
+rather than guess whether the changes are an accident of timing or a batch you
+are still assembling:
 
 ```console
 $ kira sync
+kira: uncommitted kira changes; re-run with --commit
+```
+
+`--commit` commits them first as a checkpoint, then pulls:
+
+```console
+$ kira sync --commit
 prepare:   done (committed 1 paths)
 pull:      done (rebased)
 reconcile: done (no collisions)
@@ -560,43 +563,6 @@ closes:    done (no transitions)
 $ git log -1 --format='%s'
 kira: sync checkpoint
 ```
-
-Stashing, so your edits survive the pull and come back on top:
-
-```console
-$ kira sync --stash
-prepare:   done (stashed 1 paths)
-pull:      done (rebased)
-reconcile: done (no collisions)
-reindex:   done (6 items)
-closes:    done (no transitions)
-stash-pop: done
-
-$ git status --short
- M .kira/tickets/01KYHXE2ARM4TR3BWNJT7JM8TA.md
-```
-
-The stash is popped on **every** exit path, including a failed pull, so a sync
-that goes wrong never strands your edits on the stash stack.
-
-Refusing:
-
-```console
-$ kira sync
-kira: uncommitted kira changes; re-run with --commit or --stash
-```
-
-`--commit` and `--stash` both override whatever the configured policy is, and
-cannot be combined:
-
-```console
-$ kira sync --commit --stash
-kira: --commit and --stash are mutually exclusive
-```
-
-The config key behind the default is `sync.dirty: auto | fail | commit | stash`,
-alongside `sync.push`; see
-[Configuration reference](../05-configuration-reference.md).
 
 ### Conflicts during the pull
 
