@@ -4,13 +4,14 @@ number: CORE-66
 aliases: []
 type: ticket
 title: "The three item-read paths disagree, so --at HEAD orders differently from a clean working tree"
-state: TODO
+state: DONE
+resolution: done
 priority: P1
 labels: []
 parent: null
 blocked_by: []
 created: 2026-09-03T00:17:58+02:00
-updated: 2026-09-03T00:17:58+02:00
+updated: 2026-11-13T22:12:43+05:30
 ---
 `core.readRaw` (`internal/core/load.go:53`) dispatches to three loaders that
 return structurally different items, chosen per-command by a flag, with no test
