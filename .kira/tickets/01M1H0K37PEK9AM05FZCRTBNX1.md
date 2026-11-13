@@ -17,3 +17,7 @@ updated: 2026-11-13T20:08:10+05:30
 ## Description
 
 ## Acceptance criteria
+
+<!-- kira:comment id=01M7ANGMSM3V5V0M8SR04G108E author=Shivam-Shivanshu ts=2026-11-13T20:08:17+05:30 -->
+Obsolete: identity.style lived only in the entity schema, which CORE-68 removed.
+<!-- /kira:comment -->
