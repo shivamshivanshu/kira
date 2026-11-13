@@ -31,11 +31,14 @@ Keys kira no longer reads (`workflows`, `priorities`, `subtypes`,
 
 ### Errors and warnings
 
-An invalid value fails every command:
+An invalid value in the repo file fails every command:
 
 ```
 kira: config: ui.icons: invalid value "bogus", want one of [auto nerd emoji text]
 ```
+
+In the user file the section holding it is ignored with a warning:
+`~/.config/kira/config.yaml: config: ui.icons: invalid value "bogus", want one of [auto nerd emoji text]; ignored`.
 
 These only warn and drop the value: an unknown `ui.list.columns` entry, an
 unknown or non-hex `ui.theme` slot, `ui.tui.split` outside `(0,1)`, a
@@ -222,7 +225,8 @@ Personal; prefer the user file.
 - `color`: `auto` colors only on a terminal; `--no-color`/`NO_COLOR` win.
 - `editor`: run via `sh -c`, so flags and quoting work (`code --wait`).
 - `auto_tui`: bare `kira` and bare `kira board` open the TUI on a terminal;
-  `false` makes them print help and the static board. Never under `--json`.
+  `false` makes them print help and the static board. Never under `--json` or
+  [`--non-interactive`](04-cli-reference/setup-and-schema-commands.md#global-flags).
 - `list.columns`: `number`, `title`, `type`, `subtype`, `state`, `category`,
   `priority`, `owner`, `labels`, `parent`, `parent_number`, `resolution`,
   `due`, `id`. Unknown names warn and are dropped:

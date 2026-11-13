@@ -27,7 +27,7 @@ Commits everything staged under `.kira/` as one commit. Only useful under
 `commit.mode: manual`, where mutations stage but do not commit (under `auto`
 there is never anything pending). The subject is `update {count} items` (up to
 five numbers listed; personal override `commit.subject`), the body lists each
-item, one `Kira-Ticket` trailer per item. A plain `git commit` works too.
+item, one `Kira-Ticket` trailer per item (at most 20). A plain `git commit` works too.
 
 ```console
 $ kira create ticket "Document the sync flow" --priority P3 --no-edit
@@ -69,7 +69,7 @@ Hooks live in `.git/`, so **each clone runs `kira hooks install` once**.
 | Flag | Meaning |
 | --- | --- |
 | `--with-pre-commit` | Also install `pre-commit`. |
-| `--into-hooks-path` | Install into `core.hooksPath` even when it is inside the work tree (otherwise refused). |
+| `--into-hooks-path` | Required whenever `core.hooksPath` points anywhere but `.git/hooks`; installs the shims there. |
 | `--validate` | Report only; checks `post-merge`, `prepare-commit-msg` and the driver, treating `chained` as installed. |
 
 | Hook | Installed | Runs |
@@ -80,8 +80,10 @@ Hooks live in `.git/`, so **each clone runs `kira hooks install` once**.
 
 Each hook is a shim that exits 0 when `kira` is not on `PATH`. An existing
 shell hook gets kira's block appended (`chained`) and keeps its exit status; a
-non-shell hook, or one ending in `exec`/`exit`, is left alone with a reason. A
-drifted block (older kira, hand-edited) is rewritten in place.
+non-shell hook, one ending in `exec`/`exit`, one that already calls kira
+outside kira's markers (status `drifted`), or a chain block missing its end
+marker is left alone with a reason. An old shim or a marked chain block is
+rewritten in place.
 
 ```console
 $ kira hooks install --with-pre-commit
@@ -104,10 +106,22 @@ if command -v kira >/dev/null 2>&1; then
 fi
 exit $rc
 # /kira:chain
+```
+
+Hooks it leaves alone (other repositories):
+
+```console
+$ cat .git/hooks/post-merge
+#!/usr/bin/env python3
+print("[house] post-merge ran")
 $ kira hooks install
 hook post-merge: refused — .git/hooks/post-merge is an unrecognized existing hook; add kira's block by hand
 hook prepare-commit-msg: installed
 merge driver: registered
+$ cat .git/hooks/post-merge
+#!/bin/sh
+echo "[house] post-merge ran"
+exec ./scripts/after-merge
 $ kira hooks install
 hook post-merge: refused — ends in exec or exit, so appending kira's hook would never run; add kira's line by hand instead
 hook prepare-commit-msg: installed
@@ -225,7 +239,9 @@ kira sync [--commit] [--push] [--remote <name>]
 
 `--remote` defaults to the branch's upstream. A conflict kira cannot resolve
 (code, an unparsable item), or any conflict under `merge.policy: manual`,
-aborts the rebase, leaving the branch as it was:
+aborts the rebase, leaving the branch as it was; to finish by hand, run
+`git pull --rebase`, resolve code conflicts with git and item files with
+[`kira resolve`](#kira-resolve):
 
 ```console
 $ kira sync
@@ -294,8 +310,9 @@ kira resolve [<id>...] [--interactive]
 
 Field-merges item files left conflicted by a merge or rebase that ran without
 the driver (no `hooks install`, `merge.policy: manual`, a merge done
-elsewhere), and stages them. Only unmerged item files are touched. Deleted-on-one-side
-or unparsable files print `Skipped <path> (needs manual resolution)`.
+elsewhere), and stages them. Only unmerged item files are touched; `<id>...`
+narrows that to those items. Deleted-on-one-side or unparsable files print
+`Skipped <path> (needs manual resolution)` on stderr. Nothing conflicted exits 0.
 
 ```console
 $ git merge --no-edit triage
@@ -327,10 +344,10 @@ kira index [--full] [--closes] [--quiet]
 ```
 
 Refreshes the SQLite cache in `.kira/.cache/` (git-ignored, disposable; every
-command refreshes it as needed). Output `index <action> (<reason>): <n> items`;
-actions `fresh`, `incremental`, `full`; reasons include `up-to-date`,
-`forced`, `missing`, `head-advanced`, `working-tree-changed`,
-`history-rewritten`. `--quiet` suppresses output.
+command refreshes it as needed). Output `index <action> (<reason>): <n> items`:
+`fresh (up-to-date)`, `incremental (head-advanced|working-tree-changed)`,
+`full (forced|missing|history-rewritten)` — the last when the indexed HEAD is
+no longer an ancestor, as after a rebase or amend. `--quiet` suppresses output.
 
 ```console
 $ kira index

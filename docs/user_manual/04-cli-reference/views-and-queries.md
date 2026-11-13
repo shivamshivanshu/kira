@@ -87,8 +87,10 @@ PAY-7   TODO    ticket  P3        Spike: graph features for chargeback risk
 ```
 
 `next` (`state = TODO AND NOT blocked ORDER BY priority`) ships with
-`kira init`; `PAY-4` is excluded because `PAY-3` blocks it. `--tree` reshapes
-the filtered set; `kira tree` is the unfiltered hierarchy.
+`kira init`; `PAY-4` is excluded because `PAY-3` blocks it. `--tree` groups
+the filtered rows under a header per epic (number and `(epic)` only) that
+matches or has a matching child, parentless rows under `(no parent)`;
+`kira tree` is the unfiltered hierarchy.
 
 `--json`: `id` is stable, `number` can change on renumbering; `parent` is an
 id and `parent_number` its display number.
@@ -347,10 +349,11 @@ kira stats [<parent-id>] [--sprint <key>|active] [--since YYYY-MM-DD] [--weeks N
 | cycle time | first `doing` state → done, days, p50/p90, `n`; shown only when `n > 0` |
 | lead time | created → done, same form |
 | throughput/week | done per trailing week, oldest first; `--weeks` (default 8) sets the length |
+| reopens | re-entries into a `doing` state after done (`DONE` → `TODO` alone is not one); shown when > 0 |
 
 `<parent-id>` scopes to that subtree, `--sprint` to one sprint, `--since` to
 items created on or after the date. Dropped items are excluded from cycle,
-lead and throughput. `--json` adds `reopens` (items that left a done state).
+lead and throughput.
 
 ```console
 $ kira stats
@@ -438,6 +441,8 @@ PAY-6  Batch scoring is 4x slower than target
 created PAY-9  Cache feature vectors between scoring runs
 $ kira diff --since HEAD~3 --incoming
 kira: --since cannot be combined with --incoming
+$ kira diff main --since HEAD~3
+kira: provide a ref positionally or --since, not both
 $ kira diff
 kira: diff requires a <ref> argument or --since
 ```

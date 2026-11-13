@@ -67,7 +67,7 @@ func newHooksInstallCmd(g *globalFlags) *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.BoolVar(&opts.WithPreCommit, "with-pre-commit", false, "additionally install the pre-commit validation hook")
-	f.BoolVar(&opts.IntoHooksPath, "into-hooks-path", false, "install into the core.hooksPath directory even when it lives inside the work tree")
+	f.BoolVar(&opts.IntoHooksPath, "into-hooks-path", false, "install into the core.hooksPath directory; required whenever core.hooksPath points anywhere but .git/hooks")
 	f.BoolVar(&validate, "validate", false, "verify installed hooks and merge-driver registration without modifying anything")
 	return cmd
 }

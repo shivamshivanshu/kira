@@ -1,14 +1,14 @@
 # The TUI
 
 Full-screen, keyboard-driven front end over the same core operations as the
-CLI. Not exercised by the sample harness (it needs a terminal); keys and
-messages here are taken from `internal/tui`.
+CLI.
 
 ## Launching
 
 `kira tui`, or bare `kira` when `ui.auto_tui` is on, stdout is a terminal and
-neither `--json` nor non-interactive mode is set (else bare `kira` prints
-help). Related keys: [`ui`](05-configuration-reference.md#ui).
+neither `--json` nor
+[`--non-interactive`](04-cli-reference/setup-and-schema-commands.md#global-flags)
+is set (else bare `kira` prints help). Related keys: [`ui`](05-configuration-reference.md#ui).
 
 Inside a git work tree with no `.kira/`, it offers to create one (writes
 `.kira/`, commits `kira: init`): type a project key and `Enter`, or `Esc` to

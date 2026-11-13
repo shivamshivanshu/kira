@@ -12,8 +12,9 @@ Valid on every command, before or after the subcommand.
 | Flag | Meaning |
 | --- | --- |
 | `-C, --C <path>` | Run as if started in `<path>`; the store is found by walking up from there. |
-| `--json` | Machine-readable JSON on stdout. Errors go to stderr as `{"error", "hint", "code"}`. Shapes: [`kira schema`](#kira-schema). Not accepted by bare `kira config`; the TUI and server have none. |
+| `--json` | Machine-readable JSON on stdout. Errors go to stderr as `{"error", "hint", "code"}`; on failure stdout is empty. Warnings stay plain text on stderr. Shapes: [`kira schema`](#kira-schema). Not accepted by bare `kira config`; the TUI and server have none. |
 | `--no-color` | No ANSI color. Color is already off when stdout is not a terminal; `NO_COLOR` does the same; otherwise `ui.color` decides. |
+| `--non-interactive` (hidden) | Never prompt or open a UI, for scripts and agents: `tui` and `server` refuse; bare `kira` prints help and bare `kira board` the static board; `create` implies `--no-edit`; `edit` without field flags, `comment` without `-m`, and `--from-file -` are errors. |
 
 ```console
 $ cd / && kira -C /src/acme/src/webhooks list
@@ -102,8 +103,9 @@ Tiers and keys: [Configuration reference](../05-configuration-reference.md).
 ### `kira config explain`
 
 The effective configuration as rules, one section per area, each tagged with
-the tier that set it: `default`, `repo`, or `user` (for `ui`/`workon` when the
-user file sets them). The tag is per section.
+the tier that set it: `default`, `repo`, or `user` (for `ui`/`workon`/`commit`
+when the user file sets them). The tag is per section. `--json`:
+`{"sections": [{"name", "provenance", "lines"}]}`.
 
 ```console
 $ kira config explain
@@ -149,8 +151,7 @@ filters (repo)
   next: state = TODO AND NOT blocked ORDER BY priority
 ```
 
-The `resolutions_dropped` wording is inaccurate: epic progress counts dropped
-items as done ([Concepts](../03-concepts.md#dropped)).
+The `resolutions_dropped` line is wrong: see [Open bugs](../09-limitations-and-roadmap.md#open-bugs).
 
 With a user file pinning `ui.icons: text` and `workon.worktree: true`, plus a
 repo-only key it ignores:
@@ -200,8 +201,8 @@ kira config set <key> <value>
 Sets one scalar in `.kira/config.yaml` (never the user file), validated like
 the loader, rewriting only that line so comments survive. A key absent from
 the file (or only commented out) is appended as a new block. Committed under
-`commit.mode: auto`. Setting a key to its current value fails (nothing to
-commit).
+`commit.mode: auto`. Setting a key to its current value fails: see
+[Open bugs](../09-limitations-and-roadmap.md#open-bugs).
 
 ```console
 $ kira config set ui.nope true
@@ -343,7 +344,11 @@ creates and edits items, moves states, assigns, links, comments, and bulk-edits
 a selection (state, board, owner, labels, sprint; per-item results, failures
 kept for retry). Settings manage boards, sprints, supported config keys,
 commits and sync. Its command bar runs CLI commands with `.` for the selected
-item (`move . IN_PROGRESS`). **Start work** runs `workon` in the current
+item (`move . IN_PROGRESS`); `sync --remote` there takes only a configured
+remote name. Keyboard-driven: Ctrl/Cmd+K for quick actions, `?` for the keys.
+Theme (light/dark/system) and compact spacing persist per browser, the
+auto-refresh toggle per tab. Saving an item that changed on disk since the
+page loaded is refused. **Start work** runs `workon` in the current
 checkout, never a new worktree. Every action goes through the same core
 operations and guards as the CLI. Terminal-only: `init`, hook
 install/uninstall, `config init`, worktree creation, file imports, and

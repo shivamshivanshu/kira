@@ -233,6 +233,8 @@ changed — move abandoned work to `WONT_DO` first.
 ```console
 $ kira sprint close S1 --move-to S1
 kira: --move-to target "S1" is the sprint being closed
+$ kira sprint close S1 --move-to ZZ
+kira: --move-to: "ZZ" is not a key in the configured sprints
 $ kira sprint close S1 --move-to S2
 Closed sprint S1
   unfinished: WEB-2

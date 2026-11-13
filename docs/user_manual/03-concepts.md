@@ -47,8 +47,9 @@ A board is a numbering namespace declared in `.kira/config.yaml`
 ([keys](05-configuration-reference.md#boards)). Every item belongs to exactly
 one board; `kira create` uses the `default: true` board unless given
 `--board`. `kira board move` renumbers an item onto another board and records
-the old number as an alias. Archiving a board hides it from pickers and
-`--board`, but its items still list and resolve. Boards are config entries,
+the old number as an alias. Archiving a board stops new items landing on it
+([`board archive`](04-cli-reference/boards-and-sprints.md#kira-board-archive--unarchive));
+its items still list (`list --board` included) and resolve. Boards are config entries,
 not items — see [Limitations](09-limitations-and-roadmap.md).
 
 ## Workflow, states and categories
@@ -88,8 +89,9 @@ Rules around the `done` category:
   ```
 
 - **Resolution.** Entering `DONE` stamps `resolution: done`, `WONT_DO` stamps
-  `dropped`, unless the item already has one or `--resolution` gives another.
-  Leaving the `done` category clears it.
+  `dropped`, overwriting any existing resolution, unless `--resolution` (or a
+  `resolution` edited in the same change) gives another. `--resolution` on a
+  non-`done` target is refused. Leaving the `done` category clears it.
 - **WIP limits** are advisory: exceeding one warns and proceeds, and
   `kira doctor` reports the over-limit state.
 
@@ -126,6 +128,8 @@ the three built-in vocabularies. Out-of-vocabulary value:
 | --- | --- |
 | `false` (default) | Warning on stderr; value written. |
 | `true` | Error. `--force` downgrades it to a warning. |
+
+With `labels.strict: true`:
 
 ```console
 $ kira edit DEMO-6 --label nope

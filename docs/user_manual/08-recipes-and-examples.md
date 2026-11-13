@@ -40,7 +40,8 @@ CORE-2      epic    Order gateway rewrite
 CORE-7      ticket  Audit log retention policy
 ```
 
-`CORE-5` is an epic under an epic. Reparent with
+`CORE-4`…`CORE-7` were created the same way; `CORE-5` is an epic under an
+epic. Reparent with
 `kira link <id> --parent <epic>`.
 
 ## What next, and what is mine

@@ -19,8 +19,9 @@ demo` (`demo` mapped to the git user), sprint `S1`.
   `move` (or `edit` changing state) passes the blocker guard. It never admits an
   unknown field. Rules: [Concepts](../03-concepts.md#vocabularies).
 - **`@me`** in `--owner`/`--reporter`/`assign` resolves the git identity
-  through `people` (`git:` aliases), else the git user name with spaces
-  replaced by `-`.
+  through `people` (`git:` aliases), else the git `user.name` with spaces
+  replaced by `-`, else `user.email`; neither set is an error (also for
+  `owner = @me` in queries).
 
 ## `create`
 
@@ -243,12 +244,6 @@ Moved DEMO-3: TODO -> IN_PROGRESS
 Moved DEMO-5: TODO -> IN_PROGRESS
 $ kira move DEMO-5 WONT_DO --resolution duplicate
 Moved DEMO-5: IN_PROGRESS -> WONT_DO
-$ kira move DEMO-2 DONE
-kira: invalid item: IN_PROGRESS -> DONE is blocked by open items: DEMO-8
-  hint: close the blockers first, or use `--force` to override
-$ kira move DEMO-2 DONE --force
-kira: warning: forced past blocker guard: DEMO-8 still open
-Moved DEMO-2: IN_PROGRESS -> DONE
 ```
 
 ## `link`
@@ -257,7 +252,7 @@ Moved DEMO-2: IN_PROGRESS -> DONE
 kira link <id> (--parent|--blocked-by|--relates|--duplicate-of) <id> [--remove]
 ```
 
-Exactly one edge flag per call; `--remove` deletes that edge (for `--parent`,
+Exactly one edge flag per call (none or several is an error); `--remove` deletes that edge (for `--parent`,
 clears it). Constraints: [Concepts](../03-concepts.md#relationships).
 
 ```console
