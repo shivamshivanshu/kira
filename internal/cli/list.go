@@ -9,24 +9,17 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/warningfmt"
 )
 
 func newListCmd(g *globalFlags) *cobra.Command {
 	var opts core.ListOpts
-	var fields []string
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List tickets and epics",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			filters, err := parseFieldFilters(fields)
-			if err != nil {
-				return err
-			}
-			opts.Fields = filters
 			s, cfg, err := openStore(g)
 			if err != nil {
 				return err
@@ -54,31 +47,13 @@ func newListCmd(g *globalFlags) *cobra.Command {
 	f.StringVar(&opts.Label, "label", "", "filter by label")
 	f.StringVar(&opts.Board, "board", "", "filter to one board")
 	f.StringVar(&opts.Parent, "parent", "", "filter by parent")
-	f.StringVar(&opts.Parent, "epic", "", "deprecated alias for --parent")
-	_ = f.MarkHidden("epic")
 	f.StringVar(&opts.Priority, "priority", "", "filter by priority")
 	f.StringVar(&opts.Sprint, "sprint", "", "filter by sprint key ('active' resolves the active sprint)")
 	f.StringVar(&opts.Filter, "filter", "", "apply a named saved query from config filters")
 	f.StringVar(&opts.Query, "query", "", "filter by a query expression (ANDed with the flags)")
-	f.StringArrayVar(&fields, "field", nil, "key=value equality filter on any item field (repeatable, ANDed)")
 	f.BoolVar(&opts.Tree, "tree", false, "group results by parent")
 	f.StringVar(&opts.At, "at", "", "read state at a git ref or date (YYYY-MM-DD), anchored on HEAD")
 	return cmd
-}
-
-func parseFieldFilters(fields []string) ([]core.FieldFilter, error) {
-	out := make([]core.FieldFilter, 0, len(fields))
-	for _, f := range fields {
-		k, v, ok := strings.Cut(f, "=")
-		if !ok || k == "" {
-			return nil, errx.User("--field %q: expected key=value", f).WithHint("example: --field state=TODO")
-		}
-		if v == "" {
-			return nil, errx.User("--field %q: empty value", f).WithHint("use `--query '%s IS EMPTY'` to match items with no %s", k, k)
-		}
-		out = append(out, core.FieldFilter{Key: k, Value: v})
-	}
-	return out, nil
 }
 
 func emitStderrNotes(w io.Writer, notes []datamodel.Warning) {

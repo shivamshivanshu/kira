@@ -174,7 +174,7 @@ func dashboardCommandAllowed(path string) bool {
 		"board list", "board create", "board rename", "board archive", "board unarchive", "board move",
 		"sprint list", "sprint create", "sprint activate", "sprint close",
 		"label list", "label create", "label add", "label rm", "config explain", "config filters", "config set",
-		"hooks status", "automation list":
+		"hooks status":
 		return true
 	default:
 		return false

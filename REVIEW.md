@@ -1,6 +1,6 @@
 # Manual code review plan
 
-Read bottom-up by dependency layer: with the exceptions below, each layer only uses layers above it in this list. ~278 files — a snapshot; packages added since (setx, timex, statsfmt, syncx, automation, schema, warningfmt, webui, commandline) are not listed. Mark `- [x]` as you go.
+Read bottom-up by dependency layer: with the exceptions below, each layer only uses layers above it in this list. ~278 files — a snapshot; packages added since (setx, timex, statsfmt, syncx, schema, warningfmt, webui, commandline) are not listed. Mark `- [x]` as you go.
 
 Forward references (verified with `go list -f '{{.Imports}}'`): datamodel (1) uses the errx/ptr leaves (2); config (4) uses storage (5) and query (9); showfmt (6) uses workon (8); core (10) uses doctor (11); cli (12) uses tui (13).
 
@@ -69,7 +69,7 @@ Look hard at: atomic write (tmp+fsync+rename); flock scope and the 2s waiter tim
 - [ ] internal/storage/test/read_test.go — tests LoadAll sorting, temp-file skipping, and malformed-file warnings
 - [ ] internal/storage/test/store_test.go — tests store discovery walking up and env-error on missing .kira
 
-## 6. External-tool wrappers — `gitx`, `rgx`, `fzfx`, `termx`, `editorx`, `clipx`, `showfmt`
+## 6. External-tool wrappers — `gitx`, `rgx`, `termx`, `editorx`, `clipx`, `showfmt`
 Look hard at: NUL-delimited git output parsing (forgery resistance — bodies/authors are attacker-influenced); no shell interpolation anywhere; every subprocess concern stays inside these packages.
 
 - [ ] internal/gitx/attributes.go — Repo.InfoAttributeHasLine: checks if git info/attributes contains an exact line.
@@ -86,7 +86,6 @@ Look hard at: NUL-delimited git output parsing (forgery resistance — bodies/au
 - [ ] internal/gitx/trailers_test.go — Tests LogTrailers resists forged trailer/record injection from commit bodies.
 - [ ] internal/rgx/rgx.go — ripgrep wrapper: Line type, Installed, ParseLine, Search over a directory.
 - [ ] internal/rgx/test/rgx_test.go — Tests rgx.ParseLine on match/context/separator ripgrep output lines.
-- [ ] internal/fzfx/fzfx.go — fzf wrapper: Installed check and Pick to fuzzy-select a row with preview.
 - [ ] internal/termx/termx.go — Terminal helpers: IsTerminal, IsInteractive, Confirm, ReadLineDefault prompts.
 - [ ] internal/editorx/editorx.go — Editor launcher: resolves $EDITOR/$VISUAL and opens a file for editing.
 - [ ] internal/clipx/clipx.go — Clipboard copy via OSC 52 (tmux-wrapped) plus external tool detection.
@@ -164,7 +163,6 @@ Look hard at: single indexed read path with linear-scan fallback + degraded stde
 - [ ] internal/core/sortbykey.go — generic stable decorate-sort-by-comparable-key helper.
 - [ ] internal/core/active.go — read/write the active workon pointer in cache.
 - [ ] internal/core/at.go — historical views: resolve --at treeish/date, load items at that revision.
-- [ ] internal/core/discover.go — lists ticket candidates (id/number/title) for completion.
 - [ ] internal/core/warnings.go — prints load warnings to stderr.
 - [ ] internal/core/workflow.go — workflow state/transition lookups, move targets, category helpers.
 
@@ -275,7 +273,6 @@ Look hard at: commands stay thin (open store → core call → render/json); one
 - [ ] internal/cli/mergefile.go — Hidden `merge-file` command: git merge-driver entry point for items.
 - [ ] internal/cli/hooks.go — `hooks` install plus hidden hook entry points (post-merge, prepare-commit-msg, pre-commit).
 - [ ] internal/cli/index.go — `index` command: refresh or rebuild the derived cache index.
-- [ ] internal/cli/discover.go — `discover` command: interactively pick an item via fzf or bubbles.
 - [ ] internal/cli/doctor.go — `doctor` command: run repo checks and render/exit on the report.
 - [ ] internal/cli/doctorenv.go — Gathers the doctor Env (git, hooks, merge driver, index freshness) from disk.
 - [ ] internal/cli/config.go — `config set` command: set a scalar config key preserving formatting.
@@ -338,7 +335,7 @@ Look hard at: the contract scrubber (ULID/timestamp/SHA/dir normalization — wo
 - [ ] tests/e2e/e2e_test.go — Runs testscript-based end-to-end command scripts against kira.
 - [ ] tests/e2e/complete_spawn_test.go — Asserts shell-completion serves from cache without spawning git.
 - [ ] tests/e2e/crash_exit_test.go — Asserts injected TUI panic exits with code 4.
-- [ ] tests/e2e/find_discover_test.go — Testscript find/discover flows with rg/fzf deliberately absent.
+- [ ] tests/e2e/find_discover_test.go — Testscript find flows with rg deliberately absent.
 - [ ] tests/e2e/uninit_exit_test.go — Asserts bare TUI on non-tty uninitialized repo exits 3.
 - [ ] tests/integration/integration_test.go — Verifies auto/manual commit modes, editor round-trips, list filters.
 - [ ] tests/integration/diff_test.go — Verifies diff detects deletions, body changes, non-alias number edits.

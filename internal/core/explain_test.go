@@ -68,8 +68,8 @@ func TestExplainProvenanceFollowsSupplyingTier(t *testing.T) {
 		{"repo-set-ui", repoBase + "ui:\n  icons: emoji\n", "", "ui", datamodel.ProvenanceRepo},
 		{"user-set-ui", repoBase, "ui:\n  icons: emoji\n", "ui", datamodel.ProvenanceUser},
 		{"default-ui", repoBase, "", "ui", datamodel.ProvenanceDefault},
-		{"repo-set-workon", repoBase + "workon:\n  casing: snake\n", "workon:\n  casing: camel\n", "workon", datamodel.ProvenanceRepo},
-		{"user-set-workon", repoBase, "workon:\n  casing: snake\n", "workon", datamodel.ProvenanceUser},
+		{"repo-set-workon", repoBase + "workon:\n  branch_pattern: repo/{number}\n", "workon:\n  branch_pattern: user/{number}\n", "workon", datamodel.ProvenanceRepo},
+		{"user-set-workon", repoBase, "workon:\n  branch_pattern: user/{number}\n", "workon", datamodel.ProvenanceUser},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

@@ -266,13 +266,12 @@ vocab (default)
   resolutions_dropped: dropped (a done-category resolution treated as a non-completion outcome for epic progress)
 
 ui (default)
-  icons: auto (override with the KIRA_ICONS env var: nerd|emoji|text|always|never)
+  icons: auto (override with the KIRA_ICONS env var: nerd|emoji|text)
   color: auto
-  background: auto
+  background: dark
 
 workon (default)
   branch_pattern: {key}/{number}-{slug}
-  casing: kebab
   worktree: false (dir ../{repo}-{branch})
 
 merge (default)
@@ -288,19 +287,18 @@ to each individual line. A section reads `default` when its values still match
 kira's built-ins. When they differ, the tag names the tier that *owns* that
 block: `ui` and `workon` are personal-preference blocks and are tagged `user`,
 everything else is tagged `repo`. Pinning `ui.icons` in the personal config and
-`workon.casing` in the project config therefore both show up as `user`:
+`workon.branch_pattern` in the project config therefore both show up as `user`:
 
 ```console
 $ kira config explain
 ...
 ui (user)
-  icons: text (override with the KIRA_ICONS env var: nerd|emoji|text|always|never)
+  icons: text (override with the KIRA_ICONS env var: nerd|emoji|text)
   color: auto
   background: dark
 
 workon (user)
-  branch_pattern: {key}/{number}-{slug}
-  casing: snake
+  branch_pattern: {key}-{number}
   worktree: false (dir ../{repo}-{branch})
 ```
 
@@ -331,13 +329,10 @@ Scaffolds your **personal** config directory — distinct from the project's
 $ kira config init
 Created user config in /home/dana/.config/kira
   config.yaml
-  hooks.yaml
 ```
 
-Two files are written. `config.yaml` holds personal preferences, and
-`hooks.yaml` holds personal automation hooks that run in addition to the
-project's own. Both ship fully commented out, so creating them changes no
-behavior until you uncomment something:
+`config.yaml` holds personal preferences. It ships fully commented out, so
+creating it changes no behavior until you uncomment something:
 
 ```console
 $ cat ~/.config/kira/config.yaml
@@ -347,7 +342,7 @@ $ cat ~/.config/kira/config.yaml
 
 # ui:                                              # terminal UI and board appearance
 #   icons: auto                                    # glyph set: auto | nerd | emoji | text
-#   background: auto                               # palette the TUI and board assume: auto | dark | light
+#   background: dark                               # palette the TUI and board assume: dark | light
 #   color: auto                                    # ANSI color: auto | always | never
 #   editor: ""                                     # editor command for drafts, run via sh -c so shell quoting works; empty falls back to $EDITOR then $VISUAL
 #   auto_tui: true                                 # launch the TUI when kira is run bare in a terminal
@@ -364,13 +359,13 @@ $ cat ~/.config/kira/config.yaml
 #   worktree_dir: "../{repo}-{branch}"             # where worktrees are created; tokens: {repo} {branch} {key} {number}; absolute paths used as-is
 ```
 
-The command is safe to re-run: if either file already exists it touches
+The command is safe to re-run: if the file already exists it touches
 nothing and simply reports what it found.
 
 ```console
 $ kira config init
 /home/dana/.config/kira already exists; leaving it untouched
-  present: config.yaml, hooks.yaml
+  present: config.yaml
 ```
 
 ### `kira config filters`
@@ -422,7 +417,7 @@ lists the valid ones:
 
 ```console
 $ kira config set ui.nope true
-kira: config: unknown key "ui.nope"; valid keys: commit.close_trailer, commit.mode, commit.trailer, estimate.unit, git.landed_ref, merge.policy, project.name, sync.push, ui.background, ui.icons, workon.branch_pattern, workon.casing
+kira: config: unknown key "ui.nope"; valid keys: commit.close_trailer, commit.mode, commit.trailer, estimate.unit, git.landed_ref, merge.policy, project.name, sync.push, ui.background, ui.icons, workon.branch_pattern
 ```
 
 Values are validated against the same rules the config loader enforces, so a
@@ -458,12 +453,12 @@ as a commented-out example — the value is appended as a new block, and the
 commented documentation is left as it was:
 
 ```console
-$ kira config set workon.casing snake
-Set workon.casing = snake
+$ kira config set workon.branch_pattern "{key}-{number}"
+Set workon.branch_pattern = {key}-{number}
 
 $ tail -6 .kira/config.yaml
 workon:
-  casing: snake
+  branch_pattern: '{key}-{number}'
 
 # sprints: sprint entities, created by kira sprint create; items key into this list.
 #sprints:
@@ -479,12 +474,12 @@ $ git log --oneline -1
 
 ## `kira schema`
 
-Prints the JSON Schema describing every `--json` output shape, plus the
-payload kira hands to automation hooks on stdin. This is what you point a code
-generator or a validator at when you script against kira's JSON mode.
+Prints the JSON Schema describing every `--json` output shape. This is what
+you point a code generator or a validator at when you script against kira's
+JSON mode.
 
-The document is a JSON Schema draft 2020-12 file of roughly 48 KB. Its top
-level is a `oneOf` over the 49 command result shapes, with 87 named
+The document is a JSON Schema draft 2020-12 file of roughly 47 KB. Its top
+level is a `oneOf` over the 46 command result shapes, with 81 named
 definitions under `$defs`:
 
 ```console
@@ -540,8 +535,7 @@ $ kira schema | jq '.["$defs"].VersionResult'
 ```
 
 Note that `additionalProperties: false` throughout means the schema is strict:
-a payload with an unexpected key fails validation. The automation hook payload
-is the `HookPayload` definition.
+a payload with an unexpected key fails validation.
 
 Useful one-liners:
 
@@ -897,7 +891,7 @@ workflow.
   and current state.
 - Config vocabularies behind `--priority`, `--label`, `--owner`,
   `--reporter`, `--subtype`, `--resolution`, `--state`, `--sprint`,
-  `--filter`, `--board`, and `--type`.
+  `--filter`, and `--board`.
 - The valid keys for `kira config set`.
 
 Because these completers query the project, they return nothing when you are

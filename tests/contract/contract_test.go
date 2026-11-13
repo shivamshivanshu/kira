@@ -55,7 +55,7 @@ func checkSchemaConformance(t *testing.T, stdout string) {
 		t.Fatalf("stdout is not valid JSON: %v", err)
 	}
 	if err := sch.Validate(inst); err != nil {
-		t.Errorf("stdout does not conform to schema/kira.json: %v", err)
+		t.Errorf("stdout does not conform to `kira schema`: %v", err)
 	}
 }
 
@@ -255,21 +255,6 @@ func oneInProgressTicket(t *testing.T) string {
 	return dir
 }
 
-func automationRepo(t *testing.T) string {
-	t.Helper()
-	dir := kiraRepo(t)
-	cfgPath := filepath.Join(dir, ".kira", "config.yaml")
-	data, err := os.ReadFile(cfgPath)
-	if err != nil {
-		t.Fatalf("read config: %v", err)
-	}
-	block := "\nautomation:\n  - name: notify\n    on: item.state_changed\n    match:\n      to: done\n    run: bash notify.sh\n"
-	if err := os.WriteFile(cfgPath, append(data, block...), 0o644); err != nil {
-		t.Fatalf("write config: %v", err)
-	}
-	return dir
-}
-
 func wipLoaded(t *testing.T) string {
 	t.Helper()
 	dir := kiraRepo(t)
@@ -422,7 +407,6 @@ func TestJSONContract(t *testing.T) {
 		{"log", seededRepo, []string{"log", "KIRA-2"}, true, false},
 		{"stats", seededRepo, []string{"stats"}, true, false},
 		{"blame", seededRepo, []string{"blame", "KIRA-2"}, true, false},
-		{"automation-list", automationRepo, []string{"automation", "list"}, true, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

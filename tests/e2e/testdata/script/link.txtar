@@ -50,7 +50,6 @@ exec kira link KIRA-1 --parent KIRA-3 --remove
 exec kira show KIRA-1 --json
 stdout '"parent": null'
 
-# --epic is a deprecated but still-functioning alias for --parent
-exec kira link KIRA-1 --epic KIRA-3
-exec kira show KIRA-1 --json
-stdout '"parent": "[0-9A-Z]{26}"'
+# the removed --epic alias is an unknown flag
+! exec kira link KIRA-1 --epic KIRA-3
+stderr 'unknown flag: --epic'

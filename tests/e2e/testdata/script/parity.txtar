@@ -21,8 +21,7 @@ stdout '"sprint": "2026-S14"'
 stdout '"due": "2026-07-20"'
 stdout '"resolution": null'
 
-# --type is a silent alias for --subtype
-exec kira create ticket --title 'Aliased' --no-edit --type story
+exec kira create ticket --title 'Aliased' --no-edit --subtype story
 exec kira show KIRA-2 --json
 stdout '"subtype": "story"'
 

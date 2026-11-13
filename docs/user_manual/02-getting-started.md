@@ -202,7 +202,7 @@ DEMO-1  TODO   ticket  -         Write the getting-started guide
 ```
 
 `kira list` takes filters — `--state`, `--priority`, `--label`, `--owner`
-(`@me` resolves to your git identity), `--sprint`, `--epic`, `--type`,
+(`@me` resolves to your git identity), `--sprint`, `--parent`, `--type`,
 `--category`, a full `--query` expression, or a saved `--filter` from
 `.kira/config.yaml`. `--tree` groups the results under their epics.
 

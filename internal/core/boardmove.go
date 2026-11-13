@@ -54,7 +54,7 @@ func (b *Batch) BoardMove(ref, targetKey string) (*datamodel.BoardMoveResult, er
 	}
 	// Deliberately bypasses the mutation pipeline: a renumber is identity
 	// bookkeeping, not activity, so Updated must not move (close-reopen
-	// detection compares against it) and no automation event fires.
+	// detection compares against it).
 	path, err := s.fs().WriteItem(it)
 	if err != nil {
 		return nil, err

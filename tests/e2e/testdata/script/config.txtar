@@ -11,10 +11,10 @@ exec kira init --key KIRA
 
 # enum: the ui block ships commented out so it never stomps a user's ~/.config pin;
 # setting a ui key creates the block in place while the doc comment is kept.
-exec kira config set ui.icons never --json
+exec kira config set ui.icons text --json
 stdout '"key": "ui.icons"'
-stdout '"value": "never"'
-grep 'icons: never' .kira/config.yaml
+stdout '"value": "text"'
+grep 'icons: text' .kira/config.yaml
 grep '# ui:' .kira/config.yaml
 
 # string

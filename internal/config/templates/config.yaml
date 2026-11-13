@@ -4,7 +4,7 @@
 
 # ui:                                              # terminal UI and board appearance
 #   icons: auto                                    # glyph set: auto | nerd | emoji | text
-#   background: auto                               # palette the TUI and board assume: auto | dark | light
+#   background: dark                               # palette the TUI and board assume: dark | light
 #   color: auto                                    # ANSI color: auto | always | never
 #   editor: ""                                     # editor command for drafts, run via sh -c so shell quoting works; empty falls back to $VISUAL then $EDITOR
 #   auto_tui: true                                 # launch the TUI when kira is run bare in a terminal

@@ -27,7 +27,6 @@ var setKeys = map[string]setKind{
 	"ui.icons":              kindLiteral,
 	"ui.background":         kindLiteral,
 	"workon.branch_pattern": kindStr,
-	"workon.casing":         kindLiteral,
 	"git.landed_ref":        kindStr,
 	"estimate.unit":         kindLiteral,
 }

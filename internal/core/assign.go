@@ -42,7 +42,7 @@ func (b *Batch) Assign(ref, user string, opts AssignOpts) (*datamodel.MutationRe
 		return cfg.Commit.SubjectPrefix + orig.Number + " assign " + field + " " + user
 	}
 
-	updated, changed, warns, err := b.Mutate(ref, opts.Force, apply, subjectOf, datamodel.SourceCLI)
+	updated, changed, warns, err := b.Mutate(ref, opts.Force, apply, subjectOf)
 	if err != nil {
 		return nil, err
 	}

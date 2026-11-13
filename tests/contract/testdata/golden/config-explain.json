@@ -40,9 +40,9 @@
       "name": "ui",
       "provenance": "default",
       "lines": [
-        "icons: auto (override with the KIRA_ICONS env var: nerd|emoji|text|always|never)",
+        "icons: auto (override with the KIRA_ICONS env var: nerd|emoji|text)",
         "color: auto",
-        "background: auto"
+        "background: dark"
       ]
     },
     {
@@ -50,7 +50,6 @@
       "provenance": "default",
       "lines": [
         "branch_pattern: {key}/{number}-{slug}",
-        "casing: kebab",
         "worktree: false (dir ../{repo}-{branch})"
       ]
     },
@@ -88,13 +87,6 @@
       "provenance": "repo",
       "lines": [
         "next: state = TODO AND NOT blocked ORDER BY priority"
-      ]
-    },
-    {
-      "name": "automation",
-      "provenance": "default",
-      "lines": [
-        "none defined"
       ]
     }
   ]

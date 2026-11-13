@@ -21,7 +21,6 @@ sync:
 
 workon:
   branch_pattern: "{key}/{number}-{slug}"   # tokens: {key} {number} {slug}
-  casing: kebab               # kebab | snake
 
 estimate:
   unit: points                # points | hours

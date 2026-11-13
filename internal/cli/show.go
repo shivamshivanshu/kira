@@ -66,8 +66,6 @@ func emitShowNotes(cmd *cobra.Command, res *datamodel.ShowResult) {
 	}
 }
 
-// printShow emits a ShowResult as JSON or human-readable text, sharing the
-// output block between `kira show` and `kira discover --action show`.
 func printShow(cmd *cobra.Command, g *globalFlags, res *datamodel.ShowResult) error {
 	emitShowNotes(cmd, res)
 	if g.json {

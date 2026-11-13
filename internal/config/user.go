@@ -16,12 +16,10 @@ import (
 const (
 	userConfigDirName  = "kira"
 	userConfigFileName = "config.yaml"
-	userHooksYAMLName  = "hooks.yaml"
 
-	userKeyUI         = "ui"
-	userKeyWorkon     = "workon"
-	userKeyCommit     = "commit"
-	userKeyAutomation = "automation"
+	userKeyUI     = "ui"
+	userKeyWorkon = "workon"
+	userKeyCommit = "commit"
 )
 
 // UserConfigDir returns the user's kira config directory path and whether it could be resolved.
@@ -39,7 +37,6 @@ type userTier struct {
 	ui         *datamodel.UI
 	workon     *datamodel.Workon
 	commit     *userCommit
-	hooks      []datamodel.AutomationHook
 	uiWarnings []string
 }
 
@@ -60,9 +57,7 @@ func readUserTier(env func(string) string, warn io.Writer) userTier {
 	if !ok {
 		return userTier{}
 	}
-	tier := readUserPrefs(filepath.Join(dir, userConfigFileName), warn)
-	tier.hooks = readUserHooks(dir, warn)
-	return tier
+	return readUserPrefs(filepath.Join(dir, userConfigFileName), warn)
 }
 
 func readUserPrefs(path string, warn io.Writer) userTier {
@@ -80,8 +75,6 @@ func readUserPrefs(path string, warn io.Writer) userTier {
 			workonNode = root.Content[i+1]
 		case userKeyCommit:
 			commitNode = root.Content[i+1]
-		case userKeyAutomation:
-			ignore("automation: personal hooks belong in %s", userHooksYAMLName)
 		default:
 			ignore("key %q is repo-authoritative", key)
 		}
@@ -122,28 +115,6 @@ func decodeUserSection[T any](node *yaml.Node, def T, label string, validate fun
 		return nil
 	}
 	return &v
-}
-
-func readUserHooks(dir string, warn io.Writer) []datamodel.AutomationHook {
-	path := filepath.Join(dir, userHooksYAMLName)
-	ignore := ignorer(warn, path)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			ignore("%v", err)
-		}
-		return nil
-	}
-	var hooks []datamodel.AutomationHook
-	if err := yaml.Unmarshal(data, &hooks); err != nil {
-		ignore("%v", err)
-		return nil
-	}
-	if err := validateAutomationHooks("hooks", hooks); err != nil {
-		ignore("%v", err)
-		return nil
-	}
-	return hooks
 }
 
 func readMapping(path string, ignore ignoreFunc) (*yaml.Node, bool) {

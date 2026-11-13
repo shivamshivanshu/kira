@@ -5,25 +5,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/shivamshivanshu/kira/internal/core"
 )
-
-func TestParseFieldFilters(t *testing.T) {
-	got, err := parseFieldFilters([]string{"state=TODO", "team=infra=x"})
-	if err != nil {
-		t.Fatalf("parseFieldFilters: %v", err)
-	}
-	want := []core.FieldFilter{{Key: "state", Value: "TODO"}, {Key: "team", Value: "infra=x"}}
-	if !slices.Equal(got, want) {
-		t.Errorf("got %+v, want %+v", got, want)
-	}
-	for _, bad := range []string{"state", "=TODO", "state="} {
-		if _, err := parseFieldFilters([]string{bad}); err == nil {
-			t.Errorf("parseFieldFilters(%q) succeeded, want a rejection", bad)
-		}
-	}
-}
 
 func TestKnownColumnsRejectsTypo(t *testing.T) {
 	t.Parallel()

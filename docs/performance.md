@@ -1,7 +1,7 @@
 # Performance changes
 
-This implements the concrete code improvements identified in the
-[review](performance-review.md). Measurements are local to an Apple M3 Max with
+This implements the concrete code improvements identified in a performance
+review. Measurements are local to an Apple M3 Max with
 Go 1.26.5 on darwin/arm64; they are workload-specific, not universal speedups.
 
 | Workload | Before | After |
@@ -35,7 +35,7 @@ iterations; comparisons are directional rather than controlled confidence bounds
   comment assembly use builders instead of repeatedly copying growing strings.
 - All web bulk operations share a core batch, including sprint edits and board
   moves. CLI bulk field edits use the same path. Each item retains its own
-  validation, commit, automation and success/error result. Batch indexes track
+  validation, commit and success/error result. Batch indexes track
   successful updates and writes that precede a failed commit.
 - Mutation cycle validation visits the changed item's reachable graph and reuses
   batch indexes. Epic progress uses one memoized postorder traversal; web tree

@@ -32,17 +32,17 @@ func (s *Store) lockAndResolve(cfg *datamodel.Config, ref string) (func(), *data
 	return release, orig, items, resolver, nil
 }
 
-func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, []error, error) {
+func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string) (*datamodel.Item, []string, []error, error) {
 	release, orig, items, resolver, err := s.lockAndResolve(cfg, ref)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	defer release()
 	vctx := newValidationCtx(cfg, items, resolver, force)
-	return s.mutateAgainst(vctx, orig, items, apply, subjectOf, source)
+	return s.mutateAgainst(vctx, orig, items, apply, subjectOf)
 }
 
-func (s *Store) mutateAgainst(vctx *validationCtx, orig *datamodel.Item, items []*datamodel.Item, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, []error, error) {
+func (s *Store) mutateAgainst(vctx *validationCtx, orig *datamodel.Item, items []*datamodel.Item, apply applyFn, subjectOf func(orig *datamodel.Item) string) (*datamodel.Item, []string, []error, error) {
 	updated := cloneItem(orig)
 	hard, warns := apply(updated, vctx.resolver, items)
 	if len(hard) > 0 {
@@ -55,7 +55,7 @@ func (s *Store) mutateAgainst(vctx *validationCtx, orig *datamodel.Item, items [
 	warns = append(warns, vwarns...)
 
 	changed := datamodel.ChangedFields(orig, updated)
-	finalWarns, err := s.commitMutation(vctx.cfg, orig, updated, changed, warns, subjectOf(orig), source)
+	finalWarns, err := s.commitMutation(vctx.cfg, updated, changed, warns, subjectOf(orig))
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -122,7 +122,7 @@ func (b *Batch) RefExists(ref string) bool {
 	return err == nil
 }
 
-func (b *Batch) Mutate(ref string, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string, source datamodel.ChangeSource) (*datamodel.Item, []string, []error, error) {
+func (b *Batch) Mutate(ref string, force bool, apply applyFn, subjectOf func(orig *datamodel.Item) string) (*datamodel.Item, []string, []error, error) {
 	orig, err := b.Resolve(ref)
 	if err != nil {
 		return nil, nil, nil, err
@@ -131,7 +131,7 @@ func (b *Batch) Mutate(ref string, force bool, apply applyFn, subjectOf func(ori
 		return nil, nil, nil, err
 	}
 	vctx := newValidationCtxByID(b.cfg, b.byID, b.resolver, force)
-	updated, changed, warns, err := b.store.mutateAgainst(vctx, orig, b.items, apply, subjectOf, source)
+	updated, changed, warns, err := b.store.mutateAgainst(vctx, orig, b.items, apply, subjectOf)
 	if err != nil {
 		// A write may succeed before its Git commit fails. Later operations
 		// must validate against the actual on-disk state even in that case.
@@ -146,7 +146,7 @@ func (b *Batch) Mutate(ref string, force bool, apply applyFn, subjectOf func(ori
 	return updated, changed, warns, nil
 }
 
-func (s *Store) commitMutation(cfg *datamodel.Config, before, updated *datamodel.Item, changed []string, warns []error, subject string, source datamodel.ChangeSource) ([]error, error) {
+func (s *Store) commitMutation(cfg *datamodel.Config, updated *datamodel.Item, changed []string, warns []error, subject string) ([]error, error) {
 	if len(changed) == 0 {
 		return nil, nil
 	}
@@ -158,13 +158,9 @@ func (s *Store) commitMutation(cfg *datamodel.Config, before, updated *datamodel
 		return nil, err
 	}
 	if err := s.commit(cfg, &datamodel.ChangeSet{
-		Kind:    datamodel.ChangeMutated,
-		Before:  before,
 		After:   updated,
-		Changed: changed,
 		Paths:   []string{path},
 		Subject: subject,
-		Source:  source,
 	}); err != nil {
 		return nil, err
 	}
@@ -183,12 +179,6 @@ func scopeVocabWarnings(warns []error, changed []string) []error {
 }
 
 func (s *Store) commit(cfg *datamodel.Config, cs *datamodel.ChangeSet) error {
-	sha, err := s.finalize(cfg.Commit.Mode, commitSpec{trailerKey: cfg.Commit.Trailer, subject: cs.Subject, trailerNumber: cs.After.Number}, cs.Paths...)
-	if err != nil {
-		return err
-	}
-	if len(cfg.Automation) > 0 || len(cfg.UserAutomation) > 0 {
-		s.fireAutomation(cfg, cs, sha)
-	}
-	return nil
+	_, err := s.finalize(cfg.Commit.Mode, commitSpec{trailerKey: cfg.Commit.Trailer, subject: cs.Subject, trailerNumber: cs.After.Number}, cs.Paths...)
+	return err
 }

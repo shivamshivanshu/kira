@@ -58,25 +58,21 @@ func detectIcons(mode datamodel.IconMode, env func(string) string, isTTY bool) i
 }
 
 func resolveIconMode(mode datamodel.IconMode, env func(string) string, isTTY bool) datamodel.IconMode {
-	if canonical, ok := canonicalIconMode(mode); ok {
-		return canonical
+	if isExplicitIconMode(mode) {
+		return mode
 	}
-	if canonical, ok := canonicalIconMode(datamodel.IconMode(env("KIRA_ICONS"))); ok {
-		return canonical
+	if envMode := datamodel.IconMode(env("KIRA_ICONS")); isExplicitIconMode(envMode) {
+		return envMode
 	}
 	return autoIconMode(env, isTTY)
 }
 
-func canonicalIconMode(mode datamodel.IconMode) (datamodel.IconMode, bool) {
+func isExplicitIconMode(mode datamodel.IconMode) bool {
 	switch mode {
-	case datamodel.IconNerd, datamodel.IconAlways:
-		return datamodel.IconNerd, true
-	case datamodel.IconEmoji:
-		return datamodel.IconEmoji, true
-	case datamodel.IconText, datamodel.IconNever:
-		return datamodel.IconText, true
+	case datamodel.IconNerd, datamodel.IconEmoji, datamodel.IconText:
+		return true
 	}
-	return "", false
+	return false
 }
 
 func autoIconMode(env func(string) string, isTTY bool) datamodel.IconMode {

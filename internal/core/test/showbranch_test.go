@@ -4,14 +4,12 @@ import (
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/core"
-	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/showfmt"
 )
 
 func TestShowBranchFormMatchesWorkonBranch(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
-	cfg.Workon.Casing = datamodel.CasingSnake
 	created := mustCreate(t, s, cfg, "Fix snapshot dedup")
 
 	res, err := s.Workon(cfg, created.Number, core.WorkonOpts{NoMove: true})

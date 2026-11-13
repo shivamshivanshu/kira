@@ -27,7 +27,6 @@ func Explain(cfg *datamodel.Config) *datamodel.ExplainResult {
 		explainGit(cfg, def),
 		explainEstimate(cfg, def),
 		explainFilters(cfg, def),
-		explainAutomation(cfg, def),
 	}
 	return &datamodel.ExplainResult{Sections: sections}
 }
@@ -53,25 +52,6 @@ func explainFilters(cfg, def *datamodel.Config) datamodel.ExplainSection {
 		lines = []string{"none defined"}
 	}
 	return datamodel.ExplainSection{Name: "filters", Provenance: tierOf(changed(cfg.Filters, def.Filters), datamodel.ProvenanceRepo), Lines: lines}
-}
-
-// Automation hooks run shell commands, so the explain output names what would
-// run rather than only counting them.
-func explainAutomation(cfg, def *datamodel.Config) datamodel.ExplainSection {
-	hooks := slices.Concat(cfg.Automation, cfg.UserAutomation)
-	lines := make([]string, 0, len(hooks))
-	for _, h := range hooks {
-		state := ""
-		if !h.IsEnabled() {
-			state = " (disabled)"
-		}
-		lines = append(lines, string(h.On)+" -> "+h.Run+state)
-	}
-	if len(lines) == 0 {
-		lines = []string{"none defined"}
-	}
-	differs := changed(cfg.Automation, def.Automation) || len(cfg.UserAutomation) > 0
-	return datamodel.ExplainSection{Name: "automation", Provenance: tierOf(differs, datamodel.ProvenanceRepo), Lines: lines}
 }
 
 // changed reports whether a is not deeply equal to its default counterpart b.
@@ -217,7 +197,7 @@ func describeVocab(field string, known []string, strict bool) string {
 
 func explainUI(cfg, def *datamodel.Config) datamodel.ExplainSection {
 	lines := []string{
-		fmt.Sprintf("icons: %s (override with the KIRA_ICONS env var: nerd|emoji|text|always|never)", cfg.UI.Icons),
+		fmt.Sprintf("icons: %s (override with the KIRA_ICONS env var: nerd|emoji|text)", cfg.UI.Icons),
 		"color: " + string(cfg.UI.Color),
 		"background: " + string(cfg.UI.Background),
 	}
@@ -227,7 +207,6 @@ func explainUI(cfg, def *datamodel.Config) datamodel.ExplainSection {
 func explainWorkon(cfg, def *datamodel.Config) datamodel.ExplainSection {
 	lines := []string{
 		"branch_pattern: " + cfg.Workon.BranchPattern,
-		"casing: " + string(cfg.Workon.Casing),
 		fmt.Sprintf("worktree: %t (dir %s)", cfg.Workon.Worktree, cfg.Workon.WorktreeDir),
 	}
 	return datamodel.ExplainSection{Name: "workon", Provenance: tierOf(changed(cfg.Workon, def.Workon), cfg.WorkonProvenance), Lines: lines}

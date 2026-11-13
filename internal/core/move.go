@@ -15,7 +15,6 @@ type MoveOpts struct {
 	Resolution string
 	Force      bool
 	Activate   bool
-	Source     datamodel.ChangeSource
 }
 
 func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*datamodel.MoveResult, error) {
@@ -43,11 +42,7 @@ func (b *Batch) Move(ref, state string, opts MoveOpts) (*datamodel.MoveResult, e
 		return fmt.Sprintf("%s%s state %s -> %s", cfg.Commit.SubjectPrefix, orig.Number, orig.State, state)
 	}
 
-	source := opts.Source
-	if source == "" {
-		source = datamodel.SourceCLI
-	}
-	updated, _, warns, err := b.Mutate(ref, opts.Force, apply, subjectOf, source)
+	updated, _, warns, err := b.Mutate(ref, opts.Force, apply, subjectOf)
 	if err != nil {
 		return nil, err
 	}

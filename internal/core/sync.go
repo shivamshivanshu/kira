@@ -71,7 +71,6 @@ func (s *Store) Sync(cfg *datamodel.Config, opts SyncOpts) (report *syncx.Report
 		}
 		report.Add("push", syncx.StepDone, "")
 	}
-	s.fireSyncCompleted(cfg, report)
 	return report, nil
 }
 

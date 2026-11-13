@@ -18,7 +18,6 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 		opts          core.CreateOpts
 		estimate      float64
 		printTemplate bool
-		aliasType     string
 		fields        []string
 	)
 	cmd := &cobra.Command{
@@ -41,9 +40,6 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 					return errx.User("provide the title positionally or via --title, not both")
 				}
 				opts.Title = args[1]
-			}
-			if opts.Subtype == "" {
-				opts.Subtype = aliasType
 			}
 			if cmd.Flags().Changed("estimate") {
 				opts.Estimate = &estimate
@@ -90,8 +86,6 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&opts.Title, "title", "", "item title")
 	f.StringVar(&opts.Subtype, "subtype", "", "item subtype (e.g. bug/story), validated against config subtypes")
-	f.StringVar(&aliasType, "type", "", "alias for --subtype (deprecated)")
-	_ = f.MarkHidden("type")
 	f.StringVar(&opts.Parent, "parent", "", "epic to set as this item's parent")
 	f.StringVar(&opts.Owner, "owner", "", "owner")
 	f.StringVar(&opts.Reporter, "reporter", "", "reporter")

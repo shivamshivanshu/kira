@@ -34,7 +34,7 @@ The [CLI Reference](04-cli-reference/README.md) is split into five files so
 each stays a manageable size:
 
 - [Item lifecycle](04-cli-reference/item-lifecycle.md) — `create`, `edit`, `move`, `link`, `label`, `assign`, `comment`
-- [Views and queries](04-cli-reference/views-and-queries.md) — `list`, `show`, `tree`, `find`, `log`, `blame`, `stats`, `now`, `discover`, `diff`
+- [Views and queries](04-cli-reference/views-and-queries.md) — `list`, `show`, `tree`, `find`, `log`, `blame`, `stats`, `now`, `diff`
 - [Boards and sprints](04-cli-reference/boards-and-sprints.md) — `board *`, `sprint *`
 - [Git integration](04-cli-reference/git-integration.md) — `sync`, `resolve`, `hooks *`, `commit`, `index`, `workon`
 - [Setup and schema commands](04-cli-reference/setup-and-schema-commands.md) — `init`, `config *`, `schema`, `validate`, `version`, `completion`, and the global flags shared by every command

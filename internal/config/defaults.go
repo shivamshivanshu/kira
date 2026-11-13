@@ -21,10 +21,10 @@ func Default() *datamodel.Config {
 		},
 		Merge:  datamodel.Merge{Policy: datamodel.MergeAuto},
 		Sync:   datamodel.Sync{Push: false, Dirty: datamodel.SyncDirtyAuto},
-		Workon: datamodel.Workon{BranchPattern: "{key}/{number}-{slug}", Casing: datamodel.CasingKebab, WorktreeDir: datamodel.DefaultWorktreeDir},
+		Workon: datamodel.Workon{BranchPattern: "{key}/{number}-{slug}", WorktreeDir: datamodel.DefaultWorktreeDir},
 		UI: datamodel.UI{
 			Icons:      datamodel.IconAuto,
-			Background: datamodel.BackgroundAuto,
+			Background: datamodel.BackgroundDark,
 			Color:      datamodel.ColorAuto,
 			List:       datamodel.UIList{Columns: datamodel.DefaultListColumns},
 			Tui:        datamodel.UITui{Split: datamodel.DefaultSplit, Refresh: datamodel.DefaultRefresh},

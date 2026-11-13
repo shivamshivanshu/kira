@@ -47,25 +47,22 @@ var MergePolicies = []MergePolicy{MergeAuto, MergeManual}
 type IconMode string
 
 const (
-	IconAuto   IconMode = "auto"
-	IconNerd   IconMode = "nerd"
-	IconEmoji  IconMode = "emoji"
-	IconText   IconMode = "text"
-	IconAlways IconMode = "always"
-	IconNever  IconMode = "never"
+	IconAuto  IconMode = "auto"
+	IconNerd  IconMode = "nerd"
+	IconEmoji IconMode = "emoji"
+	IconText  IconMode = "text"
 )
 
-var IconModes = []IconMode{IconAuto, IconNerd, IconEmoji, IconText, IconAlways, IconNever}
+var IconModes = []IconMode{IconAuto, IconNerd, IconEmoji, IconText}
 
 type Background string
 
 const (
-	BackgroundAuto  Background = "auto"
 	BackgroundDark  Background = "dark"
 	BackgroundLight Background = "light"
 )
 
-var Backgrounds = []Background{BackgroundAuto, BackgroundDark, BackgroundLight}
+var Backgrounds = []Background{BackgroundDark, BackgroundLight}
 
 type ColorMode string
 
@@ -85,22 +82,6 @@ const (
 )
 
 var EstimateUnits = []EstimateUnit{EstimatePoints, EstimateHours}
-
-type Casing string
-
-const (
-	CasingKebab Casing = "kebab"
-	CasingSnake Casing = "snake"
-)
-
-var Casings = []Casing{CasingKebab, CasingSnake}
-
-func (c Casing) Separator() string {
-	if c == CasingSnake {
-		return "_"
-	}
-	return "-"
-}
 
 type SyncDirty string
 

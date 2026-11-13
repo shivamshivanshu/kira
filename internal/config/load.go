@@ -51,7 +51,6 @@ func LoadWithUser(root string, env func(string) string, warn io.Writer) (*datamo
 			ignore("%s", w)
 		}
 	}
-	cfg.UserAutomation = tier.hooks
 	if tier.commit != nil {
 		cfg.UserCommitSubject = tier.commit.Subject
 	}

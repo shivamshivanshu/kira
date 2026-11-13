@@ -8,9 +8,8 @@ branch.
 The global flags `-C <path>` (run as if invoked from another directory),
 `--json` (machine-readable output on stdout) and `--no-color` (drop ANSI
 color) work on all of them and are documented once in the
-[global flags](setup-and-schema-commands.md#global-flags) section. Two exceptions are called out
-below: `kira find` deliberately does not take `-C`, and `kira discover`
-rejects `--json`.
+[global flags](setup-and-schema-commands.md#global-flags) section. One exception is called out
+below: `kira find` deliberately does not take `-C`.
 
 All examples on this page come from a demo repository with project key `PAY`:
 two epics, seven tickets, two sprints, and a mixture of states, priorities and
@@ -33,11 +32,10 @@ as the tie-break.
 | --- | --- | --- |
 | `--at` | git ref or `YYYY-MM-DD` | Read the item set as it stood at that point, anchored on `HEAD`. |
 | `--category` | `todo`\|`doing`\|`done` | Filter by workflow category rather than a specific state. |
-| `--epic` | item reference | Only items whose parent epic is that item. |
-| `--field` | `key=value` | Equality filter on any item field. Repeatable; multiple uses are ANDed. |
 | `--filter` | filter name | Run a named saved query from `filters:` in `.kira/config.yaml`. |
 | `--label` | label | Only items carrying that label. |
 | `--owner` | person or `@me` | Filter by owner. `@me` resolves to your git identity. |
+| `--parent` | item reference | Only items whose parent epic is that item. |
 | `--priority` | priority | Only items at that priority. |
 | `--query` | query expression | Filter by an expression (see [Query expressions](#query-expressions)). |
 | `--sprint` | sprint key or `active` | Filter by sprint. `active` resolves your locally activated sprint. |
@@ -767,65 +765,6 @@ kira: no active ticket
 ```
 
 See [git integration](./git-integration.md) for `workon` and branch naming.
-
----
-
-## `kira discover`
-
-An interactive picker over every ticket and epic. It lists candidates as
-`NUMBER<TAB>TITLE`, lets you fuzzy-search them, and then acts on your
-selection.
-
-| Flag | Value | Default | Effect |
-| --- | --- | --- | --- |
-| `--action` | `show`\|`edit` | `show` | What to do with the selected item. |
-| `--fzf` | — | off | Fail if `fzf` is not installed, instead of falling back. |
-
-With [`fzf`](https://github.com/junegunn/fzf) on your `PATH`, `discover`
-launches it with a preview pane running `kira show` on the highlighted item,
-so you can read a ticket before committing to it. Pressing `Esc` cancels and
-exits successfully — cancelling is not an error.
-
-Without `fzf`, it falls back to a plain numbered prompt read from standard
-input:
-
-```
-$ kira discover
-1) PAY-1	Card payment rails
-2) PAY-2	Fraud detection
-3) PAY-3	Tokenize card numbers at ingest
-4) PAY-4	Retry failed authorizations with backoff
-5) PAY-5	Settlement report off by one day
-6) PAY-6	Batch scoring is 4x slower than target
-7) PAY-7	Spike: graph features for chargeback risk
-8) PAY-8	Drop the legacy /v1/charge endpoint
-fzf not found; pick a number: 6
-PAY-6  Batch scoring is 4x slower than target  [IN_PROGRESS]
-id:        01KYHXAZNMGR9PNVV5XGXW714K
-type:      ticket
-subtype:   bug
-...
-```
-
-That fallback has no cancel gesture, so an unreadable or out-of-range answer
-is a real error rather than a quiet no-op.
-
-`--fzf` exists to make the fallback impossible. In a script or a keybinding
-that assumes fzf's behaviour, the numbered prompt silently consuming stdin
-would be worse than a clean failure:
-
-```
-$ kira discover --fzf
-kira: discover: --fzf given but fzf is not on PATH
-```
-
-`--json` is rejected outright — `discover` is interactive by definition:
-
-```
-$ kira discover --json
-{"error":"discover: --json is not supported","hint":"discover is an interactive picker;
-script against `kira list --json` or `kira show --json` instead","code":1}
-```
 
 ---
 

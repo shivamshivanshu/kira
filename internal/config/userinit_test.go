@@ -45,22 +45,8 @@ func TestUserConfigTemplateMatchesDefaults(t *testing.T) {
 	}
 
 	wantWorkon := def.Workon
-	wantWorkon.BranchPattern, wantWorkon.Casing = "", ""
+	wantWorkon.BranchPattern = ""
 	if !reflect.DeepEqual(got.Workon, wantWorkon) {
 		t.Errorf("template workon defaults drifted:\n got  %+v\n want %+v", got.Workon, wantWorkon)
-	}
-}
-
-func TestUserHooksTemplateIsValid(t *testing.T) {
-	t.Parallel()
-	var hooks []datamodel.AutomationHook
-	if err := yaml.Unmarshal([]byte(uncomment(mustTemplate(userHooksYAMLName))), &hooks); err != nil {
-		t.Fatalf("uncommented hooks template is not valid YAML: %v", err)
-	}
-	if len(hooks) == 0 {
-		t.Fatal("hooks template must carry an example hook")
-	}
-	if err := validateAutomationHooks("hooks", hooks); err != nil {
-		t.Fatalf("hooks template example is invalid: %v", err)
 	}
 }

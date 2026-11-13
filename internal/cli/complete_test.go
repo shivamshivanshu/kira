@@ -79,38 +79,3 @@ func TestPositionalCompleters(t *testing.T) {
 	}
 }
 
-// create's --type is a deprecated alias for --subtype, so it must offer the
-// subtype vocabulary, not the ticket/epic types that list --type filters on.
-func TestCreateTypeFlagCompletesSubtypes(t *testing.T) {
-	dir := initFixture(t)
-	got := complete(t, dir, "create", "--type", "")
-	if hasSuggestion(got, datamodel.TypeTicket) {
-		t.Errorf("create --type = %v, want subtypes, not item types", got)
-	}
-	if len(got) == 0 {
-		t.Fatal("create --type offered nothing")
-	}
-	if list := complete(t, dir, "list", "--type", ""); !hasSuggestion(list, datamodel.TypeTicket) {
-		t.Errorf("list --type = %v, want it to still include %q", list, datamodel.TypeTicket)
-	}
-}
-
-func TestFieldFilterCompletion(t *testing.T) {
-	dir := initFixture(t)
-	s, cfg := reopen(t, dir)
-	if _, err := s.Create(cfg, core.CreateOpts{Type: datamodel.TypeTicket, Title: "T", NoEdit: true}); err != nil {
-		t.Fatalf("create: %v", err)
-	}
-
-	names := complete(t, dir, "list", "--field", "")
-	if !hasSuggestion(names, "state=") || !hasSuggestion(names, "priority=") {
-		t.Errorf("--field <TAB> = %v, want field names suffixed with '='", names)
-	}
-	values := complete(t, dir, "list", "--field", "state=")
-	if !hasSuggestion(values, "state=TODO") {
-		t.Errorf("--field state=<TAB> = %v, want that field's values", values)
-	}
-	if got := complete(t, dir, "list", "--field", "nosuch="); len(got) != 0 {
-		t.Errorf("--field nosuch=<TAB> = %v, want nothing", got)
-	}
-}

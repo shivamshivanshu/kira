@@ -9,7 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-//go:embed templates/config.yaml templates/hooks.yaml
+//go:embed templates/config.yaml
 var userTemplateFS embed.FS
 
 func mustTemplate(name string) string {
@@ -31,23 +31,17 @@ func InitUser(env func(string) string) (*datamodel.ConfigInitResult, error) {
 	if present := PresentUserFiles(dir); len(present) > 0 {
 		return &datamodel.ConfigInitResult{Path: dir, Created: false, Files: present}, nil
 	}
-	written := make([]string, 0, 2)
-	for _, name := range []string{userConfigFileName, userHooksYAMLName} {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte(mustTemplate(name)), 0o644); err != nil {
-			return nil, errx.Env("writing %s: %v", filepath.Join(dir, name), err)
-		}
-		written = append(written, name)
+	path := filepath.Join(dir, userConfigFileName)
+	if err := os.WriteFile(path, []byte(mustTemplate(userConfigFileName)), 0o644); err != nil {
+		return nil, errx.Env("writing %s: %v", path, err)
 	}
-	return &datamodel.ConfigInitResult{Path: dir, Created: true, Files: written}, nil
+	return &datamodel.ConfigInitResult{Path: dir, Created: true, Files: []string{userConfigFileName}}, nil
 }
 
 // PresentUserFiles returns which kira config files exist in the given directory.
 func PresentUserFiles(dir string) []string {
-	present := make([]string, 0, 2)
-	for _, name := range []string{userConfigFileName, userHooksYAMLName} {
-		if fileExists(filepath.Join(dir, name)) {
-			present = append(present, name)
-		}
+	if fileExists(filepath.Join(dir, userConfigFileName)) {
+		return []string{userConfigFileName}
 	}
-	return present
+	return []string{}
 }

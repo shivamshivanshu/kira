@@ -1,10 +1,5 @@
 name: Perf budget (non-gating)
 
-# Same-job A/B: build the merge-base and HEAD binaries on one runner and run
-# them interleaved so runner speed cancels in the ratio. This job is a trend
-# report — it goes red only on harness failure or the cold-start tripwire,
-# never on the benchstat ratio (promotion to a failing gate is WP-7.7).
-
 on:
   pull_request:
   push:
@@ -20,91 +15,12 @@ jobs:
       KIRA_PERF: "1"
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26'
 
-      # benchstat lives in CI only, never in the project go.mod.
-      - name: Install benchstat
-        run: go install golang.org/x/perf/cmd/benchstat@latest
-
-      - name: Resolve merge-base
-        id: base
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            base_ref="${{ github.event.pull_request.base.sha }}"
-          else
-            base_ref="${{ github.event.before }}"
-          fi
-          merge_base="$(git merge-base "$base_ref" HEAD || echo HEAD~1)"
-          echo "sha=$merge_base" >> "$GITHUB_OUTPUT"
-          echo "merge-base: $merge_base"
-
-      # Build both binaries. HEAD is built from the checkout; the merge-base is
-      # built from a throwaway worktree so its source never contaminates HEAD.
       - name: Build HEAD binary
         run: go build -o /tmp/kira-head ./cmd/kira
-
-      - name: Build merge-base binary
-        run: |
-          git worktree add /tmp/base-tree "${{ steps.base.outputs.sha }}"
-          (cd /tmp/base-tree && go build -o /tmp/kira-base ./cmd/kira)
-
-      # Compile the same benchmark workloads against both revisions. Production
-      # code comes from each revision; benchmark-only files come from HEAD.
-      #
-      # HEAD's benchmark only compiles against the merge-base while it uses no
-      # API and no language version newer than the base. A merge-base older
-      # than a go.mod bump or an API rename legitimately fails that, so the
-      # base side is best-effort: a package that will not build there drops out
-      # of the A/B rather than reddening a job whose only real signals are the
-      # HEAD-side tripwires below.
-      - name: Build package benchmarks
-        run: |
-          ab_pkgs=""
-          for pkg in core query webui; do
-            go test -c -o "/tmp/kira-head-$pkg.test" "./internal/$pkg"
-            if [ ! -d "/tmp/base-tree/internal/$pkg" ]; then
-              echo "::notice title=Perf A/B skipped::$pkg — the package does not exist at the merge-base"
-              continue
-            fi
-            cp "internal/$pkg/performance_bench_test.go" "/tmp/base-tree/internal/$pkg/performance_bench_test.go"
-            if (cd /tmp/base-tree && go test -c -o "/tmp/kira-base-$pkg.test" "./internal/$pkg") 2>"/tmp/base-$pkg.err"; then
-              ab_pkgs="$ab_pkgs $pkg"
-            else
-              echo "::notice title=Perf A/B skipped::$pkg — HEAD's benchmark does not compile against the merge-base"
-              head -5 "/tmp/base-$pkg.err" | sed 's/^/    /'
-              rm -f "/tmp/base-tree/internal/$pkg/performance_bench_test.go"
-            fi
-          done
-          echo "ab_pkgs=$ab_pkgs" >> "$GITHUB_ENV"
-
-      - name: Interleaved A/B benchmarks
-        run: |
-          for sample in $(seq 1 10); do
-            # Alternate which revision goes first to reduce ordering effects.
-            revisions="base head"
-            if [ $((sample % 2)) -eq 0 ]; then revisions="head base"; fi
-            for revision in $revisions; do
-              KIRA_BIN="/tmp/kira-$revision" go test -run '^$' \
-                -bench='Benchmark(Commands|Mutations|StatsCache)$' -benchtime=3x -count=1 ./tests/perf/ >> "$revision.txt"
-              for pkg in $ab_pkgs; do
-                "/tmp/kira-$revision-$pkg.test" -test.run='^$' \
-                  -test.bench='Benchmark(EpicProgress|SelectiveQuery|RenderPage)$' \
-                  -test.benchtime=200ms -test.count=1 >> "$revision.txt"
-              done
-            done
-          done
-
-      - name: A/B ratio (2x threshold, informational)
-        continue-on-error: true
-        run: |
-          echo '## Perf A/B (merge-base vs HEAD)' >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          benchstat base.txt head.txt | tee -a "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       # Deterministic proxies + cold-start tripwire. These run against HEAD and
       # a harness failure (command error, non-deterministic spawn count, or a
@@ -117,12 +33,3 @@ jobs:
             -run 'TestSpawnCounts|TestScaling|TestColdStartSmoke|TestColdStatsSpawnScaling' ./tests/perf/ \
             | tee -a "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload trend artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: perf-report
-          path: |
-            base.txt
-            head.txt

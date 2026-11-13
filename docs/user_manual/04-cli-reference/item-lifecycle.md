@@ -499,7 +499,7 @@ kira link <id> [flags]
 | --- | --- | --- |
 | `--blocked-by` | string | Blocking item to add, or remove with `--remove`. |
 | `--duplicate-of` | string | Item to add to `links.duplicate_of`, or remove with `--remove`. |
-| `--epic` | string | Epic parent to set, or clear with `--remove`. |
+| `--parent` | string | Epic parent to set, or clear with `--remove`. |
 | `--relates` | string | Item to add to `links.relates`, or remove with `--remove`. |
 | `--force` | bool | Accept field values outside the configured vocabulary. |
 | `--remove` | bool | Remove the given edge instead of adding it. |
@@ -507,7 +507,7 @@ kira link <id> [flags]
 ### Adding and removing a dependency
 
 ```console
-$ kira link KIRA-3 --epic KIRA-2
+$ kira link KIRA-3 --parent KIRA-2
 Linked KIRA-3
 
 $ kira link KIRA-3 --blocked-by KIRA-4
@@ -570,7 +570,7 @@ message:
 
 ```console
 $ kira link KIRA-8 --relates KIRA-9 --blocked-by KIRA-5
-kira: give exactly one of --epic, --blocked-by, --relates, --duplicate-of
+kira: give exactly one of --parent, --blocked-by, --relates, --duplicate-of
 ```
 
 When a link makes no change — adding an edge that already exists — the command

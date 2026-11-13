@@ -9,7 +9,7 @@ import (
 
 var sample = showfmt.Item{ID: "T1", Number: "KIRA-140", Title: "Fix snapshot dedup"}
 
-var kebab = datamodel.Workon{BranchPattern: "{key}/{number}-{slug}", Casing: datamodel.CasingKebab}
+var kebab = datamodel.Workon{BranchPattern: "{key}/{number}-{slug}"}
 
 func TestFormat(t *testing.T) {
 	cases := []struct {
@@ -39,8 +39,7 @@ func TestBranchFollowsWorkonConfig(t *testing.T) {
 		w    datamodel.Workon
 		want string
 	}{
-		{"snake", datamodel.Workon{BranchPattern: "{key}/{number}-{slug}", Casing: datamodel.CasingSnake}, "kira/kira_140-fix_snapshot_dedup"},
-		{"custom pattern", datamodel.Workon{BranchPattern: "ticket/{number}", Casing: datamodel.CasingKebab}, "ticket/kira-140"},
+		{"custom pattern", datamodel.Workon{BranchPattern: "ticket/{number}"}, "ticket/kira-140"},
 	}
 	for _, tc := range cases {
 		got, _ := showfmt.Format(showfmt.FormBranch, sample, tc.w)

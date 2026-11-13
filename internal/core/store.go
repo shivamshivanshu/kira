@@ -17,7 +17,6 @@ type Store struct {
 	root     string
 	store    *storage.FS
 	prompter Prompter
-	trust    string
 }
 
 func newStore(root string) *Store {

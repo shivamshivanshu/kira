@@ -43,7 +43,7 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 		if target == "" {
 			continue
 		}
-		mv, mvErr := b.Move(cand.ULID, target, MoveOpts{Force: true, Source: datamodel.SourceTrailer})
+		mv, mvErr := b.Move(cand.ULID, target, MoveOpts{Force: true})
 		if mvErr != nil {
 			closeFailed(it.Number, mvErr)
 			continue

@@ -36,11 +36,10 @@ sync:
 
 # workon: branch and worktree naming (built-in defaults shown; uncomment a key to pin it for this repo)
 #   branch_pattern: "{key}/{number}-{slug}"   # tokens: {key} {number} {slug}
-#   casing: kebab             # kebab | snake: casing of {slug} in the branch name
 
 # ui: TUI and board appearance (personal presentation; prefer ~/.config/kira/config.yaml so pins are not shared across clones)
 #   icons: auto               # auto | nerd | emoji | text
-#   background: auto          # auto | dark | light
+#   background: dark          # dark | light
 
 estimate:
   unit: points                # points | hours

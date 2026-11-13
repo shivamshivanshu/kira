@@ -9,22 +9,20 @@ type Config struct {
 	Labels  Vocab    `yaml:"labels"`
 	People  People   `yaml:"people"`
 
-	Filters    map[string]string `yaml:"filters"`
-	Boards     []Board           `yaml:"boards,omitempty"`
-	Sprints    []Sprint          `yaml:"sprints"`
-	Commit     Commit            `yaml:"commit"`
-	Merge      Merge             `yaml:"merge"`
-	Sync       Sync              `yaml:"sync"`
-	Workon     Workon            `yaml:"workon"`
-	UI         UI                `yaml:"ui"`
-	Git        Git               `yaml:"git"`
-	Estimate   Estimate          `yaml:"estimate"`
-	Automation []AutomationHook  `yaml:"automation"`
+	Filters  map[string]string `yaml:"filters"`
+	Boards   []Board           `yaml:"boards,omitempty"`
+	Sprints  []Sprint          `yaml:"sprints"`
+	Commit   Commit            `yaml:"commit"`
+	Merge    Merge             `yaml:"merge"`
+	Sync     Sync              `yaml:"sync"`
+	Workon   Workon            `yaml:"workon"`
+	UI       UI                `yaml:"ui"`
+	Git      Git               `yaml:"git"`
+	Estimate Estimate          `yaml:"estimate"`
 
-	UserAutomation    []AutomationHook `yaml:"-"`
-	UserCommitSubject string           `yaml:"-"`
-	UIProvenance      Provenance       `yaml:"-"`
-	WorkonProvenance  Provenance       `yaml:"-"`
+	UserCommitSubject string     `yaml:"-"`
+	UIProvenance      Provenance `yaml:"-"`
+	WorkonProvenance  Provenance `yaml:"-"`
 }
 
 type Project struct {
@@ -69,7 +67,6 @@ type Sync struct {
 
 type Workon struct {
 	BranchPattern string `yaml:"branch_pattern"`
-	Casing        Casing `yaml:"casing"`
 	Worktree      bool   `yaml:"worktree"`
 	WorktreeDir   string `yaml:"worktree_dir"`
 }

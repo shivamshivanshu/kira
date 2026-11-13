@@ -34,11 +34,9 @@ capture under the active ticket), `edit` (editor or `--field`, bulk), `move`
 (workflow transitions, bulk), `assign`, `label create/list/add/rm`, `link`
 (epic parent, blocked-by, typed links), `comment`, `show`.
 
-**Views & organization** — `list` (native filter flags, generic `--field
-key=value` equality filters, `--query` expressions, saved `--filter` queries),
+**Views & organization** — `list` (native filter flags, `--query` expressions, saved `--filter` queries),
 `tree`, `board` (kanban, WIP limits), `find` (ripgrep-backed full-text search),
-`discover` (fzf picker), `now` (active ticket), `stats` (completion, cycle/lead
-time, throughput), `log` (field history + linked commits), `blame` (per-field
+`now` (active ticket), `stats` (completion, cycle/lead time, throughput), `log` (field history + linked commits), `blame` (per-field
 provenance), `diff`/`changes` (vs. a git ref).
 
 **Sprints & boards** — `sprint create/list/activate/close` (with `--move-to`
@@ -52,12 +50,6 @@ merge driver that auto-resolves same-field conflicts on kira item files,
 push), `commit`, `doctor` (id collisions, dangling refs, schema violations),
 `validate`, `index` (refresh the derived sqlite cache). Commit trailers
 (`Kira-Ticket`, `Kira-Closes`) link and auto-close tickets from commit messages.
-
-**Automation** — config-driven hooks fire on `item.created`,
-`item.state_changed`, and `sync.completed`, matched by state/type, run with a
-timeout, and receive a versioned JSON payload on stdin (plus env-var mirrors).
-`automation trust` hashes and trusts the current hook config; `automation
-list` shows defined hooks and trust status.
 
 **Configuration** — label/people vocab, boards, commit mode
 (auto/manual/prompt), merge policy, sprints, saved filters, and a personal
@@ -97,7 +89,7 @@ The command bar also runs supported CLI commands, including `config set`, `sync`
 and `workon`; use `.` for the selected item, for example `show .` or
 `move . IN_PROGRESS`. Explicit sync remotes must already be configured by name.
 The server binds only to localhost and all actions target the selected checkout.
-Store initialization, hook installation/removal, automation trust, personal config
+Store initialization, hook installation/removal, personal config
 initialization, creating worktrees, file-based imports, and interactive editor
 commands remain terminal-only. The Go binary embeds the dashboard; no separate
 frontend build or runtime is needed.
@@ -111,6 +103,6 @@ points.
 
 - **[docs/user_manual/](docs/user_manual/README.md)** — the full user manual: getting started, concepts, a complete CLI reference, configuration reference, the TUI guide, recipes, and current limitations.
 - `kira --help` and `kira <command> --help` — the command surface.
-- `kira schema` / [schema/kira.json](schema/kira.json) — published JSON schema for every `--json` output and the automation hook-stdin payload.
+- `kira schema` — JSON schema for every `--json` output.
 - `kira version` — build version.
 - `.kira/config.yaml` — the annotated project configuration; `kira config init` scaffolds personal preferences.

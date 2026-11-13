@@ -11,11 +11,9 @@ import (
 	"github.com/shivamshivanshu/kira/internal/query"
 )
 
-// FieldFilter is one `--field key=value` equality filter. It desugars to the
-// same query predicate a native flag or a `key = value` expression produces.
-type FieldFilter struct {
-	Key   string
-	Value string
+type flagMatch struct {
+	key   string
+	value string
 }
 
 type ListOpts struct {
@@ -31,7 +29,6 @@ type ListOpts struct {
 	Board    string
 	Filter   string
 	Query    string
-	Fields   []FieldFilter
 	Tree     bool
 	At       string
 }
@@ -116,10 +113,6 @@ func (s *Store) queryOptions(ld *loaded) query.Options {
 	}
 }
 
-func FilterableFields() []string {
-	return query.FieldNames()
-}
-
 func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel.ListItem, map[string]bool, error) {
 	ld, err := s.read(cfg, loadOpts{})
 	if err != nil {
@@ -176,16 +169,16 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 	var preds []query.Predicate
 	var order *query.Order
 	var notes []datamodel.Warning
-	flat := []FieldFilter{
+	flagMatches := []flagMatch{
 		{"type", opts.Type}, {"subtype", opts.Subtype}, {"state", opts.State}, {"category", opts.Category},
 		{"owner", opts.Owner}, {"label", opts.Label}, {"parent", opts.Parent},
 		{"priority", opts.Priority}, {"sprint", opts.Sprint}, {"board", opts.Board},
 	}
-	addMatch := func(f FieldFilter) error {
-		if f.Value == "" {
+	addMatch := func(f flagMatch) error {
+		if f.value == "" {
 			return nil
 		}
-		p, warns, err := query.Match(f.Key, f.Value, qopts)
+		p, warns, err := query.Match(f.key, f.value, qopts)
 		if err != nil {
 			return err
 		}
@@ -195,14 +188,9 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 		}
 		return nil
 	}
-	for _, f := range flat {
+	for _, f := range flagMatches {
 		if err := addMatch(f); err != nil {
 			return nil, nil, nil, err
-		}
-	}
-	for _, f := range opts.Fields {
-		if err := addMatch(f); err != nil {
-			return nil, nil, nil, fieldFilterErr(f.Key, err)
 		}
 	}
 

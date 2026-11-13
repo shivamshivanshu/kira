@@ -182,11 +182,9 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 	}
 	subject := cfg.Commit.SubjectPrefix + finalItem.Number + " create " + quoteTitle(finalItem.Title)
 	cs := &datamodel.ChangeSet{
-		Kind:    datamodel.ChangeCreated,
 		After:   finalItem,
 		Paths:   []string{path},
 		Subject: subject,
-		Source:  datamodel.SourceCLI,
 	}
 	if err := s.commit(cfg, cs); err != nil {
 		return nil, err

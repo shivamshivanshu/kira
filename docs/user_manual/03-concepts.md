@@ -320,7 +320,7 @@ Items refer to each other through three mechanisms.
 All of them are set with `kira link`:
 
 ```console
-$ kira link DEMO-1 --epic DEMO-4
+$ kira link DEMO-1 --parent DEMO-4
 Linked DEMO-1
 
 $ kira link DEMO-1 --blocked-by DEMO-3
@@ -371,12 +371,11 @@ The user tier accepts only three top-level keys:
 | Key | Covers |
 | --- | --- |
 | `ui` | Icons, colour, background, editor, list columns, TUI layout. |
-| `workon` | Branch naming pattern, casing, `worktree` and `worktree_dir`. |
+| `workon` | Branch naming pattern, `worktree` and `worktree_dir`. |
 | `commit` | `subject` only — a personal commit-subject override. |
 
 Anything else in the user file is ignored with a warning naming the offending
-key as repo-authoritative. Personal automation hooks live in a separate file,
-`~/.config/kira/hooks.yaml`, not in the user config.
+key as repo-authoritative.
 
 `kira config init` scaffolds the user config directory with commented
 defaults, and `kira config set` edits a scalar key in place while preserving

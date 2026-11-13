@@ -76,7 +76,7 @@ func (s *Store) doctorEnv() doctor.Env {
 	if !env.GitInstalled {
 		return env
 	}
-	env.MissingOptionalBins = missingBinaries("rg", "fzf")
+	env.MissingOptionalBins = missingBinaries("rg")
 	repo := s.repo()
 	env.InsideWorkTree = repo.InsideWorkTree() == nil
 	if !env.InsideWorkTree {

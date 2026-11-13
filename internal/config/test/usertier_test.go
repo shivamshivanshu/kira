@@ -96,7 +96,7 @@ func TestSandboxUnsetHomeYieldsNoTier(t *testing.T) {
 	if warn != "" {
 		t.Fatalf("unset home must not warn, got %q", warn)
 	}
-	if cfg.UI.Icons != datamodel.IconAuto || len(cfg.UserAutomation) != 0 {
+	if cfg.UI.Icons != datamodel.IconAuto {
 		t.Fatal("unset home must leave builtin defaults untouched")
 	}
 }
@@ -113,7 +113,7 @@ func TestUIUserOverridesBuiltinRepoOverridesUser(t *testing.T) {
 	if cfg.UI.Icons != datamodel.IconText {
 		t.Fatalf("user ui.icons should override builtin: got %q", cfg.UI.Icons)
 	}
-	if cfg.UI.Background != datamodel.BackgroundAuto {
+	if cfg.UI.Background != datamodel.BackgroundDark {
 		t.Fatalf("unset user subkey must keep builtin default: got %q", cfg.UI.Background)
 	}
 
@@ -136,20 +136,6 @@ func TestRepoAuthoritativeKeyIgnoredWithWarning(t *testing.T) {
 		if !strings.Contains(warn, "key \""+key+"\" is repo-authoritative; ignored") {
 			t.Fatalf("missing ignored-key warning for %q in %q", key, warn)
 		}
-	}
-}
-
-func TestMisplacedAutomationKeyInConfigWarns(t *testing.T) {
-	t.Parallel()
-	dir, env := userTierEnv(t)
-	writeUserFile(t, dir, "config.yaml", "automation:\n  - on: item.created\n    run: 'true'\n")
-	cfg, warn := loadWith(t, minimalRepo, env)
-
-	if !strings.Contains(warn, "personal hooks belong in hooks.yaml; ignored") {
-		t.Fatalf("misplaced automation key must warn, got %q", warn)
-	}
-	if len(cfg.UserAutomation) != 0 {
-		t.Fatalf("automation in config.yaml must not load: %+v", cfg.UserAutomation)
 	}
 }
 
@@ -189,50 +175,6 @@ func TestInvalidUserUIIgnored(t *testing.T) {
 	}
 	if cfg.UI.Icons != datamodel.IconAuto {
 		t.Fatalf("invalid user ui must be ignored: got %q", cfg.UI.Icons)
-	}
-}
-
-func TestUserHooksFromHooksYAML(t *testing.T) {
-	t.Parallel()
-	dir, env := userTierEnv(t)
-	writeUserFile(t, dir, "hooks.yaml", "- name: mine\n  on: item.created\n  run: touch marker\n")
-	cfg, warn := loadWith(t, minimalRepo, env)
-	if warn != "" {
-		t.Fatalf("valid user hooks must not warn, got %q", warn)
-	}
-	if len(cfg.Automation) != 0 {
-		t.Fatal("user hooks must not leak into repo Automation")
-	}
-	if len(cfg.UserAutomation) != 1 || cfg.UserAutomation[0].Name != "mine" {
-		t.Fatalf("user hook not loaded: %+v", cfg.UserAutomation)
-	}
-}
-
-func TestOnlyHooksYAMLIsRead(t *testing.T) {
-	t.Parallel()
-	dir, env := userTierEnv(t)
-	writeUserFile(t, dir, "hooks.yaml", "- name: fromyaml\n  on: item.created\n  run: 'true'\n")
-	writeUserFile(t, dir, "hooks.json", `[{"name":"fromjson","on":"item.created","run":"true"}]`)
-	cfg, warn := loadWith(t, minimalRepo, env)
-
-	if warn != "" {
-		t.Fatalf("hooks.yaml alone is read; no warning expected, got %q", warn)
-	}
-	if len(cfg.UserAutomation) != 1 || cfg.UserAutomation[0].Name != "fromyaml" {
-		t.Fatalf("only hooks.yaml must load: %+v", cfg.UserAutomation)
-	}
-}
-
-func TestInvalidUserHooksIgnored(t *testing.T) {
-	t.Parallel()
-	dir, env := userTierEnv(t)
-	writeUserFile(t, dir, "hooks.yaml", "- name: bad\n  on: not.an.event\n  run: 'true'\n")
-	cfg, warn := loadWith(t, minimalRepo, env)
-	if warn == "" {
-		t.Fatal("invalid user hook must warn")
-	}
-	if len(cfg.UserAutomation) != 0 {
-		t.Fatalf("invalid user hook must be dropped: %+v", cfg.UserAutomation)
 	}
 }
 

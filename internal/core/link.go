@@ -47,7 +47,7 @@ func (s *Store) Link(cfg *datamodel.Config, ref string, opts LinkOpts) (*datamod
 		return fmt.Sprintf("%s%s %s %s %s", cfg.Commit.SubjectPrefix, orig.Number, verb, edge, opts.Ref)
 	}
 
-	updated, changed, warns, err := s.mutate(cfg, ref, opts.Force, apply, subjectOf, datamodel.SourceCLI)
+	updated, changed, warns, err := s.mutate(cfg, ref, opts.Force, apply, subjectOf)
 	if err != nil {
 		return nil, err
 	}

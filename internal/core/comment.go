@@ -63,12 +63,9 @@ func (s *Store) Comment(cfg *datamodel.Config, ref string, opts CommentOpts) (*d
 	}
 	subject := cfg.Commit.SubjectPrefix + orig.Number + " comment"
 	cs := &datamodel.ChangeSet{
-		Kind:    datamodel.ChangeCommented,
-		Before:  orig,
 		After:   orig,
 		Paths:   []string{path},
 		Subject: subject,
-		Source:  datamodel.SourceCLI,
 	}
 	if err := s.commit(cfg, cs); err != nil {
 		return nil, err

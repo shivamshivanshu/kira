@@ -956,10 +956,9 @@ $ git status -sb
 ```
 
 1. **The branch.** Named from `workon.branch_pattern` (default
-   `{key}/{number}-{slug}`) with `{slug}` cased per `workon.casing` (default
-   `kebab`) — so `WEB-1 Dark mode toggle` becomes
-   `web/web-1-dark-mode-toggle`. See
-   [Configuration reference](../05-configuration-reference.md) for both keys.
+   `{key}/{number}-{slug}`) with words joined by `-` — so `WEB-1 Dark mode
+   toggle` becomes `web/web-1-dark-mode-toggle`. See
+   [Configuration reference](../05-configuration-reference.md) for the key.
 2. **The state.** The ticket moves to the first state in the `doing` category
    its workflow declares. A ticket already in a doing state is left alone.
 3. **The active pointer.** The ticket becomes *active* in this clone, which is
@@ -1001,14 +1000,12 @@ ticket from the state visible on the branch you were *leaving* (`TODO` on
 was already `IN_PROGRESS`. Nothing changed; it is a no-op re-assertion, not a
 second transition.
 
-The branch pattern is honoured, so a repo that prefers flat snake-cased names
-gets them:
+The branch pattern is honoured, so a repo that prefers flat names gets them:
 
 ```console
 $ kira config set workon.branch_pattern "{key}-{number}"
-$ kira config set workon.casing snake
 $ kira workon WEB-5
-Created branch web-web_5 for WEB-5
+Created branch web-web-5 for WEB-5
 ```
 
 ### `--no-move`

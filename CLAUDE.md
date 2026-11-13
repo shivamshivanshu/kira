@@ -62,7 +62,6 @@ see `REVIEW.md` for the full bottom-up file list):
 - `treeish` — loads an item set + config from any git tree-ish (for `diff`/`changes`/merge-driver).
 - `hooks` — tracked git-hook shim scripts + their pure logic.
 - `syncx` — report shape, dirty-tree policy, seams for `sync`.
-- `automation` — user-defined observer scripts firing post-commit (distinct from `hooks`, which is git-hook territory).
 - `workon` — pure branch-naming/slug/active-pointer logic.
 - `showfmt` — item-reference string forms shared by TUI/CLI.
 - `warningfmt` — renders `datamodel.Warning` codes as user-facing text shared by CLI/webui.
@@ -73,10 +72,9 @@ see `REVIEW.md` for the full bottom-up file list):
 - `webui` — embedded HTTP web dashboard served by `kira server`; mutations go through `core`.
 - `cli` — cobra command tree; every command is a thin argv/flag adapter over `core` (launches `tui`/`webui`).
 - `seed` — deterministic fixture generation (perf harness, tour/vhs demos).
-- Small leaf utilities: `errx` (user-facing errors + suggestions), `ptr`, `rgx`, `fzfx` (fzf picker), `statsfmt`, `termx`, `timex`, `clipx` (OSC 52 clipboard), `editorx`, `commandline` (shell-style argv splitting), `testutil` (hermetic git repo test helpers), `setx` (generic dedup/set helpers, zero deps).
+- Small leaf utilities: `errx` (user-facing errors + suggestions), `ptr`, `rgx`, `statsfmt`, `termx`, `timex`, `clipx` (OSC 52 clipboard), `editorx`, `commandline` (shell-style argv splitting), `testutil` (hermetic git repo test helpers), `setx` (generic dedup/set helpers, zero deps).
 
-`cmd/kira` — the entry point (`os.Exit(cli.Main())`). `schema/kira.json` —
-generated (not hand-edited) output-shape schema. `tests/` — `contract`,
+`cmd/kira` — the entry point (`os.Exit(cli.Main())`). `tests/` — `contract`,
 `e2e`, `integration`, `nocolor`, `perf`, each its own package.
 
 ## CI/CD (`.github/workflows/ci.yml`)
@@ -86,9 +84,9 @@ generated (not hand-edited) output-shape schema. `tests/` — `contract`,
 - `tag` (main only, after build-test+lint): computes and pushes the next `vX.Y.Z` patch tag. Uses the default `GITHUB_TOKEN` — pushes made with that token do **not** trigger other workflow runs, so anything that should fire on the new tag must be a job in this same workflow (not a separate `on: push: tags` workflow), consuming the tag via a job output.
 - `release` (needs `tag`): checks out the tag, runs `goreleaser/goreleaser-action@v6` (pinned `v2.5.1`) against `.goreleaser.yaml` — builds `cmd/kira` for linux/darwin × amd64/arm64, `CGO_ENABLED=0` + `-trimpath` (static, reproducible), `-ldflags "-s -w -X internal/cli.version=..."`, publishes `.tar.gz` archives + checksums to GitHub Releases.
 
-`.github/workflows/perf.yml` — non-gating A/B perf trend report (same-runner,
-interleaved base/HEAD builds via `benchstat`), never fails the build on ratio,
-only on harness failure or cold-start tripwire.
+`.github/workflows/perf.yml` — non-gating perf check: runs the deterministic
+`tests/perf` proxies (spawn counts, scaling) against HEAD and fails only on
+harness failure or the cold-start tripwire.
 
 ## Gotchas hit in practice
 

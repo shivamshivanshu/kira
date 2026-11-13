@@ -140,7 +140,7 @@ CORE-6    ticket  Audit log retention policy
 ```
 
 `kira tree CORE-2` scopes the render to one epic's subtree. To reparent an
-existing ticket, use `kira link CORE-6 --epic CORE-2`. Epics cannot be nested
+existing ticket, use `kira link CORE-6 --parent CORE-2`. Epics cannot be nested
 inside other epics — the hierarchy is deliberately one level deep. See
 [item lifecycle](04-cli-reference/item-lifecycle.md) for the rest of `create`,
 `link`, and `move`.
@@ -360,17 +360,6 @@ passed straight through to ripgrep, so `-i`, `-C 2`, and `-w` all work. Use it
 when you remember a phrase from the description but not the number — `kira list
 --query` only searches titles.
 
-### Jump to a ticket without remembering its number
-
-```console
-$ kira discover
-$ kira discover --action edit
-```
-
-`kira discover` opens an fzf picker over every ticket and epic; the selection is
-shown, or opened in your editor with `--action edit`. Add `--fzf` to make the
-command fail loudly rather than fall back when fzf is not installed.
-
 ### Run any CLI command from inside the TUI
 
 Press `:` in the TUI to open a command bar that accepts any kira command line,
@@ -404,58 +393,6 @@ is kept as a permanent alias. Every commit message, code comment, and chat
 message that mentions `CORE-6` keeps resolving — forever. Boards each carry an
 independent numbering sequence; see
 [boards and sprints](04-cli-reference/boards-and-sprints.md).
-
-### Add a personal automation hook
-
-Repository automation lives under `automation:` in `.kira/config.yaml` and is
-shared with everyone. For a hook that is yours alone, use the user tier:
-
-```console
-$ kira config init
-Created user config in /home/you/.config/kira
-  config.yaml
-  hooks.yaml
-```
-
-```yaml
-# ~/.config/kira/hooks.yaml
-- name: log-my-done
-  on: item.state_changed
-  match:
-    to: done
-  run: 'echo "$(date -Is) $KIRA_NUMBER $KIRA_TITLE" >> "$HOME/kira-done.log"'
-```
-
-Quote the `run:` value. It almost always contains a `: ` or a `#`, which
-unquoted YAML will misparse — a malformed hooks file is reported and skipped
-rather than run.
-
-```console
-$ kira automation list
-hook log-my-done on item.state_changed: echo "$(date -Is) $KIRA_NUMBER $KIRA_TITLE" >> "$HOME/kira-done.log" (user)
-trust: not trusted (run `kira automation trust`)
-
-$ kira move CORE-1 WONT_DO
-Moved CORE-1: TODO -> WONT_DO
-
-$ cat ~/kira-done.log
-2026-07-27T19:23:24+05:30 CORE-1 Ship the thing
-```
-
-The `(user)` tag marks the tier. Note that the hook fired even though the line
-below says "not trusted" — that status describes the *repository* tier, which
-is empty here. The two tiers differ on trust deliberately: hooks you wrote in
-your own `hooks.yaml` run immediately, while repository hooks are code that
-arrived over the network and stay inert until you run `kira automation trust`.
-Editing the repository's automation block revokes that grant automatically, so
-a hook changed by an incoming merge cannot run behind your back.
-
-Hooks receive the event as environment variables (`KIRA_NUMBER`, `KIRA_TITLE`,
-`KIRA_TO`, `KIRA_TO_CATEGORY`, and more) plus a JSON payload on stdin. A hook
-that fails or times out warns on stderr but never fails the operation that
-triggered it — automation cannot wedge your workflow. The full event list and
-hook schema are in the
-[configuration reference](05-configuration-reference.md).
 
 ### Catch malformed tickets in CI or a pre-commit hook
 

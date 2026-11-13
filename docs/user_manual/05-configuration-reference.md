@@ -56,21 +56,18 @@ a repo config that sets it is ignored with a warning:
 .kira/config.yaml: ui.editor is personal; set it in ~/.config/kira/config.yaml; ignored
 ```
 
-Personal automation hooks are a separate file — see
-[`automation`](#automation).
-
 ### Working with the two layers
 
 ```sh
-kira config init      # scaffold ~/.config/kira/{config.yaml,hooks.yaml}, fully commented out
+kira config init      # scaffold ~/.config/kira/config.yaml, fully commented out
 kira config explain   # print the effective rules, tagged (default) / (repo) / (user)
 kira config filters   # list the named saved queries
 kira config set KEY VALUE
 ```
 
-`kira config init` writes both user files with every built-in default present
+`kira config init` writes the user config with every built-in default present
 but commented out, so you uncomment the one line you want to change. It never
-overwrites: if either file already exists it reports what it found and writes
+overwrites: if the file already exists it reports what it found and writes
 nothing.
 
 `kira config explain` is the fastest way to answer "why is kira doing this?".
@@ -78,7 +75,7 @@ Each section carries a provenance tag saying where its values came from:
 
 ```
 ui (repo)
-  icons: auto (override with the KIRA_ICONS env var: nerd|emoji|text|always|never)
+  icons: auto (override with the KIRA_ICONS env var: nerd|emoji|text)
   ...
 
 merge (default)
@@ -96,7 +93,6 @@ fixed list of keys:
 commit.close_trailer   commit.mode        commit.trailer     estimate.unit
 git.landed_ref         merge.policy       project.name       sync.push
 ui.background          ui.icons           workon.branch_pattern
-workon.casing
 ```
 
 Everything else is edited by hand. For the full flags and output of these
@@ -108,7 +104,7 @@ commands, see
 Most mistakes are **hard errors** that fail the command outright:
 
 ```
-kira: config: ui.icons: invalid value "bogus", want one of [auto nerd emoji text always never]
+kira: config: ui.icons: invalid value "bogus", want one of [auto nerd emoji text]
 ```
 
 A small set of UI issues are **warnings** — the value is dropped and kira
@@ -564,7 +560,6 @@ pipeline.
 ```yaml
 workon:
   branch_pattern: "{key}/{number}-{slug}"
-  casing: kebab                          # kebab | snake
   worktree: false
   worktree_dir: "../{repo}-{branch}"
 ```
@@ -572,7 +567,6 @@ workon:
 | Key | Type | Default |
 |---|---|---|
 | `branch_pattern` | template string | `{key}/{number}-{slug}` |
-| `casing` | `kebab` \| `snake` | `kebab` |
 | `worktree` | bool | `false` |
 | `worktree_dir` | template path | `../{repo}-{branch}` |
 
@@ -587,9 +581,6 @@ one branch name, so kira rejects the pattern at load:
 ```
 kira: config: workon.branch_pattern: must contain {number}, got "{key}/{slug}"
 ```
-
-**`casing`** is the word separator used when building `{slug}`: `kebab` gives
-`report-an-unresolvable-ref`, `snake` gives `report_an_unresolvable_ref`.
 
 **`worktree`** makes `kira workon` create a git worktree by default instead of
 switching the current checkout — the same as passing `--worktree` every time.
@@ -618,8 +609,8 @@ genuinely needs it pinned.
 
 ```yaml
 ui:
-  icons: auto              # auto | nerd | emoji | text | always | never
-  background: auto         # auto | dark | light
+  icons: auto              # auto | nerd | emoji | text
+  background: dark         # dark | light
   color: auto              # auto | always | never
   editor: ""
   auto_tui: true
@@ -642,8 +633,8 @@ ui:
 
 | Key | Type | Default |
 |---|---|---|
-| `icons` | `auto` \| `nerd` \| `emoji` \| `text` \| `always` \| `never` | `auto` |
-| `background` | `auto` \| `dark` \| `light` | `auto` |
+| `icons` | `auto` \| `nerd` \| `emoji` \| `text` | `auto` |
+| `background` | `dark` \| `light` | `dark` |
 | `color` | `auto` \| `always` \| `never` | `auto` |
 | `editor` | string | empty (falls back to `$EDITOR`, then `$VISUAL`) |
 | `auto_tui` | bool | `true` |
@@ -653,9 +644,9 @@ ui:
 | `theme` | map slot → hex colour | unset |
 
 **`icons`** picks the glyph set. `nerd` uses Nerd Font glyphs, `emoji` uses
-emoji, `text` uses plain ASCII, and `auto` probes your terminal. `always` and
-`never` force glyphs on or off wholesale. If kira's output shows boxes or
-question marks, you do not have a Nerd Font installed — set `emoji` or `text`.
+emoji, `text` uses plain ASCII, and `auto` probes your terminal. If kira's
+output shows boxes or question marks, you do not have a Nerd Font installed —
+set `emoji` or `text`.
 The `KIRA_ICONS` environment variable overrides this per invocation.
 
 **`background`** tells the TUI and board which palette to assume, for terminals
@@ -774,225 +765,6 @@ estimate:
 The unit for an item's `estimate` field, used when rendering estimates and
 totals. It is a label and a formatting choice — kira does not convert between
 the two or attach any other meaning.
-
----
-
-## `automation`
-
-Shell commands that fire on kira events. Repo-wide automation lives in
-`.kira/config.yaml` under `automation:`; your personal automation lives in a
-separate file, `~/.config/kira/hooks.yaml`.
-
-This repo defines no automation hooks. A representative one:
-
-```yaml
-automation:
-  - name: notify-reviewers
-    on: item.state_changed
-    run: 'curl -sX POST "$WEBHOOK" -d "$KIRA_NUMBER moved to $KIRA_TO"'
-    enabled: true
-    timeout: 10s
-    match:
-      type: ticket
-      to: REVIEW
-```
-
-| Key | Type | Required | Default |
-|---|---|---|---|
-| `name` | string | no | falls back to the event name |
-| `on` | event name | yes | — |
-| `run` | shell command | yes | — |
-| `enabled` | bool | no | `true` |
-| `timeout` | duration string | no | `30s` |
-| `match` | mapping | no | fire on every occurrence |
-
-### Events
-
-| Event | Fires when |
-|---|---|
-| `item.created` | a new item is created |
-| `item.state_changed` | an item moves between states |
-| `sync.completed` | a `kira sync` run finishes |
-
-Any other value is rejected at config load.
-
-### `match`
-
-Narrows a hook to specific occurrences.
-
-| Key | Matches against |
-|---|---|
-| `type` | the item's type (`ticket`, `epic`, …) |
-| `to` | the destination state — **or its category** |
-| `from` | the origin state — **or its category** |
-
-`to` and `from` accept either level, which is often what you want: `to: done`
-fires on every closing transition regardless of which done state it lands in,
-while `to: DONE` fires only for that one state.
-
-All specified conditions must hold. Fields that cannot apply to the event are
-rejected rather than silently ignored — `to`/`from` on `item.created`, and
-`type`/`to`/`from` on `sync.completed`:
-
-```
-kira: config: automation[0].match: to/from are never set on "item.created" events
-```
-
-### How a hook runs
-
-The command runs through `sh -c` with the repo root as its working directory.
-Its stdout and stderr are captured and echoed line by line, prefixed with the
-hook's name:
-
-```
-[automation:notify-reviewers] posted to #eng-reviews
-```
-
-On timeout the whole process group is killed and kira reports it:
-
-```
-[automation:notify-reviewers] timed out after 10s
-```
-
-`timeout` must be a positive duration; the default is 30 seconds. A hook that
-fails does not fail the kira command that triggered it — the error is reported
-and the command still succeeds.
-
-Hooks are protected against recursion: `KIRA_AUTOMATION=1` is set in the
-child's environment, and kira fires no hooks when it sees that variable. A hook
-may safely call `kira` itself without triggering an infinite loop — but note
-that the nested call fires no hooks of its own.
-
-### Environment variables
-
-Every hook receives these thirteen variables, in addition to the ambient
-environment. All are always set; ones that do not apply to the event are empty
-strings.
-
-| Variable | Value |
-|---|---|
-| `KIRA_AUTOMATION` | always `1` — the recursion guard |
-| `KIRA_EVENT` | the event name, e.g. `item.state_changed` |
-| `KIRA_ITEM` | the item's ULID |
-| `KIRA_NUMBER` | the item's display number, e.g. `KIRA-46` |
-| `KIRA_TYPE` | the item's type, e.g. `ticket` |
-| `KIRA_TITLE` | the item's title |
-| `KIRA_FROM` | origin state (state-change events only) |
-| `KIRA_TO` | destination state (state-change events only) |
-| `KIRA_FROM_CATEGORY` | origin state's category |
-| `KIRA_TO_CATEGORY` | destination state's category |
-| `KIRA_SOURCE` | what caused the change: `cli`, `trailer`, or `sync` |
-| `KIRA_ROOT` | absolute path to the repo root |
-| `KIRA_COMMIT` | SHA of the commit kira made for this change |
-
-A real capture from an `item.state_changed` hook:
-
-```
-KIRA_AUTOMATION=1
-KIRA_COMMIT=3a3d641c55c39d9f506f2189ee4d91c7e261093e
-KIRA_EVENT=item.state_changed
-KIRA_FROM=TODO
-KIRA_FROM_CATEGORY=todo
-KIRA_ITEM=01KYHXN3X2T4W078B1V7B2NE27
-KIRA_NUMBER=DEMO-1
-KIRA_ROOT=/home/you/src/demo
-KIRA_SOURCE=cli
-KIRA_TITLE=test item
-KIRA_TO=IN_PROGRESS
-KIRA_TO_CATEGORY=doing
-KIRA_TYPE=ticket
-```
-
-### The stdin payload
-
-For anything richer than the environment variables, read stdin: kira writes a
-single JSON object there.
-
-```json
-{
-  "payload_version": 1,
-  "event": "item.state_changed",
-  "source": "cli",
-  "ts": "2026-07-27T19:24:14+05:30",
-  "repo": "/home/you/src/demo",
-  "actor": { "name": "Ada Lovelace", "email": "ada@example.com" },
-  "changes": { "state": { "old": "TODO", "new": "IN_PROGRESS" } },
-  "from": "TODO",
-  "to": "IN_PROGRESS",
-  "to_category": "doing",
-  "from_category": "todo",
-  "commit": "3a3d641c55c39d9f506f2189ee4d91c7e261093e",
-  "item": { "number": "DEMO-1", "title": "test item", "...": "…" }
-}
-```
-
-`item` is the full item in the same shape `kira show --json` emits — number,
-title, state, labels, links, body, comments and the rest. `changes` maps each
-changed field to its `old` and `new` values. `sync` carries the sync report on
-`sync.completed` events. `payload_version` is `1`; check it if you want your
-script to be robust across kira upgrades.
-
-Fields that do not apply to an event are omitted from the JSON entirely (unlike
-the environment variables, which are present but empty).
-
-### Trust: the security boundary
-
-Repo automation and user automation are trusted differently, and the direction
-may not be the one you expect.
-
-**Repo hooks — from `.kira/config.yaml` — must be explicitly trusted before
-they run.** kira takes a hash of the repo's `automation:` list and stores it
-under `.kira/.cache/`. Until the hash on disk matches the config, no repo hook
-fires, and kira tells you:
-
-```
-kira: 1 automation hook defined but not trusted — run `kira automation trust`
-```
-
-`kira automation trust` grants it. Any subsequent edit to the `automation:`
-list changes the hash and revokes trust, so you are asked again.
-
-**User hooks — from `~/.config/kira/hooks.yaml` — run without any trust step.**
-
-The reason is who wrote the file. `.kira/config.yaml` arrives from other people:
-a `git pull` can bring in a new `automation:` entry, and without a gate that
-would be silent arbitrary code execution on your machine the next time you ran
-any kira command. Cloning a hostile repo would be enough. The trust hash makes
-that impossible — a pulled change to the automation list cannot run until you
-have looked at it and said yes. Your own `hooks.yaml`, by contrast, is a file
-only you can write, so gating it would protect you from nobody.
-
-Inspect what is defined and whether it is trusted:
-
-```sh
-kira automation list
-```
-
-```
-hook dump-env on item.state_changed: env | grep ^KIRA_ | sort > /tmp/env.txt
-hook user-hook on item.state_changed: notify-send kira "$KIRA_NUMBER" (user)
-trust: not trusted (run `kira automation trust`)
-```
-
-The `(user)` suffix marks hooks from your personal file. The `trust:` line
-refers only to the repo hooks; user hooks fire regardless of what it says.
-
-> **Note:** the commented `hooks.yaml` scaffolded by `kira config init` says to
-> run `kira automation trust` after editing it. That appears to be inaccurate —
-> the trust hash covers only the repo's `automation:` list, and user hooks fire
-> without it, which is what actually happens when you test it. Running the
-> command after editing `hooks.yaml` is harmless but unnecessary.
-
-Two further guardrails worth knowing: writing `automation:` into your *user*
-`config.yaml` does not work — personal hooks belong in `hooks.yaml`, and kira
-says so:
-
-```
-~/.config/kira/config.yaml: automation: personal hooks belong in hooks.yaml; ignored
-```
-
-And a malformed `hooks.yaml` — bad YAML, an unknown event, a missing `run` — is
-reported and skipped in full rather than partially applied.
 
 ---
 

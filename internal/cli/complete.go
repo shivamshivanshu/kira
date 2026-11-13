@@ -34,7 +34,6 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 	}
 	if c := subCmd(root, "create"); c != nil {
 		c.ValidArgsFunction = positional(completeStatic(datamodel.ItemTypes))
-		_ = c.RegisterFlagCompletionFunc("type", subtypes)
 	}
 	if c := subCmd(root, "move"); c != nil {
 		c.ValidArgsFunction = positional(items, completeMoveTarget(g))
@@ -83,13 +82,9 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 		"format":     completeStatic(showfmt.Names()),
 		"category":   completeStatic(categoryValues()),
 		"type":       completeStatic(datamodel.ItemTypes),
-		"epic":       containers,
 		"parent":     containers,
 		"blocked-by": items,
 		"board":      activeBoards,
-	}
-	if c := subCmd(root, "list"); c != nil {
-		_ = c.RegisterFlagCompletionFunc("field", completeFieldFilter(flags))
 	}
 	walk(root, func(c *cobra.Command) {
 		for name, fn := range flags {
@@ -104,36 +99,6 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 			}
 		}
 	})
-}
-
-// completeFieldFilter completes `--field key=value` in two stages: the
-// filterable field names before the '=', then that field's own vocabulary,
-// borrowed from the completer already bound to the equivalent native flag.
-func completeFieldFilter(values map[string]completer) completer {
-	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		key, value, hasValue := strings.Cut(toComplete, "=")
-		if !hasValue {
-			return completeFilterableFields(key)
-		}
-		fn, known := values[key]
-		if !known {
-			return nil, cobra.ShellCompDirectiveNoFileComp
-		}
-		vals, _ := fn(cmd, args, value)
-		return decorate(vals, key+"=", ""), cobra.ShellCompDirectiveNoFileComp
-	}
-}
-
-func completeFilterableFields(toComplete string) ([]string, cobra.ShellCompDirective) {
-	return decorate(prefixed(core.FilterableFields(), toComplete), "", "="), cobra.ShellCompDirectiveNoSpace | cobra.ShellCompDirectiveNoFileComp
-}
-
-func decorate(values []string, prefix, suffix string) []string {
-	out := make([]string, len(values))
-	for i, v := range values {
-		out[i] = prefix + v + suffix
-	}
-	return out
 }
 
 func setArgs(parent *cobra.Command, name string, fn completer) {

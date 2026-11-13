@@ -44,7 +44,7 @@ func TestServerCommandRunnerUsesStore(t *testing.T) {
 	if state := stateOf(t, s, cfg, ref); state != "IN_PROGRESS" {
 		t.Fatalf("state = %q", state)
 	}
-	for _, args := range [][]string{{"show", ref}, {"list"}, {"board"}, {"config", "filters"}, {"find", "Dashboard", "-i"}, {"hooks", "status"}, {"automation", "list"}} {
+	for _, args := range [][]string{{"show", ref}, {"list"}, {"board"}, {"config", "filters"}, {"find", "Dashboard", "-i"}, {"hooks", "status"}} {
 		if _, err := run(args); err != nil {
 			t.Errorf("%v: %v", args, err)
 		}
@@ -162,7 +162,7 @@ func TestServerCommandRunnerRejectsEscapeRoutes(t *testing.T) {
 		{"sync", "--remote", "--upload-pack=sh"}, {"sync", "--remote", "/tmp/repo"},
 		{"sync", "--remote", "https://example.com/repo"}, {"sync", "--remote", "missing"},
 		{"init"}, {"config", "init"}, {"config", "set", "ui.editor", "sh"},
-		{"hooks", "install"}, {"hooks", "uninstall"}, {"hooks", "run", "post-merge"}, {"automation", "trust"},
+		{"hooks", "install"}, {"hooks", "uninstall"}, {"hooks", "run", "post-merge"},
 		{"validate", "/tmp/item"},
 		{"create", "ticket", "--from-file=/tmp/item"}, {"edit", "KIRA-1", "--from-file", "-"},
 		{"find", "pattern", "/tmp"}, {"find", "pattern", "--pre=sh"},

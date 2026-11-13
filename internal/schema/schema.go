@@ -1,6 +1,5 @@
-// Package schema generates a JSON Schema for kira's --json output shapes and
-// its automation hook-stdin payload, keeping the datamodel result structs and
-// automation.HookPayload the single source of truth.
+// Package schema generates a JSON Schema for kira's --json output shapes,
+// keeping the datamodel result structs the single source of truth.
 package schema
 
 import (
@@ -10,13 +9,10 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/shivamshivanshu/kira/internal/automation"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/doctor"
 	"github.com/shivamshivanshu/kira/internal/syncx"
 )
-
-//go:generate go test . -run TestArtifactFresh -update
 
 func topLevelTypes() []reflect.Type {
 	return []reflect.Type{
@@ -60,19 +56,16 @@ func topLevelTypes() []reflect.Type {
 		reflect.TypeFor[datamodel.HooksInstallResult](),
 		reflect.TypeFor[datamodel.HooksValidateResult](),
 		reflect.TypeFor[datamodel.WorkonResult](),
-		reflect.TypeFor[datamodel.AutomationListResult](),
-		reflect.TypeFor[datamodel.AutomationTrustResult](),
 		reflect.TypeFor[datamodel.CreateTemplateResult](),
 		reflect.TypeFor[datamodel.ReconcileResult](),
 		reflect.TypeFor[datamodel.ExplainResult](),
 		// syncx.Report and doctor.Report both have bare name "Report"; list
 		// syncx.Report first so it keeps the unqualified "Report" $defs key
-		// (it was already reachable, and named that, via HookPayload.Sync
-		// before doctor.Report existed in this schema) and doctor.Report
-		// gets qualified to "DoctorReport" by defName's collision handling.
+		// (it held that name before doctor.Report existed in this schema)
+		// and doctor.Report gets qualified to "DoctorReport" by defName's
+		// collision handling.
 		reflect.TypeFor[syncx.Report](),
 		reflect.TypeFor[doctor.Report](),
-		reflect.TypeFor[automation.HookPayload](),
 	}
 }
 
@@ -90,31 +83,27 @@ func enumValues[T ~string](vs []T) []string {
 // inventory slice to its allowed values, so the generator can emit an
 // "enum" constraint instead of a bare "type": "string".
 var stringEnums = map[reflect.Type][]string{
-	reflect.TypeFor[datamodel.WarnCode]():         enumValues(datamodel.WarnCodes),
-	reflect.TypeFor[datamodel.DiffStatus]():       enumValues(datamodel.DiffStatuses),
-	reflect.TypeFor[datamodel.EventName]():        enumValues(datamodel.AutomationEvents),
-	reflect.TypeFor[datamodel.IDStyle]():          enumValues(datamodel.IDStyles),
-	reflect.TypeFor[datamodel.CommitMode]():       enumValues(datamodel.CommitModes),
-	reflect.TypeFor[datamodel.LinkMarker]():       enumValues(datamodel.LinkMarkers),
-	reflect.TypeFor[datamodel.ReferenceMarker]():  enumValues(datamodel.ReferenceMarkers),
-	reflect.TypeFor[datamodel.MergePolicy]():      enumValues(datamodel.MergePolicies),
-	reflect.TypeFor[datamodel.IconMode]():         enumValues(datamodel.IconModes),
-	reflect.TypeFor[datamodel.Background]():       enumValues(datamodel.Backgrounds),
-	reflect.TypeFor[datamodel.ColorMode]():        enumValues(datamodel.ColorModes),
-	reflect.TypeFor[datamodel.EstimateUnit]():     enumValues(datamodel.EstimateUnits),
-	reflect.TypeFor[datamodel.Casing]():           enumValues(datamodel.Casings),
-	reflect.TypeFor[datamodel.SyncDirty]():        enumValues(datamodel.SyncDirties),
-	reflect.TypeFor[datamodel.Category]():         enumValues(datamodel.Categories),
-	reflect.TypeFor[datamodel.LogKind]():          enumValues(datamodel.LogKinds),
-	reflect.TypeFor[datamodel.BlameSource]():      enumValues(datamodel.BlameSources),
-	reflect.TypeFor[datamodel.NowSource]():        enumValues(datamodel.NowSources),
-	reflect.TypeFor[datamodel.Provenance]():       enumValues(datamodel.Provenances),
-	reflect.TypeFor[datamodel.AutomationSource](): enumValues(datamodel.AutomationSources),
-	reflect.TypeFor[datamodel.ChangeSource]():     enumValues(datamodel.ChangeSources),
-	reflect.TypeFor[doctor.Severity]():            enumValues(doctor.Severities),
-	reflect.TypeFor[doctor.Class]():               enumValues(doctor.Classes),
-	reflect.TypeFor[doctor.CollisionKind]():       enumValues(doctor.CollisionKinds),
-	reflect.TypeFor[syncx.StepStatus]():           enumValues(syncx.StepStatuses),
+	reflect.TypeFor[datamodel.WarnCode]():        enumValues(datamodel.WarnCodes),
+	reflect.TypeFor[datamodel.DiffStatus]():      enumValues(datamodel.DiffStatuses),
+	reflect.TypeFor[datamodel.IDStyle]():         enumValues(datamodel.IDStyles),
+	reflect.TypeFor[datamodel.CommitMode]():      enumValues(datamodel.CommitModes),
+	reflect.TypeFor[datamodel.LinkMarker]():      enumValues(datamodel.LinkMarkers),
+	reflect.TypeFor[datamodel.ReferenceMarker](): enumValues(datamodel.ReferenceMarkers),
+	reflect.TypeFor[datamodel.MergePolicy]():     enumValues(datamodel.MergePolicies),
+	reflect.TypeFor[datamodel.IconMode]():        enumValues(datamodel.IconModes),
+	reflect.TypeFor[datamodel.Background]():      enumValues(datamodel.Backgrounds),
+	reflect.TypeFor[datamodel.ColorMode]():       enumValues(datamodel.ColorModes),
+	reflect.TypeFor[datamodel.EstimateUnit]():    enumValues(datamodel.EstimateUnits),
+	reflect.TypeFor[datamodel.SyncDirty]():       enumValues(datamodel.SyncDirties),
+	reflect.TypeFor[datamodel.Category]():        enumValues(datamodel.Categories),
+	reflect.TypeFor[datamodel.LogKind]():         enumValues(datamodel.LogKinds),
+	reflect.TypeFor[datamodel.BlameSource]():     enumValues(datamodel.BlameSources),
+	reflect.TypeFor[datamodel.NowSource]():       enumValues(datamodel.NowSources),
+	reflect.TypeFor[datamodel.Provenance]():      enumValues(datamodel.Provenances),
+	reflect.TypeFor[doctor.Severity]():           enumValues(doctor.Severities),
+	reflect.TypeFor[doctor.Class]():              enumValues(doctor.Classes),
+	reflect.TypeFor[doctor.CollisionKind]():      enumValues(doctor.CollisionKinds),
+	reflect.TypeFor[syncx.StepStatus]():          enumValues(syncx.StepStatuses),
 }
 
 // generator builds the $defs graph for one Generate() call. defs holds the
@@ -148,8 +137,8 @@ func Generate() ([]byte, error) {
 	})
 	doc := map[string]any{
 		"$schema":     "https://json-schema.org/draft/2020-12/schema",
-		"title":       "kira --json output and automation payload",
-		"description": "Machine-readable shapes for kira commands run with --json and for the automation hook-stdin payload.",
+		"title":       "kira --json output",
+		"description": "Machine-readable shapes for kira commands run with --json.",
 		"oneOf":       oneOf,
 		"$defs":       g.defs,
 	}

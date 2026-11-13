@@ -190,11 +190,6 @@ func TestValidationRejections(t *testing.T) {
 			wantKey: "ui.background",
 		},
 		{
-			name:    "invalid workon.casing",
-			yaml:    "version: 1\nworkon:\n  casing: WeIrD\n",
-			wantKey: "workon.casing",
-		},
-		{
 			name:    "branch_pattern missing number token",
 			yaml:    "version: 1\nworkon:\n  branch_pattern: feature/foo\n",
 			wantKey: "workon.branch_pattern",
@@ -203,21 +198,6 @@ func TestValidationRejections(t *testing.T) {
 			name:    "branch_pattern with only key and slug",
 			yaml:    "version: 1\nworkon:\n  branch_pattern: \"{key}/{slug}\"\n",
 			wantKey: "workon.branch_pattern",
-		},
-		{
-			name:    "automation invalid event",
-			yaml:    "version: 1\nautomation:\n  - {on: bogus.event, run: \"true\"}\n",
-			wantKey: "automation[0].on",
-		},
-		{
-			name:    "automation empty run",
-			yaml:    "version: 1\nautomation:\n  - {on: item.created, run: \"  \"}\n",
-			wantKey: "automation[0].run",
-		},
-		{
-			name:    "automation invalid timeout",
-			yaml:    "version: 1\nautomation:\n  - {on: item.created, run: \"true\", timeout: not-a-duration}\n",
-			wantKey: "automation[0].timeout",
 		},
 		{
 			name:    "filter with broken query grammar",

@@ -10,8 +10,8 @@ import (
 )
 
 // These tests exercise the generator directly over synthetic types, so a
-// generator regression fails here independent of whether schema/kira.json
-// happens to already exercise the same shape.
+// generator regression fails here independent of whether kira's own result
+// types happen to already exercise the same shape.
 
 type SyntheticEmbedded struct {
 	Inner string `json:"inner"`
@@ -149,4 +149,23 @@ func TestGeneratorNameCollisionQualifiesSecondType(t *testing.T) {
 	if g.owners[name] != secondT {
 		t.Fatalf("owners[%q] = %v, want %v", name, g.owners[name], secondT)
 	}
+}
+
+// compileSchema compiles raw JSON Schema document bytes into a validator.
+func compileSchema(t *testing.T, data []byte) *jsonschema.Schema {
+	t.Helper()
+	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("unmarshal schema: %v", err)
+	}
+	c := jsonschema.NewCompiler()
+	const resourceURL = "kira.json"
+	if err := c.AddResource(resourceURL, doc); err != nil {
+		t.Fatalf("add schema resource: %v", err)
+	}
+	sch, err := c.Compile(resourceURL)
+	if err != nil {
+		t.Fatalf("compile schema: %v", err)
+	}
+	return sch
 }
