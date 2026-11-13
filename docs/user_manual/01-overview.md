@@ -1,17 +1,25 @@
 # Overview
 
-kira is a ticket tracker that lives inside your git repository. There is no
-server, no login, and no database — a ticket is a Markdown file with YAML
-frontmatter under `.kira/`, committed alongside the code it describes.
+kira is a ticket tracker inside your git repository: no server, no login, no
+database. A ticket is a Markdown file with YAML frontmatter under
+`.kira/tickets/`, committed with the code it describes.
 
 ```
 ---
-id: 01KYHXCJK0A3GJ2QWE1VRXV8F2
+id: 01M7AN57WYK87HJKQZYZQSQT5D
 number: DEMO-3
+aliases: []
 type: ticket
+subtype: feature
 title: "Add search to the docs site"
 state: TODO
 priority: P1
+labels: []
+parent: null
+blocked_by: []
+due: 2026-12-01
+created: 2026-11-13T20:02:04+05:30
+updated: 2026-11-13T20:02:04+05:30
 ---
 
 ## Description
@@ -19,97 +27,48 @@ priority: P1
 ## Acceptance criteria
 ```
 
-## Why files in git
+## What git provides
 
-Because tickets are ordinary tracked files, git already provides most of what a
-tracker normally has to reinvent:
-
-| You want | git gives you |
+| Need | Mechanism |
 | --- | --- |
-| The whole tracker on a new machine | `git clone` |
-| History of who changed what, and when | `git log`, `git blame` |
-| Offline access | the local clone |
-| Ticket changes reviewed with the code | the same branch and pull request |
-| Backups and replication | every clone is one |
+| Tracker on a new machine | `git clone` |
+| Who changed what, when | `git log`, `kira log`, `kira blame` |
+| Offline use | the local clone |
+| Ticket changes reviewed with the code | same branch, same pull request |
+| Backup | every clone |
 
-Tickets travel on branches. A feature branch can carry both the code and the
-state change that says the work is in review, and merging the branch merges
-both.
+With the default `commit.mode: auto` every kira mutation is its own commit;
+the commit graph is the audit log.
 
-## What you track
+## The model in one paragraph
 
-Two item types ship out of the box:
+Two item types, `ticket` and `epic`; an epic groups items through their
+`parent` field. Each item belongs to one **board**, which gives it a display
+number (`DEMO-3`); the immutable ULID `id` is the filename and what references
+store. States are fixed per type (`TODO → IN_PROGRESS → REVIEW → DONE`, plus
+`WONT_DO`, for tickets) and any state may move to any other; closing is refused
+while blockers are open. Full detail: [Concepts](03-concepts.md).
 
-| Type | Purpose |
-| --- | --- |
-| `ticket` | A unit of work. |
-| `epic` | A grouping of tickets. A ticket may optionally name one epic as its parent. |
+## Front ends
 
-Every item belongs to exactly one **board**, and boards give items their
-display number. A repository can define several boards to separate concerns —
-this repository uses `KIRA`, `CORE`, `TUI`, `CLI`, `DATA`, `INFRA`, and `DX`, so
-its items are numbered `CORE-43`, `TUI-12`, and so on.
+- **CLI** — every command is scriptable; most accept `--json`.
+- **TUI** — `kira` or `kira tui`: tree, board and stats screens
+  ([TUI Guide](07-tui-guide.md)).
+- **Web dashboard** — `kira server`, loopback only.
 
-Item state moves through a fixed **workflow** built into kira. Tickets go:
+All three go through the same core operations.
 
-```
-TODO -> IN_PROGRESS -> REVIEW -> DONE
-   \________ WONT_DO _________/
-```
+## Concurrent edits
 
-and epics go `PLANNED -> ACTIVE -> DONE`. Any state may move to any other; the
-only transition guard is that entering a `done` state needs the item's blockers
-closed. See
-[Concepts](03-concepts.md#workflow-states-and-categories).
+Plain `git pull`/`merge`/`push` move tickets between clones. kira handles the
+results:
 
-## Ticket history is git history
+- `kira hooks install` registers a **merge driver**: ticket files merge per
+  field, so edits to different fields never conflict.
+- `kira sync` pulls with rebase, renumbers display-number collisions and
+  refreshes the local cache.
+- `kira resolve` field-merges ticket files a merge left conflicted.
 
-By default (`commit.mode: auto`) every kira mutation is its own git commit,
-made immediately:
+See [Git integration](04-cli-reference/git-integration.md).
 
-```console
-$ git log --oneline
-0628f5c DEMO-2 state REVIEW -> DONE
-badf3af DEMO-2 state IN_PROGRESS -> REVIEW
-e76a029 DEMO-2 state TODO -> IN_PROGRESS
-5c692a6 DEMO-3 edit due
-f105046 DEMO-3 edit priority
-6f16580 DEMO-3 create "Add search to the docs site"
-9a26938 DEMO-2 create "Fix broken anchor links"
-08f8842 DEMO-1 create "Write the getting-started guide"
-```
-
-This is deliberate. There is no separate audit log to consult, because the
-audit log is the commit graph. `kira log <id>` reads a ticket's field history
-straight out of it.
-
-## Two front ends
-
-- **The CLI.** Every command is scriptable, and every command accepts `--json`
-  for machine-readable output.
-- **The TUI.** `kira tui` — or just `kira` with no arguments — opens an
-  interactive terminal UI with tree, board, and stats screens.
-
-Both drive exactly the same operations; neither can do something the other
-cannot.
-
-## Being git-native cuts both ways
-
-Ordinary `git pull`, `git merge`, and `git push` move tickets between clones,
-which means two people can edit the same ticket on different branches. kira
-handles this rather than leaving you with conflict markers in a YAML file:
-
-- `kira hooks install` registers a **merge driver** so ticket files merge
-  field by field — two people changing different fields of the same ticket is
-  not a conflict.
-- `kira sync` pulls, repairs any display-number collisions the merge created,
-  and refreshes the local cache.
-- `kira resolve` auto-resolves conflicted ticket files left by a merge that ran
-  without the driver.
-
-## Next
-
-- [Getting Started](02-getting-started.md) — install, initialize a repository,
-  and drive a ticket from creation to done.
-- [Concepts](03-concepts.md) — identity, states, vocabularies, sprints,
-  relationships, and configuration layering in depth.
+Next: [Getting Started](02-getting-started.md).
