@@ -13,6 +13,7 @@ lives in one chapter; others link to it.
 | [TUI Guide](07-tui-guide.md) | Screens, keys, the `:` command bar. |
 | [Recipes](08-recipes-and-examples.md) | Short task-oriented sequences. |
 | [Limitations](09-limitations-and-roadmap.md) | Known gaps, from open tickets. |
+| [Compatibility](10-compatibility.md) | What a release may and may not break; how releases are cut. |
 
 Samples were captured from a real build in scratch repositories with
 `KIRA_NOW=2026-11-13T12:00:00+05:30 NO_COLOR=1`; ids, SHAs and wall-clock
