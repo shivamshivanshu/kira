@@ -17,11 +17,13 @@ stdout 'ok: 0 error'
 # drop in broken items: schema/state/vocab/refs violations + a colliding number
 cp broken.md .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZA.md
 cp collider.md .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZB.md
+cp unknown-key.md .kira/tickets/01HZZZZZZZZZZZZZZZZZZZZZZC.md
 
 ! exec kira doctor
 stdout 'error   state'
 stdout 'dangling-ref'
 stdout 'error   schema'
+stdout 'error   schema +KIRA-51: field "mystery_field": unknown frontmatter key'
 stdout 'vocab'
 stdout 'id-collision'
 stdout 'index is stale'
@@ -46,7 +48,6 @@ blocked_by: [01HXXXXXXXXXXXXXXXXXXXXXXX]
 epic: 01HYYYYYYYYYYYYYYYYYYYYYYY
 due: not-a-date
 sprint: 2099-S1
-mystery_field: 1
 created: 2026-07-10T09:14:00+05:30
 updated: 2026-07-10T09:14:00+05:30
 ---
@@ -62,6 +63,22 @@ state: TODO
 labels: []
 blocked_by: []
 epic: null
+created: 2026-07-11T09:14:00+05:30
+updated: 2026-07-11T09:14:00+05:30
+---
+## Description
+-- unknown-key.md --
+---
+id: 01HZZZZZZZZZZZZZZZZZZZZZZC
+number: KIRA-51
+aliases: []
+type: ticket
+title: unknown key
+state: TODO
+labels: []
+blocked_by: []
+epic: null
+mystery_field: 1
 created: 2026-07-11T09:14:00+05:30
 updated: 2026-07-11T09:14:00+05:30
 ---

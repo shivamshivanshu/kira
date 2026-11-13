@@ -47,7 +47,7 @@ func Run(root string, cfg *datamodel.Config, opts Opts) (Summary, error) {
 	alloc := id.NewAllocator(cfg.ID.Style == datamodel.IDStyleHash, snap, snap.Key)
 
 	specs := Recipe(opts.Size, opts.Seed)
-	sum, err := walk(specs, rawSink(store, cfg, alloc, opts.mint()))
+	sum, err := walk(specs, rawSink(store, alloc, opts.mint()))
 	if err != nil {
 		return sum, err
 	}
@@ -92,12 +92,12 @@ func seedBoardKey(cfg *datamodel.Config) string {
 	return cfg.Project.Key
 }
 
-func rawSink(st *storage.FS, cfg *datamodel.Config, alloc *id.Allocator, mint func() id.ULID) materializer {
+func rawSink(st *storage.FS, alloc *id.Allocator, mint func() id.ULID) materializer {
 	return func(i int, sp Spec, parent string) (string, Summary, error) {
 		u := mint()
 		number := alloc.Alloc(u)
 		ts := seedEpoch.Add(time.Duration(i) * time.Hour)
-		it := buildItem(cfg, sp, u.String(), number, ts)
+		it := buildItem(sp, u.String(), number, ts)
 		if parent != "" {
 			it.Parent = new(parent)
 		}
@@ -123,8 +123,8 @@ func rawSink(st *storage.FS, cfg *datamodel.Config, alloc *id.Allocator, mint fu
 	}
 }
 
-func buildItem(cfg *datamodel.Config, sp Spec, ulid, number string, ts time.Time) *datamodel.Item {
-	state := resolveState(cfg, sp.Type, sp.Category)
+func buildItem(sp Spec, ulid, number string, ts time.Time) *datamodel.Item {
+	state := resolveState(sp.Type, sp.Category)
 	stamp := ts.Format(time.RFC3339)
 	it := &datamodel.Item{
 		ID:        ulid,
@@ -142,12 +142,12 @@ func buildItem(cfg *datamodel.Config, sp Spec, ulid, number string, ts time.Time
 	it.Subtype = ptr.NilIfEmpty(sp.Subtype)
 	it.Priority = ptr.NilIfEmpty(sp.Priority)
 	it.Owner = ptr.NilIfEmpty(sp.Owner)
-	it.Resolution = ptr.NilIfEmpty(doneResolution(cfg, sp.Type, state))
+	it.Resolution = ptr.NilIfEmpty(doneResolution(sp.Type, state))
 	return it
 }
 
-func resolveState(cfg *datamodel.Config, typ string, cat datamodel.Category) string {
-	wf, ok := cfg.Workflows[typ]
+func resolveState(typ string, cat datamodel.Category) string {
+	wf, ok := datamodel.WorkflowOf(typ)
 	if !ok {
 		return ""
 	}
@@ -159,8 +159,8 @@ func resolveState(cfg *datamodel.Config, typ string, cat datamodel.Category) str
 	return wf.Initial
 }
 
-func doneResolution(cfg *datamodel.Config, typ, state string) string {
-	wf, ok := cfg.Workflows[typ]
+func doneResolution(typ, state string) string {
+	wf, ok := datamodel.WorkflowOf(typ)
 	if !ok {
 		return ""
 	}

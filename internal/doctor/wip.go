@@ -2,8 +2,6 @@ package doctor
 
 import (
 	"fmt"
-	"maps"
-	"slices"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
@@ -11,7 +9,7 @@ import (
 // WipOverruns reports wip-capped states holding more items than their limit.
 // The write path enforces the cap on moves, but a hand edit, merge, or sync
 // auto-resolve can push a state over it without any move ever failing.
-func WipOverruns(cfg *datamodel.Config, items []*datamodel.Item) []Finding {
+func WipOverruns(items []*datamodel.Item) []Finding {
 	counts := map[string]map[string]int{}
 	for _, it := range items {
 		if counts[it.Type] == nil {
@@ -20,8 +18,9 @@ func WipOverruns(cfg *datamodel.Config, items []*datamodel.Item) []Finding {
 		counts[it.Type][it.State]++
 	}
 	var out []Finding
-	for _, typ := range slices.Sorted(maps.Keys(cfg.Workflows)) {
-		for _, st := range cfg.Workflows[typ].States {
+	for _, typ := range datamodel.ItemTypes {
+		wf, _ := datamodel.WorkflowOf(typ)
+		for _, st := range wf.States {
 			n := counts[typ][st.Key]
 			if st.Wip <= 0 || n <= st.Wip {
 				continue

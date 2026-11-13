@@ -5,9 +5,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/query"
@@ -59,16 +57,15 @@ func listResult(ld *loaded, opts ListOpts, qopts query.Options) (*datamodel.List
 	parentNumbers := parentNumberMap(items)
 	rows := make([]datamodel.ListItem, len(matched))
 	for i, it := range matched {
-		rows[i] = listItemOf(cfg, it, parentNumbers, ld.schemas)
+		rows[i] = listItemOf(it, parentNumbers)
 	}
 	res := &datamodel.ListResult{
 		Items:       rows,
 		Count:       len(rows),
-		Columns:     declaredColumns(matched, ld.schemas),
 		StderrNotes: slices.Concat(ld.notes, notes),
 	}
 	if opts.Tree {
-		res.Tree = groupByParent(rows, parentNumbers, entityschema.ContainerTypes(ld.schemas))
+		res.Tree = groupByParent(rows, parentNumbers)
 	}
 	return res, nil
 }
@@ -96,28 +93,6 @@ func (ld *loaded) match(opts ListOpts, pred query.Predicate, order *query.Order)
 	return matched
 }
 
-// declaredColumns is the column set the matched items' own schemas ask for.
-// A listing spans types, so the result is their union in first-declared order;
-// types that agree (as the built-ins do) yield exactly their shared set, and
-// only a schema that declares something extra widens the table. Empty when no
-// matched type declares any, which leaves the choice to the caller.
-func declaredColumns(items []*datamodel.Item, schemas map[string]entityschema.Schema) []string {
-	var out []string
-	seenType := map[string]bool{}
-	for _, it := range items {
-		if seenType[it.Type] {
-			continue
-		}
-		seenType[it.Type] = true
-		for _, c := range schemas[it.Type].Representation.ListColumns {
-			if !slices.Contains(out, c) {
-				out = append(out, c)
-			}
-		}
-	}
-	return out
-}
-
 func filterSort(cfg *datamodel.Config, items []*datamodel.Item, pred query.Predicate, order *query.Order) []*datamodel.Item {
 	matched := make([]*datamodel.Item, 0, len(items))
 	for _, it := range items {
@@ -130,31 +105,23 @@ func filterSort(cfg *datamodel.Config, items []*datamodel.Item, pred query.Predi
 	return matched
 }
 
-// queryOptions compiles queries against ld's own schemas, so an --at read
-// resolves custom fields exactly as the snapshot declared them.
 func (s *Store) queryOptions(ld *loaded) query.Options {
 	cfg := ld.cfg
 	me := sync.OnceValue(func() string { value, _ := s.identity(cfg); return value })
 	return query.Options{
 		Resolver:     ld.resolver,
-		Priorities:   cfg.Priorities.Values,
 		ActiveSprint: s.ActiveSprintKey(),
 		Me:           me,
 		Items:        ld.items,
-		Schemas:      ld.schemas,
 	}
 }
 
-func (s *Store) FilterableFields() ([]string, error) {
-	schemas, err := s.schemas()
-	if err != nil {
-		return nil, err
-	}
-	return query.FieldNames(schemas), nil
+func FilterableFields() []string {
+	return query.FieldNames()
 }
 
 func (s *Store) ListWithMatches(cfg *datamodel.Config, expr string) ([]datamodel.ListItem, map[string]bool, error) {
-	ld, err := s.readRaw(cfg, loadOpts{})
+	ld, err := s.read(cfg, loadOpts{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -170,7 +137,7 @@ func listWithMatches(cfg *datamodel.Config, items []*datamodel.Item, expr string
 	rows := make([]datamodel.ListItem, len(items))
 	matched := make(map[string]bool, len(items))
 	for i, it := range items {
-		rows[i] = listItemOf(cfg, it, parentNumbers, qopts.Schemas)
+		rows[i] = listItemOf(it, parentNumbers)
 		if pred == nil || pred(it, cfg) {
 			matched[it.ID] = true
 		}
@@ -180,11 +147,11 @@ func listWithMatches(cfg *datamodel.Config, items []*datamodel.Item, expr string
 
 func sortMatched(cfg *datamodel.Config, matched []*datamodel.Item, order *query.Order) {
 	if order == nil {
-		sortByPrecedence(cfg, matched)
+		sortByPrecedence(matched)
 		return
 	}
 	keyOf := order.Keyer(cfg)
-	priorityIndex := query.PriorityIndex(cfg.Priorities.Values)
+	priorityIndex := query.PriorityIndex(datamodel.Priorities)
 	sortByKey(matched, func(it *datamodel.Item) orderedKey {
 		return orderedKey{order: order, key: keyOf(it), tie: precedenceKeyOf(priorityIndex, it)}
 	})
@@ -236,7 +203,7 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 	}
 	for _, f := range opts.Fields {
 		if err := addMatch(f); err != nil {
-			return nil, nil, nil, fieldFilterErr(f.Key, err, qopts.Schemas)
+			return nil, nil, nil, fieldFilterErr(f.Key, err)
 		}
 	}
 
@@ -286,7 +253,7 @@ func (opts ListOpts) compile(cfg *datamodel.Config, qopts query.Options) (query.
 // group of its own, and a container that itself has a parent additionally
 // appears as a row inside that parent's group — the flat two-level shape has
 // nowhere else to show the nesting.
-func groupByParent(rows []datamodel.ListItem, parentNumbers map[string]string, containers map[string]bool) []datamodel.TreeGroup {
+func groupByParent(rows []datamodel.ListItem, parentNumbers map[string]string) []datamodel.TreeGroup {
 	order := make([]string, 0)
 	buckets := map[string][]string{}
 	ensureGroup := func(key string) {
@@ -296,7 +263,7 @@ func groupByParent(rows []datamodel.ListItem, parentNumbers map[string]string, c
 		}
 	}
 	for _, r := range rows {
-		isContainer := containers[r.Type]
+		isContainer := datamodel.IsContainer(r.Type)
 		if isContainer {
 			ensureGroup(r.ID)
 		}
@@ -354,24 +321,22 @@ func parentNumberMap(items []*datamodel.Item) map[string]string {
 	return m
 }
 
-func listItemOf(cfg *datamodel.Config, it *datamodel.Item, parentNumbers map[string]string, schemas map[string]entityschema.Schema) datamodel.ListItem {
+func listItemOf(it *datamodel.Item, parentNumbers map[string]string) datamodel.ListItem {
 	li := datamodel.ListItem{
 		ID:         it.ID,
 		Number:     it.Number,
 		Board:      boardKeyOf(it.Number),
 		Title:      it.Title,
 		Type:       it.Type,
-		TypeLabel:  schemas[it.Type].TypeLabel(it.Type),
 		Subtype:    it.Subtype,
 		State:      it.State,
-		Category:   categoryString(cfg, it.Type, it.State),
+		Category:   categoryString(it.Type, it.State),
 		Owner:      it.Owner,
 		Labels:     nonNil(it.Labels),
 		Parent:     it.Parent,
 		Priority:   it.Priority,
 		Resolution: it.Resolution,
 		Due:        it.Due,
-		Fields:     entityschema.CustomFields(schemas[it.Type], it, codec.Decoder{}),
 	}
 	if it.Parent != nil {
 		if num, ok := parentNumbers[*it.Parent]; ok {

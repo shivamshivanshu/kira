@@ -2,7 +2,7 @@
 <aside class="detail-pane" aria-labelledby="detail-title" data-detail-item data-item="{{$item.ID}}" data-number="{{$item.Number}}" data-copy-values="{{$.CopyValues $item.ID $item.Number $item.Title}}" {{if $item.Parent}}data-parent-url="{{.Link "item" (str $item.Parent)}}"{{end}}>
   <header class="detail-top">
     <div>
-      <span class="item-kind kind-{{$item.Type}}">{{if eq $item.Type "epic"}}◇{{else}}○{{end}}</span><code>{{$item.Number}}</code><span class="card-type">{{$item.Type}}</span>
+      <span class="item-kind kind-{{$item.Type}}">{{if isContainer $item.Type}}◇{{else}}○{{end}}</span><code>{{$item.Number}}</code><span class="card-type">{{$item.Type}}</span>
     </div>
     <div>
       <button class="icon-button" type="button" data-copy-picker aria-label="Choose item reference format to copy" title="Copy reference (Y)">⧉</button><a class="icon-button" href="{{.Link "item" ""}}" data-close-detail aria-label="Close item details">×</a>

@@ -1,19 +1,8 @@
 package datamodel
 
-import "slices"
-
 type Workflow struct {
-	States      []State   `yaml:"states"`
-	Initial     string    `yaml:"initial"`
-	CloseTarget string    `yaml:"close_target,omitempty"`
-	WipPolicy   WipPolicy `yaml:"wip_policy,omitempty"`
-}
-
-func (w Workflow) EffectiveWipPolicy() WipPolicy {
-	if w.WipPolicy == WipBlock {
-		return WipBlock
-	}
-	return WipWarn
+	States  []State
+	Initial string
 }
 
 func (w Workflow) StateByKey(key string) (State, bool) {
@@ -25,14 +14,12 @@ func (w Workflow) StateByKey(key string) (State, bool) {
 	return State{}, false
 }
 
-// IsDropped takes the dropped set rather than a Config because the renderer
-// copies it in once and never carries config any further.
-func IsDropped(resolution *string, dropped []string) bool {
-	return resolution != nil && slices.Contains(dropped, *resolution)
+func IsDropped(resolution *string) bool {
+	return resolution != nil && *resolution == ResolutionDropped
 }
 
-func (c *Config) CategoryOf(typ, state string) (Category, bool) {
-	wf, ok := c.Workflows[typ]
+func CategoryOf(typ, state string) (Category, bool) {
+	wf, ok := WorkflowOf(typ)
 	if !ok {
 		return "", false
 	}
@@ -41,8 +28,8 @@ func (c *Config) CategoryOf(typ, state string) (Category, bool) {
 }
 
 type State struct {
-	Key        string   `yaml:"key"`
-	Category   Category `yaml:"category"`
-	Wip        int      `yaml:"wip,omitempty"`
-	Resolution string   `yaml:"resolution,omitempty"`
+	Key        string
+	Category   Category
+	Wip        int
+	Resolution string
 }

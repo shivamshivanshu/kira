@@ -59,7 +59,7 @@ func (s *Store) Workon(cfg *datamodel.Config, ref string, opts WorkonOpts) (*dat
 	}
 
 	if !opts.NoMove {
-		if to, ok := doingTarget(cfg, it); ok {
+		if to, ok := doingTarget(it); ok {
 			res, err := target.Move(cfg, ref, to, MoveOpts{})
 			var msgs []string
 			if err != nil {
@@ -108,12 +108,12 @@ func (s *Store) ensureWorktree(repo gitx.Repo, cfg *datamodel.Config, number, br
 	return path, createBranch, nil
 }
 
-func doingTarget(cfg *datamodel.Config, it *datamodel.Item) (string, bool) {
-	wf, ok := cfg.Workflows[it.Type]
+func doingTarget(it *datamodel.Item) (string, bool) {
+	wf, ok := datamodel.WorkflowOf(it.Type)
 	if !ok {
 		return "", false
 	}
-	if cat, ok := cfg.CategoryOf(it.Type, it.State); ok && cat == datamodel.CategoryDoing {
+	if cat, ok := datamodel.CategoryOf(it.Type, it.State); ok && cat == datamodel.CategoryDoing {
 		return "", false
 	}
 	return firstStateInCategory(wf, datamodel.CategoryDoing)

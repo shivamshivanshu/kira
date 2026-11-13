@@ -28,7 +28,7 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 			closeFailed(cand.ULID, resErr)
 			continue
 		}
-		if isDoneState(cfg, it.Type, it.State) {
+		if isDoneState(it.Type, it.State) {
 			continue
 		}
 		touched, tsErr := touchedSince(cand.CommitterTs, it.Updated)
@@ -39,7 +39,7 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 		if touched {
 			continue
 		}
-		target := closeTargetState(cfg, it.Type)
+		target := closeTargetState(it.Type)
 		if target == "" {
 			continue
 		}
@@ -85,13 +85,10 @@ func (s *Store) landedRef(cfg *datamodel.Config) string {
 	return "main"
 }
 
-func closeTargetState(cfg *datamodel.Config, typ string) string {
-	wf, ok := cfg.Workflows[typ]
+func closeTargetState(typ string) string {
+	wf, ok := datamodel.WorkflowOf(typ)
 	if !ok {
 		return ""
-	}
-	if wf.CloseTarget != "" {
-		return wf.CloseTarget
 	}
 	key, _ := firstStateInCategory(wf, datamodel.CategoryDone)
 	return key

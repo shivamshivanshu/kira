@@ -4,7 +4,6 @@
   "board": "KIRA",
   "aliases": [],
   "type": "ticket",
-  "type_label": "ticket",
   "subtype": "bug",
   "title": "Rich ticket",
   "state": "IN_PROGRESS",

@@ -17,7 +17,7 @@ func evalFixture() (items []*datamodel.Item, opts query.Options, cfg *datamodel.
 	for _, it := range items {
 		snap.Items = append(snap.Items, id.Item{ULID: it.ID, Number: it.Number, Aliases: it.Aliases})
 	}
-	opts = query.Options{Resolver: id.NewResolver(snap), Priorities: cfg.Priorities.Values}
+	opts = query.Options{Resolver: id.NewResolver(snap)}
 	return items, opts, cfg
 }
 
@@ -218,8 +218,6 @@ func TestEvalInCreatedDate(t *testing.T) {
 
 func TestCompileErrors(t *testing.T) {
 	_, opts, _ := evalFixture()
-	noPrio := opts
-	noPrio.Priorities = nil
 	tests := []struct {
 		name string
 		expr string
@@ -229,9 +227,7 @@ func TestCompileErrors(t *testing.T) {
 		{"unresolved epic", "epic=KIRA-999", opts, 5},
 		{"unresolved blocked_by", "blocked_by=KIRA-999", opts, 11},
 		{"unresolved links in IN", "links IN (KIRA-999)", opts, 10},
-		{"ranked compare needs priorities", "priority<=P1", noPrio, 8},
 		{"unknown priority literal", "priority<=P9", opts, 10},
-		{"order by priority needs priorities", "a ORDER BY priority", noPrio, 11},
 		{"owner @me without identity", "owner=@me", opts, 6},
 		{"reporter @me without identity", "reporter=@me", opts, 9},
 		{"full timestamp on a calendar-day field", "created=2026-07-16T20:00:00Z", opts, 8},
@@ -245,9 +241,6 @@ func TestCompileErrors(t *testing.T) {
 		if qe.Pos != tc.pos {
 			t.Errorf("%s: pos = %d, want %d (%s)", tc.name, qe.Pos, tc.pos, qe.Msg)
 		}
-	}
-	if _, err := query.Compile("priority=P1", noPrio); err != nil {
-		t.Errorf("priority=P1 must stay legal without a priority vocabulary: %v", err)
 	}
 }
 

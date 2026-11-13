@@ -21,45 +21,40 @@ func Merge(base, ours, theirs *datamodel.Item, remote Side, tm TextMerger) Resul
 	winner := laterUpdated(ours.Updated, theirs.Updated, remote)
 	number := threeWayScalar(base.Number, ours.Number, theirs.Number, winner)
 	aliases := slices.DeleteFunc(aliasUnion(base.Aliases, ours.Aliases, theirs.Aliases), func(a string) bool { return a == number })
-	extraScalars, extraLists, extraBlocks := mergeExtras(base, ours, theirs, winner)
 
 	m := &datamodel.Item{
-		ID:           ours.ID,
-		Number:       number,
-		Type:         ours.Type,
-		Created:      ours.Created,
-		Aliases:      aliases,
-		Subtype:      threeWayPtr(base.Subtype, ours.Subtype, theirs.Subtype, winner),
-		Title:        threeWayScalar(base.Title, ours.Title, theirs.Title, winner),
-		State:        threeWayScalar(base.State, ours.State, theirs.State, winner),
-		Resolution:   threeWayPtr(base.Resolution, ours.Resolution, theirs.Resolution, winner),
-		Priority:     threeWayPtr(base.Priority, ours.Priority, theirs.Priority, winner),
-		Rank:         threeWayPtr(base.Rank, ours.Rank, theirs.Rank, winner),
-		Owner:        threeWayPtr(base.Owner, ours.Owner, theirs.Owner, winner),
-		Reporter:     threeWayPtr(base.Reporter, ours.Reporter, theirs.Reporter, winner),
-		Labels:       setMerge(base.Labels, ours.Labels, theirs.Labels),
-		Parent:       threeWayPtr(base.Parent, ours.Parent, theirs.Parent, winner),
-		BlockedBy:    setMerge(base.BlockedBy, ours.BlockedBy, theirs.BlockedBy),
-		Links:        linkMerge(base.Links, ours.Links, theirs.Links),
-		ExtraLinks:   linkMerge(base.ExtraLinks, ours.ExtraLinks, theirs.ExtraLinks),
-		Sprint:       threeWayPtr(base.Sprint, ours.Sprint, theirs.Sprint, winner),
-		Due:          threeWayPtr(base.Due, ours.Due, theirs.Due, winner),
-		Estimate:     threeWayPtr(base.Estimate, ours.Estimate, theirs.Estimate, winner),
-		Updated:      maxUpdated(ours.Updated, theirs.Updated),
-		Body:         mergeBody(base.Body, ours.Body, theirs.Body, winner, tm),
-		ExtraScalars: extraScalars,
-		ExtraLists:   extraLists,
-		ExtraBlocks:  extraBlocks,
+		ID:         ours.ID,
+		Number:     number,
+		Type:       ours.Type,
+		Created:    ours.Created,
+		Aliases:    aliases,
+		Subtype:    threeWayPtr(base.Subtype, ours.Subtype, theirs.Subtype, winner),
+		Title:      threeWayScalar(base.Title, ours.Title, theirs.Title, winner),
+		State:      threeWayScalar(base.State, ours.State, theirs.State, winner),
+		Resolution: threeWayPtr(base.Resolution, ours.Resolution, theirs.Resolution, winner),
+		Priority:   threeWayPtr(base.Priority, ours.Priority, theirs.Priority, winner),
+		Rank:       threeWayPtr(base.Rank, ours.Rank, theirs.Rank, winner),
+		Owner:      threeWayPtr(base.Owner, ours.Owner, theirs.Owner, winner),
+		Reporter:   threeWayPtr(base.Reporter, ours.Reporter, theirs.Reporter, winner),
+		Labels:     setMerge(base.Labels, ours.Labels, theirs.Labels),
+		Parent:     threeWayPtr(base.Parent, ours.Parent, theirs.Parent, winner),
+		BlockedBy:  setMerge(base.BlockedBy, ours.BlockedBy, theirs.BlockedBy),
+		Links:      linkMerge(base.Links, ours.Links, theirs.Links),
+		Sprint:     threeWayPtr(base.Sprint, ours.Sprint, theirs.Sprint, winner),
+		Due:        threeWayPtr(base.Due, ours.Due, theirs.Due, winner),
+		Estimate:   threeWayPtr(base.Estimate, ours.Estimate, theirs.Estimate, winner),
+		Updated:    maxUpdated(ours.Updated, theirs.Updated),
+		Body:       mergeBody(base.Body, ours.Body, theirs.Body, winner, tm),
 	}
 	return Result{Item: m, Arbitrated: arbitrated(base, ours, theirs)}
 }
 
 func arbitrated(base, ours, theirs *datamodel.Item) []string {
-	fromBaseOurs := setx.ToSet(append(datamodel.ChangedFields(base, ours), datamodel.ChangedExtraKeys(base, ours)...))
-	fromBaseTheirs := setx.ToSet(append(datamodel.ChangedFields(base, theirs), datamodel.ChangedExtraKeys(base, theirs)...))
+	fromBaseOurs := setx.ToSet(datamodel.ChangedFields(base, ours))
+	fromBaseTheirs := setx.ToSet(datamodel.ChangedFields(base, theirs))
 
 	var out []string
-	for _, f := range append(datamodel.ChangedFields(ours, theirs), datamodel.ChangedExtraKeys(ours, theirs)...) {
+	for _, f := range datamodel.ChangedFields(ours, theirs) {
 		if fromBaseOurs[f] && fromBaseTheirs[f] {
 			out = append(out, f)
 		}

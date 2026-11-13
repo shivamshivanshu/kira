@@ -1,8 +1,6 @@
 package query
 
 import (
-	"strconv"
-
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 )
@@ -17,10 +15,7 @@ type OrderKey struct {
 func (o *Order) Keyer(cfg *datamodel.Config) func(*datamodel.Item) OrderKey {
 	switch o.Field {
 	case fieldPriority:
-		index := o.priorityIndex
-		if index == nil {
-			index = PriorityIndex(cfg.Priorities.Values)
-		}
+		index := PriorityIndex(datamodel.Priorities)
 		return func(it *datamodel.Item) OrderKey {
 			idx, ok := index[ptr.Deref(it.Priority)]
 			if !ok {
@@ -46,18 +41,6 @@ func (o *Order) Keyer(cfg *datamodel.Config) func(*datamodel.Item) OrderKey {
 		}
 	default:
 		get := scalarGet(o.Field)
-		if cf := o.custom; cf != nil {
-			get = func(it *datamodel.Item, _ *datamodel.Config) string { return cf.scalar(it) }
-			if cf.numeric() {
-				return func(it *datamodel.Item) OrderKey {
-					n, err := strconv.ParseFloat(get(it, cfg), 64)
-					if err != nil {
-						return OrderKey{null: true}
-					}
-					return OrderKey{numeric: true, num: n}
-				}
-			}
-		}
 		return func(it *datamodel.Item) OrderKey {
 			s := get(it, cfg)
 			if s == "" {

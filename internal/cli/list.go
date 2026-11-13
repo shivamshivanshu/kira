@@ -3,14 +3,12 @@ package cli
 import (
 	"fmt"
 	"io"
-	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/warningfmt"
@@ -41,13 +39,9 @@ func newListCmd(g *globalFlags) *cobra.Command {
 			if g.json {
 				return emitJSON(cmd.OutOrStdout(), res)
 			}
-			pinned := pinnedColumns(cfg)
-			if schemas, serr := s.Schemas(); serr == nil {
-				var unknown []string
-				pinned, unknown = knownColumns(pinned, schemas)
-				warnUnknownColumns(cmd.ErrOrStderr(), unknown)
-			}
-			renderListResult(cmd.OutOrStdout(), res, pinned)
+			columns, unknown := knownColumns(cfg.UI.List.Columns)
+			warnUnknownColumns(cmd.ErrOrStderr(), unknown)
+			renderListResult(cmd.OutOrStdout(), res, columnsOrDefault(columns))
 			return nil
 		},
 	}
@@ -66,7 +60,7 @@ func newListCmd(g *globalFlags) *cobra.Command {
 	f.StringVar(&opts.Sprint, "sprint", "", "filter by sprint key ('active' resolves the active sprint)")
 	f.StringVar(&opts.Filter, "filter", "", "apply a named saved query from config filters")
 	f.StringVar(&opts.Query, "query", "", "filter by a query expression (ANDed with the flags)")
-	f.StringArrayVar(&fields, "field", nil, "key=value equality filter on any schema field (repeatable, ANDed)")
+	f.StringArrayVar(&fields, "field", nil, "key=value equality filter on any item field (repeatable, ANDed)")
 	f.BoolVar(&opts.Tree, "tree", false, "group results by parent")
 	f.StringVar(&opts.At, "at", "", "read state at a git ref or date (YYYY-MM-DD), anchored on HEAD")
 	return cmd
@@ -106,37 +100,25 @@ func renderList(w io.Writer, res *datamodel.ListResult, columns []string) {
 		_, _ = fmt.Fprintln(w, msgNoItems)
 		return
 	}
-	cols := resolveColumns(columns, res.Columns)
 	tw := newTabWriter(w)
-	_, _ = fmt.Fprintln(tw, columnHeader(cols))
+	_, _ = fmt.Fprintln(tw, columnHeader(columns))
 	for _, it := range res.Items {
-		_, _ = fmt.Fprintln(tw, formatItemRow(cols, it))
+		_, _ = fmt.Fprintln(tw, formatItemRow(columns, it))
 	}
 	_ = tw.Flush()
 }
 
-// knownColumns splits configured column names into those something can render
-// -- a built-in cell, or a frontmatter field some loaded schema declares -- and
-// those nothing can. A body-placed field is unknown here: CustomFields skips it,
-// so itemCell has no value to show.
-func knownColumns(configured []string, schemas map[string]entityschema.Schema) (known, unknown []string) {
+// knownColumns splits configured column names into those a list cell can
+// render and those nothing can.
+func knownColumns(configured []string) (known, unknown []string) {
 	for _, name := range configured {
-		if _, builtin := listCells[name]; builtin || declaredExtraColumn(schemas, name) {
+		if _, builtin := listCells[name]; builtin {
 			known = append(known, name)
 			continue
 		}
 		unknown = append(unknown, name)
 	}
 	return known, unknown
-}
-
-func declaredExtraColumn(schemas map[string]entityschema.Schema, name string) bool {
-	for typ := range schemas {
-		if _, ok := entityschema.DeclaredExtra(schemas, typ, name); ok {
-			return true
-		}
-	}
-	return false
 }
 
 func warnUnknownColumns(w io.Writer, unknown []string) {
@@ -147,30 +129,11 @@ func warnUnknownColumns(w io.Writer, unknown []string) {
 	emitWarningLines(w, warns)
 }
 
-// pinnedColumns reports the columns the repo actually pins. The default config
-// fills ui.list.columns in, so a value equal to the built-in default means "not
-// customized" -- the same test `kira config explain` uses to tag a section
-// default rather than repo.
-func pinnedColumns(cfg *datamodel.Config) []string {
-	if slices.Equal(cfg.UI.List.Columns, datamodel.DefaultListColumns) {
-		return nil
-	}
-	return cfg.UI.List.Columns
-}
-
-// resolveColumns picks the table's columns: ui.list.columns wins, then what
-// the matched types' schemas declare, then the built-in default. Names are not
-// filtered against the built-in cells, since a schema-declared field is a
-// legitimate column from either source and itemCell renders it.
-func resolveColumns(configured, schemaDeclared []string) []string {
-	switch {
-	case len(configured) > 0:
-		return configured
-	case len(schemaDeclared) > 0:
-		return schemaDeclared
-	default:
+func columnsOrDefault(columns []string) []string {
+	if len(columns) == 0 {
 		return datamodel.DefaultListColumns
 	}
+	return columns
 }
 
 func columnHeader(cols []string) string {
@@ -193,16 +156,13 @@ func itemCell(column string, it datamodel.ListItem) string {
 	if cell, ok := listCells[column]; ok {
 		return cell(it)
 	}
-	if v, ok := it.Fields[column]; ok {
-		return typedFieldValueAsText(v)
-	}
 	return "-"
 }
 
 var listCells = map[string]func(datamodel.ListItem) string{
 	"number":        func(it datamodel.ListItem) string { return it.Number },
 	"title":         func(it datamodel.ListItem) string { return it.Title },
-	"type":          func(it datamodel.ListItem) string { return it.TypeLabel },
+	"type":          func(it datamodel.ListItem) string { return it.Type },
 	"subtype":       func(it datamodel.ListItem) string { return ptr.DerefOr(it.Subtype, "-") },
 	"state":         func(it datamodel.ListItem) string { return it.State },
 	"category":      func(it datamodel.ListItem) string { return it.Category },

@@ -2,7 +2,6 @@ package core
 
 import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/query"
 )
@@ -45,7 +44,7 @@ func (v *Snapshot) ActiveSummary() *ActiveItemSummary {
 		return nil
 	}
 	return &ActiveItemSummary{ID: it.ID, Number: it.Number, Title: it.Title,
-		State: it.State, Category: categoryString(v.data.cfg, it.Type, it.State),
+		State: it.State, Category: categoryString(it.Type, it.State),
 		Branch: activeBranch, BlockerCount: len(it.BlockedBy)}
 }
 
@@ -72,7 +71,7 @@ func (v *Snapshot) SprintList() *datamodel.SprintListResult {
 }
 
 func (v *Snapshot) ContainerProgress() (map[string]datamodel.ContainerProgress, error) {
-	return allContainerProgress(v.data.cfg, v.data.items, entityschema.ContainerTypes(v.data.schemas))
+	return allContainerProgress(v.data.items)
 }
 
 func (v *Snapshot) Now() (*datamodel.NowResult, error) {

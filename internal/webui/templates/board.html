@@ -13,7 +13,7 @@
           <div class="card-top"><code>{{.Number}}</code><span class="card-type">{{.Type}}</span></div>
           <h3>{{.Title}}</h3>
           {{if .Labels}}<div class="tags">{{range .Labels}}<span class="tag">{{.}}</span>{{end}}</div>{{end}}
-          {{if eq .Type "epic"}}{{with index $.Progress .ID}}{{if .Total}}<span class="epic-progress"><progress max="{{.Total}}" value="{{.Done}}" aria-label="Epic completion"></progress> {{.Done}} / {{.Total}}</span>{{end}}{{end}}{{end}}
+          {{if isContainer .Type}}{{with index $.Progress .ID}}{{if .Total}}<span class="epic-progress"><progress max="{{.Total}}" value="{{.Done}}" aria-label="Epic completion"></progress> {{.Done}} / {{.Total}}</span>{{end}}{{end}}{{end}}
           <div class="card-bottom">
             <span class="priority">{{if .Priority}}⚑ {{str .Priority}}{{else}}—{{end}}</span>
             {{if .Owner}}<span class="card-owner" title="{{str .Owner}}"><span class="avatar" aria-hidden="true">{{printf "%.1s" (str .Owner)}}</span>{{str .Owner}}</span>{{else}}<span class="muted">Unassigned</span>{{end}}

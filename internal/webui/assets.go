@@ -48,10 +48,11 @@ func markdown(s string) (template.HTML, error) {
 // invocation pays an init that runs unconditionally in the same binary.
 var pageTemplate = sync.OnceValue(func() *template.Template {
 	return template.Must(template.New("page").Funcs(template.FuncMap{
-		"asset":    assetURL,
-		"markdown": markdown,
-		"prose":    codec.Description,
-		"mul100":   func(n float64) float64 { return n * 100 },
+		"asset":       assetURL,
+		"isContainer": datamodel.IsContainer,
+		"markdown":    markdown,
+		"prose":       codec.Description,
+		"mul100":      func(n float64) float64 { return n * 100 },
 		"samples": func(p *datamodel.Percentiles) *datamodel.Percentiles {
 			if p == nil || p.N == 0 {
 				return nil

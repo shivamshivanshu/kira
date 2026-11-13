@@ -8,12 +8,11 @@ const (
 	WarnCloseUnknown   WarnCode = "close_unknown"
 	WarnCloseFailed    WarnCode = "close_failed"
 	WarnLiteral        WarnCode = "literal"
-	WarnOrphanType     WarnCode = "orphan_type"
 )
 
 var WarnCodes = []WarnCode{
 	WarnIndexFallback, WarnNoActiveSprint, WarnCloseUnknown,
-	WarnCloseFailed, WarnLiteral, WarnOrphanType,
+	WarnCloseFailed, WarnLiteral,
 }
 
 type Warning struct {
@@ -48,30 +47,27 @@ type CreateResult struct {
 }
 
 type ListItem struct {
-	ID           string         `json:"id"`
-	Number       string         `json:"number"`
-	Board        string         `json:"board"`
-	Title        string         `json:"title"`
-	Type         string         `json:"type"`
-	TypeLabel    string         `json:"type_label"`
-	Subtype      *string        `json:"subtype"`
-	State        string         `json:"state"`
-	Category     string         `json:"category"`
-	Owner        *string        `json:"owner"`
-	Labels       []string       `json:"labels"`
-	Parent       *string        `json:"parent"`
-	ParentNumber *string        `json:"parent_number"`
-	Priority     *string        `json:"priority"`
-	Resolution   *string        `json:"resolution"`
-	Due          *string        `json:"due"`
-	Fields       map[string]any `json:"fields,omitempty"`
+	ID           string   `json:"id"`
+	Number       string   `json:"number"`
+	Board        string   `json:"board"`
+	Title        string   `json:"title"`
+	Type         string   `json:"type"`
+	Subtype      *string  `json:"subtype"`
+	State        string   `json:"state"`
+	Category     string   `json:"category"`
+	Owner        *string  `json:"owner"`
+	Labels       []string `json:"labels"`
+	Parent       *string  `json:"parent"`
+	ParentNumber *string  `json:"parent_number"`
+	Priority     *string  `json:"priority"`
+	Resolution   *string  `json:"resolution"`
+	Due          *string  `json:"due"`
 }
 
 type ListResult struct {
-	Items   []ListItem  `json:"items"`
-	Count   int         `json:"count"`
-	Tree    []TreeGroup `json:"tree,omitempty"`
-	Columns []string    `json:"-"`
+	Items []ListItem  `json:"items"`
+	Count int         `json:"count"`
+	Tree  []TreeGroup `json:"tree,omitempty"`
 
 	StderrNotes []Warning `json:"-"`
 }
@@ -124,7 +120,6 @@ type ShowResult struct {
 	Board      string              `json:"board"`
 	Aliases    []string            `json:"aliases"`
 	Type       string              `json:"type"`
-	TypeLabel  string              `json:"type_label"`
 	Subtype    *string             `json:"subtype"`
 	Title      string              `json:"title"`
 	State      string              `json:"state"`
@@ -149,7 +144,6 @@ type ShowResult struct {
 	BlockedByNumbers []string            `json:"blocked_by_numbers"`
 	BlocksNumbers    []string            `json:"blocks_numbers"`
 	LinksNumbers     map[string][]string `json:"links_numbers"`
-	Fields           map[string]any      `json:"fields,omitempty"`
 	Estimate         *float64            `json:"estimate"`
 	Created          string              `json:"created"`
 	Updated          string              `json:"updated"`
@@ -617,8 +611,4 @@ type ExplainSection struct {
 
 type ExplainResult struct {
 	Sections []ExplainSection `json:"sections"`
-}
-
-type SchemaInitResult struct {
-	Written []string `json:"written"`
 }

@@ -19,7 +19,6 @@ func fuzzOpts() query.Options {
 	}
 	return query.Options{
 		Resolver:     id.NewResolver(snap),
-		Priorities:   []string{"P0", "P1", "P2"},
 		ActiveSprint: "2026-S14",
 		Me:           func() string { return "shivam" },
 	}

@@ -54,7 +54,7 @@ func (s *Store) fire(cfg *datamodel.Config, ev automation.Event) {
 }
 
 func (s *Store) fireAutomation(cfg *datamodel.Config, cs *datamodel.ChangeSet, sha string) {
-	ev, ok := s.eventFor(cfg, cs)
+	ev, ok := s.eventFor(cs)
 	if !ok {
 		return
 	}
@@ -69,30 +69,30 @@ func (s *Store) fireSyncCompleted(cfg *datamodel.Config, report *syncx.Report) {
 	s.fire(cfg, automation.Event{Name: datamodel.EventSyncCompleted, Source: datamodel.SourceSync, Sync: report})
 }
 
-func (s *Store) eventFor(cfg *datamodel.Config, cs *datamodel.ChangeSet) (automation.Event, bool) {
+func (s *Store) eventFor(cs *datamodel.ChangeSet) (automation.Event, bool) {
 	switch cs.Kind {
 	case datamodel.ChangeCreated:
-		return s.baseEvent(cfg, datamodel.EventItemCreated, cs.Source, cs.After), true
+		return s.baseEvent(datamodel.EventItemCreated, cs.Source, cs.After), true
 	case datamodel.ChangeMutated:
 		if !slices.Contains(cs.Changed, datamodel.KeyState) {
 			return automation.Event{}, false
 		}
 		after := cs.After
-		ev := s.baseEvent(cfg, datamodel.EventItemStateChanged, cs.Source, after)
+		ev := s.baseEvent(datamodel.EventItemStateChanged, cs.Source, after)
 		ev.Changes = changeMap(cs)
 		ev.To = after.State
-		ev.ToCategory = categoryString(cfg, after.Type, after.State)
+		ev.ToCategory = categoryString(after.Type, after.State)
 		if cs.Before != nil {
 			ev.From = cs.Before.State
-			ev.FromCategory = categoryString(cfg, cs.Before.Type, cs.Before.State)
+			ev.FromCategory = categoryString(cs.Before.Type, cs.Before.State)
 		}
 		return ev, true
 	}
 	return automation.Event{}, false
 }
 
-func (s *Store) baseEvent(cfg *datamodel.Config, name datamodel.EventName, source datamodel.ChangeSource, it *datamodel.Item) automation.Event {
-	snapshot := showResultOf(cfg, it)
+func (s *Store) baseEvent(name datamodel.EventName, source datamodel.ChangeSource, it *datamodel.Item) automation.Event {
+	snapshot := showResultOf(it)
 	return automation.Event{
 		Name:   name,
 		Source: source,

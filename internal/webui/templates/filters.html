@@ -27,7 +27,7 @@
   <label class="sr-only" for="type-filter">Item type</label>
   <select id="type-filter" name="type">
     {{if ne .View "board"}}<option value="">All types</option>{{end}}
-    {{if .Config}}{{range $name, $workflow := .Config.Workflows}}<option value="{{$name}}" {{if eq $.Type $name}}selected{{end}}>{{$name}}</option>{{end}}{{end}}
+    {{if .Config}}{{range $name := .ItemTypes}}<option value="{{$name}}" {{if eq $.Type $name}}selected{{end}}>{{$name}}</option>{{end}}{{end}}
   </select>
   {{end}}
   <label class="sr-only" for="sprint-filter">Sprint</label>
@@ -55,7 +55,7 @@
       <label for="priority-filter">Priority
         <select id="priority-filter" name="priority">
           <option value="">All priorities</option>
-          {{if .Config}}{{range .Config.Priorities.Values}}<option value="{{.}}" {{if eq $.Priority .}}selected{{end}}>{{.}}</option>{{end}}{{end}}
+          {{if .Config}}{{range .Priorities}}<option value="{{.}}" {{if eq $.Priority .}}selected{{end}}>{{.}}</option>{{end}}{{end}}
         </select>
       </label>
       <label for="label-filter">Label

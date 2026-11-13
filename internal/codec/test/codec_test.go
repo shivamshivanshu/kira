@@ -24,7 +24,7 @@ func readFixture(tb testing.TB, name string) string {
 func readExample(tb testing.TB) string { return readFixture(tb, "example.md") }
 
 func TestGoldenRoundTrip(t *testing.T) {
-	for _, name := range []string{"example.md", "legacy.md", "extras.md"} {
+	for _, name := range []string{"example.md", "legacy.md"} {
 		t.Run(name, func(t *testing.T) {
 			orig := readFixture(t, name)
 			it, err := codec.Parse(orig)
@@ -243,21 +243,6 @@ func TestLinksCanonicalization(t *testing.T) {
 		t.Fatalf("canonical links emission wrong:\n%s", out)
 	}
 
-	unk, err := codec.Parse(strings.Replace(src, "duplicate_of:", "mystery:", 1))
-	if err != nil {
-		t.Fatalf("unknown link type must parse (recorded, not rejected): %v", err)
-	}
-	wantExtra := map[string][]string{"mystery": {"01J8XC4M0N1P2Q3R4S5T6U7V8W"}}
-	if !reflect.DeepEqual(unk.ExtraLinks, wantExtra) {
-		t.Fatalf("ExtraLinks = %v, want %v", unk.ExtraLinks, wantExtra)
-	}
-	if _, ok := unk.Links["mystery"]; ok {
-		t.Fatal("unknown link type must not land in Links")
-	}
-	if out := codec.Serialize(unk); !strings.Contains(out, "links:\n  mystery: [01J8XC4M0N1P2Q3R4S5T6U7V8W]\ncreated:") {
-		t.Fatalf("unknown link type must round-trip under links:\n%s", out)
-	}
-
 	it.Links = nil
 	if out := codec.Serialize(it); strings.Contains(out, "links") {
 		t.Fatalf("empty links must emit no line:\n%s", out)
@@ -294,134 +279,28 @@ func TestParseRejectsNonULIDID(t *testing.T) {
 	}
 }
 
-func TestExtraFieldsRoundTripLosslessly(t *testing.T) {
-	src := "---\n" +
-		"id: 01J8X8Q7RZTN5Y3VXW2A9K4E7F\n" +
-		"number: KIRA-1\n" +
-		"aliases: []\n" +
-		"type: ticket\n" +
-		"title: \"t\"\n" +
-		"state: TODO\n" +
-		"labels: []\n" +
-		"parent: null\n" +
-		"blocked_by: []\n" +
-		"future_field: whatever\n" +
-		"another_future: 42\n" +
-		"created: 2026-07-10T09:14:00+05:30\n" +
-		"updated: 2026-07-12T11:02:00+05:30\n" +
-		"---\nbody\n"
-
-	it, err := codec.Parse(src)
-	if err != nil {
-		t.Fatalf("unknown top-level keys must parse, not reject: %v", err)
+func TestParseRejectsUndeclaredVocabulary(t *testing.T) {
+	cases := []struct {
+		name, old, replacement, wantErr string
+	}{
+		{"unknown top-level key", "sprint: 2026-S14\n", "sprint: 2026-S14\nfuture_field: whatever\n", `field "future_field": unknown frontmatter key`},
+		{"unknown link type populated", "  relates:", "  mystery:", `field "links": unknown link type "mystery"`},
+		{"unknown link type empty", "  relates: [01J8XB3K9P0Q2R4S6T8V0W1X2Y]", "  mystery: []", `field "links": unknown link type "mystery"`},
+		{"unknown link type null", "  relates: [01J8XB3K9P0Q2R4S6T8V0W1X2Y]", "  mystery: null", `field "links": unknown link type "mystery"`},
+		{"unknown type", "type: ticket\n", "type: blocker\n", `field "type": unknown type "blocker"`},
 	}
-	want := map[string]datamodel.Rendered{"another_future": "42", "future_field": "whatever"}
-	if !reflect.DeepEqual(it.ExtraScalars, want) {
-		t.Fatalf("ExtraScalars = %v, want %v", it.ExtraScalars, want)
-	}
-	if len(it.ExtraScalars) == 0 {
-		t.Fatal("ExtraScalars must be non-empty when extra fields are present")
-	}
-	out := codec.Serialize(it)
-	if !strings.Contains(out, "future_field: whatever") {
-		t.Fatalf("serializer must re-emit extra scalar fields losslessly:\n%s", out)
-	}
-	reparsed, err := codec.Parse(out)
-	if err != nil {
-		t.Fatalf("re-parse of serialized extras: %v", err)
-	}
-	if !reflect.DeepEqual(reparsed.ExtraScalars, want) {
-		t.Fatalf("round-tripped ExtraScalars = %v, want %v", reparsed.ExtraScalars, want)
-	}
-}
-
-func TestExtraScalarTypesRoundTripFaithfully(t *testing.T) {
-	src := "---\n" +
-		"id: 01J8X8Q7RZTN5Y3VXW2A9K4E7F\n" +
-		"number: KIRA-1\n" +
-		"aliases: []\n" +
-		"type: ticket\n" +
-		"title: \"t\"\n" +
-		"state: TODO\n" +
-		"labels: []\n" +
-		"parent: null\n" +
-		"blocked_by: []\n" +
-		"created: 2026-07-10T09:14:00+05:30\n" +
-		"updated: 2026-07-12T11:02:00+05:30\n" +
-		"future_bool: true\n" +
-		"future_int: 7\n" +
-		"future_null: null\n" +
-		"future_quoted_null: \"null\"\n" +
-		"---\nbody\n"
-
-	it, err := codec.Parse(src)
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	want := map[string]datamodel.Rendered{
-		"future_bool":        "true",
-		"future_int":         "7",
-		"future_null":        "null",
-		"future_quoted_null": `"null"`,
-	}
-	if !reflect.DeepEqual(it.ExtraScalars, want) {
-		t.Fatalf("ExtraScalars = %v, want %v", it.ExtraScalars, want)
-	}
-	if out := codec.Serialize(it); out != src {
-		t.Fatalf("typed extras must round-trip byte-identical\n--- got ---\n%s\n--- want ---\n%s", out, src)
-	}
-}
-
-func TestEncodeExtraScalarRoundTrips(t *testing.T) {
-	cases := []any{"high", 5, true, 3.14, "2026-07-24", "5", "true"}
-	for _, v := range cases {
-		rendered, err := codec.EncodeExtraScalar(v)
-		if err != nil {
-			t.Fatalf("EncodeExtraScalar(%#v): %v", v, err)
-		}
-		if got := codec.DecodeExtraScalar(rendered); got != v {
-			t.Errorf("EncodeExtraScalar(%#v) = %q, DecodeExtraScalar back = %#v, want %#v", v, rendered, got, v)
-		}
-	}
-}
-
-// An extra whose value kira cannot write back on its own -- here an alias to
-// an anchor defined by a sibling key -- must fail loudly. Rewriting it would
-// emit a dangling reference and leave a file kira can no longer read.
-func TestUnwritableExtraFieldRejected(t *testing.T) {
-	src := "---\n" +
-		"id: 01J8X8Q7RZTN5Y3VXW2A9K4E7F\n" +
-		"number: KIRA-1\n" +
-		"aliases: []\n" +
-		"type: ticket\n" +
-		"title: \"t\"\n" +
-		"state: TODO\n" +
-		"labels: []\n" +
-		"parent: null\n" +
-		"blocked_by: []\n" +
-		"anchored: &shared 1\n" +
-		"nested_extra:\n  a: *shared\n" +
-		"created: 2026-07-10T09:14:00+05:30\n" +
-		"updated: 2026-07-12T11:02:00+05:30\n" +
-		"---\nbody\n"
-
-	_, err := codec.Parse(src)
-	var pe *datamodel.ParseError
-	if !errors.As(err, &pe) {
-		t.Fatalf("an unwritable extra must be a loud parse error, got %v", err)
-	}
-	if !strings.Contains(err.Error(), "nested_extra") {
-		t.Fatalf("error must name the offending field: %v", err)
-	}
-}
-
-func TestKnownItemHasNoUnknowns(t *testing.T) {
-	it, err := codec.Parse(readExample(t))
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	if it.ExtraScalars != nil || it.ExtraLists != nil || it.ExtraLinks != nil {
-		t.Fatalf("clean item must carry no unknowns: scalars=%v lists=%v links=%v", it.ExtraScalars, it.ExtraLists, it.ExtraLinks)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			src := strings.Replace(readExample(t), tc.old, tc.replacement, 1)
+			_, err := codec.Parse(src)
+			var pe *datamodel.ParseError
+			if !errors.As(err, &pe) {
+				t.Fatalf("want *datamodel.ParseError, got %v", err)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("error = %v, want it to contain %s", err, tc.wantErr)
+			}
+		})
 	}
 }
 

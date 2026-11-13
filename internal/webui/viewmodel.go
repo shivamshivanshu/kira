@@ -199,16 +199,38 @@ func (p pageData) SprintLink(key string) string {
 func (p pageData) StateOptions() []string {
 	states := []string{p.State}
 	if p.Config != nil {
-		for typ, workflow := range p.Config.Workflows {
+		for _, typ := range datamodel.ItemTypes {
 			if p.Type != "" && typ != p.Type {
 				continue
 			}
+			workflow, _ := datamodel.WorkflowOf(typ)
 			for _, state := range workflow.States {
 				states = append(states, state.Key)
 			}
 		}
 	}
 	return sortedOptions(states)
+}
+
+func (pageData) ItemTypes() []string { return datamodel.ItemTypes }
+
+func (pageData) Priorities() []string { return datamodel.Priorities }
+
+func (pageData) Subtypes() []string { return datamodel.Subtypes }
+
+func (pageData) Resolutions() []string { return datamodel.Resolutions }
+
+// WorkflowStates lists every type's states in ItemTypes order, so a state two
+// types share (DONE) appears once per type.
+func (pageData) WorkflowStates() []string {
+	var states []string
+	for _, typ := range datamodel.ItemTypes {
+		workflow, _ := datamodel.WorkflowOf(typ)
+		for _, state := range workflow.States {
+			states = append(states, state.Key)
+		}
+	}
+	return states
 }
 
 func (p pageData) OwnerOptions() []string {

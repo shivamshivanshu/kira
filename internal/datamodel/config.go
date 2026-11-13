@@ -3,17 +3,11 @@ package datamodel
 import "strings"
 
 type Config struct {
-	Version     int                 `yaml:"version"`
-	Project     Project             `yaml:"project"`
-	ID          Identity            `yaml:"id"`
-	Workflows   map[string]Workflow `yaml:"workflows"`
-	Labels      Vocab               `yaml:"labels"`
-	People      People              `yaml:"people"`
-	Priorities  EnumVocab           `yaml:"priorities"`
-	Subtypes    EnumVocab           `yaml:"subtypes"`
-	Resolutions EnumVocab           `yaml:"resolutions"`
-
-	ResolutionsDropped []string `yaml:"resolutions_dropped"`
+	Version int      `yaml:"version"`
+	Project Project  `yaml:"project"`
+	ID      Identity `yaml:"id"`
+	Labels  Vocab    `yaml:"labels"`
+	People  People   `yaml:"people"`
 
 	Filters    map[string]string `yaml:"filters"`
 	Boards     []Board           `yaml:"boards,omitempty"`
@@ -26,7 +20,6 @@ type Config struct {
 	Git        Git               `yaml:"git"`
 	Estimate   Estimate          `yaml:"estimate"`
 	Automation []AutomationHook  `yaml:"automation"`
-	Fields     map[string]any    `yaml:"fields"`
 
 	UserAutomation    []AutomationHook `yaml:"-"`
 	UserCommitSubject string           `yaml:"-"`
@@ -165,16 +158,4 @@ func (c *Config) BoardKeys() []string {
 		keys[i] = b.Key
 	}
 	return keys
-}
-
-func (c *Config) VocabFor(field string) ([]string, bool) {
-	switch field {
-	case KeyPriority:
-		return c.Priorities.Values, true
-	case KeySubtype:
-		return c.Subtypes.Values, true
-	case KeyResolution:
-		return c.Resolutions.Values, true
-	}
-	return nil, false
 }

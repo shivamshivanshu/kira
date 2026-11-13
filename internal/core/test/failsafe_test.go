@@ -11,79 +11,10 @@ import (
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
-const (
-	unknownKeyLine  = "future_field: fromNewerKira\n"
-	unknownLinkFrag = "links:\n  future_rel: [01J8XB3K9P0Q2R4S6T8V0W1X2Y]\n"
-)
-
-func withUnknownKey(content string) string {
-	return strings.Replace(content, "---\n", "---\n"+unknownKeyLine, 1)
-}
-
-func withUnknownLink(content string) string {
-	return strings.Replace(content, "blocked_by: []\n", "blocked_by: []\n"+unknownLinkFrag, 1)
-}
-
 func overwriteItem(t *testing.T, s *core.Store, ulid, content string) {
 	t.Helper()
 	if err := os.WriteFile(storage.New(s.Root()).ItemPath(ulid), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestReadsSucceedWithUnknowns(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "Has future fields")
-	overwriteItem(t, s, res.ID, withUnknownLink(withUnknownKey(mustReadItem(t, s, res.ID))))
-
-	if _, err := s.Show(cfg, "KIRA-1", ""); err != nil {
-		t.Fatalf("show must succeed on unknown-carrying item: %v", err)
-	}
-	list, err := s.List(cfg, core.ListOpts{})
-	if err != nil {
-		t.Fatalf("list must succeed on unknown-carrying item: %v", err)
-	}
-	if len(list.Items) != 1 || list.Items[0].Number != "KIRA-1" {
-		t.Fatalf("list did not return the unknown-carrying item: %+v", list.Items)
-	}
-}
-
-func TestEditSucceedsAndPreservesExtraLink(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "Has a future link type")
-	overwriteItem(t, s, res.ID, withUnknownLink(mustReadItem(t, s, res.ID)))
-
-	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{Fields: []core.FieldEdit{{Key: "state", Value: "IN_PROGRESS"}}})
-	if err != nil {
-		t.Fatalf("edit on an item with an extra link type must succeed: %v", err)
-	}
-	got := mustReadItem(t, s, res.ID)
-	if !strings.Contains(got, unknownLinkFrag) {
-		t.Fatalf("edit dropped the extra link type:\n%s", got)
-	}
-	if !strings.Contains(got, "state: IN_PROGRESS") {
-		t.Fatalf("edit did not apply:\n%s", got)
-	}
-}
-
-func TestEditSucceedsAndPreservesExtraScalar(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	res := mustCreate(t, s, cfg, "Has an extra field")
-	overwriteItem(t, s, res.ID, withUnknownKey(mustReadItem(t, s, res.ID)))
-
-	_, err := s.Edit(cfg, "KIRA-1", core.EditOpts{Fields: []core.FieldEdit{{Key: "state", Value: "IN_PROGRESS"}}})
-	if err != nil {
-		t.Fatalf("edit on an item with an extra frontmatter field must succeed: %v", err)
-	}
-	got := mustReadItem(t, s, res.ID)
-	if !strings.Contains(got, "future_field: fromNewerKira") {
-		t.Fatalf("edit dropped the extra frontmatter field:\n%s", got)
-	}
-	if !strings.Contains(got, "state: IN_PROGRESS") {
-		t.Fatalf("edit did not apply:\n%s", got)
 	}
 }
 

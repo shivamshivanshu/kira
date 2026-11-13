@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/query"
 )
@@ -31,9 +30,9 @@ func unknownFilterErr(cfg *datamodel.Config, name string) error {
 // fieldFilterErr reframes a grammar error as a `--field key=value` error:
 // unlike a native flag, both halves of that pair are typed freehand, so the
 // key gets a did-you-mean and nothing should mention query syntax positions.
-func fieldFilterErr(key string, err error, schemas map[string]entityschema.Schema) error {
+func fieldFilterErr(key string, err error) error {
 	if query.IsUnknownField(err) {
-		names := query.FieldNames(schemas)
+		names := query.FieldNames()
 		base := errx.User("--field %q: unknown field (available: %s)", key, strings.Join(names, ", "))
 		if n := errx.Nearest(key, names); n != "" {
 			return base.WithHint("did you mean `%s`?", n)

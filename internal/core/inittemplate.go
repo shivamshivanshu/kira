@@ -11,22 +11,6 @@ project:
 id:
   style: sequential          # sequential (default, reconciled post-merge) | hash (ULID-derived, zero reconciliation)
 
-workflows:
-  ticket:
-    states:
-      - { key: TODO,        category: todo }
-      - { key: IN_PROGRESS, category: doing, wip: 3 }   # advisory column cap (0/absent = unlimited)
-      - { key: REVIEW,      category: doing, wip: 2 }
-      - { key: DONE,        category: done, resolution: done }
-      - { key: WONT_DO,     category: done, resolution: dropped }
-    initial: TODO
-  epic:
-    states:
-      - { key: PLANNED, category: todo }
-      - { key: ACTIVE,  category: doing }
-      - { key: DONE,    category: done, resolution: done }
-    initial: PLANNED
-
 labels:
   known: []                   # add project labels; strict rejects unknown ones (--force overrides)
   # known: [bug, feature, perf, tech-debt, infra]   # example vocabulary
@@ -36,11 +20,6 @@ people:
   known: []                   # add known people; strict rejects unknown assignees
   # known: [{ name: jdoe }, { name: asmith }]        # example roster
   strict: false
-
-priorities: [P0, P1, P2, P3]  # ordered high→low: validates priority, defines ranked sort
-                              # and >/< query compare; [] = free-form (equality-only)
-subtypes:    [bug, story, task, spike]   # validates subtype; [] = free-form
-resolutions: [done, dropped, duplicate, cannot-reproduce]  # validates resolution; [] = free-form
 
 commit:
   mode: auto                  # auto | manual | prompt (prompt needs a terminal; without one, changes stage but are not committed)

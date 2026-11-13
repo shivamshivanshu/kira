@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
-	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
@@ -41,7 +40,7 @@ func TestResolveRefusesWhenLockAlreadyHeld(t *testing.T) {
 	}
 	defer release()
 
-	_, err = s.Resolve(config.Default(), nil, false)
+	_, err = s.Resolve(nil, false)
 	var ce *errx.Error
 	if !errors.As(err, &ce) || ce.Code != errx.ExitConflict {
 		t.Fatalf("err = %v, want errx.Conflict", err)
@@ -93,7 +92,7 @@ func TestResolveSkipsFilenameIDMismatchInsteadOfMisreportingResolved(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := s.Resolve(config.Default(), nil, false)
+	res, err := s.Resolve(nil, false)
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -121,7 +120,6 @@ func TestResolveSkipsFilenameIDMismatchInsteadOfMisreportingResolved(t *testing.
 
 func TestResolveClearsStaleResolutionAfterDivergentEdits(t *testing.T) {
 	s := eventRepo(t)
-	cfg := config.Default()
 	repo := s.repo()
 
 	it := eventTicket()
@@ -166,7 +164,7 @@ func TestResolveClearsStaleResolutionAfterDivergentEdits(t *testing.T) {
 		t.Fatal("expected an unmerged path to resolve")
 	}
 
-	res, err := s.Resolve(cfg, nil, false)
+	res, err := s.Resolve(nil, false)
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -187,72 +185,6 @@ func TestResolveClearsStaleResolutionAfterDivergentEdits(t *testing.T) {
 	}
 	if merged.Resolution != nil {
 		t.Errorf("resolution = %q, want cleared: state %q is not a Done-category state, so a leftover resolution is stale", *merged.Resolution, merged.State)
-	}
-}
-
-func TestResolveInteractiveHonoursArbitratedExtraPick(t *testing.T) {
-	s := eventRepo(t)
-	cfg := config.Default()
-	repo := s.repo()
-
-	schemaDir := s.fs().SchemaDir()
-	if err := os.MkdirAll(schemaDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	schema := `{"name": "ticket", "fields": [{"name": "severity", "type": "string", "placement": "frontmatter"}]}`
-	if err := os.WriteFile(filepath.Join(schemaDir, "ticket.json"), []byte(schema), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	it := eventTicket()
-	commitSeverity := func(severity, date, msg string) {
-		it.ExtraScalars = map[string]datamodel.Rendered{"severity": datamodel.Rendered(severity)}
-		it.Updated = date + "T10:00:00Z"
-		if _, err := s.fs().WriteItem(it); err != nil {
-			t.Fatal(err)
-		}
-		gitRun(t, s, it.Updated, "add", "-A")
-		gitRun(t, s, it.Updated, "commit", "-m", msg)
-	}
-	commitSeverity("low", "2026-01-05", "base severity")
-	base, err := repo.Output("branch", "--show-current")
-	if err != nil {
-		t.Fatalf("branch --show-current: %v", err)
-	}
-
-	gitRun(t, s, "2026-01-06T10:00:00Z", "checkout", "-b", "other")
-	commitSeverity("critical", "2026-01-07", "theirs severity")
-
-	gitRun(t, s, "2026-01-06T10:00:00Z", "checkout", base)
-	commitSeverity("high", "2026-01-08", "ours severity")
-
-	if _, err := repo.Output("merge", "other"); err == nil {
-		t.Fatal("expected a merge conflict (both sides touch the severity line)")
-	}
-
-	prompter := &scriptedPrompter{answers: []string{"t"}}
-	res, err := s.WithPrompter(prompter).Resolve(cfg, nil, true)
-	if err != nil {
-		t.Fatalf("Resolve: %v", err)
-	}
-	if len(res.Resolved) != 1 {
-		t.Fatalf("Resolved = %+v, want exactly 1", res.Resolved)
-	}
-	wantPrompt := "severity: [o]urs=high [t]heirs=critical (default: auto) "
-	if !slices.Contains(prompter.prompts, wantPrompt) {
-		t.Errorf("prompts = %q, want one equal to %q", prompter.prompts, wantPrompt)
-	}
-
-	data, err := os.ReadFile(s.fs().ItemPath(it.ID))
-	if err != nil {
-		t.Fatal(err)
-	}
-	merged, err := codec.Parse(string(data))
-	if err != nil {
-		t.Fatalf("resolved file unparseable: %v", err)
-	}
-	if got := merged.ExtraScalars["severity"]; got != "critical" {
-		t.Errorf("severity = %q, want the interactive theirs pick %q over the auto winner", got, "critical")
 	}
 }
 
@@ -279,27 +211,5 @@ func TestPickFieldsHonoursSideChoices(t *testing.T) {
 	}
 	if target.Owner != nil {
 		t.Errorf("owner = %v, want untouched (nil) on empty/auto answer", target.Owner)
-	}
-}
-
-func TestPickFieldsHonoursExtraFieldChoices(t *testing.T) {
-	s := &Store{prompter: &scriptedPrompter{answers: []string{"t", "o"}}}
-
-	target := eventTicket()
-	target.ExtraScalars = map[string]datamodel.Rendered{"reviewer": "auto"}
-	ours := eventTicket()
-	ours.ExtraScalars = map[string]datamodel.Rendered{"reviewer": "ours-reviewer"}
-	ours.ExtraLists = map[string][]datamodel.Rendered{"tags": {"ours"}}
-	theirs := eventTicket()
-	theirs.ExtraScalars = map[string]datamodel.Rendered{"reviewer": "theirs-reviewer"}
-	theirs.ExtraLists = map[string][]datamodel.Rendered{"tags": {"theirs"}}
-
-	s.pickFields(target, ours, theirs, []string{"reviewer", "tags"})
-
-	if target.ExtraScalars["reviewer"] != "theirs-reviewer" {
-		t.Errorf("reviewer = %q, want theirs pick", target.ExtraScalars["reviewer"])
-	}
-	if !slices.Equal(target.ExtraLists["tags"], []datamodel.Rendered{"ours"}) {
-		t.Errorf("tags = %v, want ours pick", target.ExtraLists["tags"])
 	}
 }

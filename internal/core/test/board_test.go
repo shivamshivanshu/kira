@@ -119,16 +119,15 @@ func TestBoardAtRendersHistoricalState(t *testing.T) {
 
 func TestStateDeclaredAcceptsEveryWorkflowState(t *testing.T) {
 	t.Parallel()
-	_, cfg := newStore(t)
 	for _, state := range []string{"TODO", "IN_PROGRESS", "REVIEW", "DONE", "WONT_DO"} {
-		if !core.StateDeclared(cfg, datamodel.TypeTicket, state) {
+		if !core.StateDeclared(datamodel.TypeTicket, state) {
 			t.Errorf("StateDeclared(%s) = false, want true", state)
 		}
 	}
-	if core.StateDeclared(cfg, datamodel.TypeTicket, "NOPE") {
+	if core.StateDeclared(datamodel.TypeTicket, "NOPE") {
 		t.Error("StateDeclared(NOPE) = true, want false")
 	}
-	if core.StateDeclared(cfg, "nosuchtype", "TODO") {
+	if core.StateDeclared("nosuchtype", "TODO") {
 		t.Error("StateDeclared on an unknown type = true, want false")
 	}
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/muesli/termenv"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
 )
 
@@ -181,7 +180,7 @@ func TestCategoryGlyphDroppedVsDone(t *testing.T) {
 	dropped := datamodel.ResolutionDropped
 	other := "fixed"
 	for _, mode := range []datamodel.IconMode{datamodel.IconNerd, datamodel.IconEmoji, datamodel.IconText} {
-		ic := iconSet{mode: mode, dropped: []string{dropped}}
+		ic := iconSet{mode: mode}
 		if got := ic.categoryGlyph(datamodel.CategoryDone, &dropped); got != glyphDropped.pick(mode) {
 			t.Errorf("%s done+dropped must render dropped glyph, got %q", mode, got)
 		}
@@ -204,7 +203,7 @@ func TestTreeRowPlumbsPriorityAndResolution(t *testing.T) {
 	}
 	tm := newTreeModel()
 	(&tm).load(nodes, fields, map[string]datamodel.ContainerProgress{})
-	out := tm.render(asciiTheme(), iconSet{mode: datamodel.IconText, priorities: []string{"P0", "P1", "P2", "P3"}, dropped: []string{dropped}}, 100, 3, true, false)
+	out := tm.render(asciiTheme(), iconSet{mode: datamodel.IconText, priorities: []string{"P0", "P1", "P2", "P3"}}, 100, 3, true, false)
 	if !strings.Contains(out, "!") {
 		t.Errorf("P0 priority marker missing from row:\n%s", out)
 	}
@@ -239,20 +238,8 @@ func TestDetailMemoServesCacheWithoutStore(t *testing.T) {
 	}
 }
 
-// The schema format carries one icon per type with no per-mode variants, so
-// ui.icons selects state and priority glyphs but never the type glyph. A repo
-// on a terminal without a nerd font sees the declared rune regardless; that is
-// the accepted cost of letting a schema name any symbol it likes.
-func TestShippedSchemaIconsIgnoreIconMode(t *testing.T) {
-	schemas, err := entityschema.Load("")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for typ, schema := range schemas {
-		declared := schema.Representation.Icon
-		if declared == "" {
-			continue
-		}
+func TestItemTypeIconsIgnoreIconMode(t *testing.T) {
+	for typ, declared := range itemTypeIcons {
 		for _, mode := range []datamodel.IconMode{datamodel.IconNerd, datamodel.IconEmoji, datamodel.IconText} {
 			ic := iconSet{mode: mode}.withTypeIcons(map[string]string{typ: declared})
 			if got := ic.typeGlyph(typ); got != declared {

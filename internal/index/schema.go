@@ -6,7 +6,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-const schemaVersion = 10
+const schemaVersion = 11
 
 const ddl = `
 CREATE TABLE IF NOT EXISTS items (
@@ -27,8 +27,7 @@ CREATE TABLE IF NOT EXISTS items (
   estimate REAL,
   created  TEXT NOT NULL,
   updated  TEXT NOT NULL,
-  activity TEXT NOT NULL,
-  extras   TEXT
+  activity TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS aliases (
   item_id TEXT NOT NULL REFERENCES items(id) ON DELETE CASCADE,

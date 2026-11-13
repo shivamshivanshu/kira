@@ -27,11 +27,10 @@ func ReadCached(cacheDir string) ([]*datamodel.Item, error) {
 	return (&Index{db: db, cacheDir: cacheDir}).Items()
 }
 
-// Items returns all cached items along with their aliases, labels, links,
-// and extras. Read-only projections: the cache stores no Body, ExtraLinks or
-// CRLF, so a rehydrated item looks rewritable even for a file kira must refuse
-// to rewrite. Never feed these to a write path — core reaches the filesystem
-// loader for that.
+// Items returns all cached items along with their aliases, labels and links.
+// Read-only projections: the cache stores no Body or CRLF, so a rehydrated
+// item looks rewritable even for a file kira must refuse to rewrite. Never
+// feed these to a write path — core reaches the filesystem loader for that.
 func (i *Index) Items() ([]*datamodel.Item, error) {
 	items, byID, err := i.scanItems()
 	if err != nil {
@@ -51,7 +50,7 @@ func (i *Index) Items() ([]*datamodel.Item, error) {
 
 func (i *Index) scanItems() ([]*datamodel.Item, map[string]*datamodel.Item, error) {
 	rows, err := i.db.Query(`SELECT id, number, type, subtype, title, state, resolution,
-		priority, rank, owner, reporter, parent, sprint, due, estimate, created, updated, activity, extras
+		priority, rank, owner, reporter, parent, sprint, due, estimate, created, updated, activity
 		FROM items ORDER BY id`)
 	if err != nil {
 		return nil, nil, errx.Env("querying index items: %v", err)
@@ -61,15 +60,12 @@ func (i *Index) scanItems() ([]*datamodel.Item, map[string]*datamodel.Item, erro
 	var items []*datamodel.Item
 	for rows.Next() {
 		var it datamodel.Item
-		var subtype, resolution, priority, rank, owner, reporter, parent, sprint, due, extras sql.NullString
+		var subtype, resolution, priority, rank, owner, reporter, parent, sprint, due sql.NullString
 		var estimate sql.NullFloat64
 		if err := rows.Scan(&it.ID, &it.Number, &it.Type, &subtype, &it.Title, &it.State,
 			&resolution, &priority, &rank, &owner, &reporter, &parent, &sprint, &due,
-			&estimate, &it.Created, &it.Updated, &it.Activity, &extras); err != nil {
+			&estimate, &it.Created, &it.Updated, &it.Activity); err != nil {
 			return nil, nil, errx.Env("scanning index item: %v", err)
-		}
-		if err := decodeExtras(extras.String, &it); err != nil {
-			return nil, nil, err
 		}
 		it.Subtype = strPtr(subtype)
 		it.Resolution = strPtr(resolution)

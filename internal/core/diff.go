@@ -3,9 +3,7 @@ package core
 import (
 	"fmt"
 	"slices"
-	"strconv"
 
-	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
@@ -98,10 +96,7 @@ func changedItem(repo gitx.Repo, from, to *datamodel.Item) (datamodel.DiffItem, 
 			di.Changes = append(di.Changes, datamodel.FieldChange{Field: datamodel.KeyNumber, From: from.Number, To: to.Number})
 		}
 	}
-	// ChangedFields covers only the built-in shape; a schema-declared or
-	// unknown frontmatter field changes under ChangedExtraKeys, and fieldString
-	// already reads both.
-	for _, field := range slices.Concat(datamodel.ChangedFields(from, to), datamodel.ChangedExtraKeys(from, to)) {
+	for _, field := range datamodel.ChangedFields(from, to) {
 		fc, err := fieldChange(repo, from, to, field)
 		if err != nil {
 			return datamodel.DiffItem{}, false, err
@@ -119,31 +114,7 @@ func fieldChange(repo gitx.Repo, from, to *datamodel.Item, field string) (datamo
 		}
 		return datamodel.FieldChange{Field: field, To: fmt.Sprintf("+%d/-%d lines", added, removed)}, nil
 	}
-	before, after := fieldString(from, field), fieldString(to, field)
-	if before == after {
-		// The stored bytes differ or this field would not be listed as changed,
-		// so the decoded forms colliding means the YAML type changed: 42 became
-		// "42". Show what is on disk rather than a change that reads as X -> X.
-		before, after = storedFieldString(from, field), storedFieldString(to, field)
-	}
-	return datamodel.FieldChange{Field: field, From: before, To: after}, nil
-}
-
-// storedFieldString renders an extra exactly as it sits in frontmatter, keeping
-// the quoting that distinguishes a string from the scalar it looks like.
-func storedFieldString(it *datamodel.Item, field string) string {
-	if v, ok := it.ExtraScalars[field]; ok {
-		return string(v)
-	}
-	if v, ok := it.ExtraLists[field]; ok {
-		return codec.EmitRenderedList(v)
-	}
-	// A block's on-disk form spans lines, which one-change-per-line output
-	// cannot show; quoting keeps the exact bytes to a single line.
-	if v, ok := it.ExtraBlocks[field]; ok {
-		return strconv.Quote(string(v))
-	}
-	return "-"
+	return datamodel.FieldChange{Field: field, From: fieldString(from, field), To: fieldString(to, field)}, nil
 }
 
 func sortDiffItems(items []datamodel.DiffItem) {

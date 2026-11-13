@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 )
 
 func TestShortCircuitSkipsRightPredicate(t *testing.T) {
@@ -27,11 +26,9 @@ func TestShortCircuitSkipsRightPredicate(t *testing.T) {
 
 func TestLargeScalarInMatchesAlternatives(t *testing.T) {
 	values := []string{"one", "two", "three", "four", "five", "six", "seven", "@me"}
-	for _, field := range []string{"owner", "board", "custom"} {
+	for _, field := range []string{"owner", "board"} {
 		calls := 0
 		opts := Options{
-			Schemas: map[string]entityschema.Schema{"ticket": {Name: "ticket",
-				Fields: []entityschema.FieldDef{{Name: "custom", Type: entityschema.FieldString}}}},
 			Me: func() string { calls++; return "Ada" },
 		}
 		q, err := Compile(field+" IN ("+strings.Join(values, ",")+")", opts)
@@ -39,8 +36,7 @@ func TestLargeScalarInMatchesAlternatives(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, value := range append(values, "Ada", "missing", "") {
-			it := &datamodel.Item{Type: "ticket", Owner: new(value), Number: value + "-1",
-				ExtraScalars: map[string]datamodel.Rendered{"custom": datamodel.Rendered(value)}}
+			it := &datamodel.Item{Type: "ticket", Owner: new(value), Number: value + "-1"}
 			want := false
 			for _, v := range values {
 				pred, _, err := Match(field, v, opts)

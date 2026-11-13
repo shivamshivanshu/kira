@@ -4,33 +4,27 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/editorx"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
 func TestDraftRoundTrip(t *testing.T) {
 	est := 3.0
 	d := draft{
-		Title:        "Fix race",
-		Type:         "ticket",
-		Subtype:      new("bug"),
-		Priority:     new("P1"),
-		Rank:         new("0|m:"),
-		Owner:        new("shivam"),
-		Labels:       []string{"bug", "perf"},
-		Sprint:       new("2026-S14"),
-		Due:          new("2026-07-20"),
-		Estimate:     &est,
-		ExtraScalars: map[string]datamodel.Rendered{"severity": "high"},
-		ExtraLists:   map[string][]datamodel.Rendered{"watchers": {"alice", "bob"}},
-		ExtraBlocks:  map[string]datamodel.Rendered{"sla": "response: 4h\nresolve: 24h"},
-		Body:         "\n## Description\n\nbody text\n",
+		Title:    "Fix race",
+		Type:     "ticket",
+		Subtype:  new("bug"),
+		Priority: new("P1"),
+		Rank:     new("0|m:"),
+		Owner:    new("shivam"),
+		Labels:   []string{"bug", "perf"},
+		Sprint:   new("2026-S14"),
+		Due:      new("2026-07-20"),
+		Estimate: &est,
+		Body:     "\n## Description\n\nbody text\n",
 	}
 	got, err := parseDraft(serializeDraft(d))
 	if err != nil {
@@ -57,9 +51,6 @@ func TestDraftRoundTrip(t *testing.T) {
 	if len(got.Labels) != 2 || got.Estimate == nil || *got.Estimate != est {
 		t.Fatalf("labels/estimate lost: %+v", got)
 	}
-	if !reflect.DeepEqual(got.ExtraScalars, d.ExtraScalars) || !reflect.DeepEqual(got.ExtraLists, d.ExtraLists) || !reflect.DeepEqual(got.ExtraBlocks, d.ExtraBlocks) {
-		t.Fatalf("extras lost: scalars %+v lists %+v blocks %+v", got.ExtraScalars, got.ExtraLists, got.ExtraBlocks)
-	}
 	if got.Body != d.Body {
 		t.Fatalf("body = %q, want %q", got.Body, d.Body)
 	}
@@ -85,7 +76,7 @@ func TestItemFromDraftEmptyScalarsAreAbsent(t *testing.T) {
 }
 
 func TestApplyFlagsOverridesTemplate(t *testing.T) {
-	base, err := parseDraft(defaultTemplate("ticket", entityschema.Schema{}))
+	base, err := parseDraft(defaultTemplate("ticket"))
 	if err != nil {
 		t.Fatalf("parse default template: %v", err)
 	}
@@ -169,71 +160,15 @@ func TestRunEditorUnsetIsEnvError(t *testing.T) {
 	}
 }
 
-func draftSchema() entityschema.Schema {
-	return entityschema.Schema{Name: "ticket", Fields: []entityschema.FieldDef{
-		{Name: "severity", Type: entityschema.FieldString, Placement: entityschema.PlacementFrontmatter},
-		{Name: "watchers", Type: entityschema.FieldString, List: true, Placement: entityschema.PlacementFrontmatter},
-		{Name: "notes", Type: entityschema.FieldMarkdown, Placement: entityschema.PlacementBody, Section: "Notes"},
-	}}
-}
-
-func TestDefaultTemplateOffersDeclaredFrontmatterFields(t *testing.T) {
-	tmpl := defaultTemplate("ticket", draftSchema())
-	for _, want := range []string{"severity: \n", "watchers: []\n", "## Notes\n"} {
-		if !strings.Contains(tmpl, want) {
-			t.Fatalf("template missing %q:\n%s", want, tmpl)
-		}
-	}
-	// the offered key must read as blank, not as the literal null an empty
-	// YAML scalar parses back to
-	if strings.Contains(tmpl, "severity: null") {
-		t.Fatalf("offered field rendered as null:\n%s", tmpl)
+func TestDefaultTemplateOffersBodySections(t *testing.T) {
+	if tmpl := defaultTemplate("ticket"); !strings.Contains(tmpl, "## Description\n") || !strings.Contains(tmpl, "## Acceptance criteria\n") {
+		t.Fatalf("template missing a body section:\n%s", tmpl)
 	}
 }
 
-func TestDefaultTemplateSurvivesItsOwnRoundTrip(t *testing.T) {
-	d, err := parseDraft(defaultTemplate("ticket", draftSchema()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := serializeDraft(d); strings.Contains(got, "severity: null") {
-		t.Fatalf("re-serialized template rendered the offered field as null:\n%s", got)
-	}
-}
-
-func TestDropUnsetDeclaredExtrasKeepsUndeclaredKeys(t *testing.T) {
-	d := draft{
-		ExtraScalars: map[string]datamodel.Rendered{
-			"severity":    "null",
-			"set":         "high",
-			"from_newer":  "null",
-			"from_newer2": "value",
-		},
-		ExtraLists: map[string][]datamodel.Rendered{"watchers": {}, "kept": {"a"}},
-	}
-	got := dropUnsetDeclaredExtras(d, draftSchema())
-	if _, ok := got.ExtraScalars["severity"]; ok {
-		t.Error("an unset declared scalar must be dropped")
-	}
-	if _, ok := got.ExtraLists["watchers"]; ok {
-		t.Error("an unset declared list must be dropped")
-	}
-	if got.ExtraScalars["set"] != "high" || !reflect.DeepEqual(got.ExtraLists["kept"], []datamodel.Rendered{"a"}) {
-		t.Errorf("a set value must survive: %+v", got)
-	}
-	// an undeclared key is a newer kira's field: never dropped, null included
-	if got.ExtraScalars["from_newer"] != "null" || got.ExtraScalars["from_newer2"] != "value" {
-		t.Errorf("undeclared keys must round-trip verbatim: %+v", got.ExtraScalars)
-	}
-}
-
-func TestDropUnsetDoesNotMutateCaller(t *testing.T) {
-	d := draft{ExtraScalars: map[string]datamodel.Rendered{"severity": "null"}}
-	schema := entityschema.Schema{Name: "ticket", Fields: []entityschema.FieldDef{
-		{Name: "severity", Type: entityschema.FieldString, Placement: entityschema.PlacementFrontmatter},
-	}}
-	_ = dropUnsetDeclaredExtras(d, schema)
-	if _, ok := d.ExtraScalars["severity"]; !ok {
-		t.Fatal("caller's draft was mutated through the copied map header")
+func TestParseDraftRejectsUnknownKey(t *testing.T) {
+	content := strings.Replace(serializeDraft(draft{Title: "t", Type: "ticket"}), "type: ticket\n", "type: ticket\nseverity: high\n", 1)
+	if _, err := parseDraft(content); err == nil || !strings.Contains(err.Error(), `field "severity": unknown frontmatter key`) {
+		t.Fatalf("parseDraft error = %v, want an unknown-frontmatter-key rejection", err)
 	}
 }

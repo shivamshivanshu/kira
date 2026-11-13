@@ -66,8 +66,7 @@ func renderTreeGroups(w io.Writer, res *datamodel.ListResult, columns []string) 
 		_, _ = fmt.Fprintln(w, msgNoItems)
 		return
 	}
-	cols := resolveColumns(columns, res.Columns)
-	pad := strings.Repeat("\t", len(cols)-1)
+	pad := strings.Repeat("\t", len(columns)-1)
 	byID := make(map[string]datamodel.ListItem, len(res.Items))
 	for _, it := range res.Items {
 		byID[it.ID] = it
@@ -81,7 +80,7 @@ func renderTreeGroups(w io.Writer, res *datamodel.ListResult, columns []string) 
 			_, _ = fmt.Fprintf(tw, "%s%s(epic)\n", label, pad)
 		}
 		for _, ulid := range grp.Items {
-			_, _ = fmt.Fprintln(tw, "  "+formatItemRow(cols, byID[ulid]))
+			_, _ = fmt.Fprintln(tw, "  "+formatItemRow(columns, byID[ulid]))
 		}
 	}
 	_ = tw.Flush()

@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/storage"
@@ -30,19 +29,19 @@ type parsedFile struct {
 
 func (s parsedFile) identified() bool { return s.item != nil && s.item.ID != "" }
 
-func scan(files []File, schemas map[string]entityschema.Schema) []parsedFile {
+func scan(files []File) []parsedFile {
 	out := make([]parsedFile, len(files))
 	for i, f := range files {
-		it, parsed, lf := Lint(f.Content, schemas)
+		it, parsed, lf := Lint(f.Content)
 		out[i] = parsedFile{path: f.Path, item: it, parsed: parsed, lint: lf}
 	}
 	return out
 }
 
-func Run(cfg *datamodel.Config, files []File, strays []string, env Env, schemas map[string]entityschema.Schema) *Report {
+func Run(cfg *datamodel.Config, files []File, strays []string, env Env) *Report {
 	files = slices.Clone(files)
 	slices.SortFunc(files, func(a, b File) int { return strings.Compare(a.Path, b.Path) })
-	scanned := scan(files, schemas)
+	scanned := scan(files)
 
 	var items []*datamodel.Item
 	pathByID := map[string]string{}
@@ -56,16 +55,15 @@ func Run(cfg *datamodel.Config, files []File, strays []string, env Env, schemas 
 	resolver := resolverFor(cfg, items)
 	var findings []Finding
 	for _, s := range scanned {
-		findings = append(findings, fileFindings(cfg, resolver, s, true, schemas)...)
+		findings = append(findings, fileFindings(cfg, resolver, s, true)...)
 	}
 	findings = append(findings, stampByID(Collisions(items), pathByID)...)
 	findings = append(findings, stampByID(SequentialOutliers(items), pathByID)...)
-	findings = append(findings, stampByID(RefTypeMismatches(schemas, items, resolver, itemTypes(cfg)), pathByID)...)
+	findings = append(findings, stampByID(RefTypeMismatches(items, resolver), pathByID)...)
 	findings = append(findings, stampByID(RefCycles(items, resolver), pathByID)...)
-	findings = append(findings, StateDrift(cfg, schemas)...)
-	findings = append(findings, SchemaIcons(schemas)...)
-	findings = append(findings, WipOverruns(cfg, items)...)
+	findings = append(findings, WipOverruns(items)...)
 	findings = append(findings, strayFindings(strays)...)
+	findings = append(findings, legacySchemaDirFindings(env)...)
 	findings = append(findings, envFindings(env)...)
 
 	orderFindings(findings)
@@ -85,26 +83,37 @@ func strayFindings(strays []string) []Finding {
 	return out
 }
 
-func Validate(cfg *datamodel.Config, storeFiles, targets []File, schemas map[string]entityschema.Schema) *Report {
-	targetScan := scan(targets, schemas)
-	resolver := resolverFor(cfg, dedupItems(scan(storeFiles, schemas), targetScan))
+func legacySchemaDirFindings(env Env) []Finding {
+	if !env.LegacySchemaDirPresent {
+		return nil
+	}
+	return []Finding{{
+		Class:    ClassStray,
+		Severity: SeverityWarning,
+		Path:     storage.LegacySchemaRelPath,
+		Message:  "no longer read by kira; delete it",
+	}}
+}
+
+func Validate(cfg *datamodel.Config, storeFiles, targets []File) *Report {
+	targetScan := scan(targets)
+	resolver := resolverFor(cfg, dedupItems(scan(storeFiles), targetScan))
 
 	var findings []Finding
 	for _, s := range targetScan {
-		findings = append(findings, fileFindings(cfg, resolver, s, false, schemas)...)
+		findings = append(findings, fileFindings(cfg, resolver, s, false)...)
 	}
 	orderFindings(findings)
 	return newReport(findings)
 }
 
-func fileFindings(cfg *datamodel.Config, resolver *id.Resolver, s parsedFile, checkIdentity bool, schemas map[string]entityschema.Schema) []Finding {
+func fileFindings(cfg *datamodel.Config, resolver *id.Resolver, s parsedFile, checkIdentity bool) []Finding {
 	findings := stamp(slices.Clone(s.lint), s.path, s.item)
 	if checkIdentity && s.identified() {
 		findings = append(findings, stamp(identityFindings(s.path, s.item), s.path, s.item)...)
 	}
 	if s.parsed {
-		findings = append(findings, stamp(Check(cfg, resolver, s.item, schemas), s.path, s.item)...)
-		findings = append(findings, stamp(extrasFindings(cfg, schemas, s.item), s.path, s.item)...)
+		findings = append(findings, stamp(Check(cfg, resolver, s.item), s.path, s.item)...)
 	}
 	return findings
 }

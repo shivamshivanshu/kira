@@ -25,10 +25,7 @@ func (s *Store) Blame(cfg *datamodel.Config, ref string) (*datamodel.BlameResult
 	}
 	ulid := it.ID
 
-	fields, err := s.eventFields()
-	if err != nil {
-		return nil, err
-	}
+	fields := newEventFields()
 	events, _, err := s.cachedEvents(ulid, s.fileHead(ulid))
 	if err != nil {
 		return nil, err

@@ -32,7 +32,6 @@ const (
 
 var (
 	owners      = []string{"shivam", "alice"}
-	subtypes    = []string{"bug", "story", "task", "spike"}
 	labelVocab  = []string{"bug", "feature", "perf", "tech-debt", "orderbook", "infra"}
 	verbs       = []string{"Fix", "Add", "Refactor", "Investigate", "Optimize", "Document", "Remove", "Harden"}
 	nouns       = []string{"parser", "index", "scheduler", "cache", "allocator", "codec", "hook", "resolver", "queue", "snapshot"}
@@ -86,7 +85,7 @@ func ticketSpec(rng *rand.Rand, epicCount int) Spec {
 	}
 	return Spec{
 		Type:     datamodel.TypeTicket,
-		Subtype:  subtypes[rng.Intn(len(subtypes))],
+		Subtype:  datamodel.Subtypes[rng.Intn(len(datamodel.Subtypes))],
 		Title:    verbs[rng.Intn(len(verbs))] + " " + nouns[rng.Intn(len(nouns))],
 		Priority: pick(rng, []weighted[string]{{"P0", 1}, {"P1", 3}, {"P2", 5}, {"P3", 3}}),
 		Owner:    owners[rng.Intn(len(owners))],

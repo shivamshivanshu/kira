@@ -35,60 +35,7 @@ type Item struct {
 
 	Activity string
 
-	// ExtraScalars and ExtraLists hold frontmatter as it sits on disk -- the
-	// rendered YAML text, quoting and type intact, so `points: 42` survives a
-	// rewrite unquoted. Read them through codec.Decode*, write them through
-	// codec.Encode*; comparing one against a raw value silently mismatches.
-	// ExtraLinks is the exception: link targets are bare refs, stored raw.
-	ExtraScalars map[string]Rendered
-	ExtraLists   map[string][]Rendered
-	// ExtraBlocks holds a structured extra -- a mapping, or a sequence with
-	// non-scalar elements -- as its YAML text with the key's own indentation
-	// stripped, so two blocks that say the same thing compare equal however
-	// their source files were indented. kira never interprets one; carrying it
-	// verbatim is what lets a field a newer kira writes survive an older one.
-	ExtraBlocks map[string]Rendered
-	ExtraLinks  map[string][]string
-	CRLF        bool
-}
-
-// Rendered is frontmatter text exactly as it sits on disk, quoting and YAML
-// type intact. It is a distinct type so the compiler refuses to let it stand in
-// for a decoded value: passing one to something expecting the value behind it
-// is the mistake that caused every extras bug so far.
-type Rendered string
-
-func (it *Item) ExtraKeys() []string {
-	out := make([]string, 0, len(it.ExtraScalars)+len(it.ExtraLists)+len(it.ExtraBlocks))
-	for k := range it.ExtraScalars {
-		out = append(out, k)
-	}
-	for k := range it.ExtraLists {
-		out = append(out, k)
-	}
-	for k := range it.ExtraBlocks {
-		out = append(out, k)
-	}
-	slices.Sort(out)
-	return out
-}
-
-// ChangedExtraKeys is the extras-map counterpart to ChangedFields, kept
-// separate because ChangedFields callers feed its output to schema lookups
-// that must see only built-in keys.
-func ChangedExtraKeys(a, b *Item) []string {
-	dedup := setx.NewDeduper[string]()
-	var out []string
-	for _, k := range append(a.ExtraKeys(), b.ExtraKeys()...) {
-		if !dedup.Add(k) {
-			continue
-		}
-		if a.ExtraScalars[k] != b.ExtraScalars[k] || a.ExtraBlocks[k] != b.ExtraBlocks[k] || !slices.Equal(a.ExtraLists[k], b.ExtraLists[k]) {
-			out = append(out, k)
-		}
-	}
-	slices.Sort(out)
-	return out
+	CRLF bool
 }
 
 // IndexByID maps items by ID, skipping any with an empty ID.
@@ -101,11 +48,6 @@ func IndexByID(items []*Item) map[string]*Item {
 	}
 	return m
 }
-
-const (
-	TypeTicket = "ticket"
-	TypeEpic   = "epic"
-)
 
 const ResolutionDropped = "dropped"
 

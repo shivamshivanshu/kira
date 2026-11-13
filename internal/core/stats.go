@@ -35,7 +35,7 @@ func (s *Store) stats(ld *loaded, opts StatsOpts) (*datamodel.StatsResult, error
 		return nil, err
 	}
 
-	mis, err := s.itemsMetrics(cfg, set)
+	mis, err := s.itemsMetrics(set)
 	if err != nil {
 		return nil, err
 	}

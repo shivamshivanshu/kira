@@ -76,7 +76,7 @@ type metricItem struct {
 // itemsMetrics derives metrics for a whole item set, reading every item's
 // cached state events through a single index open rather than one per item,
 // and deriving whatever the cache is missing in a single git log.
-func (s *Store) itemsMetrics(cfg *datamodel.Config, items []*datamodel.Item) ([]metricItem, error) {
+func (s *Store) itemsMetrics(items []*datamodel.Item) ([]metricItem, error) {
 	if len(items) == 0 {
 		return nil, nil
 	}
@@ -91,23 +91,23 @@ func (s *Store) itemsMetrics(cfg *datamodel.Config, items []*datamodel.Item) ([]
 	}
 	mis := make([]metricItem, len(items))
 	for i, it := range items {
-		mis[i] = metricsFrom(cfg, it, stateTransitions(byItem[it.ID]), heads[it.ID] != "")
+		mis[i] = metricsFrom(it, stateTransitions(byItem[it.ID]), heads[it.ID] != "")
 	}
 	return mis, nil
 }
 
-func metricsFrom(cfg *datamodel.Config, it *datamodel.Item, evs []stateTransition, committed bool) metricItem {
+func metricsFrom(it *datamodel.Item, evs []stateTransition, committed bool) metricItem {
 	mi := metricItem{
 		number:  it.Number,
-		dropped: datamodel.IsDropped(it.Resolution, cfg.ResolutionsDropped),
+		dropped: datamodel.IsDropped(it.Resolution),
 	}
-	mi.category, _ = cfg.CategoryOf(it.Type, it.State)
+	mi.category, _ = datamodel.CategoryOf(it.Type, it.State)
 	if c, cerr := it.CreatedTime(); cerr == nil {
 		mi.created = c
 	}
 	doneSeen := false
 	for _, ev := range evs {
-		cat, _ := cfg.CategoryOf(it.Type, ev.to)
+		cat, _ := datamodel.CategoryOf(it.Type, ev.to)
 		if cat == datamodel.CategoryDoing {
 			if !mi.hasDoing {
 				mi.hasDoing = true
@@ -125,7 +125,7 @@ func metricsFrom(cfg *datamodel.Config, it *datamodel.Item, evs []stateTransitio
 			}
 		}
 	}
-	if !mi.hasDone && isDoneState(cfg, it.Type, it.State) {
+	if !mi.hasDone && isDoneState(it.Type, it.State) {
 		switch {
 		case committed && !mi.created.IsZero():
 			mi.hasDone = true

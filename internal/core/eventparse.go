@@ -5,7 +5,6 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/index"
@@ -15,41 +14,21 @@ import (
 const fmFence = "---"
 
 // eventFields is the frontmatter key set the diff walker reports on: the
-// builtin scalars plus every schema-declared scalar extra, in report order.
-// Extras are unioned across schemas rather than scoped to the item's type
-// because the walker keys off a file path, whose history spans commits where
-// the type or its schema may have differed.
+// builtin scalars, in report order.
 type eventFields struct {
 	tracked map[string]bool
 	order   []string
 }
 
-func newEventFields(schemas map[string]entityschema.Schema) eventFields {
+func newEventFields() eventFields {
 	f := eventFields{tracked: make(map[string]bool, len(scalarFields))}
 	for _, key := range datamodel.FrontmatterKeys {
 		if scalarFields[key] {
-			f.add(key)
-		}
-	}
-	for _, d := range declaredExtras(schemas) {
-		if !d.List {
-			f.add(d.Name)
+			f.tracked[key] = true
+			f.order = append(f.order, key)
 		}
 	}
 	return f
-}
-
-func (f *eventFields) add(key string) {
-	f.tracked[key] = true
-	f.order = append(f.order, key)
-}
-
-func (s *Store) eventFields() (eventFields, error) {
-	schemas, err := s.schemas()
-	if err != nil {
-		return eventFields{}, err
-	}
-	return newEventFields(schemas), nil
 }
 
 func walkPatch(stream string, fields eventFields, emit func(path string, events []datamodel.Event)) {
@@ -156,7 +135,7 @@ func frontmatterField(line string, fields eventFields) (key, value string, ok bo
 	if !fields.tracked[key] {
 		return "", "", false
 	}
-	return key, codec.DecodeScalar(datamodel.Rendered(line[colon+1:])), true
+	return key, codec.DecodeScalar(line[colon+1:]), true
 }
 
 func fmEvents(created bool, minus, plus map[string]string, ts, sha string, fields eventFields) []datamodel.Event {
@@ -175,10 +154,7 @@ func fmEvents(created bool, minus, plus map[string]string, ts, sha string, field
 }
 
 func (s *Store) deriveEvents(ulid string) ([]datamodel.Event, error) {
-	fields, err := s.eventFields()
-	if err != nil {
-		return nil, err
-	}
+	fields := newEventFields()
 	out, err := s.repo().FileLog(s.fs().RelToRoot(s.itemPath(ulid)))
 	if err != nil {
 		if strings.Contains(err.Error(), "does not have any commits") {
@@ -224,10 +200,7 @@ func (s *Store) deriveEventBatch(ids []string) (map[string][]datamodel.Event, er
 			paths[n] = s.fs().RelToRoot(s.itemPath(id))
 		}
 	}
-	fields, err := s.eventFields()
-	if err != nil {
-		return nil, err
-	}
+	fields := newEventFields()
 	stream, err := s.repo().FileLogs(paths)
 	if err != nil {
 		return nil, errx.User("%s", err)
@@ -246,10 +219,7 @@ func (s *Store) deriveEventBatch(ids []string) (map[string][]datamodel.Event, er
 
 func (s *Store) rangeEvents(repo gitx.Repo, sinceSHA, headSHA string, tracked map[string]*datamodel.Item) (map[string][]datamodel.Event, error) {
 	fs := s.fs()
-	fields, err := s.eventFields()
-	if err != nil {
-		return nil, err
-	}
+	fields := newEventFields()
 	out, err := repo.RangePatch(sinceSHA+".."+headSHA, fs.RelToRoot(fs.ItemsDir()))
 	if err != nil {
 		return nil, errx.User("%s", err)

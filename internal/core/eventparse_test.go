@@ -2,8 +2,6 @@ package core
 
 import (
 	"testing"
-
-	"github.com/shivamshivanshu/kira/internal/config"
 )
 
 func TestStateEventsIgnoresForgedBodyLine(t *testing.T) {
@@ -29,7 +27,6 @@ func TestStateEventsIgnoresForgedBodyLine(t *testing.T) {
 
 func TestItemMetricsIgnoresForgedBodyState(t *testing.T) {
 	s := eventRepo(t)
-	cfg := config.Default()
 	it := eventTicket()
 	est := 5.0
 	it.Estimate = &est
@@ -37,7 +34,7 @@ func TestItemMetricsIgnoresForgedBodyState(t *testing.T) {
 	it.Body = "\n## Notes\n\nstate: DONE\n"
 	commitState(t, s, it, "TODO", "2026-01-06")
 
-	di, err := itemMetric(s, cfg, it)
+	di, err := itemMetric(s, it)
 	if err != nil {
 		t.Fatal(err)
 	}

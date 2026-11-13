@@ -17,7 +17,7 @@ import (
 func TestMoveStateMatrixIsUnrestricted(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
-	wf := cfg.Workflows[datamodel.TypeTicket]
+	wf, _ := datamodel.WorkflowOf(datamodel.TypeTicket)
 	states := make([]string, len(wf.States))
 	for i, st := range wf.States {
 		states[i] = st.Key
@@ -487,82 +487,6 @@ func TestMoveWipWarning(t *testing.T) {
 	}
 }
 
-func TestMoveWipBlock(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	wf := cfg.Workflows[datamodel.TypeTicket]
-	wf.WipPolicy = datamodel.WipBlock
-	cfg.Workflows[datamodel.TypeTicket] = wf
-
-	var nums []string
-	for _, title := range []string{"w1", "w2", "w3", "w4"} {
-		nums = append(nums, mustCreate(t, s, cfg, title).Number)
-	}
-	for _, num := range nums[:3] {
-		if _, err := s.Move(cfg, num, "IN_PROGRESS", core.MoveOpts{}); err != nil {
-			t.Fatalf("move %s to IN_PROGRESS: %v", num, err)
-		}
-	}
-	if _, err := s.Move(cfg, nums[3], "IN_PROGRESS", core.MoveOpts{}); err == nil {
-		t.Fatal("move over WIP limit under block policy must fail")
-	}
-	if got := stateOf(t, s, cfg, nums[3]); got == "IN_PROGRESS" {
-		t.Fatal("blocked move must not change state")
-	}
-	mres, err := s.Move(cfg, nums[3], "IN_PROGRESS", core.MoveOpts{Force: true})
-	if err != nil {
-		t.Fatalf("forced move over WIP limit: %v", err)
-	}
-	if len(mres.Warnings) != 1 || !strings.Contains(mres.Warnings[0], "WIP limit") {
-		t.Fatalf("forced over-limit move warnings = %v, want one WIP-limit warning", mres.Warnings)
-	}
-	if got := stateOf(t, s, cfg, nums[3]); got != "IN_PROGRESS" {
-		t.Fatalf("forced move state = %s, want IN_PROGRESS", got)
-	}
-}
-
-func TestMoveWipCountsPerType(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	states := cfg.Workflows[datamodel.TypeTicket].States
-	for i := range states {
-		if states[i].Key == "DONE" {
-			states[i].Wip = 1
-		}
-	}
-
-	epic, err := s.Create(cfg, core.CreateOpts{Type: datamodel.TypeEpic, Title: "epic", NoEdit: true})
-	if err != nil {
-		t.Fatalf("create epic: %v", err)
-	}
-	for _, state := range []string{"ACTIVE", "DONE"} {
-		if _, err := s.Move(cfg, epic.Number, state, core.MoveOpts{}); err != nil {
-			t.Fatalf("move epic to %s: %v", state, err)
-		}
-	}
-
-	first := mustCreate(t, s, cfg, "t1")
-	positionTo(t, s, cfg, first.Number, "REVIEW")
-	mres, err := s.Move(cfg, first.Number, "DONE", core.MoveOpts{Resolution: "done"})
-	if err != nil {
-		t.Fatalf("move t1: %v", err)
-	}
-	if len(mres.Warnings) != 0 {
-		t.Fatalf("first ticket at limit: warnings = %v (epic in DONE must not count)", mres.Warnings)
-	}
-
-	second := mustCreate(t, s, cfg, "t2")
-	positionTo(t, s, cfg, second.Number, "REVIEW")
-	mres, err = s.Move(cfg, second.Number, "DONE", core.MoveOpts{Resolution: "done"})
-	if err != nil {
-		t.Fatalf("move t2: %v", err)
-	}
-	if len(mres.Warnings) != 1 || !strings.Contains(mres.Warnings[0], "DONE") ||
-		!strings.Contains(mres.Warnings[0], "WIP limit") || !strings.Contains(mres.Warnings[0], "2 > 1") {
-		t.Fatalf("warnings = %v, want one over-WIP-limit warning naming DONE at 2 > 1", mres.Warnings)
-	}
-}
-
 func TestAssignStrictBypass(t *testing.T) {
 	t.Parallel()
 	s, cfg := newStore(t)
@@ -738,16 +662,6 @@ func TestEditStateWipGuard(t *testing.T) {
 		t.Fatalf("Warnings = %q, want an over-WIP-limit warning at 4 > 3", joined)
 	}
 
-	wf := cfg.Workflows[datamodel.TypeTicket]
-	wf.WipPolicy = datamodel.WipBlock
-	cfg.Workflows[datamodel.TypeTicket] = wf
-	positionTo(t, s, cfg, nums[3], "TODO")
-	if err := editState(s, cfg, nums[3], "IN_PROGRESS", false); err == nil || !strings.Contains(err.Error(), "WIP limit") {
-		t.Fatalf("edit into a WIP-blocked target: err = %v, want rejection", err)
-	}
-	if got := stateOf(t, s, cfg, nums[3]); got != "TODO" {
-		t.Fatalf("state after blocked edit = %s, want TODO", got)
-	}
 }
 
 func TestEditGrandfathersStaleResolution(t *testing.T) {

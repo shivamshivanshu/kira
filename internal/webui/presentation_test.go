@@ -37,7 +37,7 @@ func TestAppearanceAndQueryControls(t *testing.T) {
 	}
 	for _, example := range examples {
 		expression := html.UnescapeString(example[1])
-		if _, err := query.Compile(expression, query.Options{Me: func() string { return "tester" }, Priorities: d.cfg.Priorities.Values}); err != nil {
+		if _, err := query.Compile(expression, query.Options{Me: func() string { return "tester" }}); err != nil {
 			t.Errorf("example %q differs from core query syntax: %v", expression, err)
 		}
 	}

@@ -113,15 +113,6 @@ const (
 
 var SyncDirties = []SyncDirty{SyncDirtyAuto, SyncDirtyFail, SyncDirtyCommit, SyncDirtyStash}
 
-type WipPolicy string
-
-const (
-	WipWarn  WipPolicy = "warn"
-	WipBlock WipPolicy = "block"
-)
-
-var WipPolicies = []WipPolicy{WipWarn, WipBlock}
-
 type Category string
 
 const (

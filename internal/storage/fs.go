@@ -10,17 +10,20 @@ import (
 )
 
 const (
-	DirName          = ".kira"
-	itemsDirName     = "tickets"
-	templatesDirName = "templates"
-	schemaDirName    = "schema"
-	CacheDirName     = ".cache"
-	configFileName   = "config.yaml"
-	itemExt          = ".md"
+	DirName             = ".kira"
+	itemsDirName        = "tickets"
+	templatesDirName    = "templates"
+	legacySchemaDirName = "schema"
+	CacheDirName        = ".cache"
+	configFileName      = "config.yaml"
+	itemExt             = ".md"
 
 	TicketsPrefix = DirName + "/" + itemsDirName
-	SchemaPrefix  = DirName + "/" + schemaDirName
 	ConfigRelPath = DirName + "/" + configFileName
+
+	// LegacySchemaRelPath is where item types used to be declared; nothing
+	// reads it now and doctor asks for it to be deleted.
+	LegacySchemaRelPath = DirName + "/" + legacySchemaDirName
 )
 
 var ErrStoreNotFound = errors.New("no .kira/ found")
@@ -65,8 +68,9 @@ func (s *FS) KiraDir() string     { return filepath.Join(s.root, DirName) }
 func (s *FS) ConfigPath() string  { return filepath.Join(s.KiraDir(), configFileName) }
 func (s *FS) ItemsDir() string    { return filepath.Join(s.KiraDir(), itemsDirName) }
 func (s *FS) TemplateDir() string { return filepath.Join(s.KiraDir(), templatesDirName) }
-func (s *FS) SchemaDir() string   { return filepath.Join(s.KiraDir(), schemaDirName) }
 func (s *FS) CacheDir() string    { return filepath.Join(s.KiraDir(), CacheDirName) }
+
+func (s *FS) LegacySchemaDir() string { return filepath.Join(s.KiraDir(), legacySchemaDirName) }
 
 func ItemFilename(ulid string) string { return ulid + itemExt }
 

@@ -66,11 +66,9 @@ func (e *boolExpr) String() string {
 func (e *termExpr) String() string { return "(term " + e.text + ")" }
 
 type Order struct {
-	Field         string
-	Desc          bool
-	pos           int
-	priorityIndex map[string]int
-	custom        *customField
+	Field string
+	Desc  bool
+	pos   int
 }
 
 func (o *Order) String() string {
@@ -134,8 +132,7 @@ var fieldAliases = map[string]string{
 }
 
 // canonicalField resolves f to its current name if f is a legacy alias,
-// otherwise returns f unchanged (including schema-defined custom fields,
-// which this package does not know the names of).
+// otherwise returns f unchanged.
 func canonicalField(f string) string {
 	if c, ok := fieldAliases[f]; ok {
 		return c

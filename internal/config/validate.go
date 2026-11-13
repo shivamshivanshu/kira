@@ -67,34 +67,6 @@ func Validate(c *datamodel.Config) error {
 	if err := validateWorkonSection(c.Workon); err != nil {
 		return err
 	}
-	if len(c.Workflows) == 0 {
-		return errx.User("config: workflows: at least one workflow is required")
-	}
-	for name, wf := range c.Workflows {
-		if err := validateWorkflow(name, wf, c); err != nil {
-			return err
-		}
-	}
-	for _, vl := range []struct {
-		key  string
-		list []string
-	}{
-		{"priorities", c.Priorities.Values},
-		{"subtypes", c.Subtypes.Values},
-		{"resolutions", c.Resolutions.Values},
-		{"resolutions_dropped", c.ResolutionsDropped},
-	} {
-		if err := validateVocabList(vl.key, vl.list); err != nil {
-			return err
-		}
-	}
-	if len(c.Resolutions.Values) > 0 {
-		for _, d := range c.ResolutionsDropped {
-			if !slices.Contains(c.Resolutions.Values, d) {
-				return errx.User("config: resolutions_dropped: %q is not one of the configured resolutions %v; dropped detection would never match", d, c.Resolutions.Values)
-			}
-		}
-	}
 	for i, p := range c.People.Known {
 		if p.Name == "" {
 			return errx.User("config: people.known[%d].name: required", i)
@@ -240,19 +212,6 @@ func validateAutomationMatch(at string, h datamodel.AutomationHook) error {
 	return nil
 }
 
-func validateVocabList(key string, list []string) error {
-	seen := setx.NewDeduper[string]()
-	for _, v := range list {
-		if v == "" {
-			return errx.User("config: %s: empty entry", key)
-		}
-		if !seen.Add(v) {
-			return errx.User("config: %s: duplicate entry %q", key, v)
-		}
-	}
-	return nil
-}
-
 func validateFilters(c *datamodel.Config) error {
 	for name, q := range c.Filters {
 		if name == "" {
@@ -291,60 +250,6 @@ func validateSprints(c *datamodel.Config) error {
 		if s.Start >= s.End {
 			return errx.User("config: sprints[%s]: start %s is not before end %s", s.Key, s.Start, s.End)
 		}
-	}
-	return nil
-}
-
-func validateWorkflow(name string, w datamodel.Workflow, c *datamodel.Config) error {
-	if len(w.States) == 0 {
-		return errx.User("config: workflows.%s.states: workflow has no states", name)
-	}
-	defined := make(map[string]bool, len(w.States))
-	for _, s := range w.States {
-		if s.Key == "" {
-			return errx.User("config: workflows.%s.states: state with empty key", name)
-		}
-		if defined[s.Key] {
-			return errx.User("config: workflows.%s.states: duplicate state %q", name, s.Key)
-		}
-		defined[s.Key] = true
-		if !slices.Contains(datamodel.Categories, s.Category) {
-			return errx.User("config: workflows.%s.states[%s].category: invalid value %q, want one of %v", name, s.Key, s.Category, datamodel.Categories)
-		}
-		if s.Wip < 0 {
-			return errx.User("config: workflows.%s.states[%s].wip: must be >= 0, got %d", name, s.Key, s.Wip)
-		}
-		if err := validateStateResolution(name, s, c); err != nil {
-			return err
-		}
-	}
-	if w.WipPolicy != "" {
-		if err := validateEnum(fmt.Sprintf("workflows.%s.wip_policy", name), w.WipPolicy, datamodel.WipPolicies...); err != nil {
-			return err
-		}
-	}
-	if w.Initial == "" {
-		return errx.User("config: workflows.%s.initial: required", name)
-	}
-	if !defined[w.Initial] {
-		return errx.User("config: workflows.%s.initial: %q is not a defined state", name, w.Initial)
-	}
-	return nil
-}
-
-// A state's resolution is what a move into it stamps on the item, so it has to
-// satisfy the same rules the item would: done-category only, and inside the
-// configured vocabulary.
-func validateStateResolution(name string, s datamodel.State, c *datamodel.Config) error {
-	if s.Resolution == "" {
-		return nil
-	}
-	where := fmt.Sprintf("config: workflows.%s.states[%s].resolution", name, s.Key)
-	if s.Category != datamodel.CategoryDone {
-		return errx.User("%s: only a done-category state may declare one, %s is %s", where, s.Key, s.Category)
-	}
-	if vocab, ok := c.VocabFor(datamodel.KeyResolution); ok && len(vocab) > 0 && !slices.Contains(vocab, s.Resolution) {
-		return errx.User("%s: %q is not in the configured resolutions vocabulary %v", where, s.Resolution, vocab)
 	}
 	return nil
 }

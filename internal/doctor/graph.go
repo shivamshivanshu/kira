@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
@@ -53,61 +51,28 @@ func RefCycles(items []*datamodel.Item, resolver *id.Resolver) []Finding {
 	return out
 }
 
-func RefTypeMismatches(schemas map[string]entityschema.Schema, items []*datamodel.Item, resolver *id.Resolver, itemTypes map[string]bool) []Finding {
+func RefTypeMismatches(items []*datamodel.Item, resolver *id.Resolver) []Finding {
 	byID := itemsByID(items)
-	containers := entityschema.ContainerTypes(schemas)
 	var out []Finding
 	for _, it := range items {
-		if it.ID == "" {
+		if it.ID == "" || it.Parent == nil {
 			continue
 		}
-		schema, ok := schemas[it.Type]
-		if !ok {
+		target := resolveRef(*it.Parent, resolver)
+		parent := byID[target]
+		if parent == nil || datamodel.IsContainer(parent.Type) {
 			continue
 		}
-		values := entityschema.ProjectItem(schema, it, codec.Decoder{})
-		for _, f := range schema.Fields {
-			if !f.TargetsItemType(itemTypes) {
-				continue
-			}
-			for _, ref := range refStrings(values[f.Name]) {
-				target := resolveRef(ref, resolver)
-				parent := byID[target]
-				if parent == nil {
-					continue
-				}
-				mismatch := ""
-				switch {
-				case f.TargetsContainer && !containers[parent.Type]:
-					mismatch = fmt.Sprintf("%s points at %s of type %s, which does not group other items", f.Name, numberOf(target, byID), parent.Type)
-				case f.Target != "" && !f.TargetsContainer && parent.Type != f.Target:
-					mismatch = fmt.Sprintf("%s points at %s of type %s, expected %s", f.Name, numberOf(target, byID), parent.Type, f.Target)
-				}
-				if mismatch == "" {
-					continue
-				}
-				out = append(out, Finding{
-					Class:    ClassRefType,
-					Severity: SeverityError,
-					ItemID:   it.ID,
-					Number:   it.Number,
-					Field:    f.Name,
-					Message:  mismatch,
-				})
-			}
-		}
+		out = append(out, Finding{
+			Class:    ClassRefType,
+			Severity: SeverityError,
+			ItemID:   it.ID,
+			Number:   it.Number,
+			Field:    datamodel.KeyParent,
+			Message:  fmt.Sprintf("%s points at %s of type %s, which does not group other items", datamodel.KeyParent, numberOf(target, byID), parent.Type),
+		})
 	}
 	return out
-}
-
-func refStrings(v any) []string {
-	switch t := v.(type) {
-	case string:
-		return []string{t}
-	case []string:
-		return t
-	}
-	return nil
 }
 
 func itemsByID(items []*datamodel.Item) map[string]*datamodel.Item {

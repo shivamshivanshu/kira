@@ -13,11 +13,11 @@ func newResolveCmd(g *globalFlags) *cobra.Command {
 		Use:   "resolve [id...]",
 		Short: "Auto-resolve conflicted kira items in an in-progress merge",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s, cfg, err := openStore(g)
+			s, _, err := openStore(g)
 			if err != nil {
 				return err
 			}
-			res, err := s.Resolve(cfg, args, interactive)
+			res, err := s.Resolve(args, interactive)
 			if err != nil {
 				return err
 			}

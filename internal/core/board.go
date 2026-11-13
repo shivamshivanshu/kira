@@ -49,12 +49,11 @@ func (s *Store) Board(cfg *datamodel.Config, opts BoardOpts) (*datamodel.BoardRe
 }
 
 func boardResult(ld *loaded, opts BoardOpts, qopts query.Options) (*datamodel.BoardResult, error) {
-	cfg := ld.cfg
 	typ := opts.Type
 	if typ == "" {
 		typ = datamodel.TypeTicket
 	}
-	wf, ok := cfg.Workflows[typ]
+	wf, ok := datamodel.WorkflowOf(typ)
 	if !ok {
 		return nil, errx.User("no workflow configured for type %q", typ)
 	}
@@ -84,7 +83,7 @@ func boardResult(ld *loaded, opts BoardOpts, qopts query.Options) (*datamodel.Bo
 	parentNumbers := parentNumberMap(ld.items)
 	byState := map[string][]datamodel.ListItem{}
 	for _, it := range shown {
-		byState[it.State] = append(byState[it.State], listItemOf(cfg, it, parentNumbers, ld.schemas))
+		byState[it.State] = append(byState[it.State], listItemOf(it, parentNumbers))
 	}
 
 	cols := make([]datamodel.BoardColumn, len(wf.States))
@@ -276,8 +275,8 @@ func (s *Store) BoardList(cfg *datamodel.Config) (*datamodel.BoardListResult, er
 // StateDeclared reports whether typ's workflow declares state. Every declared
 // state is reachable from every other, so a board column naming an undeclared
 // state is the only thing left to reject.
-func StateDeclared(cfg *datamodel.Config, typ, state string) bool {
-	wf, ok := cfg.Workflows[typ]
+func StateDeclared(typ, state string) bool {
+	wf, ok := datamodel.WorkflowOf(typ)
 	if !ok {
 		return false
 	}

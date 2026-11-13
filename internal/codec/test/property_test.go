@@ -70,88 +70,6 @@ func randDate(r *rand.Rand) *string {
 	}
 }
 
-var extraScalarKeys = []string{"custom_a", "custom_b", "custom_c"}
-
-var extraListKeys = []string{"custom_x", "custom_y"}
-
-var typedBareTokens = []string{"true", "false", "null", "123", "3.14", "2020-01-01T00:00:00Z"}
-
-func randExtraScalars(r *rand.Rand) map[string]datamodel.Rendered {
-	var out map[string]datamodel.Rendered
-	for _, k := range extraScalarKeys {
-		if r.Intn(2) == 0 {
-			continue
-		}
-		if out == nil {
-			out = map[string]datamodel.Rendered{}
-		}
-		if r.Intn(3) == 0 {
-			out[k] = datamodel.Rendered(typedBareTokens[r.Intn(len(typedBareTokens))])
-		} else {
-			out[k] = datamodel.Rendered(codec.EmitScalar(pick(r)))
-		}
-	}
-	return out
-}
-
-var extraBlockKeys = []string{"custom_m", "custom_n"}
-
-// Blocks are stored canonically -- the text an encoder at the frontmatter's own
-// indentation emits -- so the pool has to be written in exactly that form for
-// the round trip to come back equal.
-var canonicalBlocks = []datamodel.Rendered{
-	"response: 4h\nresolve: 24h",
-	"- name: build\n  cmd: make\n- name: test",
-	"escalation:\n  - after: 1h\n    notify: [oncall, lead]\n  - after: 4h\nowner: sre",
-	"{}",
-	"[{a: b}]",
-	"desc: |\n  line1\n  line2\nn: 1",
-	"\"weird key\": 'v'\nnested:\n  deep:\n    x: 1",
-}
-
-func randExtraBlocks(r *rand.Rand) map[string]datamodel.Rendered {
-	var out map[string]datamodel.Rendered
-	for _, k := range extraBlockKeys {
-		if r.Intn(2) == 0 {
-			continue
-		}
-		if out == nil {
-			out = map[string]datamodel.Rendered{}
-		}
-		out[k] = canonicalBlocks[r.Intn(len(canonicalBlocks))]
-	}
-	return out
-}
-
-func randExtraLists(r *rand.Rand) map[string][]datamodel.Rendered {
-	var out map[string][]datamodel.Rendered
-	for _, k := range extraListKeys {
-		if r.Intn(2) == 0 {
-			continue
-		}
-		if out == nil {
-			out = map[string][]datamodel.Rendered{}
-		}
-		out[k] = randExtraList(r)
-	}
-	return out
-}
-
-// a list extra stores each element's rendered YAML, the same as a scalar extra
-// stores its own, so generate elements in that form rather than raw.
-func randExtraList(r *rand.Rand) []datamodel.Rendered {
-	n := r.Intn(4)
-	out := make([]datamodel.Rendered, 0, n)
-	for range n {
-		if r.Intn(3) == 0 {
-			out = append(out, datamodel.Rendered(typedBareTokens[r.Intn(len(typedBareTokens))]))
-			continue
-		}
-		out = append(out, codec.EncodeExtraListElement(pick(r)))
-	}
-	return out
-}
-
 func randLinks(r *rand.Rand) map[string][]string {
 	var links map[string][]string
 	for _, typ := range datamodel.LinkTypes {
@@ -184,30 +102,27 @@ func randULID(r *rand.Rand) string {
 
 func randItem(r *rand.Rand) *datamodel.Item {
 	it := &datamodel.Item{
-		ID:           randULID(r),
-		Number:       fmt.Sprintf("KIRA-%d", r.Intn(1000)),
-		Aliases:      randList(r),
-		Type:         []string{"ticket", "epic"}[r.Intn(2)],
-		Subtype:      maybe(r),
-		Title:        pickNonEmpty(r),
-		State:        pickNonEmpty(r),
-		Resolution:   maybe(r),
-		Priority:     maybe(r),
-		Rank:         maybe(r),
-		Owner:        maybe(r),
-		Reporter:     maybe(r),
-		Labels:       randList(r),
-		Parent:       maybe(r),
-		BlockedBy:    randList(r),
-		Links:        randLinks(r),
-		Sprint:       maybe(r),
-		Due:          randDate(r),
-		Created:      randTimestamp(r),
-		Updated:      randTimestamp(r),
-		Body:         "\n## Description\n" + pick(r) + "\n---\nmid-body rule\n",
-		ExtraScalars: randExtraScalars(r),
-		ExtraLists:   randExtraLists(r),
-		ExtraBlocks:  randExtraBlocks(r),
+		ID:         randULID(r),
+		Number:     fmt.Sprintf("KIRA-%d", r.Intn(1000)),
+		Aliases:    randList(r),
+		Type:       []string{"ticket", "epic"}[r.Intn(2)],
+		Subtype:    maybe(r),
+		Title:      pickNonEmpty(r),
+		State:      pickNonEmpty(r),
+		Resolution: maybe(r),
+		Priority:   maybe(r),
+		Rank:       maybe(r),
+		Owner:      maybe(r),
+		Reporter:   maybe(r),
+		Labels:     randList(r),
+		Parent:     maybe(r),
+		BlockedBy:  randList(r),
+		Links:      randLinks(r),
+		Sprint:     maybe(r),
+		Due:        randDate(r),
+		Created:    randTimestamp(r),
+		Updated:    randTimestamp(r),
+		Body:       "\n## Description\n" + pick(r) + "\n---\nmid-body rule\n",
 	}
 	if r.Intn(2) == 0 {
 		e := float64(r.Intn(100)) + float64(r.Intn(4))*0.25

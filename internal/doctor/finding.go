@@ -27,7 +27,6 @@ const (
 	ClassBoard         Class = "board"
 	ClassNumberOutlier Class = "number-outlier"
 	ClassStray         Class = "stray-file"
-	ClassStateDrift    Class = "state-drift"
 	ClassWipLimit      Class = "wip-limit"
 )
 
@@ -44,7 +43,7 @@ var Severities = []Severity{SeverityError, SeverityWarning, SeverityInfo}
 var Classes = []Class{
 	ClassSchema, ClassState, ClassVocab, ClassRef, ClassCollision,
 	ClassRefCycle, ClassRefType, ClassComment, ClassFreshness, ClassHooks,
-	ClassEnv, ClassBoard, ClassNumberOutlier, ClassStray, ClassStateDrift,
+	ClassEnv, ClassBoard, ClassNumberOutlier, ClassStray,
 	ClassWipLimit,
 }
 

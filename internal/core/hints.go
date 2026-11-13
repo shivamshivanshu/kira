@@ -6,31 +6,22 @@ import (
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
-func fieldHint(key string, schema entityschema.Schema) string {
-	candidates := editableFieldNames(schema)
+func fieldHint(key string) string {
+	candidates := editableFieldNames()
 	if n := errx.Nearest(key, candidates); n != "" {
 		return "did you mean `--field " + n + "=...`?"
 	}
 	return "editable fields: " + strings.Join(candidates, ", ")
 }
 
-// editableFieldNames is the union of native --field keys and the schema's
-// declared, settable, frontmatter-placed extra fields.
-func editableFieldNames(schema entityschema.Schema) []string {
+func editableFieldNames() []string {
 	out := slices.Clone(datamodel.EditableFields)
-	for _, f := range schema.Fields {
-		if !fieldEditableViaFlag(f) {
-			continue
-		}
-		if _, ok := datamodel.Field(f.Name); ok {
-			continue
-		}
-		out = append(out, f.Name)
+	for _, f := range datamodel.BodyFields {
+		out = append(out, f.Field)
 	}
 	slices.Sort(out)
 	return out

@@ -6,20 +6,18 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
-func Check(cfg *datamodel.Config, resolver *id.Resolver, it *datamodel.Item, schemas map[string]entityschema.Schema) []Finding {
+func Check(cfg *datamodel.Config, resolver *id.Resolver, it *datamodel.Item) []Finding {
 	var out []Finding
-	out = append(out, stateFindings(cfg, it)...)
-	out = append(out, resolutionFindings(cfg, it)...)
+	out = append(out, stateFindings(it)...)
+	out = append(out, resolutionFindings(it)...)
 	out = append(out, vocabFindings(cfg, it)...)
 	out = append(out, scalarFindings(cfg, it)...)
 	out = append(out, boardFindings(cfg, it)...)
-	out = append(out, refFindings(resolver, it, schemas, itemTypes(cfg))...)
+	out = append(out, refFindings(resolver, it)...)
 	return out
 }
 
@@ -41,8 +39,8 @@ func boardFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 	}}
 }
 
-func stateFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
-	wf, ok := cfg.Workflows[it.Type]
+func stateFindings(it *datamodel.Item) []Finding {
+	wf, ok := datamodel.WorkflowOf(it.Type)
 	if !ok {
 		return []Finding{schemaErr(datamodel.KeyType, fmt.Sprintf("no workflow configured for type %q", it.Type))}
 	}
@@ -55,8 +53,8 @@ func stateFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 		Message: fmt.Sprintf("%q is not a state in the %s workflow", it.State, it.Type)}}
 }
 
-func resolutionFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
-	wf, ok := cfg.Workflows[it.Type]
+func resolutionFindings(it *datamodel.Item) []Finding {
+	wf, ok := datamodel.WorkflowOf(it.Type)
 	if !ok {
 		return nil
 	}
@@ -78,31 +76,11 @@ func resolutionFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 }
 
 func vocabFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
-	var out []Finding
-	for _, p := range []struct {
-		field string
-		value *string
-	}{
-		{datamodel.KeyOwner, it.Owner},
-		{datamodel.KeyReporter, it.Reporter},
-	} {
-		if p.value != nil && *p.value != "" && !slices.ContainsFunc(cfg.People.Known, func(person datamodel.Person) bool { return person.Name == *p.value }) {
-			out = append(out, vocabFinding(p.field, *p.value, vocabSeverity(cfg.People.Strict)))
-		}
+	violations := datamodel.VocabViolations(cfg, it)
+	out := make([]Finding, len(violations))
+	for i, v := range violations {
+		out[i] = vocabFinding(v.Field, v.Value, vocabSeverity(v.Strict))
 	}
-	for _, l := range it.Labels {
-		if l != datamodel.CapturedLabel && !slices.Contains(cfg.Labels.Known, l) {
-			out = append(out, vocabFinding(datamodel.KeyLabels, l, vocabSeverity(cfg.Labels.Strict)))
-		}
-	}
-	enum := func(field string, value *string, ev datamodel.EnumVocab) {
-		if value != nil && *value != "" && len(ev.Values) > 0 && !slices.Contains(ev.Values, *value) {
-			out = append(out, vocabFinding(field, *value, vocabSeverity(ev.StrictOr(cfg.Labels.Strict))))
-		}
-	}
-	enum(datamodel.KeyPriority, it.Priority, cfg.Priorities)
-	enum(datamodel.KeySubtype, it.Subtype, cfg.Subtypes)
-	enum(datamodel.KeyResolution, it.Resolution, cfg.Resolutions)
 	return out
 }
 
@@ -129,25 +107,14 @@ func scalarFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 	return out
 }
 
-// extrasFindings reports schema violations on declared frontmatter extras;
-// builtin fields stay with the config-driven checks above.
-func extrasFindings(cfg *datamodel.Config, schemas map[string]entityschema.Schema, it *datamodel.Item) []Finding {
-	var out []Finding
-	for _, v := range entityschema.ValidateExtras(schemas, cfg, it, codec.Decoder{}) {
-		out = append(out, schemaErr(v.Field, v.Message))
-	}
-	return out
-}
-
 func schemaErr(field, msg string) Finding {
 	return Finding{Class: ClassSchema, Severity: SeverityError, Field: field, Message: msg}
 }
 
-// refFindings walks every ref field the item's schema declares, so a custom
-// ref gets the same dangling and self-reference checks as the built-in three.
-// Target-type correctness needs the whole item set and lives in
-// RefTypeMismatches instead.
-func refFindings(resolver *id.Resolver, it *datamodel.Item, schemas map[string]entityschema.Schema, itemTypes map[string]bool) []Finding {
+// refFindings checks links, parent and blocked_by for dangling and
+// self-references. Target-type correctness needs the whole item set and lives
+// in RefTypeMismatches instead.
+func refFindings(resolver *id.Resolver, it *datamodel.Item) []Finding {
 	if resolver == nil {
 		return nil
 	}
@@ -172,18 +139,11 @@ func refFindings(resolver *id.Resolver, it *datamodel.Item, schemas map[string]e
 			check(fmt.Sprintf("%s.%s", datamodel.KeyLinks, typ), ref)
 		}
 	}
-	schema, ok := schemas[it.Type]
-	if !ok {
-		return out
+	if it.Parent != nil {
+		check(datamodel.KeyParent, *it.Parent)
 	}
-	values := entityschema.ProjectItem(schema, it, codec.Decoder{})
-	for _, f := range schema.Fields {
-		if !f.TargetsItemType(itemTypes) {
-			continue
-		}
-		for _, ref := range refStrings(values[f.Name]) {
-			check(f.Name, ref)
-		}
+	for _, ref := range it.BlockedBy {
+		check(datamodel.KeyBlockedBy, ref)
 	}
 	return out
 }
@@ -193,14 +153,4 @@ func vocabSeverity(strict bool) Severity {
 		return SeverityError
 	}
 	return SeverityWarning
-}
-
-// itemTypes is the set of types config declares a workflow for, which is what
-// makes a type exist at all.
-func itemTypes(cfg *datamodel.Config) map[string]bool {
-	out := make(map[string]bool, len(cfg.Workflows))
-	for typ := range cfg.Workflows {
-		out[typ] = true
-	}
-	return out
 }

@@ -3,7 +3,7 @@
   {{template "csrf" .}}<h2 id="create-heading">New item</h2><p class="muted">Start with a title. The details can follow.</p>
   <label>Title<input name="title" value="{{.FormValue "create" "title" ""}}" placeholder="What needs to happen?" required maxlength="1000"></label>
   <div class="field-pair">
-    <label>Type<select name="type">{{if .Config}}{{range $name, $workflow := .Config.Workflows}}<option value="{{$name}}" {{if eq $name ($.FormValue "create" "type" "ticket")}}selected{{end}}>{{$name}}</option>{{end}}{{end}}</select></label>
+    <label>Type<select name="type">{{if .Config}}{{range $name := .ItemTypes}}<option value="{{$name}}" {{if eq $name ($.FormValue "create" "type" "ticket")}}selected{{end}}>{{$name}}</option>{{end}}{{end}}</select></label>
     <label>Board<select name="board">{{if .Config}}{{range .Config.ActiveBoards}}<option value="{{.Key}}" {{if or (eq ($.FormValue "create" "board" $.BoardKey) .Key) (and (not ($.FormValue "create" "board" $.BoardKey)) .Default)}}selected{{end}}>{{.Key}} · {{.Name}}</option>{{end}}{{end}}</select></label>
   </div>
   <label>Description <span class="optional">optional · Markdown supported</span><textarea name="body" rows="5" placeholder="Leave blank to use the item template, or add your own description…">{{.FormValue "create" "body" ""}}</textarea></label>

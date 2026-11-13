@@ -226,8 +226,8 @@ func prepareItemStmts(tx *sql.Tx) (itemStmts, error) {
 
 	item, err := prepare(`INSERT INTO items
 		(id, number, type, subtype, title, state, resolution, priority, rank,
-		 owner, reporter, parent, sprint, due, estimate, created, updated, activity, extras)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, "item insert")
+		 owner, reporter, parent, sprint, due, estimate, created, updated, activity)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, "item insert")
 	if err != nil {
 		return itemStmts{}, err
 	}
@@ -254,15 +254,11 @@ func (s itemStmts) close() {
 }
 
 func (s itemStmts) insert(it *datamodel.Item) error {
-	extras, err := encodeExtras(it)
-	if err != nil {
-		return err
-	}
 	if _, err := s.item.Exec(
 		it.ID, it.Number, it.Type, nullable(it.Subtype), it.Title, it.State,
 		nullable(it.Resolution), nullable(it.Priority), nullable(it.Rank), nullable(it.Owner),
 		nullable(it.Reporter), nullable(it.Parent), nullable(it.Sprint), nullable(it.Due),
-		nullable(it.Estimate), it.Created, it.Updated, it.Updated, extras); err != nil {
+		nullable(it.Estimate), it.Created, it.Updated, it.Updated); err != nil {
 		return errx.Env("inserting index item %s: %v", it.ID, err)
 	}
 	for ord, alias := range it.Aliases {

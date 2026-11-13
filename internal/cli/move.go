@@ -35,7 +35,7 @@ func newMoveCmd(g *globalFlags) *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.StringVar(&opts.Resolution, "resolution", "", "resolution to record, validated against config resolutions")
-	f.BoolVar(&opts.Force, "force", false, "bypass the open-blocker and WIP guards")
+	f.BoolVar(&opts.Force, "force", false, "bypass the open-blocker guard")
 	f.BoolVar(&opts.Activate, "activate", false, "set this item as the active ticket")
 	return cmd
 }

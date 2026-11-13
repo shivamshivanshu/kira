@@ -62,10 +62,6 @@ func TestDropdownOptionsIncludeConfiguredAndExistingValues(t *testing.T) {
 	p := pageData{
 		Type: "ticket", State: "CUSTOM", Owner: "Other", Label: "custom",
 		Config: &datamodel.Config{
-			Workflows: map[string]datamodel.Workflow{
-				"ticket": {States: []datamodel.State{{Key: "TODO"}, {Key: "IN_PROGRESS"}}},
-				"epic":   {States: []datamodel.State{{Key: "PLANNED"}, {Key: "TODO"}}},
-			},
 			People: datamodel.People{Known: []datamodel.Person{{Name: "Ada"}, {Name: "Bob"}}},
 			Labels: datamodel.Vocab{Known: []string{"bug", "feature"}},
 		},
@@ -75,11 +71,11 @@ func TestDropdownOptionsIncludeConfiguredAndExistingValues(t *testing.T) {
 			{},
 		},
 	}
-	if got, want := p.StateOptions(), []string{"CUSTOM", "IN_PROGRESS", "TODO"}; !slices.Equal(got, want) {
+	if got, want := p.StateOptions(), []string{"CUSTOM", "DONE", "IN_PROGRESS", "REVIEW", "TODO", "WONT_DO"}; !slices.Equal(got, want) {
 		t.Errorf("state options = %v, want %v", got, want)
 	}
 	p.Type = ""
-	if got, want := p.StateOptions(), []string{"CUSTOM", "IN_PROGRESS", "PLANNED", "TODO"}; !slices.Equal(got, want) {
+	if got, want := p.StateOptions(), []string{"ACTIVE", "CUSTOM", "DONE", "IN_PROGRESS", "PLANNED", "REVIEW", "TODO", "WONT_DO"}; !slices.Equal(got, want) {
 		t.Errorf("all state options = %v, want %v", got, want)
 	}
 	if got, want := p.OwnerOptions(), []string{"Ada", "Bob", "Other", "Zoe"}; !slices.Equal(got, want) {

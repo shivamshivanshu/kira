@@ -58,8 +58,8 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if _, ok := cfg.Workflows[opts.Type]; !ok {
-				return errx.User("%q is not a configured type", opts.Type).WithHint("configured types: %s — a new type needs a workflows: entry in .kira/config.yaml; a schema file alone does not define one", strings.Join(workflowTypes(cfg), ", "))
+			if _, ok := datamodel.WorkflowOf(opts.Type); !ok {
+				return errx.User("%q is not a known type", opts.Type).WithHint("known types: %s", strings.Join(datamodel.ItemTypes, ", "))
 			}
 			if printTemplate {
 				tmpl, err := s.ResolveTemplate(cfg, opts)
@@ -102,7 +102,7 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 	f.StringVar(&opts.Due, "due", "", "target completion date (RFC3339 date)")
 	f.Float64Var(&estimate, "estimate", 0, "estimate, in the configured unit")
 	f.BoolVar(&opts.NoEdit, "no-edit", false, "create from flags only, no $EDITOR")
-	f.StringArrayVar(&fields, "field", nil, "key=value for a schema-declared extra field (repeatable)")
+	f.StringArrayVar(&fields, "field", nil, "key=value for any editable item field (repeatable)")
 	f.StringVar(&opts.FromFile, "from-file", "", "read a complete item from a file (or - for stdin)")
 	f.BoolVar(&opts.Force, "force", false, "accept field values outside the configured vocabulary")
 	f.StringVar(&opts.Board, "board", "", "board key to create the item under")

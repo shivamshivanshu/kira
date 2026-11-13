@@ -2,7 +2,6 @@ package core
 
 import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
@@ -25,10 +24,10 @@ func (s *Store) ContainerProgress(cfg *datamodel.Config) (map[string]datamodel.C
 	if err != nil {
 		return nil, err
 	}
-	return allContainerProgress(cfg, ld.items, entityschema.ContainerTypes(ld.schemas))
+	return allContainerProgress(ld.items)
 }
 
-func allContainerProgress(cfg *datamodel.Config, items []*datamodel.Item, containers map[string]bool) (map[string]datamodel.ContainerProgress, error) {
+func allContainerProgress(items []*datamodel.Item) (map[string]datamodel.ContainerProgress, error) {
 	_, children := indexByParent(items)
 	out := make(map[string]datamodel.ContainerProgress)
 	visiting := make(map[string]bool)
@@ -43,7 +42,7 @@ func allContainerProgress(cfg *datamodel.Config, items []*datamodel.Item, contai
 		visiting[it.ID] = true
 		var p datamodel.ContainerProgress
 		for _, child := range children[it.ID] {
-			if containers[child.Type] {
+			if datamodel.IsContainer(child.Type) {
 				sub, err := count(child)
 				if err != nil {
 					return p, err
@@ -52,7 +51,7 @@ func allContainerProgress(cfg *datamodel.Config, items []*datamodel.Item, contai
 				p.Done += sub.Done
 			} else {
 				p.Total++
-				if isDoneState(cfg, child.Type, child.State) {
+				if isDoneState(child.Type, child.State) {
 					p.Done++
 				}
 			}
@@ -62,7 +61,7 @@ func allContainerProgress(cfg *datamodel.Config, items []*datamodel.Item, contai
 		return p, nil
 	}
 	for _, it := range items {
-		if containers[it.Type] {
+		if datamodel.IsContainer(it.Type) {
 			_, err := count(it)
 			if err != nil {
 				return nil, err

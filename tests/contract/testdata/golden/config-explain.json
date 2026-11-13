@@ -10,30 +10,6 @@
       ]
     },
     {
-      "name": "workflow: epic",
-      "provenance": "default",
-      "lines": [
-        "initial: PLANNED",
-        "wip_policy: warn",
-        "PLANNED (todo)",
-        "ACTIVE (doing)",
-        "DONE (done), resolution=done; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)"
-      ]
-    },
-    {
-      "name": "workflow: ticket",
-      "provenance": "default",
-      "lines": [
-        "initial: TODO",
-        "wip_policy: warn",
-        "TODO (todo)",
-        "IN_PROGRESS (doing), wip 3/warn",
-        "REVIEW (doing), wip 2/warn",
-        "DONE (done), resolution=done; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)",
-        "WONT_DO (done), resolution=dropped; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)"
-      ]
-    },
-    {
       "name": "commit",
       "provenance": "default",
       "lines": [
@@ -55,7 +31,7 @@
         "labels: none (advisory)",
         "people: none (advisory)",
         "priorities: P0, P1, P2, P3 (advisory)",
-        "subtypes: bug, story, task, spike (advisory)",
+        "subtypes: bug, task, feature, support (advisory)",
         "resolutions: done, dropped, duplicate, cannot-reproduce (advisory)",
         "resolutions_dropped: dropped (a done-category resolution treated as a non-completion outcome for epic progress)"
       ]

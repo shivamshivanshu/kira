@@ -5,12 +5,12 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/timex"
@@ -21,15 +21,13 @@ type Predicate func(it *datamodel.Item, cfg *datamodel.Config) bool
 const MeToken = "@me"
 
 type Options struct {
-	Resolver   *id.Resolver
-	Priorities []string
+	Resolver *id.Resolver
 	// Me resolves the caller's identity for @me. It is called only when a
 	// query actually names @me, so the git lookup behind it costs nothing on
 	// the queries — the overwhelming majority — that never mention it.
 	Me           func() string
 	ActiveSprint string
 	Items        []*datamodel.Item
-	Schemas      map[string]entityschema.Schema
 }
 
 type Compiled struct {
@@ -64,38 +62,17 @@ func Compile(input string, opts Options) (*Compiled, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := c.bindOrder(q.Order); err != nil {
+	if err := checkOrderField(q.Order); err != nil {
 		return nil, err
 	}
 	return &Compiled{Pred: pred, Order: q.Order, Notes: c.notes}, nil
 }
 
-// bindOrder resolves an ORDER BY field the parser left unresolved: only the
-// compiler knows which names a schema declares.
-func (c *compiler) bindOrder(o *Order) error {
-	switch {
-	case o == nil:
-		return nil
-	case o.Field == fieldPriority:
-		if len(c.opts.Priorities) == 0 {
-			return &Error{Pos: o.pos, Msg: "ORDER BY priority requires configured priorities"}
-		}
-		o.priorityIndex = PriorityIndex(c.opts.Priorities)
-		return nil
-	case fields[o.Field]:
+func checkOrderField(o *Order) error {
+	if o == nil || fields[o.Field] {
 		return nil
 	}
-	cf, ok := c.lookupCustomField(o.Field)
-	switch {
-	case !ok:
-		return c.unknownFieldErr(o.pos, o.Field)
-	case cf.def.Placement == entityschema.PlacementBody:
-		return bodyFieldErr(o.pos, o.Field)
-	case cf.def.List:
-		return &Error{Pos: o.pos, Msg: "cannot order by list field " + o.Field}
-	}
-	o.custom = &cf
-	return nil
+	return unknownFieldErr(o.pos, o.Field)
 }
 
 func Match(field, value string, opts Options) (Predicate, []datamodel.WarnCode, error) {
@@ -224,36 +201,20 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 	case fieldDue:
 		return datePred(n, func(it *datamodel.Item) string { return ptr.Deref(it.Due) }), nil
 	}
-	if cf, ok := c.lookupCustomField(n.field); ok {
-		if cf.def.Placement == entityschema.PlacementBody {
-			return nil, bodyFieldErr(n.op.pos, n.field)
-		}
-		return c.compileCustomPred(n, cf)
-	}
-	return nil, c.unknownFieldErr(n.op.pos, n.field)
+	return nil, unknownFieldErr(n.op.pos, n.field)
 }
 
-func bodyFieldErr(pos int, field string) *Error {
-	return &Error{Pos: pos, Msg: "field " + field + " is a body section and cannot be filtered"}
-}
-
-func (c *compiler) unknownFieldErr(pos int, field string) *Error {
+func unknownFieldErr(pos int, field string) *Error {
 	return &Error{
-		Pos: pos,
-		Msg: fmt.Sprintf("unknown field %s (available: %s)",
-			quote(field), strings.Join(availableFieldNames(customFieldNames(c.opts.Schemas)), ", ")),
+		Pos:          pos,
+		Msg:          fmt.Sprintf("unknown field %s (available: %s)", quote(field), strings.Join(FieldNames(), ", ")),
 		unknownField: true,
 	}
 }
 
-func availableFieldNames(custom []string) []string {
-	names := make([]string, 0, len(fields)+len(custom))
-	for f := range fields {
-		names = append(names, f)
-	}
-	names = append(names, custom...)
-	slices.Sort(names)
-	return names
+// FieldNames lists every field the grammar accepts.
+func FieldNames() []string {
+	return slices.Sorted(maps.Keys(fields))
 }
 
 func (c *compiler) compileRefPred(n *predExpr, eq bool, matches func(*datamodel.Item, string) bool) (Predicate, error) {
@@ -328,23 +289,12 @@ func (c *compiler) scalarInGet(field string) (func(*datamodel.Item, *datamodel.C
 		fieldSubtype, fieldResolution, fieldRank, fieldCategory, fieldBoard:
 		return accessors[field], true
 	}
-	cf, ok := c.lookupCustomField(field)
-	if !ok || cf.def.List || cf.def.Placement == entityschema.PlacementBody {
-		return nil, false
-	}
-	return func(it *datamodel.Item, _ *datamodel.Config) string { return cf.scalar(it) }, true
+	return nil, false
 }
 
 func (c *compiler) compileIsEmpty(n *emptyExpr) (Predicate, error) {
 	if !fields[n.field] {
-		cf, ok := c.lookupCustomField(n.field)
-		if !ok {
-			return nil, c.unknownFieldErr(0, n.field)
-		}
-		if cf.def.Placement == entityschema.PlacementBody {
-			return nil, bodyFieldErr(0, n.field)
-		}
-		return c.compileCustomIsEmpty(n, cf), nil
+		return nil, unknownFieldErr(0, n.field)
 	}
 	var isEmpty func(it *datamodel.Item, cfg *datamodel.Config) bool
 	switch n.field {
@@ -375,10 +325,10 @@ func (c *compiler) blockedPred() Predicate {
 		c.byID = datamodel.IndexByID(c.opts.Items)
 	}
 	byID := c.byID
-	return func(it *datamodel.Item, cfg *datamodel.Config) bool {
+	return func(it *datamodel.Item, _ *datamodel.Config) bool {
 		for _, id := range it.BlockedBy {
 			if blocker := byID[id]; blocker != nil {
-				if cat, known := cfg.CategoryOf(blocker.Type, blocker.State); known && cat != datamodel.CategoryDone {
+				if cat, known := datamodel.CategoryOf(blocker.Type, blocker.State); known && cat != datamodel.CategoryDone {
 					return true
 				}
 			}
@@ -400,14 +350,14 @@ type SkippedBlocker struct {
 // item): open holds blockers whose category is known and not Done; skipped
 // holds blockers that could not be evaluated (and so are treated as
 // satisfied, same as a closed blocker).
-func OpenBlockers(cfg *datamodel.Config, it *datamodel.Item, byID map[string]*datamodel.Item) (open []*datamodel.Item, skipped []SkippedBlocker) {
+func OpenBlockers(it *datamodel.Item, byID map[string]*datamodel.Item) (open []*datamodel.Item, skipped []SkippedBlocker) {
 	for _, b := range it.BlockedBy {
 		blocker, ok := byID[b]
 		if !ok {
 			skipped = append(skipped, SkippedBlocker{ID: b, Reason: "resolves to no item"})
 			continue
 		}
-		cat, known := cfg.CategoryOf(blocker.Type, blocker.State)
+		cat, known := datamodel.CategoryOf(blocker.Type, blocker.State)
 		if !known {
 			skipped = append(skipped, SkippedBlocker{ID: b, Blocker: blocker, Reason: "has no known state category"})
 			continue
@@ -422,8 +372,8 @@ func OpenBlockers(cfg *datamodel.Config, it *datamodel.Item, byID map[string]*da
 var accessors = map[string]func(*datamodel.Item, *datamodel.Config) string{
 	fieldState: func(it *datamodel.Item, _ *datamodel.Config) string { return it.State },
 	fieldType:  func(it *datamodel.Item, _ *datamodel.Config) string { return it.Type },
-	fieldCategory: func(it *datamodel.Item, cfg *datamodel.Config) string {
-		cat, _ := cfg.CategoryOf(it.Type, it.State)
+	fieldCategory: func(it *datamodel.Item, _ *datamodel.Config) string {
+		cat, _ := datamodel.CategoryOf(it.Type, it.State)
 		return string(cat)
 	},
 	fieldOwner:      func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Owner) },
@@ -457,11 +407,7 @@ func PriorityIndex(priorities []string) map[string]int {
 }
 
 func (c *compiler) rankedPriorityPred(n *predExpr) (Predicate, error) {
-	if len(c.opts.Priorities) == 0 {
-		return nil, &Error{Pos: n.op.pos,
-			Msg: "ordered comparison on priority requires configured priorities (only = and != apply)"}
-	}
-	index := PriorityIndex(c.opts.Priorities)
+	index := PriorityIndex(datamodel.Priorities)
 	want, known := index[n.value]
 	if !known {
 		return nil, &Error{Pos: n.valuePos, Msg: "unknown priority " + quote(n.value)}

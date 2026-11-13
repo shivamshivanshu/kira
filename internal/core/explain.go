@@ -16,11 +16,8 @@ import (
 // each tagged with the tier (default | repo | user) that last set it.
 func Explain(cfg *datamodel.Config) *datamodel.ExplainResult {
 	def := config.Default()
-	sections := []datamodel.ExplainSection{explainIdentity(cfg, def)}
-	for _, typ := range slices.Sorted(maps.Keys(cfg.Workflows)) {
-		sections = append(sections, explainWorkflow(cfg, def, typ))
-	}
-	sections = append(sections,
+	sections := []datamodel.ExplainSection{
+		explainIdentity(cfg, def),
 		explainCommit(cfg, def),
 		explainVocab(cfg, def),
 		explainUI(cfg, def),
@@ -31,7 +28,7 @@ func Explain(cfg *datamodel.Config) *datamodel.ExplainResult {
 		explainEstimate(cfg, def),
 		explainFilters(cfg, def),
 		explainAutomation(cfg, def),
-	)
+	}
 	return &datamodel.ExplainResult{Sections: sections}
 }
 
@@ -121,40 +118,6 @@ func describeBoard(b datamodel.Board) string {
 	return s
 }
 
-func explainWorkflow(cfg, def *datamodel.Config, typ string) datamodel.ExplainSection {
-	wf := cfg.Workflows[typ]
-	lines := []string{
-		"initial: " + wf.Initial,
-		"wip_policy: " + string(wf.EffectiveWipPolicy()),
-	}
-	if wf.CloseTarget != "" {
-		lines = append(lines, "close_target: "+wf.CloseTarget)
-	}
-	for _, st := range wf.States {
-		lines = append(lines, describeState(wf, st))
-	}
-	defWF, isDefaultType := def.Workflows[typ]
-	return datamodel.ExplainSection{
-		Name:       "workflow: " + typ,
-		Provenance: tierOf(!isDefaultType || changed(wf, defWF), datamodel.ProvenanceRepo),
-		Lines:      lines,
-	}
-}
-
-func describeState(wf datamodel.Workflow, st datamodel.State) string {
-	line := fmt.Sprintf("%s (%s)", st.Key, st.Category)
-	if st.Wip > 0 {
-		line += fmt.Sprintf(", wip %d/%s", st.Wip, wf.EffectiveWipPolicy())
-	}
-	if st.Resolution != "" {
-		line += ", resolution=" + st.Resolution
-	}
-	if st.Category == datamodel.CategoryDone {
-		line += "; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)"
-	}
-	return line
-}
-
 func explainCommit(cfg, def *datamodel.Config) datamodel.ExplainSection {
 	c := cfg.Commit
 	lines := []string{
@@ -215,17 +178,13 @@ func explainVocab(cfg, def *datamodel.Config) datamodel.ExplainSection {
 		fmt.Sprintf("system label: %s (auto-added by `kira create --here`; excluded from vocabulary checks)", datamodel.CapturedLabel),
 		describeVocab("labels", cfg.Labels.Known, cfg.Labels.Strict),
 		describeVocab("people", cfg.People.Names(), cfg.People.Strict),
-		describeEnumVocab("priorities", cfg.Priorities, cfg.Labels.Strict),
-		describeEnumVocab("subtypes", cfg.Subtypes, cfg.Labels.Strict),
-		describeEnumVocab("resolutions", cfg.Resolutions, cfg.Labels.Strict),
+		describeVocab("priorities", datamodel.Priorities, cfg.Labels.Strict),
+		describeVocab("subtypes", datamodel.Subtypes, cfg.Labels.Strict),
+		describeVocab("resolutions", datamodel.Resolutions, cfg.Labels.Strict),
+		"resolutions_dropped: " + datamodel.ResolutionDropped +
+			" (a done-category resolution treated as a non-completion outcome for epic progress)",
 	}
-	if len(cfg.ResolutionsDropped) > 0 {
-		lines = append(lines, "resolutions_dropped: "+strings.Join(cfg.ResolutionsDropped, ", ")+
-			" (a done-category resolution treated as a non-completion outcome for epic progress)")
-	}
-	differs := vocabChanged(cfg.Labels, def.Labels) || peopleChanged(cfg.People, def.People) ||
-		changed(cfg.Priorities, def.Priorities) || changed(cfg.Subtypes, def.Subtypes) ||
-		changed(cfg.Resolutions, def.Resolutions) || changed(cfg.ResolutionsDropped, def.ResolutionsDropped)
+	differs := vocabChanged(cfg.Labels, def.Labels) || peopleChanged(cfg.People, def.People)
 	return datamodel.ExplainSection{Name: "vocab", Provenance: tierOf(differs, datamodel.ProvenanceRepo), Lines: lines}
 }
 
@@ -254,10 +213,6 @@ func describeVocab(field string, known []string, strict bool) string {
 		values = strings.Join(known, ", ")
 	}
 	return fmt.Sprintf("%s: %s (%s)", field, values, mode)
-}
-
-func describeEnumVocab(field string, v datamodel.EnumVocab, fallback bool) string {
-	return describeVocab(field, v.Values, v.StrictOr(fallback))
 }
 
 func explainUI(cfg, def *datamodel.Config) datamodel.ExplainSection {

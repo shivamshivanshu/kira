@@ -19,26 +19,26 @@ func stateKeys(wf datamodel.Workflow) []string {
 	return out
 }
 
-func MoveTargets(cfg *datamodel.Config, typ, _ string) []string {
-	wf, ok := cfg.Workflows[typ]
+func MoveTargets(typ string) []string {
+	wf, ok := datamodel.WorkflowOf(typ)
 	if !ok {
 		return nil
 	}
 	return stateKeys(wf)
 }
 
-func isDoneState(cfg *datamodel.Config, typ, state string) bool {
-	cat, ok := cfg.CategoryOf(typ, state)
+func isDoneState(typ, state string) bool {
+	cat, ok := datamodel.CategoryOf(typ, state)
 	return ok && cat == datamodel.CategoryDone
 }
 
-func clearStaleResolution(cfg *datamodel.Config, it *datamodel.Item) {
-	if !isDoneState(cfg, it.Type, it.State) {
+func clearStaleResolution(it *datamodel.Item) {
+	if !isDoneState(it.Type, it.State) {
 		it.Resolution = nil
 	}
 }
 
-func categoryString(cfg *datamodel.Config, typ, state string) string {
-	c, _ := cfg.CategoryOf(typ, state)
+func categoryString(typ, state string) string {
+	c, _ := datamodel.CategoryOf(typ, state)
 	return string(c)
 }

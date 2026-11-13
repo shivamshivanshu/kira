@@ -6,7 +6,6 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/codec"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/index"
 	"github.com/shivamshivanshu/kira/internal/ptr"
@@ -150,18 +149,16 @@ func historyTailView(events []datamodel.Event) []datamodel.HistoryEvent {
 	return out
 }
 
-// These fields depend on the whole loaded set and its schemas, not on the item
-// alone, which is what separates this from showResultOf.
+// These fields depend on the whole loaded set, not on the item alone, which is
+// what separates this from showResultOf.
 func crossReferencedShowResultOf(ld *loaded, it *datamodel.Item, ulid string) datamodel.ShowResult {
-	res := showResultOf(ld.cfg, it)
+	res := showResultOf(it)
 	res.Blocks = blocksOf(ld.items, ulid)
 	numberReferences(&res, ld.items)
-	res.Fields = entityschema.CustomFields(ld.schemas[it.Type], it, codec.Decoder{})
-	res.TypeLabel = ld.schemas[it.Type].TypeLabel(it.Type)
 	return res
 }
 
-func showResultOf(cfg *datamodel.Config, it *datamodel.Item) datamodel.ShowResult {
+func showResultOf(it *datamodel.Item) datamodel.ShowResult {
 	comments := codec.ParseComments(it.Body)
 	views := make([]datamodel.CommentView, len(comments))
 	for i, c := range comments {
@@ -176,7 +173,7 @@ func showResultOf(cfg *datamodel.Config, it *datamodel.Item) datamodel.ShowResul
 		Subtype:       it.Subtype,
 		Title:         it.Title,
 		State:         it.State,
-		Category:      categoryString(cfg, it.Type, it.State),
+		Category:      categoryString(it.Type, it.State),
 		Resolution:    it.Resolution,
 		Priority:      it.Priority,
 		Rank:          it.Rank,

@@ -49,30 +49,3 @@ func (pl People) Canonical(identities ...string) (string, bool) {
 	}
 	return "", false
 }
-
-type EnumVocab struct {
-	Values []string
-	Strict *bool
-}
-
-func (v *EnumVocab) UnmarshalYAML(n *yaml.Node) error {
-	if n.Kind == yaml.SequenceNode {
-		return n.Decode(&v.Values)
-	}
-	var m struct {
-		Values []string `yaml:"values"`
-		Strict *bool    `yaml:"strict"`
-	}
-	if err := n.Decode(&m); err != nil {
-		return err
-	}
-	v.Values, v.Strict = m.Values, m.Strict
-	return nil
-}
-
-func (v EnumVocab) StrictOr(fallback bool) bool {
-	if v.Strict != nil {
-		return *v.Strict
-	}
-	return fallback
-}

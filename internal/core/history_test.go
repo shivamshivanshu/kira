@@ -7,15 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/testutil"
 )
 
 // itemMetric is the single-item form of itemsMetrics, for tests that assert on
 // one ticket's derived metrics.
-func itemMetric(s *Store, cfg *datamodel.Config, it *datamodel.Item) (metricItem, error) {
-	mis, err := s.itemsMetrics(cfg, []*datamodel.Item{it})
+func itemMetric(s *Store, it *datamodel.Item) (metricItem, error) {
+	mis, err := s.itemsMetrics([]*datamodel.Item{it})
 	if err != nil {
 		return metricItem{}, err
 	}
@@ -58,14 +57,13 @@ func eventTicket() *datamodel.Item {
 
 func TestItemMetricsCleanHistory(t *testing.T) {
 	s := eventRepo(t)
-	cfg := config.Default()
 	it := eventTicket()
 	commitState(t, s, it, "TODO", "2026-01-05")
 	commitState(t, s, it, "IN_PROGRESS", "2026-01-06")
 	commitState(t, s, it, "REVIEW", "2026-01-07")
 	commitState(t, s, it, "DONE", "2026-01-08")
 
-	di, err := itemMetric(s, cfg, it)
+	di, err := itemMetric(s, it)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,11 +77,10 @@ func TestItemMetricsCleanHistory(t *testing.T) {
 
 func TestItemMetricsCreatedAlreadyDone(t *testing.T) {
 	s := eventRepo(t)
-	cfg := config.Default()
 	it := eventTicket()
 	commitState(t, s, it, "DONE", "2026-01-05")
 
-	di, err := itemMetric(s, cfg, it)
+	di, err := itemMetric(s, it)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +94,6 @@ func TestItemMetricsCreatedAlreadyDone(t *testing.T) {
 
 func TestItemMetricsUncommittedFallsBackToUpdated(t *testing.T) {
 	s := eventRepo(t)
-	cfg := config.Default()
 	it := eventTicket()
 	it.State = "DONE"
 	it.Updated = "2026-01-09T10:00:00Z"
@@ -105,7 +101,7 @@ func TestItemMetricsUncommittedFallsBackToUpdated(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	di, err := itemMetric(s, cfg, it)
+	di, err := itemMetric(s, it)
 	if err != nil {
 		t.Fatal(err)
 	}

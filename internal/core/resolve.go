@@ -12,7 +12,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
-func (s *Store) Resolve(cfg *datamodel.Config, refs []string, interactive bool) (*datamodel.ResolveResult, error) {
+func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResult, error) {
 	if interactive && !s.prompter.Interactive() {
 		return nil, errx.User("--interactive needs a terminal; rerun without it to auto-resolve").WithHint("run in an interactive shell to pick fields by hand")
 	}
@@ -79,7 +79,7 @@ func (s *Store) Resolve(cfg *datamodel.Config, refs []string, interactive bool) 
 		if interactive {
 			s.pickFields(res.Item, oursItem, theirsItem, res.Arbitrated)
 		}
-		clearStaleResolution(cfg, res.Item)
+		clearStaleResolution(res.Item)
 		rel, err := s.fs().WriteItemRaw(res.Item.ID, codec.Serialize(res.Item))
 		if err != nil {
 			return nil, err
@@ -124,15 +124,6 @@ func fieldString(it *datamodel.Item, field string) string {
 	if d, ok := datamodel.Field(field); ok {
 		return d.Get(it)
 	}
-	if v, ok := it.ExtraScalars[field]; ok {
-		return codec.DecodeScalar(v)
-	}
-	if v, ok := it.ExtraLists[field]; ok {
-		return strings.Join(codec.DecodeExtraList(v), ", ")
-	}
-	if v, ok := it.ExtraBlocks[field]; ok {
-		return codec.FlowBlock(v)
-	}
 	return "-"
 }
 
@@ -151,33 +142,5 @@ func (s *Store) pickFields(target, ours, theirs *datamodel.Item, fields []string
 func applyPick(target, src *datamodel.Item, field string) {
 	if d, ok := datamodel.Field(field); ok {
 		d.Copy(target, src)
-		return
-	}
-	copyExtra(target, src, field)
-}
-
-func copyExtra(target, src *datamodel.Item, key string) {
-	delete(target.ExtraScalars, key)
-	delete(target.ExtraLists, key)
-	delete(target.ExtraBlocks, key)
-	if v, ok := src.ExtraScalars[key]; ok {
-		if target.ExtraScalars == nil {
-			target.ExtraScalars = map[string]datamodel.Rendered{}
-		}
-		target.ExtraScalars[key] = v
-		return
-	}
-	if v, ok := src.ExtraLists[key]; ok {
-		if target.ExtraLists == nil {
-			target.ExtraLists = map[string][]datamodel.Rendered{}
-		}
-		target.ExtraLists[key] = slices.Clone(v)
-		return
-	}
-	if v, ok := src.ExtraBlocks[key]; ok {
-		if target.ExtraBlocks == nil {
-			target.ExtraBlocks = map[string]datamodel.Rendered{}
-		}
-		target.ExtraBlocks[key] = v
 	}
 }

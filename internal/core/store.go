@@ -7,7 +7,6 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/query"
@@ -15,11 +14,10 @@ import (
 )
 
 type Store struct {
-	root         string
-	store        *storage.FS
-	prompter     Prompter
-	schemasCache map[string]entityschema.Schema
-	trust        string
+	root     string
+	store    *storage.FS
+	prompter Prompter
+	trust    string
 }
 
 func newStore(root string) *Store {
@@ -64,25 +62,6 @@ func (s *Store) Config() (*datamodel.Config, error) {
 }
 
 func (s *Store) LoadAll() ([]*datamodel.Item, storage.Skipped, error) { return s.fs().LoadAll() }
-
-// schemas caches its result on s for the lifetime of the command: interactive
-// create/edit resolve it once up front and again after locking, and a Store
-// is never shared across concurrent commands.
-// Schemas exposes the loaded schemas so the CLI can tell a renderable column
-// name from a typo; everything in-package uses the unexported accessor.
-func (s *Store) Schemas() (map[string]entityschema.Schema, error) { return s.schemas() }
-
-func (s *Store) schemas() (map[string]entityschema.Schema, error) {
-	if s.schemasCache != nil {
-		return s.schemasCache, nil
-	}
-	schemas, err := entityschema.Load(s.fs().SchemaDir())
-	if err != nil {
-		return nil, errx.Env("loading %s: %v", s.fs().RelToRoot(s.fs().SchemaDir()), err)
-	}
-	s.schemasCache = schemas
-	return schemas, nil
-}
 
 func (s *Store) itemPath(ulid string) string { return s.fs().ItemPath(ulid) }
 

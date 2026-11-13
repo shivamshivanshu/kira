@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/storage"
@@ -39,11 +38,7 @@ func (s *Store) mutate(cfg *datamodel.Config, ref string, force bool, apply appl
 		return nil, nil, nil, err
 	}
 	defer release()
-	schemas, err := s.schemas()
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	vctx := newValidationCtx(cfg, items, resolver, schemas[orig.Type], entityschema.ContainerTypes(schemas), force)
+	vctx := newValidationCtx(cfg, items, resolver, force)
 	return s.mutateAgainst(vctx, orig, items, apply, subjectOf, source)
 }
 
@@ -59,7 +54,7 @@ func (s *Store) mutateAgainst(vctx *validationCtx, orig *datamodel.Item, items [
 	}
 	warns = append(warns, vwarns...)
 
-	changed := changedKeys(orig, updated)
+	changed := datamodel.ChangedFields(orig, updated)
 	finalWarns, err := s.commitMutation(vctx.cfg, orig, updated, changed, warns, subjectOf(orig), source)
 	if err != nil {
 		return nil, nil, nil, err
@@ -68,16 +63,13 @@ func (s *Store) mutateAgainst(vctx *validationCtx, orig *datamodel.Item, items [
 }
 
 type Batch struct {
-	cfg        *datamodel.Config
-	store      *Store
-	release    func()
-	items      []*datamodel.Item
-	resolver   *id.Resolver
-	byID       map[string]*datamodel.Item
-	positions  map[string]int
-	schemas    map[string]entityschema.Schema
-	containers map[string]bool
-	enums      map[string]map[string][]string
+	cfg       *datamodel.Config
+	store     *Store
+	release   func()
+	items     []*datamodel.Item
+	resolver  *id.Resolver
+	byID      map[string]*datamodel.Item
+	positions map[string]int
 }
 
 func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
@@ -90,17 +82,6 @@ func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
 		release()
 		return nil, err
 	}
-	schemas, err := s.schemas()
-	if err != nil {
-		release()
-		return nil, err
-	}
-	vocab := entityschema.ConfigVocab(cfg)
-	containers := entityschema.ContainerTypes(schemas)
-	enums := make(map[string]map[string][]string, len(schemas))
-	for typ, schema := range schemas {
-		enums[typ] = entityschema.ResolveEnums(schema, vocab)
-	}
 	positions := make(map[string]int, len(ld.items))
 	for n, it := range ld.items {
 		if _, exists := positions[it.ID]; !exists {
@@ -108,16 +89,13 @@ func (s *Store) BeginBatch(cfg *datamodel.Config) (*Batch, error) {
 		}
 	}
 	return &Batch{
-		cfg:        cfg,
-		store:      s,
-		release:    release,
-		items:      ld.items,
-		resolver:   ld.resolver,
-		byID:       datamodel.IndexByID(ld.items),
-		positions:  positions,
-		schemas:    schemas,
-		containers: containers,
-		enums:      enums,
+		cfg:       cfg,
+		store:     s,
+		release:   release,
+		items:     ld.items,
+		resolver:  ld.resolver,
+		byID:      datamodel.IndexByID(ld.items),
+		positions: positions,
 	}, nil
 }
 
@@ -152,7 +130,7 @@ func (b *Batch) Mutate(ref string, force bool, apply applyFn, subjectOf func(ori
 	if err := guardWritable(orig); err != nil {
 		return nil, nil, nil, err
 	}
-	vctx := newValidationCtxWithEnums(b.cfg, b.byID, b.resolver, b.schemas[orig.Type], b.containers, b.enums[orig.Type], force)
+	vctx := newValidationCtxByID(b.cfg, b.byID, b.resolver, force)
 	updated, changed, warns, err := b.store.mutateAgainst(vctx, orig, b.items, apply, subjectOf, source)
 	if err != nil {
 		// A write may succeed before its Git commit fails. Later operations
@@ -196,16 +174,12 @@ func (s *Store) commitMutation(cfg *datamodel.Config, before, updated *datamodel
 func scopeVocabWarnings(warns []error, changed []string) []error {
 	out := warns[:0:0]
 	for _, w := range warns {
-		if v, ok := errors.AsType[entityschema.Violation](w); ok && !slices.Contains(changed, v.Field) {
+		if v, ok := errors.AsType[vocabViolationError](w); ok && !slices.Contains(changed, v.Field) {
 			continue
 		}
 		out = append(out, w)
 	}
 	return out
-}
-
-func changedKeys(orig, updated *datamodel.Item) []string {
-	return append(datamodel.ChangedFields(orig, updated), datamodel.ChangedExtraKeys(orig, updated)...)
 }
 
 func (s *Store) commit(cfg *datamodel.Config, cs *datamodel.ChangeSet) error {

@@ -33,7 +33,7 @@ func (b *Batch) Move(ref, state string, opts MoveOpts) (*datamodel.MoveResult, e
 	apply := func(it *datamodel.Item, _ *id.Resolver, items []*datamodel.Item) ([]error, []error) {
 		from = it.State
 		it.State = state
-		hard, warns, wipWarns := applyStateChange(cfg, it, from, opts, nil, items)
+		hard, warns, wipWarns := applyStateChange(it, from, opts, nil, items)
 		if len(hard) > 0 {
 			return hard, nil
 		}
@@ -66,9 +66,9 @@ func (b *Batch) Move(ref, state string, opts MoveOpts) (*datamodel.MoveResult, e
 	}, nil
 }
 
-func applyStateChange(cfg *datamodel.Config, it *datamodel.Item, from string, opts MoveOpts, edited map[string]bool, items []*datamodel.Item) (hard, warns, wipWarns []error) {
+func applyStateChange(it *datamodel.Item, from string, opts MoveOpts, edited map[string]bool, items []*datamodel.Item) (hard, warns, wipWarns []error) {
 	state := it.State
-	wf, ok := cfg.Workflows[it.Type]
+	wf, ok := datamodel.WorkflowOf(it.Type)
 	if !ok {
 		return []error{fmt.Errorf("no workflow configured for type %q", it.Type)}, nil, nil
 	}
@@ -85,7 +85,7 @@ func applyStateChange(cfg *datamodel.Config, it *datamodel.Item, from string, op
 
 	if target.Category == datamodel.CategoryDone {
 		if from != state {
-			h, w := blockersClosedGuard(cfg, it, items, from, state, opts.Force)
+			h, w := blockersClosedGuard(it, items, from, state, opts.Force)
 			if len(h) > 0 {
 				return h, nil, nil
 			}
@@ -98,16 +98,12 @@ func applyStateChange(cfg *datamodel.Config, it *datamodel.Item, from string, op
 		it.Resolution = nil
 	}
 
-	h, w := wipGuard(wf, it, items, from, state, target.Wip, opts.Force)
-	if len(h) > 0 {
-		return h, nil, nil
-	}
-	return nil, warns, w
+	return nil, warns, wipOverrunWarnings(it, items, from, state, target.Wip)
 }
 
-func wipGuard(wf datamodel.Workflow, it *datamodel.Item, items []*datamodel.Item, from, state string, wip int, force bool) (hard, warns []error) {
+func wipOverrunWarnings(it *datamodel.Item, items []*datamodel.Item, from, state string, wip int) []error {
 	if from == state || wip <= 0 {
-		return nil, nil
+		return nil
 	}
 	inTargetState := 1
 	for _, other := range items {
@@ -116,17 +112,14 @@ func wipGuard(wf datamodel.Workflow, it *datamodel.Item, items []*datamodel.Item
 		}
 	}
 	if inTargetState <= wip {
-		return nil, nil
+		return nil
 	}
-	if wf.EffectiveWipPolicy() == datamodel.WipBlock && !force {
-		return []error{errx.User("%s is over its WIP limit (%d > %d)", state, inTargetState, wip).WithHint("move an item out of %s first, or use `--force` to override", state)}, nil
-	}
-	return nil, []error{fmt.Errorf("%s is over its WIP limit (%d > %d)", state, inTargetState, wip)}
+	return []error{fmt.Errorf("%s is over its WIP limit (%d > %d)", state, inTargetState, wip)}
 }
 
-func blockersClosedGuard(cfg *datamodel.Config, it *datamodel.Item, items []*datamodel.Item, from, state string, force bool) (hard, warns []error) {
+func blockersClosedGuard(it *datamodel.Item, items []*datamodel.Item, from, state string, force bool) (hard, warns []error) {
 	byID := datamodel.IndexByID(items)
-	open, skipped := query.OpenBlockers(cfg, it, byID)
+	open, skipped := query.OpenBlockers(it, byID)
 	for _, s := range skipped {
 		warns = append(warns, fmt.Errorf("blocked_by %s %s; treating blocker as satisfied", numberOrID(s.Blocker, s.ID), s.Reason))
 	}

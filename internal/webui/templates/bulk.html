@@ -23,7 +23,7 @@
   <input type="hidden" name="state">
 </form>
 {{if .Config}}
-<datalist id="workflow-states">{{range .Config.Workflows}}{{range .States}}<option value="{{.Key}}">{{end}}{{end}}</datalist>
+<datalist id="workflow-states">{{range .WorkflowStates}}<option value="{{.}}">{{end}}</datalist>
 <datalist id="known-labels">{{range .Config.Labels.Known}}<option value="{{.}}">{{end}}</datalist>
 <datalist id="board-keys">{{range .Config.ActiveBoards}}<option value="{{.Key}}">{{.Name}}</option>{{end}}</datalist>
 {{end}}

@@ -1,8 +1,6 @@
 package codec
 
 import (
-	"maps"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -31,7 +29,7 @@ func Serialize(it *datamodel.Item) string {
 	writeLine(&b, datamodel.KeyLabels, EmitList(it.Labels))
 	writeReqNullableScalar(&b, datamodel.KeyParent, it.Parent)
 	writeLine(&b, datamodel.KeyBlockedBy, EmitList(it.BlockedBy))
-	writeLinks(&b, it.Links, it.ExtraLinks)
+	writeLinks(&b, it.Links)
 	writeOptScalar(&b, datamodel.KeySprint, it.Sprint)
 	if it.Due != nil {
 		writeLine(&b, datamodel.KeyDue, emitDate(*it.Due))
@@ -39,7 +37,6 @@ func Serialize(it *datamodel.Item) string {
 	writeOptFloat(&b, datamodel.KeyEstimate, it.Estimate)
 	writeLine(&b, datamodel.KeyCreated, emitTimestamp(it.Created))
 	writeLine(&b, datamodel.KeyUpdated, emitTimestamp(it.Updated))
-	writeExtras(&b, it)
 
 	b.WriteString(FenceLine)
 	b.WriteString(it.Body)
@@ -73,125 +70,33 @@ func writeOptFloat(b *strings.Builder, key string, v *float64) {
 	}
 }
 
-// WriteExtras emits extras in Serialize's canonical order for a document with
-// no item behind it, such as an editor draft.
-func WriteExtras(b *strings.Builder, scalars map[string]datamodel.Rendered, lists map[string][]datamodel.Rendered, blocks map[string]datamodel.Rendered) {
-	writeExtras(b, &datamodel.Item{ExtraScalars: scalars, ExtraLists: lists, ExtraBlocks: blocks})
-}
-
-func writeExtras(b *strings.Builder, it *datamodel.Item) {
-	for _, k := range it.ExtraKeys() {
-		if v, ok := it.ExtraScalars[k]; ok {
-			writeLine(b, k, string(v))
-			continue
-		}
-		if v, ok := it.ExtraBlocks[k]; ok {
-			writeBlock(b, k, v)
-			continue
-		}
-		writeLine(b, k, emitRenderedList(it.ExtraLists[k]))
-	}
-}
-
-const blockIndent = "  "
-
-func writeBlock(b *strings.Builder, key string, block datamodel.Rendered) {
-	b.WriteString(key)
-	b.WriteString(":\n")
-	for line := range strings.SplitSeq(string(block), "\n") {
-		if line != "" {
-			b.WriteString(blockIndent)
-			b.WriteString(line)
-		}
-		b.WriteByte('\n')
-	}
-}
-
-// FlowBlock renders a stored block as one line of flow-style YAML, for the
-// diff and conflict-prompt output a multi-line value would break. It is a
-// display form only: blocks reach disk through writeBlock.
-func FlowBlock(block datamodel.Rendered) string {
-	var n yaml.Node
-	if err := yaml.Unmarshal([]byte(block), &n); err != nil {
-		return string(block)
-	}
-	forceFlowStyle(&n)
-	out, err := marshalScalar(&n)
-	if err != nil {
-		return string(block)
-	}
-	return out
-}
-
-func forceFlowStyle(n *yaml.Node) {
-	n.HeadComment, n.LineComment, n.FootComment = "", "", ""
-	if n.Kind == yaml.MappingNode || n.Kind == yaml.SequenceNode {
-		n.Style = yaml.FlowStyle
-	}
-	for _, c := range n.Content {
-		forceFlowStyle(c)
-	}
-}
-
-func writeLinks(b *strings.Builder, links, extraLinks map[string][]string) {
-	type link struct {
-		typ     string
-		targets []string
-	}
-	var ordered []link
+func writeLinks(b *strings.Builder, links map[string][]string) {
+	wroteKey := false
 	for _, typ := range datamodel.LinkTypes {
-		if targets := links[string(typ)]; len(targets) > 0 {
-			ordered = append(ordered, link{string(typ), targets})
+		targets := links[string(typ)]
+		if len(targets) == 0 {
+			continue
 		}
-	}
-	for _, typ := range slices.Sorted(maps.Keys(extraLinks)) {
-		ordered = append(ordered, link{typ, extraLinks[typ]})
-	}
-	if len(ordered) == 0 {
-		return
-	}
-	b.WriteString(datamodel.KeyLinks + ":\n")
-	for _, l := range ordered {
+		if !wroteKey {
+			b.WriteString(datamodel.KeyLinks + ":\n")
+			wroteKey = true
+		}
 		b.WriteString("  ")
-		writeLine(b, l.typ, EmitList(l.targets))
+		writeLine(b, string(typ), EmitList(targets))
 	}
 }
 
 func EmitFloat(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
 
-// emitRenderedList joins list-extra elements verbatim: each already holds its
-// faithful YAML text, which EmitList would quote a second time.
-// EmitRenderedList renders already-rendered elements verbatim, for callers that
-// need the on-disk form of a stored list.
-func EmitRenderedList(xs []datamodel.Rendered) string { return emitRenderedList(xs) }
-
-func emitRenderedList(xs []datamodel.Rendered) string {
+func EmitList(xs []string) string {
 	if len(xs) == 0 {
 		return "[]"
 	}
 	parts := make([]string, len(xs))
 	for i, x := range xs {
-		parts[i] = string(x)
+		parts[i] = emitFlowScalar(x)
 	}
 	return "[" + strings.Join(parts, ", ") + "]"
-}
-
-// EncodeExtraListElement renders a string to the on-disk form a list extra
-// stores, quoting it where a plain scalar would not survive the flow list.
-func EncodeExtraListElement(s string) datamodel.Rendered {
-	return datamodel.Rendered(emitFlowScalar(s))
-}
-
-func EmitList(xs []string) string { return emitRenderedList(EncodeExtraList(xs)) }
-
-// EncodeExtraList renders raw values into the flow-safe form a stored extra
-// list holds; DecodeExtraList is its inverse.
-func EncodeExtraList(values []string) []datamodel.Rendered {
-	out := make([]datamodel.Rendered, len(values))
-	for i, v := range values {
-		out[i] = datamodel.Rendered(emitFlowScalar(v))
-	}
-	return out
 }
 
 func EmitScalar(s string) string {
@@ -204,8 +109,8 @@ func EmitScalar(s string) string {
 	return emitQuoted(s)
 }
 
-func DecodeScalar(raw datamodel.Rendered) string {
-	trimmed := strings.TrimSpace(string(raw))
+func DecodeScalar(raw string) string {
+	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" || (trimmed[0] != '"' && trimmed[0] != '\'') {
 		return trimmed
 	}

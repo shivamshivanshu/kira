@@ -948,7 +948,6 @@
             "board",
             "number-outlier",
             "stray-file",
-            "state-drift",
             "wip-limit"
           ],
           "type": "string"
@@ -1350,10 +1349,6 @@
             "null"
           ]
         },
-        "fields": {
-          "additionalProperties": {},
-          "type": "object"
-        },
         "id": {
           "type": "string"
         },
@@ -1410,9 +1405,6 @@
         },
         "type": {
           "type": "string"
-        },
-        "type_label": {
-          "type": "string"
         }
       },
       "required": [
@@ -1421,7 +1413,6 @@
         "board",
         "title",
         "type",
-        "type_label",
         "subtype",
         "state",
         "category",
@@ -1838,21 +1829,6 @@
       ],
       "type": "object"
     },
-    "SchemaInitResult": {
-      "additionalProperties": false,
-      "properties": {
-        "written": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "written"
-      ],
-      "type": "object"
-    },
     "ShowResult": {
       "additionalProperties": false,
       "properties": {
@@ -1915,10 +1891,6 @@
             "number",
             "null"
           ]
-        },
-        "fields": {
-          "additionalProperties": {},
-          "type": "object"
         },
         "history_tail": {
           "items": {
@@ -2041,9 +2013,6 @@
         "type": {
           "type": "string"
         },
-        "type_label": {
-          "type": "string"
-        },
         "updated": {
           "type": "string"
         }
@@ -2054,7 +2023,6 @@
         "board",
         "aliases",
         "type",
-        "type_label",
         "subtype",
         "title",
         "state",
@@ -2531,9 +2499,6 @@
   "oneOf": [
     {
       "$ref": "#/$defs/CreateResult"
-    },
-    {
-      "$ref": "#/$defs/SchemaInitResult"
     },
     {
       "$ref": "#/$defs/ListResult"

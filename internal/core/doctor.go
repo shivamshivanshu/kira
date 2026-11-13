@@ -15,10 +15,6 @@ import (
 )
 
 func (s *Store) DoctorReport(cfg *datamodel.Config) (*doctor.Report, error) {
-	schemas, err := s.schemas()
-	if err != nil {
-		return nil, err
-	}
 	files, err := s.ticketFiles()
 	if err != nil {
 		return nil, err
@@ -27,14 +23,10 @@ func (s *Store) DoctorReport(cfg *datamodel.Config) (*doctor.Report, error) {
 	if err != nil {
 		return nil, err
 	}
-	return doctor.Run(cfg, files, strays, s.doctorEnv(), schemas), nil
+	return doctor.Run(cfg, files, strays, s.doctorEnv()), nil
 }
 
 func (s *Store) ValidateFiles(cfg *datamodel.Config, args []string) (*doctor.Report, error) {
-	schemas, err := s.schemas()
-	if err != nil {
-		return nil, err
-	}
 	storeFiles, err := s.ticketFiles()
 	if err != nil {
 		return nil, err
@@ -58,7 +50,7 @@ func (s *Store) ValidateFiles(cfg *datamodel.Config, args []string) (*doctor.Rep
 		}
 		targets = append(targets, doctor.File{Path: path, Content: content})
 	}
-	return doctor.Validate(cfg, storeFiles, targets, schemas), nil
+	return doctor.Validate(cfg, storeFiles, targets), nil
 }
 
 func (s *Store) isProjectConfig(arg string) bool {
@@ -80,7 +72,7 @@ func (s *Store) ticketFiles() ([]doctor.File, error) {
 }
 
 func (s *Store) doctorEnv() doctor.Env {
-	env := doctor.Env{GitInstalled: gitx.Installed()}
+	env := doctor.Env{GitInstalled: gitx.Installed(), LegacySchemaDirPresent: s.legacySchemaDirPresent()}
 	if !env.GitInstalled {
 		return env
 	}
@@ -96,6 +88,11 @@ func (s *Store) doctorEnv() doctor.Env {
 	env.TicketAttrRegistered = repo.InfoAttributeHasLine(mergeAttrLine)
 	env.Freshness = doctor.ResolveFreshness(indexFreshness{store: s.fs(), repo: repo})
 	return env
+}
+
+func (s *Store) legacySchemaDirPresent() bool {
+	fi, err := os.Stat(s.fs().LegacySchemaDir())
+	return err == nil && fi.IsDir()
 }
 
 func (s *Store) trackedHookNames() []string {

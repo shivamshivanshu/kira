@@ -126,7 +126,7 @@ func (s *server) loadPage(ctx context.Context, u *url.URL) (pageData, error) {
 		}
 		p.Detail, p.Revision = detail.Item, detail.Revision
 		p.Selected = p.Detail.Number
-		p.Targets = core.MoveTargets(cfg, p.Detail.Type, p.Detail.State)
+		p.Targets = core.MoveTargets(p.Detail.Type)
 		p.Message = joinMessages(p.Message, warningText(p.Detail.StderrNotes))
 	}
 	if sha := q.Get("commit"); sha != "" {

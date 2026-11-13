@@ -52,97 +52,6 @@ func randLinks(r *rand.Rand) map[string][]string {
 	return out
 }
 
-// Extras arbitrate through the same three-way machinery as the built-in fields
-// but via separate maps, so side-swap symmetry has to be exercised over them
-// too. Empty and absent are distinct here: an untouched empty list is a value
-// merge must preserve, not a missing key.
-func randExtraScalars(r *rand.Rand) map[string]datamodel.Rendered {
-	var out map[string]datamodel.Rendered
-	for _, k := range []string{"severity", "team"} {
-		v := pickPtr(r, []string{"high", "low", "null"})
-		if v == nil {
-			continue
-		}
-		if out == nil {
-			out = map[string]datamodel.Rendered{}
-		}
-		out[k] = datamodel.Rendered(*v)
-	}
-	return out
-}
-
-func renderedSubset(r *rand.Rand, pool []string) []datamodel.Rendered {
-	var out []datamodel.Rendered
-	for _, e := range pickSubset(r, pool) {
-		out = append(out, datamodel.Rendered(e))
-	}
-	return out
-}
-
-func randExtraLists(r *rand.Rand) map[string][]datamodel.Rendered {
-	var out map[string][]datamodel.Rendered
-	for _, k := range []string{"watchers", "tags"} {
-		if r.Intn(3) == 0 {
-			continue
-		}
-		if out == nil {
-			out = map[string][]datamodel.Rendered{}
-		}
-		out[k] = renderedSubset(r, []string{"alice", "bob", "carol"})
-	}
-	return out
-}
-
-// A key that flips shape between the two sides is the fiddliest thing
-// mergeExtras arbitrates, so one is generated across all three maps -- and
-// only ever into one of them, the way a parsed item holds it.
-func placeShapeShiftingExtra(r *rand.Rand, it *datamodel.Item) {
-	const key = "escalation"
-	switch r.Intn(4) {
-	case 1:
-		it.ExtraScalars = withExtraEntry(it.ExtraScalars, key, datamodel.Rendered(pickStr(r, []string{"none", "page"})))
-	case 2:
-		it.ExtraLists = withExtraEntry(it.ExtraLists, key, renderedSubset(r, []string{"alice", "bob"}))
-	case 3:
-		it.ExtraBlocks = withExtraEntry(it.ExtraBlocks, key, datamodel.Rendered(pickStr(r, []string{"after: 1h\nnotify: oncall", "after: 4h"})))
-	}
-}
-
-func withExtraEntry[V any](m map[string]V, k string, v V) map[string]V {
-	if m == nil {
-		m = map[string]V{}
-	}
-	m[k] = v
-	return m
-}
-
-func randExtraBlocks(r *rand.Rand) map[string]datamodel.Rendered {
-	var out map[string]datamodel.Rendered
-	for _, k := range []string{"sla", "policy"} {
-		v := pickPtr(r, []string{"response: 4h", "- step: build\n  cmd: make"})
-		if v == nil {
-			continue
-		}
-		out = withExtraEntry(out, k, datamodel.Rendered(*v))
-	}
-	return out
-}
-
-func randExtraLinks(r *rand.Rand) map[string][]string {
-	var out map[string][]string
-	for _, typ := range []string{"supersedes", "tracks"} {
-		targets := pickSubset(r, []string{"K1", "K2"})
-		if len(targets) == 0 {
-			continue
-		}
-		if out == nil {
-			out = map[string][]string{}
-		}
-		out[typ] = targets
-	}
-	return out
-}
-
 func sortedListMap[T ~string](m map[string][]T) map[string][]T {
 	if m == nil {
 		return nil
@@ -175,11 +84,6 @@ func randSide(r *rand.Rand) *datamodel.Item {
 	it.BlockedBy = pickSubset(r, []string{"X", "Y", "Z"})
 	it.Aliases = pickSubset(r, []string{"KIRA-90", "KIRA-91"})
 	it.Links = randLinks(r)
-	it.ExtraScalars = randExtraScalars(r)
-	it.ExtraLists = randExtraLists(r)
-	it.ExtraBlocks = randExtraBlocks(r)
-	it.ExtraLinks = randExtraLinks(r)
-	placeShapeShiftingExtra(r, it)
 	it.Body = pickStr(r, []string{"## Description\n\nbody\n", "## Description\n\nours prose\n", "## Description\n\ntheirs prose\n"})
 	it.Updated = pickStr(r, []string{"2026-02-01T00:00:00Z", "2026-02-02T00:00:00Z", "2026-02-03T00:00:00Z"})
 	return it
@@ -197,8 +101,6 @@ func canonItem(it *datamodel.Item) *datamodel.Item {
 	c.BlockedBy = sortedCopy(it.BlockedBy)
 	c.Aliases = sortedCopy(it.Aliases)
 	c.Links = sortedListMap(it.Links)
-	c.ExtraLists = sortedListMap(it.ExtraLists)
-	c.ExtraLinks = sortedListMap(it.ExtraLinks)
 	return &c
 }
 

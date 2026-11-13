@@ -21,7 +21,6 @@ import (
 func topLevelTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeFor[datamodel.CreateResult](),
-		reflect.TypeFor[datamodel.SchemaInitResult](),
 		reflect.TypeFor[datamodel.ListResult](),
 		reflect.TypeFor[datamodel.TreeResult](),
 		reflect.TypeFor[datamodel.ShowResult](),
@@ -105,7 +104,6 @@ var stringEnums = map[reflect.Type][]string{
 	reflect.TypeFor[datamodel.EstimateUnit]():     enumValues(datamodel.EstimateUnits),
 	reflect.TypeFor[datamodel.Casing]():           enumValues(datamodel.Casings),
 	reflect.TypeFor[datamodel.SyncDirty]():        enumValues(datamodel.SyncDirties),
-	reflect.TypeFor[datamodel.WipPolicy]():        enumValues(datamodel.WipPolicies),
 	reflect.TypeFor[datamodel.Category]():         enumValues(datamodel.Categories),
 	reflect.TypeFor[datamodel.LogKind]():          enumValues(datamodel.LogKinds),
 	reflect.TypeFor[datamodel.BlameSource]():      enumValues(datamodel.BlameSources),

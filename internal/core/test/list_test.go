@@ -209,23 +209,6 @@ func TestFieldFiltersAreRepeatableAndANDed(t *testing.T) {
 	}
 }
 
-func TestFieldFilterOnSchemaExtra(t *testing.T) {
-	t.Parallel()
-	s, cfg := newStore(t)
-	s = declareQueryableExtras(t, s)
-	mustCreate(t, s, cfg, "tagged")
-	mustCreate(t, s, cfg, "plain")
-	setExtras(t, s, cfg, "KIRA-1")
-
-	got := listOrFail(t, s, cfg, core.ListOpts{Fields: []core.FieldFilter{{Key: "team", Value: "infra"}}})
-	if want := listOrFail(t, s, cfg, core.ListOpts{Query: "team = infra"}); got != want {
-		t.Errorf("--field team=infra = %s, want the query result %s", got, want)
-	}
-	if got != "KIRA-1" {
-		t.Errorf("--field team=infra = %s, want KIRA-1", got)
-	}
-}
-
 func TestFieldFilterUnknownKeySuggests(t *testing.T) {
 	t.Parallel()
 	s, cfg := listFixture(t)

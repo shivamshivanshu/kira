@@ -146,7 +146,7 @@ func TestEmitScalarMatchesYAMLReference(t *testing.T) {
 		if got, want := emitted, emitScalarReference(t, s); got != want {
 			t.Fatalf("EmitScalar(%q) = %s, want %s", s, got, want)
 		}
-		if got := codec.DecodeScalar(datamodel.Rendered(emitted)); got != s {
+		if got := codec.DecodeScalar(emitted); got != s {
 			t.Fatalf("DecodeScalar(EmitScalar(%q)=%s) = %q, want %q", s, emitted, got, s)
 		}
 		var back []string

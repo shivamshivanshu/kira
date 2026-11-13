@@ -165,51 +165,6 @@ func TestValidationRejections(t *testing.T) {
 			wantKey: "estimate.unit",
 		},
 		{
-			name:    "empty workflow",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states: []\n    initial: X\n",
-			wantKey: "workflows.bad.states",
-		},
-		{
-			name:    "duplicate state",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n      - {key: A, category: done}\n    initial: A\n",
-			wantKey: "workflows.bad.states",
-		},
-		{
-			name:    "invalid category",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: sideways}\n    initial: A\n",
-			wantKey: "workflows.bad.states[A].category",
-		},
-		{
-			name:    "initial not a defined state",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo}\n    initial: Z\n",
-			wantKey: "workflows.bad.initial",
-		},
-		{
-			name:    "state resolution outside the vocabulary",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: done, resolution: bogus}\n    initial: A\n",
-			wantKey: "workflows.bad.states[A].resolution",
-		},
-		{
-			name:    "resolution on a non-done state",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: doing, resolution: done}\n    initial: A\n",
-			wantKey: "workflows.bad.states[A].resolution",
-		},
-		{
-			name:    "negative wip",
-			yaml:    "version: 1\nworkflows:\n  bad:\n    states:\n      - {key: A, category: todo, wip: -1}\n    initial: A\n",
-			wantKey: "workflows.bad.states[A].wip",
-		},
-		{
-			name:    "empty priorities entry",
-			yaml:    "version: 1\npriorities: [P0, \"\"]\n",
-			wantKey: "priorities",
-		},
-		{
-			name:    "duplicate subtypes entry",
-			yaml:    "version: 1\nsubtypes: [bug, bug]\n",
-			wantKey: "subtypes",
-		},
-		{
 			name:    "empty filter query",
 			yaml:    "version: 1\nfilters:\n  blank: \"  \"\n",
 			wantKey: "filters.blank",

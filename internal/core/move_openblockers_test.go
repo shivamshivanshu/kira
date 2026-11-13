@@ -9,13 +9,7 @@ import (
 )
 
 func TestBlockedQueryMatchesBlockersClosedGuard(t *testing.T) {
-	cfg := &datamodel.Config{Workflows: map[string]datamodel.Workflow{
-		datamodel.TypeTicket: {States: []datamodel.State{
-			{Key: "TODO", Category: datamodel.CategoryTodo},
-			{Key: "IN_PROGRESS", Category: datamodel.CategoryDoing},
-			{Key: "DONE", Category: datamodel.CategoryDone},
-		}},
-	}}
+	cfg := &datamodel.Config{}
 
 	doingBlocker := &datamodel.Item{ID: "B-doing", Number: "KIRA-2", Type: datamodel.TypeTicket, State: "IN_PROGRESS"}
 	doneBlocker := &datamodel.Item{ID: "B-done", Number: "KIRA-3", Type: datamodel.TypeTicket, State: "DONE"}
@@ -48,7 +42,7 @@ func TestBlockedQueryMatchesBlockersClosedGuard(t *testing.T) {
 				t.Errorf("query blocked = %v, want %v", got, c.wantBlocked)
 			}
 
-			hard, warns := blockersClosedGuard(cfg, subject, all, "TODO", "IN_PROGRESS", false)
+			hard, warns := blockersClosedGuard(subject, all, "TODO", "IN_PROGRESS", false)
 			if gotHard := len(hard) > 0; gotHard != c.wantHard {
 				t.Errorf("guard hard-blocked = %v, want %v (hard=%v)", gotHard, c.wantHard, hard)
 			}

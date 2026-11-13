@@ -12,8 +12,7 @@ stdout '"project_key": "KIRA"'
 
 exists .kira/config.yaml
 exists .kira/.gitignore
-exists .kira/schema/ticket.json
-exists .kira/schema/epic.json
+! exists .kira/schema
 
 # .gitattributes pins .kira/ to LF so the byte-stable writer stays stable
 exists .gitattributes

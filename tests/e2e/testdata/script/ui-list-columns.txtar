@@ -18,56 +18,6 @@ stdout 'TITLE\s+NUMBER'
 exec kira list --json
 stdout '"priority"'
 
-# a schema's list_columns drives the table when ui.list.columns is not pinned,
-# and a custom field is renderable as a column
-cp schema-columns.json .kira/schema/ticket.json
-cp default-config.yaml .kira/config.yaml
-exec kira create ticket --title 'Sev' --no-edit --field severity=high
-exec kira list --no-color
-stdout 'NUMBER\s+STATE\s+SEVERITY\s+TITLE'
-stdout 'high'
-
-# ui.list.columns still wins over the schema
-cp columns-config.yaml .kira/config.yaml
-exec kira list --no-color
-stdout 'TITLE\s+NUMBER'
-! stdout 'SEVERITY'
-
--- default-config.yaml --
-version: 1
-project:
-  key: KIRA
-
--- schema-columns.json --
-{
-  "name": "ticket",
-  "workflow": "ticket",
-  "fields": [
-    { "name": "title", "type": "string", "required": true },
-    { "name": "state", "type": "state", "required": true, "system": true, "guarded": true,
-      "states": [
-        { "key": "TODO", "category": "todo" },
-        { "key": "IN_PROGRESS", "category": "doing" },
-        { "key": "REVIEW", "category": "doing" },
-        { "key": "DONE", "category": "done" },
-        { "key": "WONT_DO", "category": "done" }
-      ] },
-    { "name": "labels", "type": "enum", "enum": "label", "source": "labels", "list": true, "unique": true },
-    { "name": "parent", "type": "ref", "target": "epic" },
-    { "name": "blocked_by", "type": "ref", "target": "ticket", "list": true, "unique": true },
-    { "name": "aliases", "type": "string", "list": true, "unique": true, "required": true, "system": true },
-    { "name": "created", "type": "datetime", "required": true, "system": true, "immutable": true },
-    { "name": "updated", "type": "datetime", "required": true, "system": true },
-    { "name": "severity", "type": "enum", "enum": "severity" }
-  ],
-  "enums": [
-    { "name": "severity", "values": ["low", "high"] }
-  ],
-  "representation": {
-    "list_columns": ["number", "state", "severity", "title"]
-  }
-}
-
 -- columns-config.yaml --
 version: 1
 project:

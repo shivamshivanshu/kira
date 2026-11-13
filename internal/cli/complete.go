@@ -9,7 +9,6 @@ import (
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/showfmt"
 )
@@ -23,7 +22,7 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 	containers := completeItems(g, containerItemsOnly)
 	people := completeVocab(g, func(c *datamodel.Config) []string { return c.People.Names() })
 	labels := completeVocab(g, func(c *datamodel.Config) []string { return c.Labels.Known })
-	subtypes := completeVocab(g, func(c *datamodel.Config) []string { return c.Subtypes.Values })
+	subtypes := completeStatic(datamodel.Subtypes)
 	sprints := completeVocab(g, sprintKeys)
 	activeBoards := completeVocab(g, activeBoardKeys)
 	allBoards := completeVocab(g, func(c *datamodel.Config) []string { return c.BoardKeys() })
@@ -34,7 +33,7 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 		}
 	}
 	if c := subCmd(root, "create"); c != nil {
-		c.ValidArgsFunction = positional(completeVocab(g, workflowTypes))
+		c.ValidArgsFunction = positional(completeStatic(datamodel.ItemTypes))
 		_ = c.RegisterFlagCompletionFunc("type", subtypes)
 	}
 	if c := subCmd(root, "move"); c != nil {
@@ -73,24 +72,24 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 
 	flags := map[string]completer{
 		"label":      labels,
-		"priority":   completeVocab(g, func(c *datamodel.Config) []string { return c.Priorities.Values }),
+		"priority":   completeStatic(datamodel.Priorities),
 		"owner":      people,
 		"reporter":   people,
 		"sprint":     sprints,
 		"filter":     completeVocab(g, filterNames),
-		"resolution": completeVocab(g, func(c *datamodel.Config) []string { return c.Resolutions.Values }),
+		"resolution": completeStatic(datamodel.Resolutions),
 		"subtype":    subtypes,
-		"state":      completeVocab(g, workflowStates),
+		"state":      completeStatic(workflowStates()),
 		"format":     completeStatic(showfmt.Names()),
 		"category":   completeStatic(categoryValues()),
-		"type":       completeVocab(g, workflowTypes),
+		"type":       completeStatic(datamodel.ItemTypes),
 		"epic":       containers,
 		"parent":     containers,
 		"blocked-by": items,
 		"board":      activeBoards,
 	}
 	if c := subCmd(root, "list"); c != nil {
-		_ = c.RegisterFlagCompletionFunc("field", completeFieldFilter(g, flags))
+		_ = c.RegisterFlagCompletionFunc("field", completeFieldFilter(flags))
 	}
 	walk(root, func(c *cobra.Command) {
 		for name, fn := range flags {
@@ -107,14 +106,14 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 	})
 }
 
-// completeFieldFilter completes `--field key=value` in two stages: the schema's
+// completeFieldFilter completes `--field key=value` in two stages: the
 // filterable field names before the '=', then that field's own vocabulary,
 // borrowed from the completer already bound to the equivalent native flag.
-func completeFieldFilter(g *globalFlags, values map[string]completer) completer {
+func completeFieldFilter(values map[string]completer) completer {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		key, value, hasValue := strings.Cut(toComplete, "=")
 		if !hasValue {
-			return completeFilterableFields(g, key)
+			return completeFilterableFields(key)
 		}
 		fn, known := values[key]
 		if !known {
@@ -125,16 +124,8 @@ func completeFieldFilter(g *globalFlags, values map[string]completer) completer 
 	}
 }
 
-func completeFilterableFields(g *globalFlags, toComplete string) ([]string, cobra.ShellCompDirective) {
-	s, _, err := openStore(g)
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
-	names, err := s.FilterableFields()
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
-	return decorate(prefixed(names, toComplete), "", "="), cobra.ShellCompDirectiveNoSpace | cobra.ShellCompDirectiveNoFileComp
+func completeFilterableFields(toComplete string) ([]string, cobra.ShellCompDirective) {
+	return decorate(prefixed(core.FilterableFields(), toComplete), "", "="), cobra.ShellCompDirectiveNoSpace | cobra.ShellCompDirectiveNoFileComp
 }
 
 func decorate(values []string, prefix, suffix string) []string {
@@ -160,14 +151,14 @@ const (
 
 func completeItems(g *globalFlags, scope itemScope) completer {
 	return func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		items, _, containers, ok := cachedItemsAndContainers(g)
+		items, ok := cachedItems(g)
 		if !ok {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 		pref := strings.ToLower(toComplete)
 		out := make([]string, 0, completionCap)
 		for _, it := range items {
-			if scope == containerItemsOnly && !containers[it.Type] {
+			if scope == containerItemsOnly && !datamodel.IsContainer(it.Type) {
 				continue
 			}
 			if !strings.HasPrefix(strings.ToLower(it.Number), pref) {
@@ -184,7 +175,7 @@ func completeItems(g *globalFlags, scope itemScope) completer {
 
 func completeMoveTarget(g *globalFlags) completer {
 	return func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		items, cfg, ok := cachedItems(g)
+		items, ok := cachedItems(g)
 		if !ok {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -192,7 +183,7 @@ func completeMoveTarget(g *globalFlags) completer {
 		if it == nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		return prefixed(core.MoveTargets(cfg, it.Type, it.State), toComplete), cobra.ShellCompDirectiveNoFileComp
+		return prefixed(core.MoveTargets(it.Type), toComplete), cobra.ShellCompDirectiveNoFileComp
 	}
 }
 
@@ -212,25 +203,16 @@ func completeStatic(values []string) completer {
 	}
 }
 
-func cachedItems(g *globalFlags) ([]*datamodel.Item, *datamodel.Config, bool) {
-	items, cfg, _, ok := cachedItemsAndContainers(g)
-	return items, cfg, ok
-}
-
-func cachedItemsAndContainers(g *globalFlags) ([]*datamodel.Item, *datamodel.Config, map[string]bool, bool) {
-	s, cfg, err := openStore(g)
+func cachedItems(g *globalFlags) ([]*datamodel.Item, bool) {
+	s, _, err := openStore(g)
 	if err != nil {
-		return nil, nil, nil, false
+		return nil, false
 	}
 	items, err := s.CachedItems()
 	if err != nil {
-		return nil, nil, nil, false
+		return nil, false
 	}
-	schemas, err := s.Schemas()
-	if err != nil {
-		return nil, nil, nil, false
-	}
-	return items, cfg, entityschema.ContainerTypes(schemas), true
+	return items, true
 }
 
 func findCached(items []*datamodel.Item, ref string) *datamodel.Item {
@@ -290,19 +272,11 @@ func filterNames(cfg *datamodel.Config) []string {
 	return out
 }
 
-func workflowTypes(cfg *datamodel.Config) []string {
-	types := make([]string, 0, len(cfg.Workflows))
-	for typ := range cfg.Workflows {
-		types = append(types, typ)
-	}
-	slices.Sort(types)
-	return types
-}
-
-func workflowStates(cfg *datamodel.Config) []string {
+func workflowStates() []string {
 	dedup := setx.NewDeduper[string]()
 	var out []string
-	for _, wf := range cfg.Workflows {
+	for _, typ := range datamodel.ItemTypes {
+		wf, _ := datamodel.WorkflowOf(typ)
 		for _, st := range wf.States {
 			if dedup.Add(st.Key) {
 				out = append(out, st.Key)

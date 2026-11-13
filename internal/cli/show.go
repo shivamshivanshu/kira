@@ -90,7 +90,7 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 		}
 	}
 	line("id", r.ID)
-	line("type", r.TypeLabel)
+	line("type", r.Type)
 	line("subtype", ptr.Deref(r.Subtype))
 	line("category", r.Category)
 	line("priority", ptr.Deref(r.Priority))
@@ -111,9 +111,6 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 	}
 	line("created", r.Created)
 	line("updated", r.Updated)
-	for _, name := range slices.Sorted(maps.Keys(r.Fields)) {
-		line(name, typedFieldValueAsText(r.Fields[name]))
-	}
 	width := 0
 	for _, rw := range rows {
 		width = max(width, ansi.StringWidth(rw.label))
@@ -131,11 +128,4 @@ func renderShow(w io.Writer, r *datamodel.ShowResult) {
 			_, _ = fmt.Fprintf(w, "%s\n%s\n", showfmt.CommentByline(c.Author, c.Ts), showfmt.CommentBody(c.Text))
 		}
 	}
-}
-
-func typedFieldValueAsText(value any) string {
-	if list, isList := value.([]string); isList {
-		return strings.Join(list, ", ")
-	}
-	return fmt.Sprint(value)
 }

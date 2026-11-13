@@ -1,6 +1,8 @@
 package core
 
 import (
+	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -34,25 +36,18 @@ func TestMoveSubjectHandlesPercentInPrefix(t *testing.T) {
 
 // A batch must validate item N against the state left behind by item N-1's
 // own commit, not the snapshot loaded before the batch started: otherwise a
-// WIP limit sees stale occupancy and lets the batch overrun it.
+// WIP limit sees stale occupancy and the batch overruns it silently.
 func TestBatchMoveWipLimitSeesEarlierItemInSameBatch(t *testing.T) {
 	s, cfg, _ := stagedFixture(t)
-	wf := cfg.Workflows["ticket"]
-	wf.WipPolicy = datamodel.WipBlock
-	for i, st := range wf.States {
-		if st.Key == "IN_PROGRESS" {
-			wf.States[i].Wip = 1
+	ticketWorkflow, _ := datamodel.WorkflowOf(datamodel.TypeTicket)
+	reviewState, _ := ticketWorkflow.StateByKey("REVIEW")
+	numbers := make([]string, reviewState.Wip+1)
+	for i := range numbers {
+		res, err := s.Create(cfg, CreateOpts{Type: "ticket", Title: fmt.Sprintf("t%d", i), NoEdit: true})
+		if err != nil {
+			t.Fatalf("create %d: %v", i, err)
 		}
-	}
-	cfg.Workflows["ticket"] = wf
-
-	a, err := s.Create(cfg, CreateOpts{Type: "ticket", Title: "a", NoEdit: true})
-	if err != nil {
-		t.Fatalf("create a: %v", err)
-	}
-	bTicket, err := s.Create(cfg, CreateOpts{Type: "ticket", Title: "b", NoEdit: true})
-	if err != nil {
-		t.Fatalf("create b: %v", err)
+		numbers[i] = res.Number
 	}
 
 	batch, err := s.BeginBatch(cfg)
@@ -61,14 +56,20 @@ func TestBatchMoveWipLimitSeesEarlierItemInSameBatch(t *testing.T) {
 	}
 	defer batch.Close()
 
-	if _, err := batch.Move(a.Number, "IN_PROGRESS", MoveOpts{}); err != nil {
-		t.Fatalf("first move into the WIP-limited state: %v", err)
+	for _, n := range numbers[:reviewState.Wip] {
+		res, err := batch.Move(n, "REVIEW", MoveOpts{})
+		if err != nil {
+			t.Fatalf("move %s within the WIP limit: %v", n, err)
+		}
+		if len(res.Warnings) != 0 {
+			t.Fatalf("move %s within the WIP limit warned: %v", n, res.Warnings)
+		}
 	}
-	_, err = batch.Move(bTicket.Number, "IN_PROGRESS", MoveOpts{})
-	if err == nil {
-		t.Fatalf("second move should be blocked: WIP limit is 1 and the first move already occupies it")
+	res, err := batch.Move(numbers[reviewState.Wip], "REVIEW", MoveOpts{})
+	if err != nil {
+		t.Fatalf("move past the WIP limit: %v", err)
 	}
-	if !strings.Contains(err.Error(), "over its WIP limit") {
-		t.Fatalf("err = %v, want a WIP-limit error", err)
+	if !slices.ContainsFunc(res.Warnings, func(w string) bool { return strings.Contains(w, "over its WIP limit") }) {
+		t.Fatalf("warnings = %v, want a WIP-limit warning: the earlier moves already fill the state", res.Warnings)
 	}
 }

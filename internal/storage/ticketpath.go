@@ -7,18 +7,10 @@ import (
 	"github.com/shivamshivanshu/kira/internal/id"
 )
 
-const schemaExt = ".json"
-
 const StrayMessage = "stray file in tickets dir; not a valid ULID-named item"
 
 func IsItemPath(rel string) bool {
 	return path.Dir(rel) == TicketsPrefix && isItemFilename(path.Base(rel))
-}
-
-// IsSchemaPath reports whether rel names a schema file directly under the
-// schema dir, matching what the loader reads from a working tree.
-func IsSchemaPath(rel string) bool {
-	return path.Dir(rel) == SchemaPrefix && strings.HasSuffix(rel, schemaExt)
 }
 
 // UnderTicketsDir reports whether rel names anything inside the tickets

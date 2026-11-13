@@ -33,6 +33,9 @@ type Env struct {
 	TicketAttrRegistered  bool
 	MissingOptionalBins   []string
 	Freshness             *Freshness
+	// LegacySchemaDirPresent reports a leftover .kira/schema directory from
+	// when item types were declared there.
+	LegacySchemaDirPresent bool
 }
 
 func info(class Class, msg string) Finding {

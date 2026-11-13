@@ -14,7 +14,7 @@ func TestListItemOfCarriesPriorityAndResolution(t *testing.T) {
 		ID: "i1", Number: "KIRA-1", Type: datamodel.TypeTicket, State: "WONT_DO",
 		Priority: &priority, Resolution: &resolution,
 	}
-	li := listItemOf(&datamodel.Config{}, it, nil, nil)
+	li := listItemOf(it, nil)
 	if li.Priority == nil || *li.Priority != priority {
 		t.Errorf("priority not carried into ListItem: %v", li.Priority)
 	}
@@ -33,9 +33,7 @@ func TestGroupByParentNestsContainers(t *testing.T) {
 		{ID: "orphan", Number: "KIRA-4", Type: datamodel.TypeTicket},
 	}
 	parentNumbers := map[string]string{rootEpic: "KIRA-1", nestedEpic: "KIRA-2"}
-	containers := map[string]bool{datamodel.TypeEpic: true}
-
-	groups := groupByParent(rows, parentNumbers, containers)
+	groups := groupByParent(rows, parentNumbers)
 
 	items := map[string][]string{}
 	for _, g := range groups {
@@ -64,7 +62,7 @@ func TestGroupByParentKeepsRootContainersOutOfTheOrphanGroup(t *testing.T) {
 		{ID: "epic", Number: "KIRA-1", Type: datamodel.TypeEpic},
 		{ID: "ticket", Number: "KIRA-2", Type: datamodel.TypeTicket},
 	}
-	groups := groupByParent(rows, map[string]string{"epic": "KIRA-1"}, map[string]bool{datamodel.TypeEpic: true})
+	groups := groupByParent(rows, map[string]string{"epic": "KIRA-1"})
 	for _, g := range groups {
 		if g.Parent == nil && !slices.Equal(g.Items, []string{"ticket"}) {
 			t.Fatalf("orphan group = %v, want [ticket]", g.Items)

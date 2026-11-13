@@ -40,16 +40,13 @@ var (
 type iconSet struct {
 	mode       datamodel.IconMode
 	priorities []string
-	dropped    []string
-	// typeIcons is what each entity type's schema declared, keyed by type.
-	// Empty for a type that declared nothing. typeCell is the width they
-	// share, taken from the widest of them.
+	// typeIcons is each item type's glyph, keyed by type. typeCell is the
+	// width they share, taken from the widest of them.
 	typeIcons map[string]string
 	typeCell  int
 }
 
-// withTypeIcons attaches the schema-declared icons and sizes the cell they
-// share. Only the tree draws a per-type glyph, so the plain board renderer
+// withTypeIcons attaches per-type icons and sizes the cell they share. Only the tree draws a per-type glyph, so the plain board renderer
 // leaves this unset.
 func (ic iconSet) withTypeIcons(icons map[string]string) iconSet {
 	ic.typeIcons = icons
@@ -60,10 +57,17 @@ func (ic iconSet) withTypeIcons(icons map[string]string) iconSet {
 	return ic
 }
 
+// itemTypeIcons are nerd-font glyphs with no per-mode variants, so ui.icons
+// selects state and priority glyphs but never the type glyph.
+var itemTypeIcons = map[string]string{
+	datamodel.TypeTicket: "\uf41b",
+	datamodel.TypeEpic:   "\uf45d",
+}
+
 func (ic iconSet) rich() bool { return ic.mode != datamodel.IconText }
 
-func detectIcons(mode datamodel.IconMode, priorities, dropped []string, env func(string) string, isTTY bool) iconSet {
-	return iconSet{mode: resolveIconMode(mode, env, isTTY), priorities: priorities, dropped: dropped}
+func detectIcons(mode datamodel.IconMode, env func(string) string, isTTY bool) iconSet {
+	return iconSet{mode: resolveIconMode(mode, env, isTTY), priorities: datamodel.Priorities}
 }
 
 func resolveIconMode(mode datamodel.IconMode, env func(string) string, isTTY bool) datamodel.IconMode {
@@ -118,10 +122,8 @@ func utf8Locale(env func(string) string) bool {
 
 func osEnv(key string) string { return os.Getenv(key) }
 
-// typeGlyph draws whatever the type's schema declared. kira ships no per-type
-// glyph of its own: the shipped schemas declare theirs like any other, so a
-// user-defined type is not a second-class citizen. The cell is width-normalised
-// because the declared glyph is arbitrary and the tree column must not shift.
+// typeGlyph draws the type's glyph in every icon mode. The cell is
+// width-normalised so the tree column does not shift between types.
 func (ic iconSet) typeGlyph(typ string) string {
 	return padToWidth(ic.typeIcons[typ], ic.typeCell)
 }
@@ -140,7 +142,7 @@ func (ic iconSet) categoryGlyph(cat datamodel.Category, resolution *string) stri
 	case datamodel.CategoryDoing:
 		return glyphDoing.pick(ic.mode)
 	case datamodel.CategoryDone:
-		if datamodel.IsDropped(resolution, ic.dropped) {
+		if datamodel.IsDropped(resolution) {
 			return glyphDropped.pick(ic.mode)
 		}
 		return glyphDone.pick(ic.mode)

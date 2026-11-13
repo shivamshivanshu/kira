@@ -11,7 +11,6 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/editorx"
-	"github.com/shivamshivanshu/kira/internal/entityschema"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/ptr"
@@ -118,12 +117,8 @@ func (s *Store) resolveHere(_ *datamodel.Config, opts *CreateOpts) (string, erro
 	if !ok {
 		return "", errx.User("active ticket %s resolves to no item", ap.Ticket).WithHint("start one with kira workon <id>")
 	}
-	schemas, err := s.schemas()
-	if err != nil {
-		return "", err
-	}
 	if opts.Parent == "" {
-		if entityschema.ContainerTypes(schemas)[active.Type] {
+		if datamodel.IsContainer(active.Type) {
 			opts.Parent = active.ID
 		} else if active.Parent != nil {
 			opts.Parent = *active.Parent
@@ -136,9 +131,9 @@ func (s *Store) resolveHere(_ *datamodel.Config, opts *CreateOpts) (string, erro
 }
 
 func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel.CreateResult, error) {
-	wf, ok := cfg.Workflows[opts.Type]
+	wf, ok := datamodel.WorkflowOf(opts.Type)
 	if !ok {
-		return nil, errx.User("no workflow configured for type %q", opts.Type).WithHint("a type needs a workflows: entry in .kira/config.yaml; a schema file alone does not define one")
+		return nil, errx.User("no workflow configured for type %q", opts.Type)
 	}
 
 	boardKey, err := resolveBoardKey(cfg, opts.Board)
@@ -170,17 +165,13 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 	if err != nil {
 		return nil, err
 	}
-	schemas, err := s.schemas()
-	if err != nil {
-		return nil, err
-	}
 
 	sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, wf.Initial)
-	finalItem := itemFromDraft(dropUnsetDeclaredExtras(d, schemas[opts.Type]), sys)
-	if errs := s.applyFieldEdits(cfg, finalItem, opts.Fields, schemas[finalItem.Type]); len(errs) > 0 {
+	finalItem := itemFromDraft(d, sys)
+	if errs := s.applyFieldEdits(cfg, finalItem, opts.Fields); len(errs) > 0 {
 		return nil, errx.Invalid(invalidItemPrefix, errs)
 	}
-	hard, warns := newValidationCtx(cfg, ld.items, ld.resolver, schemas[finalItem.Type], entityschema.ContainerTypes(schemas), opts.Force).validateMutation(nil, finalItem)
+	hard, warns := newValidationCtx(cfg, ld.items, ld.resolver, opts.Force).validateMutation(nil, finalItem)
 	if len(hard) > 0 {
 		return nil, errx.Invalid(invalidItemPrefix, hard)
 	}
@@ -207,7 +198,7 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 		Type:       finalItem.Type,
 		Title:      finalItem.Title,
 		State:      finalItem.State,
-		Category:   categoryString(cfg, finalItem.Type, finalItem.State),
+		Category:   categoryString(finalItem.Type, finalItem.State),
 		Owner:      finalItem.Owner,
 		Labels:     nonNil(finalItem.Labels),
 		Parent:     finalItem.Parent,
@@ -247,18 +238,14 @@ func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, boardKey,
 		if err != nil {
 			return draft{}, err
 		}
-		schemas, err := s.schemas()
-		if err != nil {
-			return draft{}, err
-		}
 		sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, initialState)
-		vctx := newValidationCtx(cfg, ld.items, ld.resolver, schemas[opts.Type], entityschema.ContainerTypes(schemas), opts.Force)
+		vctx := newValidationCtx(cfg, ld.items, ld.resolver, opts.Force)
 		content, err := runEditor(cfg.UI.Editor, editorx.Stdio{}, serializeDraft(base), vctx.validateBuffer(func(c string) (*datamodel.Item, []error) {
 			d, perr := parseDraft(c)
 			if perr != nil {
 				return nil, []error{perr}
 			}
-			return itemFromDraft(dropUnsetDeclaredExtras(d, schemas[opts.Type]), sys), nil
+			return itemFromDraft(d, sys), nil
 		}))
 		if err != nil {
 			return draft{}, err
@@ -289,29 +276,26 @@ func newSystemFields(cfg *datamodel.Config, snap id.Snapshot, boardKey, typ, sta
 
 func itemFromDraft(d draft, sys systemFields) *datamodel.Item {
 	return &datamodel.Item{
-		ID:           sys.ulid,
-		Number:       sys.number,
-		Aliases:      []string{},
-		Type:         sys.typ,
-		Subtype:      normPtr(d.Subtype),
-		Title:        d.Title,
-		State:        sys.state,
-		Priority:     normPtr(d.Priority),
-		Rank:         normPtr(d.Rank),
-		Owner:        normPtr(d.Owner),
-		Reporter:     normPtr(d.Reporter),
-		Labels:       nonNil(d.Labels),
-		Parent:       normPtr(d.Parent),
-		BlockedBy:    []string{},
-		Sprint:       normPtr(d.Sprint),
-		Due:          normPtr(d.Due),
-		Estimate:     d.Estimate,
-		Created:      sys.created,
-		Updated:      sys.created,
-		Body:         d.Body,
-		ExtraScalars: d.ExtraScalars,
-		ExtraLists:   d.ExtraLists,
-		ExtraBlocks:  d.ExtraBlocks,
+		ID:        sys.ulid,
+		Number:    sys.number,
+		Aliases:   []string{},
+		Type:      sys.typ,
+		Subtype:   normPtr(d.Subtype),
+		Title:     d.Title,
+		State:     sys.state,
+		Priority:  normPtr(d.Priority),
+		Rank:      normPtr(d.Rank),
+		Owner:     normPtr(d.Owner),
+		Reporter:  normPtr(d.Reporter),
+		Labels:    nonNil(d.Labels),
+		Parent:    normPtr(d.Parent),
+		BlockedBy: []string{},
+		Sprint:    normPtr(d.Sprint),
+		Due:       normPtr(d.Due),
+		Estimate:  d.Estimate,
+		Created:   sys.created,
+		Updated:   sys.created,
+		Body:      d.Body,
 	}
 }
 
@@ -326,11 +310,7 @@ func (s *Store) templateDraft(typ, subtype string) (draft, error) {
 	data, err := os.ReadFile(s.templatePath(typ, subtype))
 	if err != nil {
 		if os.IsNotExist(err) {
-			schemas, serr := s.schemas()
-			if serr != nil {
-				return draft{}, serr
-			}
-			d, _ := parseDraft(defaultTemplate(typ, schemas[typ]))
+			d, _ := parseDraft(defaultTemplate(typ))
 			return d, nil
 		}
 		return draft{}, errx.User("reading template: %v", err)

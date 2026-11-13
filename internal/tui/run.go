@@ -33,31 +33,14 @@ type Options struct {
 	InitialView View
 }
 
-// schemaTypeIcons reads each type's declared glyph. A schema that fails to load
-// is not worth failing the whole TUI over: the tree simply draws no type glyph,
-// and doctor reports the schema problem.
-func schemaTypeIcons(store *core.Store) map[string]string {
-	schemas, err := store.Schemas()
-	if err != nil {
-		return nil
-	}
-	icons := make(map[string]string, len(schemas))
-	for typ, schema := range schemas {
-		if schema.Representation.Icon != "" {
-			icons[typ] = schema.Representation.Icon
-		}
-	}
-	return icons
-}
-
 func Run(store *core.Store, cfg *datamodel.Config, opts Options) error {
 	out := opts.Output
 	if out == nil {
 		out = os.Stdout
 	}
 	return guardRun(store.Root(), os.Stderr, func() error {
-		icons := detectIcons(cfg.UI.Icons, cfg.Priorities.Values, cfg.ResolutionsDropped, osEnv, termx.WriterIsTTY(out)).
-			withTypeIcons(schemaTypeIcons(store))
+		icons := detectIcons(cfg.UI.Icons, osEnv, termx.WriterIsTTY(out)).
+			withTypeIcons(itemTypeIcons)
 		m := newModel(store, cfg, theme.For(out, cfg.UI, opts.NoColor), icons, opts.InjectPanic)
 		m.bar.run = opts.RunCommand
 		m.view = opts.InitialView

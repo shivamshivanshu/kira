@@ -17,7 +17,6 @@ func TestMessage(t *testing.T) {
 		{datamodel.Warning{Code: datamodel.WarnCloseUnknown, Args: []string{"KIRA-9", "Kira-Closes"}}, "unknown ticket KIRA-9 in Kira-Closes (hint: run `kira config explain` to see the configured close trailer)"},
 		{datamodel.Warning{Code: datamodel.WarnCloseFailed, Args: []string{"KIRA-2", "boom"}}, "failed to close KIRA-2: boom"},
 		{datamodel.Warning{Code: datamodel.WarnLiteral, Args: []string{"skipped a file"}}, "skipped a file"},
-		{datamodel.Warning{Code: datamodel.WarnOrphanType, Args: []string{"KIRA-3", "bug"}}, `KIRA-3 has no workflow for type "bug"; it is read-only until a workflow is configured`},
 		{datamodel.Warning{Code: "future_warning", Args: []string{"one", "two"}}, "future_warning: one: two"},
 		{datamodel.Warning{Code: "future_warning"}, "future_warning"},
 		{datamodel.Warning{Code: datamodel.WarnIndexFallback}, "index unavailable (), using linear scan"},
