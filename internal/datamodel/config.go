@@ -3,11 +3,10 @@ package datamodel
 import "strings"
 
 type Config struct {
-	Version int      `yaml:"version"`
-	Project Project  `yaml:"project"`
-	ID      Identity `yaml:"id"`
-	Labels  Vocab    `yaml:"labels"`
-	People  People   `yaml:"people"`
+	Version int     `yaml:"version"`
+	Project Project `yaml:"project"`
+	Labels  Vocab   `yaml:"labels"`
+	People  People  `yaml:"people"`
 
 	Filters  map[string]string `yaml:"filters"`
 	Boards   []Board           `yaml:"boards,omitempty"`
@@ -36,10 +35,6 @@ type Board struct {
 	Description string `yaml:"description,omitempty"`
 	Default     bool   `yaml:"default,omitempty"`
 	Archived    bool   `yaml:"archived,omitempty"`
-}
-
-type Identity struct {
-	Style IDStyle `yaml:"style"`
 }
 
 type Vocab struct {

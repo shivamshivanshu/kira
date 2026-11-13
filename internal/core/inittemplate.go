@@ -8,9 +8,6 @@ project:
   key: %s
   name: %s
 
-id:
-  style: sequential          # sequential (default, reconciled post-merge) | hash (ULID-derived, zero reconciliation)
-
 labels:
   known: []                   # add project labels; strict rejects unknown ones (--force overrides)
   # known: [bug, feature, perf, tech-debt, infra]   # example vocabulary

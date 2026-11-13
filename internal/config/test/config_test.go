@@ -140,11 +140,6 @@ func TestValidationRejections(t *testing.T) {
 			wantKey: "boards[0].name",
 		},
 		{
-			name:    "invalid id.style",
-			yaml:    "version: 1\nid:\n  style: uuid\n",
-			wantKey: "id.style",
-		},
-		{
 			name:    "invalid commit.mode",
 			yaml:    "version: 1\ncommit:\n  mode: sometimes\n",
 			wantKey: "commit.mode",

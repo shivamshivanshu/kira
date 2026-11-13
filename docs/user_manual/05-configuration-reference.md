@@ -163,55 +163,6 @@ is no longer used for board resolution.
 
 ---
 
-## `id`
-
-```yaml
-id:
-  style: sequential     # sequential | hash
-```
-
-| Key | Type | Default |
-|---|---|---|
-| `style` | `sequential` \| `hash` | `sequential` |
-
-This picks how kira mints the *display number* for a new item. Every item also
-carries an immutable ULID that never changes and is what links actually point
-at; the display number is the short, typeable handle layered on top.
-
-**`sequential`** gives you `KIRA-1`, `KIRA-2`, `KIRA-3`. The next number is the
-highest integer suffix already in use for that key, plus one. Small, tidy,
-sortable, easy to say out loud.
-
-The cost is that two people working on separate branches both mint `KIRA-42`,
-and the collision only surfaces at merge time. kira handles this — `kira
-doctor` detects colliding numbers and produces a deterministic renumber plan,
-and the item that gets renumbered keeps its old number as an alias so old
-references still resolve — but it *is* a step that has to happen, and it
-rewrites numbers you may already have typed into a commit message or a chat
-thread.
-
-**`hash`** derives the number from the item's ULID instead: kira takes the last
-six characters of the ULID and lengthens the suffix until it is both unused and
-not all-digits, giving numbers like `KIRA-N3X2T4`. Because the ULID is unique
-by construction, two branches can never mint the same number, and no
-reconciliation is ever needed. The cost is that the numbers are longer, ugly,
-and unordered — you lose "KIRA-3 came before KIRA-40" at a glance.
-
-Pick `sequential` for a small team on a shared trunk where merges are frequent
-and renumbering is cheap. Pick `hash` for a large or heavily-branched repo, or
-anywhere a stable number matters more than a pretty one.
-
-**On changing this later:** kira does not block the change, and it is safer than
-it looks. Hash-style suffixes are guaranteed never to be all digits, and
-sequential suffixes are always all digits, so the two forms occupy disjoint
-namespaces and can coexist without colliding. Existing items keep the numbers
-they already have. But nothing migrates them either — there is no renumber-all
-command — so flipping the style on a populated repo leaves you with a
-permanently mixed set of numbers. Treat it as a decision to make once, at
-`kira init` time.
-
----
-
 ## Item types and states are built in
 
 Item types, their states and the item vocabularies are part of kira itself,
@@ -777,9 +728,6 @@ version: 2
 project:
   key: KIRA
   name: kira
-
-id:
-  style: sequential
 
 filters:
   backlog: "state = TODO ORDER BY priority"

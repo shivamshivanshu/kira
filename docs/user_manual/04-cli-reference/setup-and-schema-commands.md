@@ -243,7 +243,6 @@ rather than making you diff three YAML files in your head.
 $ kira config explain
 identity (repo)
   project: ACME (acme)
-  id style: sequential
   board: ACME (acme) [default]
 
 commit (default)
@@ -314,7 +313,6 @@ $ kira config explain --json | head -11
       "provenance": "repo",
       "lines": [
         "project: ACME (acme)",
-        "id style: sequential",
         "board: ACME (acme) [default]"
       ]
     },

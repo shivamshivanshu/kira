@@ -10,7 +10,7 @@ Verify: struct/tag consistency with docs/design/02; the field-descriptor registr
 - [ ] internal/datamodel/board.go — Kanban board result types (columns with WIP/items) plus Empty check.
 - [ ] internal/datamodel/comment.go — Comment struct (id, author, timestamp, body).
 - [ ] internal/datamodel/config.go — Project config schema (workflows, vocab, sprints, git, UI) with VocabFor lookup.
-- [ ] internal/datamodel/enums.go — Enum types and allowed values for ID style, commit, merge, icons, estimate, category.
+- [ ] internal/datamodel/enums.go — Enum types and allowed values for commit, merge, icons, estimate, category.
 - [ ] internal/datamodel/fields.go — Field descriptor registry driving change-detection, get, and copy across item fields.
 - [ ] internal/datamodel/hooks.go — Result types for git hook install/validate status.
 - [ ] internal/datamodel/item.go — Core Item model, field keys, type/link/date validators, ParseError.

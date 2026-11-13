@@ -6,8 +6,6 @@ import (
 	"strings"
 )
 
-const hashSuffixLen = 6
-
 // Number represents a display number in the form KEY-n.
 type Number struct {
 	Key string
@@ -63,64 +61,18 @@ func HighestN(snap Snapshot, key string) int {
 	return highest
 }
 
-func takenNumbers(snap Snapshot) map[string]bool {
-	taken := make(map[string]bool, len(snap.Items))
-	for _, it := range snap.Items {
-		taken[strings.ToUpper(it.Number)] = true
-		for _, a := range it.Aliases {
-			taken[strings.ToUpper(a)] = true
-		}
-	}
-	for _, n := range snap.Reserved {
-		taken[strings.ToUpper(n)] = true
-	}
-	return taken
-}
-
-func allDigits(s string) bool {
-	for _, r := range s {
-		if r < '0' || r > '9' {
-			return false
-		}
-	}
-	return true
-}
-
-// Allocator generates display numbers either sequentially or by deriving from ULIDs.
+// Allocator generates sequential display numbers for one board key.
 type Allocator struct {
-	hashStyle bool
-	key       string
-	next      int
-	taken     map[string]bool
+	key  string
+	next int
 }
 
-// NewAllocator creates an Allocator in either sequential or hash-based mode.
-func NewAllocator(hashStyle bool, snap Snapshot, key string) *Allocator {
-	a := &Allocator{hashStyle: hashStyle, key: key}
-	if hashStyle {
-		a.taken = takenNumbers(snap)
-	} else {
-		a.next = HighestN(snap, key) + 1
-	}
-	return a
+func NewAllocator(snap Snapshot, key string) *Allocator {
+	return &Allocator{key: key, next: HighestN(snap, key) + 1}
 }
 
-// Alloc returns a display number for the given ULID.
-func (a *Allocator) Alloc(u ULID) string {
-	if !a.hashStyle {
-		number := Number{Key: a.key, N: a.next}.String()
-		a.next++
-		return number
-	}
-	s := u.String()
-	number := a.key + "-" + s
-	for n := hashSuffixLen; n <= len(s); n++ {
-		suffix := s[len(s)-n:]
-		if !allDigits(suffix) && !a.taken[strings.ToUpper(a.key+"-"+suffix)] {
-			number = a.key + "-" + suffix
-			break
-		}
-	}
-	a.taken[strings.ToUpper(number)] = true
+func (a *Allocator) Alloc() string {
+	number := Number{Key: a.key, N: a.next}.String()
+	a.next++
 	return number
 }

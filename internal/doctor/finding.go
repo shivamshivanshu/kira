@@ -13,21 +13,20 @@ const (
 type Class string
 
 const (
-	ClassSchema        Class = "schema"
-	ClassState         Class = "state"
-	ClassVocab         Class = "vocab"
-	ClassRef           Class = "dangling-ref"
-	ClassCollision     Class = "id-collision"
-	ClassRefCycle      Class = "ref-cycle"
-	ClassRefType       Class = "ref-type"
-	ClassComment       Class = "comment"
-	ClassFreshness     Class = "index-freshness"
-	ClassHooks         Class = "hooks"
-	ClassEnv           Class = "environment"
-	ClassBoard         Class = "board"
-	ClassNumberOutlier Class = "number-outlier"
-	ClassStray         Class = "stray-file"
-	ClassWipLimit      Class = "wip-limit"
+	ClassSchema    Class = "schema"
+	ClassState     Class = "state"
+	ClassVocab     Class = "vocab"
+	ClassRef       Class = "dangling-ref"
+	ClassCollision Class = "id-collision"
+	ClassRefCycle  Class = "ref-cycle"
+	ClassRefType   Class = "ref-type"
+	ClassComment   Class = "comment"
+	ClassFreshness Class = "index-freshness"
+	ClassHooks     Class = "hooks"
+	ClassEnv       Class = "environment"
+	ClassBoard     Class = "board"
+	ClassStray     Class = "stray-file"
+	ClassWipLimit  Class = "wip-limit"
 )
 
 type CollisionKind string
@@ -43,7 +42,7 @@ var Severities = []Severity{SeverityError, SeverityWarning, SeverityInfo}
 var Classes = []Class{
 	ClassSchema, ClassState, ClassVocab, ClassRef, ClassCollision,
 	ClassRefCycle, ClassRefType, ClassComment, ClassFreshness, ClassHooks,
-	ClassEnv, ClassBoard, ClassNumberOutlier, ClassStray,
+	ClassEnv, ClassBoard, ClassStray,
 	ClassWipLimit,
 }
 

@@ -435,7 +435,6 @@ For whole-repository consistency (duplicate numbers, dangling references) run
 $ kira config explain
 identity (repo)
   project: CORE (demo)
-  id style: sequential
   board: CORE (demo) [default]
   board: INFRA (Infrastructure)
 

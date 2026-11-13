@@ -3,7 +3,6 @@ package id_test
 import (
 	"fmt"
 	"math/rand"
-	"strings"
 	"testing"
 
 	"github.com/shivamshivanshu/kira/internal/id"
@@ -82,90 +81,14 @@ func TestParseNumber(t *testing.T) {
 	}
 }
 
-func mustULID(t *testing.T, s string) id.ULID {
-	t.Helper()
-	u, err := id.ParseULID(s)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return u
-}
-
-func hashAlloc(snap id.Snapshot) *id.Allocator { return id.NewAllocator(true, snap, "KIRA") }
-
-func TestAllocatorHashDerivesFromULID(t *testing.T) {
-	t.Parallel()
-	u := mustULID(t, "01AN4Z07BY79KA1307SR9X4MV3")
-	got := hashAlloc(id.Snapshot{}).Alloc(u)
-	if got != hashAlloc(id.Snapshot{}).Alloc(u) {
-		t.Fatal("hash allocation not deterministic for a fresh snapshot")
-	}
-	s := u.String()
-	want := "KIRA-" + s[len(s)-6:]
-	if got != want {
-		t.Fatalf("Alloc = %q, want %q", got, want)
-	}
-	if !strings.HasPrefix(got, "KIRA-") || len(got) != len("KIRA-")+6 {
-		t.Fatalf("Alloc = %q, want KIRA- + 6 chars", got)
-	}
-}
-
-func TestAllocatorHashRetriesOnSnapshotCollision(t *testing.T) {
-	t.Parallel()
-	u := mustULID(t, "01AN4Z07BY79KA1307SR9X4MV3")
-	s := u.String()
-	snap := id.Snapshot{Items: []id.Item{{Number: "KIRA-" + s[len(s)-6:]}}}
-	got := hashAlloc(snap).Alloc(u)
-	if want := "KIRA-" + s[len(s)-7:]; got != want {
-		t.Fatalf("Alloc on collision = %q, want widened %q", got, want)
-	}
-	snap.Items = append(snap.Items, id.Item{Number: "OTHER-1", Aliases: []string{got}})
-	if got := hashAlloc(snap).Alloc(u); got != "KIRA-"+s[len(s)-8:] {
-		t.Fatalf("Alloc on alias collision = %q, want %q", got, "KIRA-"+s[len(s)-8:])
-	}
-}
-
-func TestAllocatorHashRemembersEarlierAllocations(t *testing.T) {
-	t.Parallel()
-	a := mustULID(t, "01AN4Z07BY79KA1307SR9X4MV3")
-	b := mustULID(t, "01BN4Z07BY79KA1307SR9X4MV3")
-	alloc := hashAlloc(id.Snapshot{})
-	first, second := alloc.Alloc(a), alloc.Alloc(b)
-	if first != "KIRA-9X4MV3" || second != "KIRA-R9X4MV3" {
-		t.Fatalf("colliding suffixes allocated %q then %q, want KIRA-9X4MV3 then KIRA-R9X4MV3", first, second)
-	}
-	r := id.NewResolver(id.Snapshot{Key: "KIRA", Items: []id.Item{
-		{ULID: a.String(), Number: first},
-		{ULID: b.String(), Number: second},
-	}})
-	for number, want := range map[string]string{first: a.String(), second: b.String()} {
-		got, err := r.Resolve(number)
-		if err != nil || got != want {
-			t.Fatalf("Resolve(%q) = %q, %v; want %q", number, got, err, want)
-		}
-	}
-}
-
-func TestAllocatorHashSkipsAllDigitSuffix(t *testing.T) {
-	t.Parallel()
-	u := mustULID(t, "01AN4Z07BY79KA1307SR000123")
-	got := hashAlloc(id.Snapshot{}).Alloc(u)
-	if got != "KIRA-R000123" {
-		t.Fatalf("Alloc = %q, want KIRA-R000123 (all-digit suffix widened)", got)
-	}
-	if _, err := id.ParseNumber(got); err == nil {
-		t.Fatalf("hash number %q must not parse as a sequential KEY-n number", got)
-	}
-}
-
 func TestAllocatorSequential(t *testing.T) {
 	t.Parallel()
 	snap := id.Snapshot{Items: []id.Item{{Number: "KIRA-6"}}}
-	alloc := id.NewAllocator(false, snap, "KIRA")
-	if got := alloc.Alloc(id.Mint()); got != "KIRA-7" {
+	alloc := id.NewAllocator(snap, "KIRA")
+	if got := alloc.Alloc(); got != "KIRA-7" {
 		t.Fatalf("Alloc = %q, want KIRA-7", got)
 	}
-	if got := alloc.Alloc(id.Mint()); got != "KIRA-8" {
+	if got := alloc.Alloc(); got != "KIRA-8" {
 		t.Fatalf("second Alloc = %q, want KIRA-8", got)
 	}
 }

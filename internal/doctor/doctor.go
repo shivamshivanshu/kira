@@ -58,7 +58,6 @@ func Run(cfg *datamodel.Config, files []File, strays []string, env Env) *Report 
 		findings = append(findings, fileFindings(cfg, resolver, s, true)...)
 	}
 	findings = append(findings, stampByID(Collisions(items), pathByID)...)
-	findings = append(findings, stampByID(SequentialOutliers(items), pathByID)...)
 	findings = append(findings, stampByID(RefTypeMismatches(items, resolver), pathByID)...)
 	findings = append(findings, stampByID(RefCycles(items, resolver), pathByID)...)
 	findings = append(findings, WipOverruns(items)...)

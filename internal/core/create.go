@@ -166,7 +166,7 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 		return nil, err
 	}
 
-	sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, wf.Initial)
+	sys := newSystemFields(ld.snap, boardKey, opts.Type, wf.Initial)
 	finalItem := itemFromDraft(d, sys)
 	if errs := s.applyFieldEdits(cfg, finalItem, opts.Fields); len(errs) > 0 {
 		return nil, errx.Invalid(invalidItemPrefix, errs)
@@ -236,7 +236,7 @@ func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, boardKey,
 		if err != nil {
 			return draft{}, err
 		}
-		sys := newSystemFields(cfg, ld.snap, boardKey, opts.Type, initialState)
+		sys := newSystemFields(ld.snap, boardKey, opts.Type, initialState)
 		vctx := newValidationCtx(cfg, ld.items, ld.resolver, opts.Force)
 		content, err := runEditor(cfg.UI.Editor, editorx.Stdio{}, serializeDraft(base), vctx.validateBuffer(func(c string) (*datamodel.Item, []error) {
 			d, perr := parseDraft(c)
@@ -261,11 +261,11 @@ type systemFields struct {
 	created string
 }
 
-func newSystemFields(cfg *datamodel.Config, snap id.Snapshot, boardKey, typ, state string) systemFields {
+func newSystemFields(snap id.Snapshot, boardKey, typ, state string) systemFields {
 	u := id.Mint()
 	return systemFields{
 		ulid:    u.String(),
-		number:  allocateNumber(cfg, snap, boardKey, u),
+		number:  id.NewAllocator(snap, boardKey).Alloc(),
 		typ:     typ,
 		state:   state,
 		created: time.Now().Format(time.RFC3339),
@@ -371,10 +371,6 @@ func applyFlags(d draft, opts CreateOpts) draft {
 		d.Estimate = opts.Estimate
 	}
 	return d
-}
-
-func allocateNumber(cfg *datamodel.Config, snap id.Snapshot, boardKey string, u id.ULID) string {
-	return id.NewAllocator(cfg.ID.Style == datamodel.IDStyleHash, snap, boardKey).Alloc(u)
 }
 
 func readSource(src string) (string, error) {

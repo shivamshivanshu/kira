@@ -11,7 +11,6 @@ repository's effective rules with provenance:
 $ kira config explain
 identity (repo)
   project: DEMO (kira-docs-demo)
-  id style: sequential
   board: DEMO (kira-docs-demo) [default]
 
 vocab (default)
@@ -88,29 +87,15 @@ You type `number` at the command line. kira stores `id` on disk — including
 inside every cross-reference, which is why relationships survive renumbering
 (see [Relationships](#relationships) below).
 
-The `id.style` key selects how `number` is derived:
+Display numbers are sequential: `DEMO-1`, `DEMO-2`, `DEMO-3`, counted from the
+existing items on the board. Two people creating tickets on separate branches
+will both mint the same number; after the merge, kira detects the collision and
+renumbers one of them, and the renumbered item keeps its old number as an
+alias. A branch that referred to `DEMO-7` in a commit message may therefore find
+that `DEMO-7` is now a different ticket.
 
-```yaml
-id:
-  style: sequential          # sequential | hash
-```
-
-| Style | Number looks like | Behaviour |
-| --- | --- | --- |
-| `sequential` (default) | `DEMO-1`, `DEMO-2`, `DEMO-3` | Counted from the existing items on the board. Two people creating tickets on separate branches will both mint the same number; after the merge, kira detects the collision and renumbers one of them. |
-| `hash` | `HSH-1F2QDM` | Derived from the ULID. Two clones can never collide, so nothing is ever renumbered. |
-
-The tradeoff is legibility against stability. `sequential` gives you the tidy
-small numbers people actually enjoy saying out loud, at the cost of an item's
-number occasionally changing after a merge — a branch that referred to
-`DEMO-7` in a commit message may find that `DEMO-7` is now a different ticket.
-`hash` never renumbers, so a number written down anywhere stays correct
-forever, but it is longer and harder to read.
-
-Reconciliation under `sequential` is deterministic and automatic; `kira sync`
-runs it after pulling, and `kira doctor` reports collisions it has not repaired
-yet. If your team frequently develops long-lived parallel branches, `hash` is
-worth the ugliness. Otherwise `sequential` is the right default.
+Reconciliation is deterministic and automatic; `kira sync` runs it after
+pulling, and `kira doctor` reports collisions it has not repaired yet.
 
 ## Workflow, states, and categories
 
@@ -351,8 +336,7 @@ epic: 01KYHXHB98BZFV9D45N07GVV79
 blocked_by: [01KYHXCJK0A3GJ2QWE1VRXV8F2]
 ```
 
-This is what makes renumbering safe. Under `id.style: sequential`, a merge can
-change `DEMO-3` into `DEMO-9`; because no other file ever wrote down the string
+This is what makes renumbering safe. A merge can change `DEMO-3` into `DEMO-9`; because no other file ever wrote down the string
 `DEMO-3`, every link keeps pointing at the same item. Display numbers are
 resolved on input and rendered on output, and never persisted inside a
 reference.

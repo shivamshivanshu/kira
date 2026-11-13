@@ -85,7 +85,6 @@ func enumValues[T ~string](vs []T) []string {
 var stringEnums = map[reflect.Type][]string{
 	reflect.TypeFor[datamodel.WarnCode]():        enumValues(datamodel.WarnCodes),
 	reflect.TypeFor[datamodel.DiffStatus]():      enumValues(datamodel.DiffStatuses),
-	reflect.TypeFor[datamodel.IDStyle]():         enumValues(datamodel.IDStyles),
 	reflect.TypeFor[datamodel.CommitMode]():      enumValues(datamodel.CommitModes),
 	reflect.TypeFor[datamodel.LinkMarker]():      enumValues(datamodel.LinkMarkers),
 	reflect.TypeFor[datamodel.ReferenceMarker](): enumValues(datamodel.ReferenceMarkers),

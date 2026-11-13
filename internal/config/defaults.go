@@ -6,7 +6,6 @@ func Default() *datamodel.Config {
 	return &datamodel.Config{
 		Version: datamodel.InitialSchemaVersion,
 		Project: datamodel.Project{Key: "KIRA", Name: "kira"},
-		ID:      datamodel.Identity{Style: datamodel.IDStyleSequential},
 		Labels:  datamodel.Vocab{},
 		People:  datamodel.People{},
 		Filters: map[string]string{},

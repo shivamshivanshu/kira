@@ -30,9 +30,6 @@ func Validate(c *datamodel.Config) error {
 	if c.Version < 1 || c.Version > datamodel.SchemaVersion {
 		return errx.User("config: version: unsupported version %d (this kira understands 1..%d)", c.Version, datamodel.SchemaVersion)
 	}
-	if err := validateEnum("id.style", c.ID.Style, datamodel.IDStyles...); err != nil {
-		return err
-	}
 	if err := validateEnum("commit.mode", c.Commit.Mode, datamodel.CommitModes...); err != nil {
 		return err
 	}

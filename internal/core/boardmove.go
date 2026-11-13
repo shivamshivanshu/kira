@@ -41,11 +41,10 @@ func (b *Batch) BoardMove(ref, targetKey string) (*datamodel.BoardMoveResult, er
 		return nil, errx.User("%s is already on board %s", from, board.Key)
 	}
 
-	u, err := id.ParseULID(it.ID)
-	if err != nil {
+	if _, err := id.ParseULID(it.ID); err != nil {
 		return nil, errx.User("item %s has an invalid ULID: %v", from, err)
 	}
-	to := allocateNumber(cfg, storage.Snapshot(cfg.Project.Key, b.items), board.Key, u)
+	to := id.NewAllocator(storage.Snapshot(cfg.Project.Key, b.items), board.Key).Alloc()
 
 	it.Number = to
 	it.Aliases = slices.DeleteFunc(it.Aliases, func(a string) bool { return strings.EqualFold(a, to) })

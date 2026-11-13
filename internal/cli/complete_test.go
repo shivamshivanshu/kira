@@ -78,4 +78,3 @@ func TestPositionalCompleters(t *testing.T) {
 		}
 	}
 }
-

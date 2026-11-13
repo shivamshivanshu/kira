@@ -71,12 +71,11 @@ func explainIdentity(cfg, def *datamodel.Config) datamodel.ExplainSection {
 	boards := cfg.EffectiveBoards()
 	lines := []string{
 		fmt.Sprintf("project: %s (%s)", cfg.Project.Key, cfg.Project.Name),
-		fmt.Sprintf("id style: %s", cfg.ID.Style),
 	}
 	for _, b := range boards {
 		lines = append(lines, "board: "+describeBoard(b))
 	}
-	differs := changed(cfg.Project, def.Project) || changed(cfg.ID, def.ID) || changed(boards, def.EffectiveBoards())
+	differs := changed(cfg.Project, def.Project) || changed(boards, def.EffectiveBoards())
 	return datamodel.ExplainSection{Name: "identity", Provenance: tierOf(differs, datamodel.ProvenanceRepo), Lines: lines}
 }
 

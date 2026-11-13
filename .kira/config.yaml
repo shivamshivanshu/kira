@@ -4,9 +4,6 @@ project:
   key: KIRA
   name: kira
 
-id:
-  style: sequential          # sequential (default, reconciled post-merge) | hash (ULID-derived, zero reconciliation)
-
 labels:
   known: [captured, core, tui, cli, data, infra, dx]   # 'captured' is system; the rest are retired area labels still on older items
   strict: false

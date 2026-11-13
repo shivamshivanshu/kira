@@ -56,7 +56,7 @@ push), `commit`, `doctor` (id collisions, dangling refs, schema violations),
 overlay (`~/.config/kira/config.yaml` via `config init`) for editor/UI/worktree
 preferences that never touches the shared repo config.
 
-**Two-tier identity** — sequential or hash-derived display numbers (`KIRA-42`)
+**Two-tier identity** — sequential display numbers (`KIRA-42`)
 for humans, ULIDs for stable identity across renumbering.
 
 **TUI** — launches by default with no arguments. Tree, board, and stats views

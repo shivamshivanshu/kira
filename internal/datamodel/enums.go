@@ -1,14 +1,5 @@
 package datamodel
 
-type IDStyle string
-
-const (
-	IDStyleSequential IDStyle = "sequential"
-	IDStyleHash       IDStyle = "hash"
-)
-
-var IDStyles = []IDStyle{IDStyleSequential, IDStyleHash}
-
 type CommitMode string
 
 const (

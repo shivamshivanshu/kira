@@ -44,7 +44,7 @@ func Run(root string, cfg *datamodel.Config, opts Opts) (Summary, error) {
 		return Summary{}, err
 	}
 	snap := storage.Snapshot(seedBoardKey(cfg), existing)
-	alloc := id.NewAllocator(cfg.ID.Style == datamodel.IDStyleHash, snap, snap.Key)
+	alloc := id.NewAllocator(snap, snap.Key)
 
 	specs := Recipe(opts.Size, opts.Seed)
 	sum, err := walk(specs, rawSink(store, alloc, opts.mint()))
@@ -95,7 +95,7 @@ func seedBoardKey(cfg *datamodel.Config) string {
 func rawSink(st *storage.FS, alloc *id.Allocator, mint func() id.ULID) materializer {
 	return func(i int, sp Spec, parent string) (string, Summary, error) {
 		u := mint()
-		number := alloc.Alloc(u)
+		number := alloc.Alloc()
 		ts := seedEpoch.Add(time.Duration(i) * time.Hour)
 		it := buildItem(sp, u.String(), number, ts)
 		if parent != "" {
