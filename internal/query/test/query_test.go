@@ -279,38 +279,7 @@ func TestEvalBlocked(t *testing.T) {
 	}
 }
 
-func TestEvalActivity(t *testing.T) {
-	items, opts, cfg := evalFixture()
-	items[0].Activity = items[0].Updated
-	items[1].Activity = "2026-07-15T00:00:00Z"
-	items[2].Activity = items[2].Updated
-	items[3].Activity = items[3].Updated
-
-	tests := []struct {
-		expr string
-		want []string
-	}{
-		{"activity>2026-07-12", []string{"KIRA-1"}},
-		{"activity<2026-07-05", []string{"KIRA-100", "KIRA-3"}},
-		{"activity=2026-07-10", []string{"KIRA-2"}},
-	}
-	for _, tc := range tests {
-		got := matchNums(t, tc.expr, items, opts, cfg)
-		if strings.Join(got, ",") != strings.Join(tc.want, ",") {
-			t.Errorf("%q matched %v, want %v", tc.expr, got, tc.want)
-		}
-	}
-
-	c, err := query.Compile("state=TODO ORDER BY activity", opts)
-	if err != nil {
-		t.Fatalf("ORDER BY activity: %v", err)
-	}
-	if c.Order == nil || c.Order.Field != "activity" {
-		t.Errorf("ORDER BY activity did not parse into an activity order: %+v", c.Order)
-	}
-}
-
-func TestBlockedActivitySyntaxErrors(t *testing.T) {
+func TestBlockedSyntaxErrors(t *testing.T) {
 	_, opts, _ := evalFixture()
 	for _, expr := range []string{"state=TODO ORDER BY blocked", "blocked IS EMPTY", "blocked = maybe", "blocked IN (true)"} {
 		if _, err := query.Compile(expr, opts); err == nil {

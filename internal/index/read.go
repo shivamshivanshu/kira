@@ -50,7 +50,7 @@ func (i *Index) Items() ([]*datamodel.Item, error) {
 
 func (i *Index) scanItems() ([]*datamodel.Item, map[string]*datamodel.Item, error) {
 	rows, err := i.db.Query(`SELECT id, number, type, subtype, title, state, resolution,
-		priority, rank, owner, reporter, parent, sprint, due, estimate, created, updated, activity
+		priority, rank, owner, reporter, parent, sprint, due, estimate, created, updated
 		FROM items ORDER BY id`)
 	if err != nil {
 		return nil, nil, errx.Env("querying index items: %v", err)
@@ -64,7 +64,7 @@ func (i *Index) scanItems() ([]*datamodel.Item, map[string]*datamodel.Item, erro
 		var estimate sql.NullFloat64
 		if err := rows.Scan(&it.ID, &it.Number, &it.Type, &subtype, &it.Title, &it.State,
 			&resolution, &priority, &rank, &owner, &reporter, &parent, &sprint, &due,
-			&estimate, &it.Created, &it.Updated, &it.Activity); err != nil {
+			&estimate, &it.Created, &it.Updated); err != nil {
 			return nil, nil, errx.Env("scanning index item: %v", err)
 		}
 		it.Subtype = strPtr(subtype)

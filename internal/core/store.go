@@ -72,9 +72,6 @@ func (s *Store) load(cfg *datamodel.Config) (loadResult, error) {
 	if err != nil {
 		return loadResult{}, err
 	}
-	for _, it := range items {
-		it.Activity = it.Updated
-	}
 	snap, resolver := storage.SnapshotAndResolver(cfg.Project.Key, items, skipped.Numbers...)
 	return loadResult{items: items, snap: snap, resolver: resolver, warnings: skipped.Warnings}, nil
 }

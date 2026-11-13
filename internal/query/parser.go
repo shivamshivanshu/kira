@@ -111,7 +111,6 @@ const (
 	fieldResolution = "resolution"
 	fieldCreated    = "created"
 	fieldUpdated    = "updated"
-	fieldActivity   = "activity"
 	fieldBoard      = "board"
 )
 
@@ -120,8 +119,7 @@ var fields = map[string]bool{
 	fieldLabel: true, fieldType: true, fieldSubtype: true, fieldParent: true,
 	fieldPriority: true, fieldRank: true, fieldSprint: true, fieldDue: true,
 	fieldEstimate: true, fieldBlockedBy: true, fieldBlocked: true, fieldLinks: true,
-	fieldResolution: true, fieldCreated: true, fieldUpdated: true,
-	fieldActivity: true, fieldBoard: true,
+	fieldResolution: true, fieldCreated: true, fieldUpdated: true, fieldBoard: true,
 }
 
 // fieldAliases maps a legacy field name to the builtin field it was renamed
@@ -141,7 +139,7 @@ func canonicalField(f string) string {
 }
 
 func isDateField(f string) bool {
-	return f == fieldCreated || f == fieldUpdated || f == fieldDue || f == fieldActivity
+	return f == fieldCreated || f == fieldUpdated || f == fieldDue
 }
 
 func isBoolField(f string) bool { return f == fieldBlocked }
@@ -156,7 +154,7 @@ func allowsOrderedCmp(f string) bool {
 
 func isAlwaysPresent(f string) bool {
 	switch f {
-	case fieldState, fieldType, fieldCategory, fieldCreated, fieldUpdated, fieldActivity, fieldBoard:
+	case fieldState, fieldType, fieldCategory, fieldCreated, fieldUpdated, fieldBoard:
 		return true
 	}
 	return false
@@ -370,7 +368,7 @@ func (p *parser) parsePredicate() (Expr, error) {
 	builtin := fields[field.text]
 	if builtin && !allowsOrderedCmp(field.text) && op.kind != tokEq && op.kind != tokNe {
 		return nil, &Error{Pos: op.pos, Msg: "operator " + op.cmpText() + " is only valid on " +
-			"created/updated/due/activity, estimate, and priority"}
+			"created/updated/due, estimate, and priority"}
 	}
 	val := p.peek()
 	if val.kind != tokWord && val.kind != tokString {

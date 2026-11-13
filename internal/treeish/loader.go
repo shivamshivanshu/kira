@@ -78,7 +78,6 @@ func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
 			warnings = append(warnings, fmt.Sprintf("skipped %s at %s: %v", p, sha, err))
 			continue
 		}
-		it.Activity = it.Updated
 		items = append(items, it)
 	}
 

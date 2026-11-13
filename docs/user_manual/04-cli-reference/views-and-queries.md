@@ -147,11 +147,10 @@ Used by `--query`, `filters:`, the TUI `/` filter and the web dashboard.
 | `parent`, `sprint` | reference | `parent` accepts a number; legacy name `epic`; `sprint = active` |
 | `label`, `blocked_by`, `links` | list | `=` means contains; no `ORDER BY` |
 | `estimate` | number | |
-| `created`, `updated`, `activity`, `due` | date | `YYYY-MM-DD`, by calendar day; `due` also takes RFC 3339 |
+| `created`, `updated`, `due` | date | `YYYY-MM-DD`, by calendar day; `due` also takes RFC 3339 |
 | `blocked` | boolean | bare: `blocked`, `NOT blocked` — any blocker not done |
 
-`state`, `type`, `category`, `created`, `updated`, `activity`, `board` reject
-`IS EMPTY`.
+`state`, `type`, `category`, `created`, `updated`, `board` reject `IS EMPTY`.
 
 ```console
 $ kira list --query "label = payments AND category != done ORDER BY priority"
@@ -180,7 +179,7 @@ $ kira list --query "scoring"
 NUMBER  STATE        TYPE    PRIORITY  TITLE
 PAY-6   IN_PROGRESS  ticket  P0        Batch scoring is 4x slower than target
 $ kira list --query "asignee = ada"
-kira: query: unknown field "asignee" (available: activity, blocked, blocked_by, board, category, created, due, estimate, label, links, owner, parent, priority, rank, reporter, resolution, sprint, state, subtype, type, updated) at position 8
+kira: query: unknown field "asignee" (available: blocked, blocked_by, board, category, created, due, estimate, label, links, owner, parent, priority, rank, reporter, resolution, sprint, state, subtype, type, updated) at position 8
   hint: check the query expression syntax
 $ kira list --query "state IS EMPTY"
 kira: query: field state is never empty at position 6

@@ -63,37 +63,6 @@ func TestTemplateDraftRejectsUnsafeSubtype(t *testing.T) {
 	}
 }
 
-func TestListWithMatchesActivity(t *testing.T) {
-	dir := testutil.InitGitRepo(t)
-	s := newStore(dir)
-	if err := os.MkdirAll(filepath.Join(dir, ".kira", "tickets"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	cfg := config.Default()
-	it := &datamodel.Item{
-		ID: "01HZZ0ACT00000000000000000", Number: "KIRA-1", Type: datamodel.TypeTicket,
-		Title: "Act", State: "TODO", Labels: []string{},
-		Created: "2026-05-01T00:00:00Z", Updated: "2026-05-01T00:00:00Z",
-	}
-	if _, err := s.fs().WriteItem(it); err != nil {
-		t.Fatal(err)
-	}
-	_, matched, err := s.ListWithMatches(cfg, "activity < 2026-05-02")
-	if err != nil {
-		t.Fatalf("ListWithMatches: %v", err)
-	}
-	if !matched[it.ID] {
-		t.Error("activity filter must match through ListWithMatches; Activity has to be populated on the load path")
-	}
-	_, matched, err = s.ListWithMatches(cfg, "activity > 2026-05-02")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if matched[it.ID] {
-		t.Error("activity > a future day must not match")
-	}
-}
-
 func TestCreateHereBlockingHalfFailure(t *testing.T) {
 	dir := testutil.InitGitRepo(t)
 	s := newStore(dir)

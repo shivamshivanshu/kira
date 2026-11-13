@@ -196,8 +196,6 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 		return datePred(n, recordedDay(func(it *datamodel.Item) string { return it.Created })), nil
 	case fieldUpdated:
 		return datePred(n, recordedDay(func(it *datamodel.Item) string { return it.Updated })), nil
-	case fieldActivity:
-		return datePred(n, recordedDay(func(it *datamodel.Item) string { return it.Activity })), nil
 	case fieldDue:
 		return datePred(n, func(it *datamodel.Item) string { return ptr.Deref(it.Due) }), nil
 	}
@@ -386,7 +384,6 @@ var accessors = map[string]func(*datamodel.Item, *datamodel.Config) string{
 	fieldParent:     func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Parent) },
 	fieldCreated:    func(it *datamodel.Item, _ *datamodel.Config) string { return it.Created },
 	fieldUpdated:    func(it *datamodel.Item, _ *datamodel.Config) string { return it.Updated },
-	fieldActivity:   func(it *datamodel.Item, _ *datamodel.Config) string { return it.Activity },
 	fieldBoard:      func(it *datamodel.Item, _ *datamodel.Config) string { return strings.ToUpper(id.KeyOf(it.Number)) },
 }
 

@@ -18,6 +18,4 @@ Boards and sprints are entries in `.kira/config.yaml`, so:
 
 ## Open bugs
 
-| Ticket | Effect |
-| --- | --- |
-| CORE-66 | The `activity` query field differs between `--at HEAD` and a normal read of a clean tree, so `ORDER BY activity` can disagree. |
+None.

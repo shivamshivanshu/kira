@@ -44,9 +44,6 @@ func (s *Store) read(cfg *datamodel.Config, opts loadOpts) (*loaded, error) {
 		}
 		indexErr = err
 	}
-	// s.load always sets Activity = Updated; that is the documented fallback
-	// semantics when the enriched, commit-derived Activity from the index is
-	// unavailable.
 	ld, err := s.load(cfg)
 	if err != nil {
 		return nil, err

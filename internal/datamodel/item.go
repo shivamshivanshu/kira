@@ -33,8 +33,6 @@ type Item struct {
 
 	Body string
 
-	Activity string
-
 	CRLF bool
 }
 

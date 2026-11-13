@@ -226,8 +226,8 @@ func prepareItemStmts(tx *sql.Tx) (itemStmts, error) {
 
 	item, err := prepare(`INSERT INTO items
 		(id, number, type, subtype, title, state, resolution, priority, rank,
-		 owner, reporter, parent, sprint, due, estimate, created, updated, activity)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, "item insert")
+		 owner, reporter, parent, sprint, due, estimate, created, updated)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, "item insert")
 	if err != nil {
 		return itemStmts{}, err
 	}
@@ -258,7 +258,7 @@ func (s itemStmts) insert(it *datamodel.Item) error {
 		it.ID, it.Number, it.Type, nullable(it.Subtype), it.Title, it.State,
 		nullable(it.Resolution), nullable(it.Priority), nullable(it.Rank), nullable(it.Owner),
 		nullable(it.Reporter), nullable(it.Parent), nullable(it.Sprint), nullable(it.Due),
-		nullable(it.Estimate), it.Created, it.Updated, it.Updated); err != nil {
+		nullable(it.Estimate), it.Created, it.Updated); err != nil {
 		return errx.Env("inserting index item %s: %v", it.ID, err)
 	}
 	for ord, alias := range it.Aliases {
@@ -327,113 +327,4 @@ func nullable[T any](p *T) any {
 		return nil
 	}
 	return *p
-}
-
-// fillActivity recomputes the activity column (the max of an item's updated
-// timestamp and its latest linked-commit timestamp). full sweeps every item,
-// the only correct option when commit_links may have lost rows out from under
-// an item that wasn't itself reindexed this run (a full rebuild or a scan
-// config change, both of which wipe and rebuild commit_links from scratch).
-// Otherwise, insertItem already primed activity = updated for every row this
-// run touched, so a plain incremental pass only needs to touch items whose
-// commit_links can push activity past that baseline.
-func (i *Index) fillActivity(full bool) error {
-	if full {
-		return i.fillActivityFull()
-	}
-	return i.fillActivityTargeted()
-}
-
-func (i *Index) fillActivityFull() error {
-	latest, err := i.latestCommitTs()
-	if err != nil {
-		return err
-	}
-	rows, err := i.db.Query("SELECT id, updated FROM items")
-	if err != nil {
-		return errx.Env("querying item activity: %v", err)
-	}
-	activity := map[string]string{}
-	if err := eachPair(rows, func(r *sql.Rows) error {
-		var id, updated string
-		if err := r.Scan(&id, &updated); err != nil {
-			return errx.Env("scanning item activity: %v", err)
-		}
-		activity[id] = updated
-		if ts, ok := latest[id]; ok && closesLater(ts, updated) {
-			activity[id] = ts
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-	return applyActivity(i.db, activity)
-}
-
-func (i *Index) fillActivityTargeted() error {
-	rows, err := i.db.Query(`SELECT c.item_id, c.ts, i.updated
-		FROM commit_links c JOIN items i ON i.id = c.item_id`)
-	if err != nil {
-		return errx.Env("querying commit-link activity: %v", err)
-	}
-	boosted := map[string]string{}
-	if err := eachPair(rows, func(r *sql.Rows) error {
-		var id, ts, updated string
-		if err := r.Scan(&id, &ts, &updated); err != nil {
-			return errx.Env("scanning commit-link activity: %v", err)
-		}
-		if !closesLater(ts, updated) {
-			return nil
-		}
-		if cur, ok := boosted[id]; !ok || closesLater(ts, cur) {
-			boosted[id] = ts
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-	return applyActivity(i.db, boosted)
-}
-
-func applyActivity(db *sql.DB, activity map[string]string) error {
-	if len(activity) == 0 {
-		return nil
-	}
-	tx, err := db.Begin()
-	if err != nil {
-		return errx.Env("beginning activity tx: %v", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	stmt, err := tx.Prepare("UPDATE items SET activity = ? WHERE id = ?")
-	if err != nil {
-		return errx.Env("preparing activity update: %v", err)
-	}
-	defer func() { _ = stmt.Close() }()
-	for id, ts := range activity {
-		if _, err := stmt.Exec(ts, id); err != nil {
-			return errx.Env("updating item activity: %v", err)
-		}
-	}
-	return commit(tx)
-}
-
-func (i *Index) latestCommitTs() (map[string]string, error) {
-	rows, err := i.db.Query("SELECT item_id, ts FROM commit_links")
-	if err != nil {
-		return nil, errx.Env("querying commit-link timestamps: %v", err)
-	}
-	latest := map[string]string{}
-	if err := eachPair(rows, func(r *sql.Rows) error {
-		var id, ts string
-		if err := r.Scan(&id, &ts); err != nil {
-			return errx.Env("scanning commit-link timestamp: %v", err)
-		}
-		if cur, ok := latest[id]; !ok || closesLater(ts, cur) {
-			latest[id] = ts
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-	return latest, nil
 }

@@ -31,8 +31,8 @@ func TestNumberToULIDLiveNumberWinsOverAlias(t *testing.T) {
 		keeper = "01HAAAAAAAAAAAAAAAAAAAAAAA"
 		loser  = "01HBBBBBBBBBBBBBBBBBBBBBBB"
 	)
-	insert := `INSERT INTO items (id, number, type, title, state, created, updated, activity)
-		VALUES (?,?,'ticket','t','TODO','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')`
+	insert := `INSERT INTO items (id, number, type, title, state, created, updated)
+		VALUES (?,?,'ticket','t','TODO','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')`
 	for _, row := range [][2]string{{keeper, "KIRA-5"}, {loser, "KIRA-12"}} {
 		if _, err := idx.db.Exec(insert, row[0], row[1]); err != nil {
 			t.Fatalf("inserting item: %v", err)

@@ -65,11 +65,6 @@ func (i *Index) reindex(store *storage.FS, repo gitx.Repo, opts Options, force b
 	}
 
 	needsRebuild := p.decision.name != actionFresh || configChanged
-	if needsRebuild {
-		if err := i.fillActivity(p.decision.name != actionIncremental || configChanged); err != nil {
-			return Result{}, err
-		}
-	}
 
 	count, err := i.count()
 	if err != nil {
