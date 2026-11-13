@@ -19,9 +19,11 @@ exec kira list --json
 stdout '"priority"'
 
 -- columns-config.yaml --
-version: 1
+version: 2
 project:
   key: KIRA
+boards:
+  - { key: KIRA, name: kira, default: true }
 ui:
   list:
     columns: [title, number]

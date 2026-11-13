@@ -2,7 +2,6 @@ package core
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -75,7 +74,6 @@ func (s *Store) doctorEnv() doctor.Env {
 	if !env.GitInstalled {
 		return env
 	}
-	env.MissingOptionalBins = missingBinaries("rg")
 	repo := s.repo()
 	env.InsideWorkTree = repo.InsideWorkTree() == nil
 	if !env.InsideWorkTree {
@@ -101,14 +99,4 @@ func (r indexFreshness) Freshness() (doctor.Freshness, error) {
 		return doctor.Freshness{}, err
 	}
 	return doctor.Freshness{Built: rep.Built, Fresh: rep.Fresh, Reason: rep.Reason}, nil
-}
-
-func missingBinaries(names ...string) []string {
-	var out []string
-	for _, n := range names {
-		if _, err := exec.LookPath(n); err != nil {
-			out = append(out, n)
-		}
-	}
-	return out
 }

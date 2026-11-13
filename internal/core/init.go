@@ -60,8 +60,12 @@ func Init(startDir, key string, force bool, prompter ...Prompter) (*datamodel.In
 		}
 	}
 
+	configYAML, err := initConfigYAML(key, name)
+	if err != nil {
+		return nil, err
+	}
 	files := map[string]string{
-		fs.ConfigPath(): initConfigYAML(key, name),
+		fs.ConfigPath(): configYAML,
 		filepath.Join(fs.KiraDir(), ".gitignore"): storage.CacheDirName + "/\n",
 	}
 	for path, content := range files {

@@ -131,49 +131,6 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 	return root, g
 }
 
-func globalFlagSet(g *globalFlags) *pflag.FlagSet {
-	fs := pflag.NewFlagSet("global", pflag.ContinueOnError)
-	fs.ParseErrorsWhitelist.UnknownFlags = true
-	fs.Usage = func() {}
-	fs.SetOutput(io.Discard)
-	registerGlobalFlags(fs, g)
-	return fs
-}
-
-func chdirArgFrom(args []string) string {
-	g := &globalFlags{}
-	_ = globalFlagSet(g).Parse(args)
-	return g.chdir
-}
-
-// globalPrefixLen reports how many leading argv entries the global flags
-// consume. Parsing rather than searching for the subcommand name is what stops
-// `-C find find pat` from taking the flag's value for the command, and
-// non-interspersed parsing stops at the subcommand so its own flags (ripgrep's
-// `-C 3`, say) never reach the global set.
-func globalPrefixLen(argv []string) int {
-	fs := globalFlagSet(&globalFlags{})
-	fs.SetInterspersed(false)
-	if err := fs.Parse(argv); err != nil {
-		return len(argv)
-	}
-	return len(argv) - len(fs.Args())
-}
-
-// DisableFlagParsing hands a subcommand its full argv, global flags and all,
-// with only cmdName itself removed. This splits that argv back into the
-// global-flag prefix and the subcommand's own args, parsing argv (the real
-// os.Args) for where the global flags stop — which is why a bridged
-// (SetArgs-based) Execute() call, where cmdName never appears in os.Args,
-// passes rest through unsplit.
-func stripGlobalPrefix(argv, args []string, cmdName string) (chdir string, rest []string) {
-	i := globalPrefixLen(argv)
-	if i < len(argv) && argv[i] == cmdName && i <= len(args) {
-		return chdirArgFrom(argv[:i]), args[i:]
-	}
-	return "", args
-}
-
 func parseFieldEdits(fields []string, hintExample string) ([]core.FieldEdit, error) {
 	var edits []core.FieldEdit
 	for _, f := range fields {

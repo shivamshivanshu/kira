@@ -130,7 +130,7 @@ func serverCommandRunner(storeRoot string) func([]string) (string, error) {
 		root.SetOut(&buf)
 		root.SetErr(&buf)
 		root.SetIn(strings.NewReader(""))
-		root.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		root.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
 			if root.PersistentFlags().Changed("C") || !g.nonInteractive {
 				return errx.User("dashboard commands must stay in the current store and run non-interactively")
 			}
@@ -141,8 +141,6 @@ func serverCommandRunner(storeRoot string) func([]string) (string, error) {
 				return errx.User("dashboard commands cannot read --from-file; use the item form")
 			}
 			switch cmd.Name() {
-			case "find":
-				return validateDashboardFind(args)
 			case "workon":
 				worktree, err := cmd.Flags().GetBool("worktree")
 				if err != nil {
@@ -194,24 +192,6 @@ func validateDashboardRemote(storeRoot, remote string) error {
 	}
 	if !slices.Contains(strings.Split(remotes, "\n"), remote) {
 		return errx.User("dashboard sync requires a configured remote name; configure remote URLs in your terminal")
-	}
-	return nil
-}
-
-func validateDashboardFind(args []string) error {
-	patterns := 0
-	for _, arg := range args {
-		switch arg {
-		case "--no-color", "--non-interactive", "--json", "-i", "--ignore-case", "-w", "--word-regexp", "-F", "--fixed-strings":
-			continue
-		}
-		if strings.HasPrefix(arg, "-") {
-			return errx.User("find in the dashboard supports one pattern and -i, -w, or -F; run other ripgrep flags in your terminal")
-		}
-		patterns++
-	}
-	if patterns != 1 {
-		return errx.User("find in the dashboard requires exactly one search pattern")
 	}
 	return nil
 }

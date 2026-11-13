@@ -21,7 +21,11 @@ func Load(root string) (*datamodel.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Parse(data)
+	cfg, err := Parse(data)
+	if err != nil {
+		return nil, err
+	}
+	return cfg, requireCurrentVersion(cfg)
 }
 
 // LoadWithUser loads the repo config and merges in user preferences from the user config directory.
@@ -43,6 +47,9 @@ func LoadWithUser(root string, env func(string) string, warn io.Writer) (*datamo
 	if err := parseInto(cfg, data, ignore); err != nil {
 		return nil, err
 	}
+	if err := requireCurrentVersion(cfg); err != nil {
+		return nil, err
+	}
 	cfg.UIProvenance = tierFor(!reflect.DeepEqual(cfg.UI, uiBeforeRepo), tier.ui != nil)
 	cfg.WorkonProvenance = tierFor(!reflect.DeepEqual(cfg.Workon, workonBeforeRepo), tier.workon != nil)
 	alreadyWarned := setx.ToSet(tier.uiWarnings)
@@ -55,6 +62,20 @@ func LoadWithUser(root string, env func(string) string, warn io.Writer) (*datamo
 		cfg.UserCommitSubject = tier.commit.Subject
 	}
 	return cfg, nil
+}
+
+// requireCurrentVersion refuses a pre-boards config in the working tree. Parse
+// still accepts it, so configs read from historical git trees keep loading.
+func requireCurrentVersion(cfg *datamodel.Config) error {
+	if cfg.Version == datamodel.SchemaVersion {
+		return nil
+	}
+	defaultBoard, err := InlineBoardEntry(datamodel.Board{Key: cfg.Project.Key, Name: cfg.Project.Name, Default: true})
+	if err != nil {
+		defaultBoard = "{ key: <KEY>, name: <name>, default: true }"
+	}
+	return errx.User("config: version %d is no longer supported", cfg.Version).
+		WithHint("set version: %d and add boards: [%s]", datamodel.SchemaVersion, defaultBoard)
 }
 
 // tierFor reports which tier supplied a section's effective value: repo when

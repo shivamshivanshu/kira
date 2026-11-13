@@ -21,10 +21,12 @@ stdout '"feature"'
 stdout '"captured"'
 
 -- strict.yaml --
-version: 1
+version: 2
 project:
   key: KIRA
   name: kira
+boards:
+  - { key: KIRA, name: kira, default: true }
 labels:
   known: [feature]
   strict: true

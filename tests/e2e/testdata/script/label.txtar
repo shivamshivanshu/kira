@@ -80,10 +80,12 @@ exec kira label add KIRA-1 orphan --force
 stdout 'Added orphan to KIRA-1'
 
 -- strict.yaml --
-version: 1
+version: 2
 project:
   key: KIRA
   name: kira
+boards:
+  - { key: KIRA, name: kira, default: true }
 labels:
   known: [backend, frontend]
   strict: true

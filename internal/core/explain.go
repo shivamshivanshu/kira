@@ -68,14 +68,14 @@ func tierOf(differs bool, tier datamodel.Provenance) datamodel.Provenance {
 }
 
 func explainIdentity(cfg, def *datamodel.Config) datamodel.ExplainSection {
-	boards := cfg.EffectiveBoards()
+	boards := cfg.Boards
 	lines := []string{
 		fmt.Sprintf("project: %s (%s)", cfg.Project.Key, cfg.Project.Name),
 	}
 	for _, b := range boards {
 		lines = append(lines, "board: "+describeBoard(b))
 	}
-	differs := changed(cfg.Project, def.Project) || changed(boards, def.EffectiveBoards())
+	differs := changed(cfg.Project, def.Project) || changed(boards, def.Boards)
 	return datamodel.ExplainSection{Name: "identity", Provenance: tierOf(differs, datamodel.ProvenanceRepo), Lines: lines}
 }
 

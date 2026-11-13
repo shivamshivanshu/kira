@@ -22,10 +22,9 @@ func ResolveFreshness(r FreshnessReporter) *Freshness {
 }
 
 type Env struct {
-	GitInstalled        bool
-	InsideWorkTree      bool
-	MissingOptionalBins []string
-	Freshness           *Freshness
+	GitInstalled   bool
+	InsideWorkTree bool
+	Freshness      *Freshness
 	// LegacySchemaDirPresent reports a leftover .kira/schema directory from
 	// when item types were declared there.
 	LegacySchemaDirPresent bool
@@ -40,7 +39,6 @@ func warn(class Class, msg string) Finding {
 }
 
 func envFindings(env Env) []Finding {
-	var out []Finding
 	if !env.GitInstalled {
 		return []Finding{{
 			Class:    ClassEnv,
@@ -48,14 +46,10 @@ func envFindings(env Env) []Finding {
 			Message:  "git is not installed or not on PATH; kira needs git for commits, history, and index freshness",
 		}}
 	}
-	for _, bin := range env.MissingOptionalBins {
-		out = append(out, info(ClassEnv, bin+" not found on PATH; the feature that uses it falls back to a slower pure-Go path"))
-	}
 	if !env.InsideWorkTree {
-		return append(out, info(ClassEnv, "not inside a git work tree; skipping the index-freshness check"))
+		return []Finding{info(ClassEnv, "not inside a git work tree; skipping the index-freshness check")}
 	}
-	out = append(out, freshnessFinding(env.Freshness))
-	return out
+	return []Finding{freshnessFinding(env.Freshness)}
 }
 
 func freshnessFinding(f *Freshness) Finding {

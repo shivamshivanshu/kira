@@ -19,10 +19,12 @@ exec kira show KIRA-1 --json
 stdout '"owner": "alice"'
 
 -- people.yaml --
-version: 1
+version: 2
 project:
   key: KIRA
   name: kira
+boards:
+  - { key: KIRA, name: kira, default: true }
 people:
   known:
     - name: alice

@@ -1,4 +1,4 @@
-# find with rg absent: pure-Go regex scan over ticket files, same output contract.
+# find: Go regex scan over ticket files, matches mapped to display number.
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
@@ -10,16 +10,27 @@ exec kira init --key KIRA
 exec kira create ticket --title orderbook-snapshot --no-edit
 exec kira create ticket --title unrelated-thing --no-edit
 
-# strip rg/fzf from PATH (git remains) to force the fallback scanner
-env PATH=${CLEANBIN}
-
+# a match maps back to the item's number + id; the other ticket is not a hit
 exec kira find snapshot --json
 stdout '"number": "KIRA-1"'
+stdout '"id": "'
 ! stdout 'KIRA-2'
 
-# human fallback renders number:line: text directly
+# human output renders number:line: text directly
 exec kira find snapshot
 stdout '^KIRA-1:\d+:'
+
+# -i matches case-insensitively
+exec kira find SNAPSHOT -i --json
+stdout '"number": "KIRA-1"'
+exec kira find SNAPSHOT --json
+stdout '"matches": \[\]'
+
+# -w matches only whole words
+exec kira find -w snap --json
+stdout '"matches": \[\]'
+exec kira find -w snapshot --json
+stdout '"number": "KIRA-1"'
 
 # no match: empty matches, exit 0
 exec kira find zzznotfound --json

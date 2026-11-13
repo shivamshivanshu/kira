@@ -60,10 +60,6 @@ func Validate(c *datamodel.Config) error {
 }
 
 func validateBoards(c *datamodel.Config) error {
-	if c.Boards != nil && c.Version < datamodel.BoardsSchemaVersion {
-		return errx.User("config: boards require version %d, found %d", datamodel.BoardsSchemaVersion, c.Version).
-			WithHint("bump version to %d or remove the boards list", datamodel.BoardsSchemaVersion)
-	}
 	seen := setx.NewDeduper[string]()
 	defaults := 0
 	for i, b := range c.Boards {

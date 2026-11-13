@@ -93,28 +93,10 @@ type Estimate struct {
 	Unit EstimateUnit `yaml:"unit"`
 }
 
-const (
-	InitialSchemaVersion = 1
-	BoardsSchemaVersion  = 2
-	SchemaVersion        = BoardsSchemaVersion
-)
-
-func (c *Config) EffectiveBoards() []Board {
-	if c.Boards != nil {
-		return c.Boards
-	}
-	if c.Project.Key == "" {
-		return nil
-	}
-	name := c.Project.Name
-	if name == "" {
-		name = c.Project.Key
-	}
-	return []Board{{Key: c.Project.Key, Name: name, Default: true}}
-}
+const SchemaVersion = 2
 
 func (c *Config) DefaultBoard() (Board, bool) {
-	for _, b := range c.EffectiveBoards() {
+	for _, b := range c.Boards {
 		if b.Default && !b.Archived {
 			return b, true
 		}
@@ -123,7 +105,7 @@ func (c *Config) DefaultBoard() (Board, bool) {
 }
 
 func (c *Config) BoardByKey(key string) (Board, bool) {
-	for _, b := range c.EffectiveBoards() {
+	for _, b := range c.Boards {
 		if strings.EqualFold(b.Key, key) {
 			return b, true
 		}
@@ -132,7 +114,7 @@ func (c *Config) BoardByKey(key string) (Board, bool) {
 }
 
 func (c *Config) ActiveBoards() []Board {
-	all := c.EffectiveBoards()
+	all := c.Boards
 	out := make([]Board, 0, len(all))
 	for _, b := range all {
 		if !b.Archived {
@@ -143,7 +125,7 @@ func (c *Config) ActiveBoards() []Board {
 }
 
 func (c *Config) BoardKeys() []string {
-	all := c.EffectiveBoards()
+	all := c.Boards
 	keys := make([]string, len(all))
 	for i, b := range all {
 		keys[i] = b.Key

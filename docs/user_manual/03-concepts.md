@@ -71,8 +71,8 @@ other. Boards have four properties:
 old number is retained as an **alias** — the `aliases` field you see in every
 item file — so anything that referred to the old number still resolves.
 
-If a repository declares no `boards:` block at all, kira synthesizes a single
-default board from `project.key` — which is what a fresh `kira init` produces.
+A fresh `kira init` writes a `boards:` list holding a single default board
+keyed by `project.key`.
 
 ## Identity: `id` versus `number`
 

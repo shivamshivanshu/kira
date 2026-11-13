@@ -1,12 +1,20 @@
 package core
 
-import "fmt"
+import (
+	"fmt"
 
-const configTemplate = `version: 1
+	"github.com/shivamshivanshu/kira/internal/config"
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+)
+
+const configTemplate = `version: 2
 
 project:
   key: %s
   name: %s
+
+boards:
+  - %s
 
 labels:
   known: []                   # add project labels; strict rejects unknown ones (--force overrides)
@@ -51,6 +59,10 @@ filters:
 #git: {}
 `
 
-func initConfigYAML(key, name string) string {
-	return fmt.Sprintf(configTemplate, key, name)
+func initConfigYAML(key, name string) (string, error) {
+	defaultBoard, err := config.InlineBoardEntry(datamodel.Board{Key: key, Name: name, Default: true})
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf(configTemplate, key, name, defaultBoard), nil
 }

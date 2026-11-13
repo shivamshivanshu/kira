@@ -14,7 +14,7 @@
     </div>
     {{if .Config}}
     <div class="management-list">
-      {{range .Config.EffectiveBoards}}
+      {{range .Config.Boards}}
       <article class="management-row">
         <div>
           <strong>{{.Key}}</strong>{{if .Default}} <span class="tag">Default</span>{{end}}{{if .Archived}} <span class="tag">Archived</span>{{end}}

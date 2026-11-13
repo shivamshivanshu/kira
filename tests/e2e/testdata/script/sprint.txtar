@@ -74,11 +74,14 @@ exec kira sprint list --json
 stdout '"total": 1'
 
 -- expected-config.yaml --
-version: 1
+version: 2
 
 project:
   key: KIRA
   name: proj
+
+boards:
+  - { key: KIRA, name: proj, default: true }
 
 labels:
   known: []                   # add project labels; strict rejects unknown ones (--force overrides)

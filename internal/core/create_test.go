@@ -13,6 +13,12 @@ import (
 	"github.com/shivamshivanshu/kira/internal/workon"
 )
 
+func defaultConfigWithKIRABoard() *datamodel.Config {
+	cfg := config.Default()
+	cfg.Boards = []datamodel.Board{{Key: "KIRA", Name: "kira", Default: true}}
+	return cfg
+}
+
 func TestTemplatePathSubtype(t *testing.T) {
 	dir := testutil.InitGitRepo(t)
 	s := newStore(dir)
@@ -94,7 +100,7 @@ func TestCreateHereBlockingHalfFailure(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, ".kira", "tickets"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cfg := config.Default()
+	cfg := defaultConfigWithKIRABoard()
 	active, err := s.Create(cfg, CreateOpts{Type: datamodel.TypeTicket, Title: "Active", NoEdit: true})
 	if err != nil {
 		t.Fatalf("create active: %v", err)
@@ -133,7 +139,7 @@ func TestCreateFieldSetsBodySection(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, ".kira", "tickets"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cfg := config.Default()
+	cfg := defaultConfigWithKIRABoard()
 
 	res, err := s.Create(cfg, CreateOpts{
 		Type: datamodel.TypeTicket, Title: "T", NoEdit: true,

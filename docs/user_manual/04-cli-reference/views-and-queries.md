@@ -8,8 +8,7 @@ branch.
 The global flags `-C <path>` (run as if invoked from another directory),
 `--json` (machine-readable output on stdout) and `--no-color` (drop ANSI
 color) work on all of them and are documented once in the
-[global flags](setup-and-schema-commands.md#global-flags) section. One exception is called out
-below: `kira find` deliberately does not take `-C`.
+[global flags](setup-and-schema-commands.md#global-flags) section.
 
 All examples on this page come from a demo repository with project key `PAY`:
 two epics, seven tickets, two sprints, and a mixture of states, priorities and
@@ -475,53 +474,33 @@ PAY-2    epic    Fraud detection
 ## `kira find`
 
 Full-text search across the ticket files themselves — body prose, frontmatter
-values, everything on disk. It is a wrapper around
-[ripgrep](https://github.com/BurntSushi/ripgrep), so anything you already know
-about `rg` applies, and unrecognised arguments are handed straight through.
-The output is rewritten to show display numbers instead of file paths, which
-is the whole reason to use it rather than running `rg` yourself.
+values, everything on disk. The pattern is a regular expression in Go's
+[RE2 syntax](https://github.com/google/re2/wiki/Syntax), matched line by line.
+Hits are reported by display number instead of file path, which is the whole
+reason to use it rather than grepping `.kira/` yourself.
 
-`find` takes no flags of its own beyond `--help`. Note that **`-C` is not the
-global "change directory" flag here** — inside `find` it is ripgrep's
-context-lines flag, and is passed through as such.
+`find` takes exactly one pattern and two flags:
+
+| Flag | Meaning |
+|---|---|
+| `-i`, `--ignore-case` | Match case-insensitively. |
+| `-w`, `--word-regexp` | Match only whole words. |
+
+`-C` is the ordinary global "change directory" flag, as on every other command.
 
 ```
 $ kira find backoff
 PAY-4:7:title: "Retry failed authorizations with backoff"
 ```
 
-The format is `NUMBER:LINE:TEXT`. Ripgrep flags compose as usual:
+The format is `NUMBER:LINE:TEXT`. Flags go before or after the pattern:
 
 ```
 $ kira find -i CHARGEBACK
 PAY-7:7:title: "Spike: graph features for chargeback risk"
 ```
 
-```
-$ kira find -i tokenize -C 1
-PAY-3-6-subtype: story
-PAY-3:7:title: "Tokenize card numbers at ingest"
-PAY-3-8-state: IN_PROGRESS
-```
-
-Context lines use `-` as the separator instead of `:`, matching ripgrep's own
-convention, so you can still tell matches from context.
-
-One caveat: flags that change ripgrep's output shape entirely, such as `-l`
-(list matching files), bypass the number rewriting and give you raw paths:
-
-```
-$ kira find -l payments
-.kira/tickets/01KYHXAGRMM0WBZX58AR8HKR9K.md
-.kira/tickets/01KYHXAZGRXX2RQ5YFY5D65ETV.md
-.kira/tickets/01KYHXAZ71KAVZ6MQJQ7P7DJF5.md
-.kira/tickets/01KYHXAZBXX4YYPN5GABEF32D4.md
-```
-
-Those filenames are the items' permanent identifiers, so `kira show <id>`
-turns any of them back into a readable ticket.
-
-`--json` emits structured matches:
+`--json` emits structured matches, sorted by display number:
 
 ```
 $ kira find backoff --json

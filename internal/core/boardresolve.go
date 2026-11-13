@@ -15,7 +15,7 @@ func boardKeyOf(number string) string {
 func resolveBoardKey(cfg *datamodel.Config, explicit string) (string, error) {
 	boards := cfg.ActiveBoards()
 	if len(boards) == 0 {
-		if len(cfg.EffectiveBoards()) > 0 {
+		if len(cfg.Boards) > 0 {
 			return "", errx.User("all boards are archived").
 				WithHint("unarchive one: kira board unarchive <KEY>")
 		}

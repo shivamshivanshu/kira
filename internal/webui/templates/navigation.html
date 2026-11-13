@@ -10,7 +10,7 @@
       <span class="nav-icon" aria-hidden="true">▦</span> All work
     </a>
     <div class="nav-heading">BOARDS</div>
-    {{if .Config}}{{range .Config.EffectiveBoards}}
+    {{if .Config}}{{range .Config.Boards}}
     <a class="nav-link {{if $.BoardSelected .Key}}is-current{{end}}" href="{{$.BoardLink .Key}}" {{if $.BoardSelected .Key}}aria-current="page"{{end}} title="{{.Description}}">
       <span class="board-symbol" aria-hidden="true">{{.Key}}</span>
       <span>{{or .Name .Key}}{{if .Archived}} <small>archived</small>{{end}}</span>

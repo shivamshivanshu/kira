@@ -31,9 +31,6 @@ func AddBoard(data []byte, b datamodel.Board, materializeImplicit *datamodel.Boa
 	if out, err = spliceBoard(out, b); err != nil {
 		return nil, err
 	}
-	if out, err = bumpVersionToBoards(out); err != nil {
-		return nil, err
-	}
 	cfg, err := Parse(out)
 	if err != nil {
 		return nil, err
@@ -45,14 +42,14 @@ func AddBoard(data []byte, b datamodel.Board, materializeImplicit *datamodel.Boa
 }
 
 func spliceBoard(data []byte, b datamodel.Board) ([]byte, error) {
-	entry, err := inlineBoardEntry(b)
+	entry, err := InlineBoardEntry(b)
 	if err != nil {
 		return nil, err
 	}
 	return appendToTopLevelList(data, "boards", entry)
 }
 
-func inlineBoardEntry(b datamodel.Board) (string, error) {
+func InlineBoardEntry(b datamodel.Board) (string, error) {
 	key, err := flowScalar("boards", b.Key)
 	if err != nil {
 		return "", err
@@ -88,7 +85,7 @@ func UpdateBoard(data []byte, key string, mutate func(datamodel.Board) datamodel
 		return nil, errx.User("config: boards: no board with key %q", key)
 	}
 	updated := mutate(current)
-	entry, err := inlineBoardEntry(updated)
+	entry, err := InlineBoardEntry(updated)
 	if err != nil {
 		return nil, err
 	}
@@ -138,26 +135,4 @@ func UpdateBoard(data []byte, key string, mutate func(datamodel.Board) datamodel
 		return res, nil
 	}
 	return nil, errx.User("config: boards: no board with key %q", key)
-}
-
-func bumpVersionToBoards(data []byte) ([]byte, error) {
-	var doc yaml.Node
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil, errx.User("config: %w", err)
-	}
-	_, val := findTopLevel(&doc, "version")
-	lines := strings.Split(string(data), "\n")
-	token := fmt.Sprint(datamodel.BoardsSchemaVersion)
-	switch {
-	case val == nil:
-		lines = append([]string{"version: " + token}, lines...)
-	case val.Value == fmt.Sprint(datamodel.InitialSchemaVersion):
-		var err error
-		if lines, err = replaceScalarLine(lines, val, token); err != nil {
-			return nil, err
-		}
-	default:
-		return data, nil
-	}
-	return []byte(strings.Join(lines, "\n")), nil
 }

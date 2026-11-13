@@ -26,7 +26,7 @@ func boardFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 	if key == "" {
 		return nil
 	}
-	for _, b := range cfg.EffectiveBoards() {
+	for _, b := range cfg.Boards {
 		if strings.EqualFold(b.Key, key) {
 			return nil
 		}

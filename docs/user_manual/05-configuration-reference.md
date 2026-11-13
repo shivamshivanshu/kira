@@ -120,19 +120,22 @@ version: 2
 ```
 
 The schema version of *this config file format* — not the version of the kira
-binary, and not anything about your tickets. Current kira understands `1` and
-`2`; anything else is rejected:
+binary, and not anything about your tickets. `kira init` scaffolds
+`version: 2` together with a [`boards`](#boards) list holding the project's
+default board. A `version: 1` config, from before boards existed, no longer
+loads:
+
+```
+kira: config: version 1 is no longer supported
+  hint: set version: 2 and add boards: [{ key: KIRA, name: kira, default: true }]
+```
+
+Older commits whose config is still `version: 1` stay readable, so
+`kira diff`, `kira changes` and `list --at` reach back past the upgrade.
+Any other version is rejected:
 
 ```
 kira: config: version: unsupported version 3 (this kira understands 1..2)
-```
-
-`kira init` scaffolds `version: 1`. Bump it to `2` when you want a
-[`boards`](#boards) list, which is the only feature gated on it:
-
-```
-kira: config: boards require version 2, found 1
-  hint: bump version to 2 or remove the boards list
 ```
 
 ---
@@ -153,10 +156,9 @@ project:
 `project.key` is the prefix for display numbers (`KIRA-12`). `project.name` is
 the human label shown in the TUI and board headers.
 
-If you have no [`boards`](#boards) list, kira synthesizes a single default
-board from these two values, so `project.key` doubles as your only board key.
-Once you declare `boards:`, that list takes over completely and `project.key`
-is no longer used for board resolution.
+`kira init` uses these two values for the first, default
+[`boards`](#boards) entry. From then on the `boards` list alone decides board
+resolution.
 
 `project.name` is settable via `kira config set project.name "..."`.
 `project.key` is not — it is baked into every existing display number.
@@ -293,7 +295,7 @@ boards:
 | `archived` | bool | no | `false` |
 
 Boards partition items into independent numbering streams — an item on the
-`CORE` board is `CORE-46`, not `KIRA-46`. Requires [`version: 2`](#version).
+`CORE` board is `CORE-46`, not `KIRA-46`.
 
 Rules enforced at load: keys are 2–10 characters, uppercase alphanumeric,
 starting with a letter; keys are unique case-insensitively; `name` is
@@ -303,10 +305,9 @@ non-empty; and at most one board may be `default`.
 while removing it from pickers and from the default board list. An archived
 board cannot serve as the default.
 
-Omitting `boards:` entirely is fine — kira synthesizes a single default board
-from `project.key` and `project.name`. Once you declare the list, it replaces
-that synthesized board completely, so remember to include an entry for your
-original project key (as this repo does with `KIRA`).
+`kira init` writes the list with one default board keyed by `project.key`.
+Without any board, `kira create` has nowhere to number an item and stops with
+`no boards configured`.
 
 See [Boards and sprints](04-cli-reference/boards-and-sprints.md) for working
 with them day to day.

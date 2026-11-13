@@ -69,7 +69,7 @@ Look hard at: atomic write (tmp+fsync+rename); flock scope and the 2s waiter tim
 - [ ] internal/storage/test/read_test.go — tests LoadAll sorting, temp-file skipping, and malformed-file warnings
 - [ ] internal/storage/test/store_test.go — tests store discovery walking up and env-error on missing .kira
 
-## 6. External-tool wrappers — `gitx`, `rgx`, `termx`, `editorx`, `clipx`, `showfmt`
+## 6. External-tool wrappers — `gitx`, `termx`, `editorx`, `clipx`, `showfmt`
 Look hard at: NUL-delimited git output parsing (forgery resistance — bodies/authors are attacker-influenced); no shell interpolation anywhere; every subprocess concern stays inside these packages.
 
 - [ ] internal/gitx/attributes.go — Repo.InfoAttributeHasLine: checks if git info/attributes contains an exact line.
@@ -84,8 +84,6 @@ Look hard at: NUL-delimited git output parsing (forgery resistance — bodies/au
 - [ ] internal/gitx/trailers.go — Repo.LogTrailers: parses commit log into Commit records with ticket/close trailers.
 - [ ] internal/gitx/treeish.go — Repo treeish resolution: rev-parse, at-date, merge-base, ls-tree names, no-index numstat.
 - [ ] internal/gitx/trailers_test.go — Tests LogTrailers resists forged trailer/record injection from commit bodies.
-- [ ] internal/rgx/rgx.go — ripgrep wrapper: Line type, Installed, ParseLine, Search over a directory.
-- [ ] internal/rgx/test/rgx_test.go — Tests rgx.ParseLine on match/context/separator ripgrep output lines.
 - [ ] internal/termx/termx.go — Terminal helpers: IsTerminal, IsInteractive, ReadLineDefault prompts.
 - [ ] internal/editorx/editorx.go — Editor launcher: resolves $EDITOR/$VISUAL and opens a file for editing.
 - [ ] internal/clipx/clipx.go — Clipboard copy via OSC 52 (tmux-wrapped) plus external tool detection.
@@ -152,7 +150,7 @@ Look hard at: single indexed read path with linear-scan fallback + degraded stde
 - [ ] internal/core/list.go — List query: filter, compile predicates/order, sort, epic-tree grouping.
 - [ ] internal/core/show.go — Show one ticket with linked commits and history tail.
 - [ ] internal/core/filter.go — lists configured saved filters; errors on unknown filter names.
-- [ ] internal/core/find.go — full-text search across tickets via ripgrep or regex fallback.
+- [ ] internal/core/find.go — full-text regex search across ticket files.
 - [ ] internal/core/find_test.go — tests find fallback matching, flags, arg parsing, error codes.
 - [ ] internal/core/tree.go — builds epic/child hierarchy trees with cycle detection.
 - [ ] internal/core/board.go — assembles kanban board columns by workflow state with WIP/counts.
@@ -258,7 +256,7 @@ Look hard at: commands stay thin (open store → core call → render/json); one
 - [ ] internal/cli/link.go — `link` command: add/remove epic, blocked-by, or typed links.
 - [ ] internal/cli/list.go — `list` command with filter flags and row/tree rendering.
 - [ ] internal/cli/show.go — `show` command: render one item, optionally at a ref or reference-form.
-- [ ] internal/cli/find.go — `find` command: ripgrep-wrapping full-text search over ticket files.
+- [ ] internal/cli/find.go — `find` command: regex full-text search over ticket files.
 - [ ] internal/cli/filter.go — `filter list` command: list named saved queries from config.
 - [ ] internal/cli/query.go — `query` command: filter items by a query expression (tree/flat).
 - [ ] internal/cli/tree.go — `tree` command and shared epic-hierarchy/tree-group rendering.
@@ -335,7 +333,6 @@ Look hard at: the contract scrubber (ULID/timestamp/SHA/dir normalization — wo
 - [ ] tests/e2e/e2e_test.go — Runs testscript-based end-to-end command scripts against kira.
 - [ ] tests/e2e/complete_spawn_test.go — Asserts shell-completion serves from cache without spawning git.
 - [ ] tests/e2e/crash_exit_test.go — Asserts injected TUI panic exits with code 4.
-- [ ] tests/e2e/find_discover_test.go — Testscript find flows with rg deliberately absent.
 - [ ] tests/e2e/uninit_exit_test.go — Asserts bare TUI on non-tty uninitialized repo exits 3.
 - [ ] tests/integration/integration_test.go — Verifies auto/manual commit modes, editor round-trips, list filters.
 - [ ] tests/integration/diff_test.go — Verifies diff detects deletions, body changes, non-alias number edits.

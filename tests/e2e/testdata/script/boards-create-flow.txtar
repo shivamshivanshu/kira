@@ -1,7 +1,6 @@
-# KIRA-79 boards: init yields one implicit default board (version 1, no boards
-# line); the first `board create` materializes the implicit board and bumps the
-# config to version 2; create honors --board and the default; old numbers keep
-# resolving across materialization.
+# KIRA-79 boards: init writes one explicit default board; `board create` appends
+# to the list; create honors --board and the default; old numbers keep
+# resolving after a board is added.
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
@@ -10,26 +9,24 @@ exec git config user.email test@example.com
 exec git config user.name tester
 exec kira init --key KIRA
 
-# a fresh repo is version 1 with no boards list, yet has one implicit board
-grep '^version: 1$' .kira/config.yaml
-! grep '^boards:' .kira/config.yaml
+# a fresh repo is version 2 with the project's board as the default
+grep '^version: 2$' .kira/config.yaml
+grep '^  - \{ key: KIRA, name: .*, default: true \}$' .kira/config.yaml
 
-# 1 board (implicit): create is silent and mints in the project key space
+# 1 board: create is silent and mints in the project key space
 exec kira create ticket --title early --no-edit
 stdout 'KIRA-1'
 
-# board create materializes the implicit board into an explicit list and bumps
-# the config to version 2, committing a structured subject
+# board create appends to the list, committing a structured subject
 exec kira board create XYZ --name Beta
 stdout 'Created board XYZ'
-grep '^version: 2$' .kira/config.yaml
 grep 'key: KIRA' .kira/config.yaml
 grep 'default: true' .kira/config.yaml
 grep 'key: XYZ' .kira/config.yaml
 exec git log --oneline
 stdout 'board create XYZ'
 
-# the pre-materialization number still resolves afterward
+# a number minted before the board was added still resolves afterward
 exec kira show KIRA-1
 stdout 'KIRA-1'
 

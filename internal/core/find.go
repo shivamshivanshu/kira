@@ -5,26 +5,13 @@ import (
 	"bytes"
 	"os"
 	"regexp"
-	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
-	"github.com/shivamshivanshu/kira/internal/rgx"
-	"github.com/shivamshivanshu/kira/internal/setx"
-	"github.com/shivamshivanshu/kira/internal/storage"
-)
-
-type RowKind int
-
-const (
-	RowMatch RowKind = iota
-	RowContext
-	RowSeparator
 )
 
 type FindRow struct {
-	Kind   RowKind
 	ID     string
 	Number string
 	Line   int
@@ -34,112 +21,35 @@ type FindRow struct {
 func NewFindResult(rows []FindRow) datamodel.FindResult {
 	matches := make([]datamodel.Match, 0, len(rows))
 	for _, r := range rows {
-		if r.Kind == RowMatch {
-			matches = append(matches, datamodel.Match{ID: r.ID, Number: r.Number, Line: r.Line, Text: r.Text})
-		}
+		matches = append(matches, datamodel.Match{ID: r.ID, Number: r.Number, Line: r.Line, Text: r.Text})
 	}
-	// Both backends append a file's matches in ascending line order and
+	// findInItems appends a file's matches in ascending line order and
 	// sortByKey is stable, so hits within one item stay line-ordered with no
-	// explicit tiebreak — a backend that appended out of order would need one.
+	// explicit tiebreak — a search that appended out of order would need one.
 	sortByKey(matches, func(m datamodel.Match) id.SortKey { return id.NewSortKey(m.Number, m.ID) })
 	return datamodel.FindResult{Matches: matches}
 }
 
 type FindArgs struct {
 	Pattern    string
-	Passthru   []string
 	IgnoreCase bool
 	Word       bool
 }
 
-var rgFlagsTakingValue = map[string]bool{
-	"-A": true, "--after-context": true,
-	"-B": true, "--before-context": true,
-	"-C": true, "--context": true,
-	"-m": true, "--max-count": true,
-	"-e": true, "--regexp": true,
-	"-f": true, "--file": true,
-	"--replace": true,
-}
-
-var patternFlags = map[string]bool{"-e": true, "--regexp": true}
-
-func ParseFindArgs(args, dropExact []string) FindArgs {
-	drop := setx.ToSet(dropExact)
-	var fa FindArgs
-	pendingValueFlag := ""
-	for _, a := range args {
-		if drop[a] {
-			continue
-		}
-		fa.Passthru = append(fa.Passthru, a)
-		if pendingValueFlag != "" {
-			if patternFlags[pendingValueFlag] && fa.Pattern == "" {
-				fa.Pattern = a
-			}
-			pendingValueFlag = ""
-			continue
-		}
-		if flag, value, ok := strings.Cut(a, "="); ok && rgFlagsTakingValue[flag] {
-			if patternFlags[flag] && fa.Pattern == "" {
-				fa.Pattern = value
-			}
-			continue
-		}
-		switch {
-		case a == "-i" || a == "--ignore-case":
-			fa.IgnoreCase = true
-		case a == "-w" || a == "--word-regexp":
-			fa.Word = true
-		case rgFlagsTakingValue[a]:
-			pendingValueFlag = a
-		case !strings.HasPrefix(a, "-") && fa.Pattern == "":
-			fa.Pattern = a
-		}
-	}
-	return fa
-}
+const (
+	scannerInitialBuffer = 64 * 1024
+	scannerMaxLineSize   = 4 * 1024 * 1024
+)
 
 func (s *Store) Find(cfg *datamodel.Config, args FindArgs) ([]FindRow, error) {
 	ld, err := s.read(cfg, loadOpts{})
 	if err != nil {
 		return nil, err
 	}
-	if rgx.Installed() {
-		return s.findRipgrep(args, ld.items)
-	}
-	return s.findFallback(args, ld.items)
+	return s.findInItems(args, ld.items)
 }
 
-func (s *Store) findRipgrep(args FindArgs, items []*datamodel.Item) ([]FindRow, error) {
-	byID := datamodel.IndexByID(items)
-
-	fs := s.fs()
-	lines, err := rgx.Search(fs.Root(), args.Passthru, fs.RelToRoot(fs.ItemsDir()))
-
-	var rows []FindRow
-	for _, l := range lines {
-		if l.Path == "" {
-			rows = append(rows, FindRow{Kind: RowSeparator, Text: l.Text})
-			continue
-		}
-		number, itemID := l.Path, ""
-		if it := byID[storage.ULIDFromPath(l.Path)]; it != nil {
-			number, itemID = it.Number, it.ID
-		}
-		if l.IsMatch {
-			rows = append(rows, FindRow{Kind: RowMatch, ID: itemID, Number: number, Line: l.LineNo, Text: l.Text})
-		} else {
-			rows = append(rows, FindRow{Kind: RowContext, Number: number, Line: l.LineNo, Text: l.Text})
-		}
-	}
-	if err != nil {
-		return rows, errx.User("find: %s", err)
-	}
-	return rows, nil
-}
-
-func (s *Store) findFallback(args FindArgs, items []*datamodel.Item) ([]FindRow, error) {
+func (s *Store) findInItems(args FindArgs, items []*datamodel.Item) ([]FindRow, error) {
 	if args.Pattern == "" {
 		return nil, errx.User("find: a search pattern is required")
 	}
@@ -156,7 +66,7 @@ func (s *Store) findFallback(args FindArgs, items []*datamodel.Item) ([]FindRow,
 	}
 
 	var rows []FindRow
-	buf := make([]byte, 0, rgx.ScannerInitialBuffer)
+	buf := make([]byte, 0, scannerInitialBuffer)
 	fs := s.fs()
 	for _, it := range items {
 		data, err := os.ReadFile(fs.ItemPath(it.ID))
@@ -165,12 +75,12 @@ func (s *Store) findFallback(args FindArgs, items []*datamodel.Item) ([]FindRow,
 		}
 		lineNo := 0
 		scanner := bufio.NewScanner(bytes.NewReader(data))
-		scanner.Buffer(buf, rgx.ScannerMaxLineSize)
+		scanner.Buffer(buf, scannerMaxLineSize)
 		for scanner.Scan() {
 			lineNo++
 			line := scanner.Text()
 			if re.MatchString(line) {
-				rows = append(rows, FindRow{Kind: RowMatch, ID: it.ID, Number: it.Number, Line: lineNo, Text: line})
+				rows = append(rows, FindRow{ID: it.ID, Number: it.Number, Line: lineNo, Text: line})
 			}
 		}
 		if err := scanner.Err(); err != nil {

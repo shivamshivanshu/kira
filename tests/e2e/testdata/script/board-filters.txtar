@@ -39,11 +39,14 @@ stdout 'KIRA-1'
 ! stdout 'KIRA-2'
 
 -- filters.yaml --
-version: 1
+version: 2
 
 project:
   key: KIRA
   name: kira
+
+boards:
+  - { key: KIRA, name: kira, default: true }
 
 labels:
   known: [backend, frontend]

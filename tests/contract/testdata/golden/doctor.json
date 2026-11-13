@@ -2,11 +2,6 @@
   "ok": true,
   "findings": [
     {
-      "class": "environment",
-      "severity": "info",
-      "message": "rg not found on PATH; the feature that uses it falls back to a slower pure-Go path"
-    },
-    {
       "class": "index-freshness",
       "severity": "info",
       "message": "index not built yet; it builds on first read"
@@ -15,6 +10,6 @@
   "summary": {
     "error": 0,
     "warning": 0,
-    "info": 2
+    "info": 1
   }
 }

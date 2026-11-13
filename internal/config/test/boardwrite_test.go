@@ -8,7 +8,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 )
 
-const boardBaseConfig = `version: 1
+const boardBaseConfig = `version: 2
 
 project:
   key: KIRA
@@ -42,19 +42,13 @@ func addBoard(t *testing.T, data string, b datamodel.Board, implicit *datamodel.
 	return string(out)
 }
 
-func TestAddBoardFirstMaterializesImplicitAndBumpsVersion(t *testing.T) {
+func TestAddBoardFirstMaterializesImplicit(t *testing.T) {
 	imp := implicitKIRA
 	out := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)
 
-	if strings.Contains(out, "version: 1") || !strings.Contains(out, "version: 2") {
-		t.Errorf("version not bumped to 2:\n%s", out)
-	}
 	cfg, err := config.Parse([]byte(out))
 	if err != nil {
 		t.Fatalf("result does not parse: %v", err)
-	}
-	if cfg.Version != datamodel.BoardsSchemaVersion {
-		t.Errorf("parsed version = %d, want %d", cfg.Version, datamodel.BoardsSchemaVersion)
 	}
 	if len(cfg.Boards) != 2 {
 		t.Fatalf("parsed boards = %+v, want 2 entries", cfg.Boards)
@@ -77,19 +71,13 @@ func TestAddBoardKeyEqualsProjectWritesSingleDefault(t *testing.T) {
 	if len(cfg.Boards) != 1 || cfg.Boards[0].Key != "KIRA" || !cfg.Boards[0].Default {
 		t.Errorf("parsed boards = %+v, want single KIRA default", cfg.Boards)
 	}
-	if cfg.Version != datamodel.BoardsSchemaVersion {
-		t.Errorf("parsed version = %d, want %d", cfg.Version, datamodel.BoardsSchemaVersion)
-	}
 }
 
-func TestAddBoardSecondAppendLeavesVersionUntouched(t *testing.T) {
+func TestAddBoardSecondAppendKeepsEarlierBoards(t *testing.T) {
 	imp := implicitKIRA
 	first := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)
 	out := addBoard(t, first, datamodel.Board{Key: "ABC", Name: "Gamma"}, nil)
 
-	if strings.Count(out, "version: 2") != 1 || strings.Contains(out, "version: 1") {
-		t.Errorf("version line changed by second append:\n%s", out)
-	}
 	cfg, err := config.Parse([]byte(out))
 	if err != nil {
 		t.Fatalf("result does not parse: %v", err)
@@ -161,7 +149,7 @@ func TestAddBoardQuotesFlowBreakingValues(t *testing.T) {
 }
 
 func TestAddBoardAppendsToFlowList(t *testing.T) {
-	flowCfg := strings.Replace(boardBaseConfig, "version: 1", "version: 2", 1) +
+	flowCfg := boardBaseConfig +
 		"boards: [{ key: KIRA, name: kira, default: true }]\n"
 	out := addBoard(t, flowCfg, datamodel.Board{Key: "XYZ", Name: "Beta"}, nil)
 	cfg, err := config.Parse([]byte(out))
@@ -170,15 +158,6 @@ func TestAddBoardAppendsToFlowList(t *testing.T) {
 	}
 	if len(cfg.Boards) != 2 || cfg.Boards[1].Key != "XYZ" {
 		t.Fatalf("flow-list append: %+v", cfg.Boards)
-	}
-}
-
-func TestAddBoardBumpsVersionPreservingComment(t *testing.T) {
-	cfg := strings.Replace(boardBaseConfig, "version: 1", "version: 1  # schema rev", 1)
-	imp := implicitKIRA
-	out := addBoard(t, cfg, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)
-	if !strings.Contains(out, "version: 2") || !strings.Contains(out, "# schema rev") {
-		t.Errorf("version bump dropped its trailing comment:\n%s", out)
 	}
 }
 
@@ -199,22 +178,6 @@ func TestUpdateBoardPreservesTrailingComment(t *testing.T) {
 	cfg, _ := config.Parse(out)
 	if b, _ := cfg.BoardByKey("XYZ"); b.Name != "Beta Squad" {
 		t.Fatalf("rename not applied: %+v", cfg.Boards)
-	}
-}
-
-func TestAddBoardWithoutVersionLineInsertsIt(t *testing.T) {
-	noVersion := strings.Replace(boardBaseConfig, "version: 1\n\n", "", 1)
-	imp := implicitKIRA
-	out := addBoard(t, noVersion, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)
-	if !strings.HasPrefix(out, "version: 2\n") {
-		t.Errorf("version: 2 not inserted at the top:\n%s", out)
-	}
-	cfg, err := config.Parse([]byte(out))
-	if err != nil {
-		t.Fatalf("result does not parse: %v", err)
-	}
-	if cfg.Version != datamodel.BoardsSchemaVersion || len(cfg.Boards) != 2 {
-		t.Errorf("parsed version = %d boards = %+v", cfg.Version, cfg.Boards)
 	}
 }
 
@@ -261,7 +224,7 @@ func TestUpdateBoardQuotedNameWithBraceRoundTrips(t *testing.T) {
 }
 
 func TestUpdateBoardRefusesMultiLineEntry(t *testing.T) {
-	base := strings.Replace(boardBaseConfig, "version: 1", "version: 2", 1) +
+	base := boardBaseConfig +
 		"boards:\n  - key: XYZ\n    name: Beta\n"
 	_, err := config.UpdateBoard([]byte(base), "XYZ", func(b datamodel.Board) datamodel.Board {
 		b.Name = "Beta Squad"
@@ -273,7 +236,7 @@ func TestUpdateBoardRefusesMultiLineEntry(t *testing.T) {
 }
 
 func TestUpdateBoardInsideInlineFlowList(t *testing.T) {
-	base := strings.Replace(boardBaseConfig, "version: 1", "version: 2", 1) +
+	base := boardBaseConfig +
 		"boards: [{ key: KIRA, name: kira, default: true }, { key: XYZ, name: Beta }]\n"
 	out, err := config.UpdateBoard([]byte(base), "XYZ", func(b datamodel.Board) datamodel.Board {
 		b.Name = "Beta Squad"
@@ -295,7 +258,7 @@ func TestUpdateBoardInsideInlineFlowList(t *testing.T) {
 }
 
 func TestUpdateBoardNonASCIISiblingNameByteOffset(t *testing.T) {
-	base := strings.Replace(boardBaseConfig, "version: 1", "version: 2", 1) +
+	base := boardBaseConfig +
 		"boards: [{ key: KIRA, name: Zürich, default: true }, { key: XYZ, name: Beta }]\n"
 	out, err := config.UpdateBoard([]byte(base), "XYZ", func(b datamodel.Board) datamodel.Board {
 		b.Name = "Beta Squad"

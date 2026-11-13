@@ -22,7 +22,7 @@
   <label class="sr-only" for="board-filter">Board</label>
   <select id="board-filter" name="board">
     <option value="">All boards</option>
-    {{if .Config}}{{range .Config.EffectiveBoards}}<option value="{{.Key}}" {{if eq $.BoardKey .Key}}selected{{end}}>{{.Key}}</option>{{end}}{{end}}
+    {{if .Config}}{{range .Config.Boards}}<option value="{{.Key}}" {{if eq $.BoardKey .Key}}selected{{end}}>{{.Key}}</option>{{end}}{{end}}
   </select>
   <label class="sr-only" for="type-filter">Item type</label>
   <select id="type-filter" name="type">

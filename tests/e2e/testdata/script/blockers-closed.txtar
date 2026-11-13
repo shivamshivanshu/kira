@@ -39,10 +39,12 @@ exec kira move KIRA-3 DONE
 stderr 'no known state category'
 
 -- config.yaml --
-version: 1
+version: 2
 project:
   key: KIRA
   name: KIRA
+boards:
+  - { key: KIRA, name: KIRA, default: true }
 workflows:
   ticket:
     states:

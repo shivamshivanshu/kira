@@ -58,7 +58,7 @@ func sectionProvenance(t *testing.T, res *datamodel.ExplainResult, name string) 
 
 func TestExplainProvenanceFollowsSupplyingTier(t *testing.T) {
 	t.Parallel()
-	const repoBase = "version: 1\nproject:\n  key: KIRA\n"
+	const repoBase = "version: 2\nproject:\n  key: KIRA\n"
 	cases := []struct {
 		name       string
 		repo, user string

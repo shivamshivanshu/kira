@@ -1,8 +1,11 @@
-version: 1
+version: 2
 
 project:
   key: KIRA
   name: kira
+
+boards:
+  - { key: KIRA, name: kira, default: true }
 
 id:
   style: sequential          # sequential (default, reconciled post-merge) | hash (ULID-derived, zero reconciliation)

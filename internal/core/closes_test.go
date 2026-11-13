@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/index"
 )
@@ -29,7 +28,7 @@ func landedWatermark(t *testing.T, s *Store) string {
 
 func TestApplyClosesWatermark(t *testing.T) {
 	s := eventRepo(t)
-	cfg := config.Default()
+	cfg := defaultConfigWithKIRABoard()
 	cfg.Commit.Mode = datamodel.CommitManual
 
 	created, err := s.Create(cfg, CreateOpts{Type: "ticket", Title: "closeme", NoEdit: true})
@@ -97,7 +96,7 @@ func TestApplyClosesWatermark(t *testing.T) {
 
 func TestApplyClosesMultipleCandidates(t *testing.T) {
 	s := eventRepo(t)
-	cfg := config.Default()
+	cfg := defaultConfigWithKIRABoard()
 	cfg.Commit.Mode = datamodel.CommitManual
 
 	a, err := s.Create(cfg, CreateOpts{Type: "ticket", Title: "a", NoEdit: true})
@@ -136,7 +135,7 @@ func TestApplyClosesMultipleCandidates(t *testing.T) {
 
 func TestApplyClosesWatermarkWriteFailureKeepsReport(t *testing.T) {
 	s := eventRepo(t)
-	cfg := config.Default()
+	cfg := defaultConfigWithKIRABoard()
 	cfg.Commit.Mode = datamodel.CommitManual
 
 	created, err := s.Create(cfg, CreateOpts{Type: "ticket", Title: "closeme", NoEdit: true})

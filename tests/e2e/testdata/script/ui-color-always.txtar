@@ -14,8 +14,10 @@ exec kira board --plain
 stdout '\x1b\['
 
 -- color-config.yaml --
-version: 1
+version: 2
 project:
   key: KIRA
+boards:
+  - { key: KIRA, name: kira, default: true }
 ui:
   color: always

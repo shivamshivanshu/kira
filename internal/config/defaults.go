@@ -4,7 +4,7 @@ import "github.com/shivamshivanshu/kira/internal/datamodel"
 
 func Default() *datamodel.Config {
 	return &datamodel.Config{
-		Version: datamodel.InitialSchemaVersion,
+		Version: datamodel.SchemaVersion,
 		Project: datamodel.Project{Key: "KIRA", Name: "kira"},
 		Labels:  datamodel.Vocab{},
 		People:  datamodel.People{},

@@ -35,7 +35,7 @@ capture under the active ticket), `edit` (editor or `--field`, bulk), `move`
 (epic parent, blocked-by, typed links), `comment`, `show`.
 
 **Views & organization** — `list` (native filter flags, `--query` expressions, saved `--filter` queries),
-`tree`, `board` (kanban, WIP limits), `find` (ripgrep-backed full-text search),
+`tree`, `board` (kanban, WIP limits), `find` (regex full-text search),
 `now` (active ticket), `stats` (completion, cycle/lead time, throughput), `log` (field history + linked commits), `blame` (per-field
 provenance), `diff`/`changes` (vs. a git ref).
 

@@ -22,8 +22,17 @@ func uncommentOptional(seed string) string {
 	return strings.Join(lines, "\n")
 }
 
+func seedConfigYAML(t *testing.T) string {
+	t.Helper()
+	seed, err := initConfigYAML("KIRA", "kira")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return seed
+}
+
 func TestSeedCommentsAreInert(t *testing.T) {
-	seed := initConfigYAML("KIRA", "kira")
+	seed := seedConfigYAML(t)
 
 	fromSeed, err := config.Parse([]byte(seed))
 	if err != nil {
@@ -38,21 +47,23 @@ func TestSeedCommentsAreInert(t *testing.T) {
 	}
 
 	// Uncommented, the optional blocks must reproduce exactly the documented
-	// defaults; the seed otherwise differs from Default() only by the empty
-	// project vocabularies a fresh repo starts with and the shipped starter
-	// filter, which Default() leaves empty so it stays user-removable.
+	// defaults; the seed otherwise differs from Default() only by the project
+	// identity and its default board, the empty project vocabularies a fresh
+	// repo starts with, and the shipped starter filter, which Default() leaves
+	// empty so it stays user-removable.
 	def := config.Default()
 	fromUncommented.Project = def.Project
+	fromUncommented.Boards = def.Boards
 	fromUncommented.Labels = def.Labels
 	fromUncommented.People = def.People
 	fromUncommented.Filters = def.Filters
 	if !reflect.DeepEqual(fromUncommented, def) {
-		t.Errorf("uncommented seed diverges from Default() beyond project/labels/people:\n%+v\n!=\n%+v", fromUncommented, def)
+		t.Errorf("uncommented seed diverges from Default() beyond project/boards/labels/people:\n%+v\n!=\n%+v", fromUncommented, def)
 	}
 }
 
 func TestSeedConfigSetPreservesEveryOtherLine(t *testing.T) {
-	seed := initConfigYAML("KIRA", "kira")
+	seed := seedConfigYAML(t)
 	out, err := config.SetScalar([]byte(seed), "commit.mode", "manual")
 	if err != nil {
 		t.Fatalf("SetScalar: %v", err)

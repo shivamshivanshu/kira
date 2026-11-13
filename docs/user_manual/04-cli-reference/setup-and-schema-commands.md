@@ -169,7 +169,8 @@ $ tree -a --noreport .kira
 └── tickets
 ```
 
-- `config.yaml` — the project config, scaffolded with the default
+- `config.yaml` — the project config, scaffolded with `version: 2`, a
+  `boards:` list holding the project's default board, the default
   vocabularies and commented-out optional blocks.
 - `tickets/` — where item files will be written. Empty at first.
 - `templates/ticket.md`, `templates/epic.md` — the bodies new items start from.

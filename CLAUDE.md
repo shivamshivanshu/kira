@@ -72,7 +72,7 @@ see `REVIEW.md` for the full bottom-up file list):
 - `webui` — embedded HTTP web dashboard served by `kira server`; mutations go through `core`.
 - `cli` — cobra command tree; every command is a thin argv/flag adapter over `core` (launches `tui`/`webui`).
 - `seed` — deterministic fixture generation (perf harness, tour/vhs demos).
-- Small leaf utilities: `errx` (user-facing errors + suggestions), `ptr`, `rgx`, `statsfmt`, `termx`, `timex`, `clipx` (OSC 52 clipboard), `editorx`, `commandline` (shell-style argv splitting), `testutil` (hermetic git repo test helpers), `setx` (generic dedup/set helpers, zero deps).
+- Small leaf utilities: `errx` (user-facing errors + suggestions), `ptr`, `statsfmt`, `termx`, `timex`, `clipx` (OSC 52 clipboard), `editorx`, `commandline` (shell-style argv splitting), `testutil` (hermetic git repo test helpers), `setx` (generic dedup/set helpers, zero deps).
 
 `cmd/kira` — the entry point (`os.Exit(cli.Main())`). `tests/` — `contract`,
 `e2e`, `integration`, `nocolor`, `perf`, each its own package.

@@ -19,9 +19,11 @@ exec git worktree list
 stdout 'wt-KIRA-1'
 
 -- workon-config.yaml --
-version: 1
+version: 2
 project:
   key: KIRA
+boards:
+  - { key: KIRA, name: kira, default: true }
 workon:
   worktree: true
   worktree_dir: ../wt-{number}

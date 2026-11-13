@@ -20,9 +20,11 @@ stdout '"title": "From Env Editor"'
 ! stdout '"title": "From Repo Editor"'
 
 -- repo-config.yaml --
-version: 1
+version: 2
 project:
   key: KIRA
+boards:
+  - { key: KIRA, name: kira, default: true }
 ui:
   editor: sh repo-editor.sh
 -- xdg/kira/config.yaml --

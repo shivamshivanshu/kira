@@ -35,11 +35,14 @@ exec kira show KIRA-1 --json
 stdout '"title": "committed"'
 
 -- manual-config.yaml --
-version: 1
+version: 2
 
 project:
   key: KIRA
   name: kira
+
+boards:
+  - { key: KIRA, name: kira, default: true }
 
 id:
   style: sequential

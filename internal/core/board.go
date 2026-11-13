@@ -262,9 +262,9 @@ func (s *Store) updateBoard(_ *datamodel.Config, key, verb string, guardLastActi
 	return &datamodel.BoardUpdateResult{Board: view}, nil
 }
 
-// BoardList returns the effective (active plus adopted-implicit) boards.
+// BoardList returns every configured board, archived ones included.
 func (s *Store) BoardList(cfg *datamodel.Config) (*datamodel.BoardListResult, error) {
-	boards := cfg.EffectiveBoards()
+	boards := cfg.Boards
 	views := make([]datamodel.BoardView, len(boards))
 	for i, b := range boards {
 		views[i] = boardView(b)

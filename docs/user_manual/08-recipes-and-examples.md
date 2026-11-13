@@ -354,9 +354,9 @@ $ kira find -i 'RETRY'
 CORE-1:6:title: "Fix flaky retry backoff"
 ```
 
-`kira find` is a ripgrep wrapper scoped to your ticket files, reporting hits by
-ticket number and line instead of by path. Any flags after the pattern are
-passed straight through to ripgrep, so `-i`, `-C 2`, and `-w` all work. Use it
+`kira find` is a regex search scoped to your ticket files, reporting hits by
+ticket number and line instead of by path. `-i` ignores case and `-w` matches
+whole words only. Use it
 when you remember a phrase from the description but not the number — `kira list
 --query` only searches titles.
 

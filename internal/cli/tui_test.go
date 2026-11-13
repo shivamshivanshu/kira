@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"os/exec"
 	"strings"
 	"testing"
 
@@ -71,9 +70,6 @@ func TestCommandRunnerReportsError(t *testing.T) {
 }
 
 func TestCommandRunnerFindDropsGlobalFlags(t *testing.T) {
-	if _, err := exec.LookPath("rg"); err != nil {
-		t.Skip("ripgrep not installed")
-	}
 	dir := initFixture(t)
 	s, cfg := reopen(t, dir)
 	if _, err := s.Create(cfg, core.CreateOpts{Type: "ticket", Title: "Bridged needle", NoEdit: true}); err != nil {
@@ -91,9 +87,6 @@ func TestCommandRunnerFindDropsGlobalFlags(t *testing.T) {
 }
 
 func TestCommandRunnerFindHonoursChdir(t *testing.T) {
-	if _, err := exec.LookPath("rg"); err != nil {
-		t.Skip("ripgrep not installed")
-	}
 	dir := initFixture(t)
 	s, cfg := reopen(t, dir)
 	if _, err := s.Create(cfg, core.CreateOpts{Type: "ticket", Title: "Bridged needle", NoEdit: true}); err != nil {

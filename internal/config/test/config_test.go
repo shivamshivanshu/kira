@@ -38,6 +38,7 @@ func TestParseExample(t *testing.T) {
 	}
 	want.Labels = datamodel.Vocab{Known: []string{"bug", "feature", "perf", "tech-debt", "orderbook", "infra", "p0", "p1", "p2"}}
 	want.People = datamodel.People{Known: []datamodel.Person{{Name: "shivam"}, {Name: "alice"}}}
+	want.Boards = []datamodel.Board{{Key: "KIRA", Name: "kira", Default: true}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("parsed example does not match documented defaults\n got: %#v\nwant: %#v", got, want)
 	}
@@ -45,7 +46,7 @@ func TestParseExample(t *testing.T) {
 
 func TestMinimalYieldsDefaults(t *testing.T) {
 	t.Parallel()
-	got, err := config.Parse([]byte("version: 1\n"))
+	got, err := config.Parse([]byte("version: 2\n"))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -82,6 +83,25 @@ func TestLoadReadsFromKiraDir(t *testing.T) {
 	}
 	if _, err := config.Load(t.TempDir()); err == nil {
 		t.Error("Load on a repo with no config.yaml should error")
+	}
+}
+
+func TestLoadRejectsVersionOneThatParseAccepts(t *testing.T) {
+	t.Parallel()
+	v1 := []byte("version: 1\nproject:\n  key: KIRA\n  name: kira\n")
+	if _, err := config.Parse(v1); err != nil {
+		t.Fatalf("Parse must keep reading version 1 for historical trees: %v", err)
+	}
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".kira"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".kira", "config.yaml"), v1, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := config.Load(root)
+	if err == nil || !strings.Contains(err.Error(), "version 1 is no longer supported") {
+		t.Fatalf("Load = %v, want the version 1 rejection", err)
 	}
 }
 

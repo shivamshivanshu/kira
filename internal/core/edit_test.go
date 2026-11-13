@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/testutil"
@@ -57,7 +56,7 @@ func TestEditFieldSetsBodySectionAndRoundTrips(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, ".kira", "tickets"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cfg := config.Default()
+	cfg := defaultConfigWithKIRABoard()
 	created, err := s.Create(cfg, CreateOpts{Type: datamodel.TypeTicket, Title: "T", NoEdit: true})
 	if err != nil {
 		t.Fatalf("create: %v", err)

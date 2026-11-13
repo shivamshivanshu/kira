@@ -17,6 +17,12 @@ const (
 	ulidC = "01HCCCCCCCCCCCCCCCCCCCCCCC"
 )
 
+func defaultConfigWithKIRABoard() *datamodel.Config {
+	cfg := config.Default()
+	cfg.Boards = []datamodel.Board{{Key: "KIRA", Name: "kira", Default: true}}
+	return cfg
+}
+
 func resolver(items ...*datamodel.Item) *id.Resolver {
 	snap := id.Snapshot{Key: "KIRA"}
 	for _, it := range items {
@@ -123,7 +129,7 @@ func TestLintMalformedComment(t *testing.T) {
 func TestCheckCleanItemHasNoFindings(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
-	if f := doctor.Check(config.Default(), resolver(it), it); len(f) != 0 {
+	if f := doctor.Check(defaultConfigWithKIRABoard(), resolver(it), it); len(f) != 0 {
 		t.Fatalf("expected no findings for a clean item, got %+v", f)
 	}
 }
@@ -338,18 +344,6 @@ func TestRefTypeSkipsMissingParent(t *testing.T) {
 	}
 }
 
-func TestEnvOptionalBinFinding(t *testing.T) {
-	t.Parallel()
-	env := doctor.Env{GitInstalled: true, InsideWorkTree: true, MissingOptionalBins: []string{"rg"}}
-	report := doctor.Run(config.Default(), nil, nil, env)
-	for _, f := range report.Findings {
-		if f.Class == doctor.ClassEnv && strings.Contains(f.Message, "rg not found") {
-			return
-		}
-	}
-	t.Errorf("expected an optional-bin info finding for rg, got %+v", report.Findings)
-}
-
 func TestParentCycle(t *testing.T) {
 	t.Parallel()
 	a := valid(ulidA, "KIRA-1")
@@ -420,7 +414,7 @@ func TestCheckReportsBuiltinDanglingRefOnce(t *testing.T) {
 	it := valid(ulidA, "KIRA-1")
 	it.Parent = new(ulidB)
 
-	f := doctor.Check(config.Default(), resolver(it), it)
+	f := doctor.Check(defaultConfigWithKIRABoard(), resolver(it), it)
 	if len(f) != 1 || f[0].Field != datamodel.KeyParent {
 		t.Fatalf("a dangling parent must be reported once, got %+v", f)
 	}

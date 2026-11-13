@@ -104,8 +104,8 @@ func run(m *testing.M) int {
 	return m.Run()
 }
 
-// rg/fzf are deliberately absent from toolBin, so find always takes its
-// deterministic pure-Go fallback regardless of what the host has installed.
+// PATH holds only toolBin's git and true, so no golden depends on what else the
+// host has installed.
 func baseEnv() []string {
 	return append(testutil.HermeticEnvironment(), "PATH="+toolBin, "KIRA_NOW=2026-07-15T09:00:00Z")
 }
