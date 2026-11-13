@@ -38,23 +38,10 @@ var (
 )
 
 type iconSet struct {
-	mode       datamodel.IconMode
-	priorities []string
-	// typeIcons is each item type's glyph, keyed by type. typeCell is the
-	// width they share, taken from the widest of them.
+	mode datamodel.IconMode
+	// typeIcons is each item type's glyph, keyed by type. Only the tree draws
+	// a per-type glyph, so the plain board renderer leaves this unset.
 	typeIcons map[string]string
-	typeCell  int
-}
-
-// withTypeIcons attaches per-type icons and sizes the cell they share. Only the tree draws a per-type glyph, so the plain board renderer
-// leaves this unset.
-func (ic iconSet) withTypeIcons(icons map[string]string) iconSet {
-	ic.typeIcons = icons
-	ic.typeCell = 0
-	for _, g := range icons {
-		ic.typeCell = max(ic.typeCell, lipgloss.Width(g))
-	}
-	return ic
 }
 
 // itemTypeIcons are nerd-font glyphs with no per-mode variants, so ui.icons
@@ -67,7 +54,7 @@ var itemTypeIcons = map[string]string{
 func (ic iconSet) rich() bool { return ic.mode != datamodel.IconText }
 
 func detectIcons(mode datamodel.IconMode, env func(string) string, isTTY bool) iconSet {
-	return iconSet{mode: resolveIconMode(mode, env, isTTY), priorities: datamodel.Priorities}
+	return iconSet{mode: resolveIconMode(mode, env, isTTY)}
 }
 
 func resolveIconMode(mode datamodel.IconMode, env func(string) string, isTTY bool) datamodel.IconMode {
@@ -122,10 +109,9 @@ func utf8Locale(env func(string) string) bool {
 
 func osEnv(key string) string { return os.Getenv(key) }
 
-// typeGlyph draws the type's glyph in every icon mode. The cell is
-// width-normalised so the tree column does not shift between types.
+// typeGlyph draws the type's glyph in every icon mode.
 func (ic iconSet) typeGlyph(typ string) string {
-	return padToWidth(ic.typeIcons[typ], ic.typeCell)
+	return ic.typeIcons[typ]
 }
 
 // padToWidth trails spaces so a narrow or absent glyph still fills its cell;
@@ -157,7 +143,7 @@ func (ic iconSet) priorityTier(value string) int {
 	if value == "" {
 		return -1
 	}
-	return slices.Index(ic.priorities, value)
+	return slices.Index(datamodel.Priorities, value)
 }
 
 const maxPriorityMarks = 3
@@ -177,10 +163,7 @@ func priorityMarks(tier int) int {
 
 func (ic iconSet) priorityCell(value string) string {
 	unit := glyphPriority.pick(ic.mode)
-	gutter := lipgloss.Width(unit)
-	if len(ic.priorities) > 0 {
-		gutter *= maxPriorityMarks
-	}
+	gutter := lipgloss.Width(unit) * maxPriorityMarks
 	cell := strings.Repeat(unit, priorityMarks(ic.priorityTier(value)))
 	return padToWidth(cell, gutter)
 }

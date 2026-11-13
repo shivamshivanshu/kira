@@ -25,13 +25,13 @@ func (k precedenceKey) Less(o precedenceKey) bool {
 	return k.number.Less(o.number)
 }
 
-func precedenceKeyOf(priorityIndex map[string]int, it *datamodel.Item) precedenceKey {
-	k := precedenceKey{priorityIndex: len(priorityIndex), number: id.NewSortKey(it.Number, it.ID)}
+func precedenceKeyOf(it *datamodel.Item) precedenceKey {
+	k := precedenceKey{priorityIndex: len(query.PriorityRank), number: id.NewSortKey(it.Number, it.ID)}
 	if it.Rank != nil {
 		k.rank = *it.Rank
 	}
 	if it.Priority != nil {
-		if i, ok := priorityIndex[*it.Priority]; ok {
+		if i, ok := query.PriorityRank[*it.Priority]; ok {
 			k.priorityIndex = i
 		}
 	}
@@ -39,6 +39,5 @@ func precedenceKeyOf(priorityIndex map[string]int, it *datamodel.Item) precedenc
 }
 
 func sortByPrecedence(items []*datamodel.Item) {
-	priorityIndex := query.PriorityIndex(datamodel.Priorities)
-	sortByKey(items, func(it *datamodel.Item) precedenceKey { return precedenceKeyOf(priorityIndex, it) })
+	sortByKey(items, precedenceKeyOf)
 }

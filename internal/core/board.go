@@ -55,7 +55,7 @@ func boardResult(ld *loaded, opts BoardOpts, qopts query.Options) (*datamodel.Bo
 	}
 	wf, ok := datamodel.WorkflowOf(typ)
 	if !ok {
-		return nil, errx.User("no workflow configured for type %q", typ)
+		return nil, UnknownTypeError(typ)
 	}
 
 	base := ListOpts{

@@ -94,7 +94,9 @@ func DecodeFrontmatter(content string, out any) (body string, err error) {
 	}
 	nodes, _ := frontmatterNodes(&doc)
 	var errs []error
-	rejectUnknownKeys(nodes, func(format string, args ...any) { errs = append(errs, fmt.Errorf(format, args...)) })
+	add := func(format string, args ...any) { errs = append(errs, fmt.Errorf(format, args...)) }
+	rejectUnknownKeys(nodes, add)
+	rejectUnknownTypeNames(nodes, add)
 	if len(errs) > 0 {
 		return "", &datamodel.ParseError{Errs: errs}
 	}
@@ -109,12 +111,37 @@ func rejectUnknownKeys(nodes map[string]*yaml.Node, add addFunc) {
 	}
 }
 
+// rejectUnknownTypeNames checks the type and link-type names a partial
+// document supplies, which Parse checks while reading those fields.
+func rejectUnknownTypeNames(nodes map[string]*yaml.Node, add addFunc) {
+	if n, ok := nodes[datamodel.KeyType]; ok && n.Kind == yaml.ScalarNode {
+		checkItemType(n.Value, add)
+	}
+	if n, ok := nodes[datamodel.KeyLinks]; ok && n.Kind == yaml.MappingNode {
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			knownLinkType(datamodel.KeyLinks, n.Content[i].Value, add)
+		}
+	}
+}
+
 func itemType(nodes map[string]*yaml.Node, add addFunc) string {
 	typ := reqScalar(nodes, datamodel.KeyType, add)
+	checkItemType(typ, add)
+	return typ
+}
+
+func checkItemType(typ string, add addFunc) {
 	if typ != "" && !slices.Contains(datamodel.ItemTypes, typ) {
 		add("field %q: unknown type %q", datamodel.KeyType, typ)
 	}
-	return typ
+}
+
+func knownLinkType(key, typ string, add addFunc) bool {
+	if datamodel.ValidLinkType(typ) {
+		return true
+	}
+	add("field %q: unknown link type %q", key, typ)
+	return false
 }
 
 func splitDocument(content string) (front, body string, err error) {
@@ -294,8 +321,7 @@ func optLinks(nodes map[string]*yaml.Node, key string, add addFunc) map[string][
 	var links map[string][]string
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		typ, val := n.Content[i].Value, n.Content[i+1]
-		if !datamodel.ValidLinkType(typ) {
-			add("field %q: unknown link type %q", key, typ)
+		if !knownLinkType(key, typ, add) {
 			continue
 		}
 		if isNull(val) {

@@ -40,10 +40,7 @@ func boardFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 }
 
 func stateFindings(it *datamodel.Item) []Finding {
-	wf, ok := datamodel.WorkflowOf(it.Type)
-	if !ok {
-		return []Finding{schemaErr(datamodel.KeyType, fmt.Sprintf("no workflow configured for type %q", it.Type))}
-	}
+	wf, _ := datamodel.WorkflowOf(it.Type)
 	for _, st := range wf.States {
 		if st.Key == it.State {
 			return nil
@@ -54,10 +51,7 @@ func stateFindings(it *datamodel.Item) []Finding {
 }
 
 func resolutionFindings(it *datamodel.Item) []Finding {
-	wf, ok := datamodel.WorkflowOf(it.Type)
-	if !ok {
-		return nil
-	}
+	wf, _ := datamodel.WorkflowOf(it.Type)
 	for _, st := range wf.States {
 		if st.Key != it.State {
 			continue

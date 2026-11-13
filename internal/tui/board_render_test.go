@@ -541,7 +541,7 @@ func TestBoardCardPlumbsPriorityAndResolution(t *testing.T) {
 			{ID: "d1", Number: "KIRA-9", Title: "Dropped work", Type: datamodel.TypeTicket, State: "WONT_DO", Category: "done", Priority: &p0, Resolution: &dropped},
 		}},
 	}}
-	out := renderBoard(asciiTheme(), iconSet{mode: datamodel.IconText, priorities: []string{"P0", "P1", "P2", "P3"}}, res, 40, 4, -1, -1)
+	out := renderBoard(asciiTheme(), iconSet{mode: datamodel.IconText}, res, 40, 4, -1, -1)
 	if !strings.Contains(out, "!") {
 		t.Errorf("P0 priority marker missing from card:\n%s", out)
 	}
@@ -564,7 +564,7 @@ func TestBoardCardTruncatesInsteadOfWrapping(t *testing.T) {
 		{State: "DONE", Category: "done"},
 		{State: "WONT_DO", Category: "done"},
 	}}
-	ic := iconSet{mode: datamodel.IconText, priorities: []string{"P0", "P1", "P2"}}
+	ic := iconSet{mode: datamodel.IconText}
 	out := renderBoard(asciiTheme(), ic, res, 80, 3, 1, 0)
 	lines := strings.Split(out, "\n")
 	if len(lines) != 3 {

@@ -212,7 +212,6 @@ func unknownFieldErr(pos int, field string) *Error {
 	}
 }
 
-// FieldNames lists every field the grammar accepts.
 func FieldNames() []string {
 	return slices.Sorted(maps.Keys(fields))
 }
@@ -398,23 +397,22 @@ func scalarGet(field string) func(*datamodel.Item, *datamodel.Config) string {
 	return func(*datamodel.Item, *datamodel.Config) string { return "" }
 }
 
-func PriorityIndex(priorities []string) map[string]int {
-	index := make(map[string]int, len(priorities))
-	for i, p := range priorities {
-		index[p] = i
+var PriorityRank = func() map[string]int {
+	rank := make(map[string]int, len(datamodel.Priorities))
+	for i, p := range datamodel.Priorities {
+		rank[p] = i
 	}
-	return index
-}
+	return rank
+}()
 
 func (c *compiler) rankedPriorityPred(n *predExpr) (Predicate, error) {
-	index := PriorityIndex(datamodel.Priorities)
-	want, known := index[n.value]
+	want, known := PriorityRank[n.value]
 	if !known {
 		return nil, &Error{Pos: n.valuePos, Msg: "unknown priority " + quote(n.value)}
 	}
 	op := n.op.kind
 	return func(it *datamodel.Item, _ *datamodel.Config) bool {
-		got, ok := index[ptr.Deref(it.Priority)]
+		got, ok := PriorityRank[ptr.Deref(it.Priority)]
 		return ok && applyCmp(op, got, want)
 	}, nil
 }

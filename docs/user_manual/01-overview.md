@@ -50,17 +50,17 @@ display number. A repository can define several boards to separate concerns —
 this repository uses `KIRA`, `CORE`, `TUI`, `CLI`, `DATA`, `INFRA`, and `DX`, so
 its items are numbered `CORE-43`, `TUI-12`, and so on.
 
-Item state moves through a **workflow graph** defined in `.kira/config.yaml`,
-not hardcoded. The shipped default for tickets is:
+Item state moves through a fixed **workflow** built into kira. Tickets go:
 
 ```
 TODO -> IN_PROGRESS -> REVIEW -> DONE
    \________ WONT_DO _________/
 ```
 
-The states, the arrows between them, and the conditions attached to an arrow
-are all configuration. A repository that wants a `BLOCKED` state or a
-`QA_SIGNOFF` gate just edits the file.
+and epics go `PLANNED -> ACTIVE -> DONE`. Any state may move to any other; the
+only transition guard is that entering a `done` state needs the item's blockers
+closed. See
+[Concepts](03-concepts.md#workflow-states-and-categories).
 
 ## Ticket history is git history
 
@@ -111,5 +111,5 @@ handles this rather than leaving you with conflict markers in a YAML file:
 
 - [Getting Started](02-getting-started.md) — install, initialize a repository,
   and drive a ticket from creation to done.
-- [Concepts](03-concepts.md) — identity, workflows, vocabularies, sprints,
+- [Concepts](03-concepts.md) — identity, states, vocabularies, sprints,
   relationships, and configuration layering in depth.

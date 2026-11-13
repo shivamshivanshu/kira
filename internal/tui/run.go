@@ -39,8 +39,8 @@ func Run(store *core.Store, cfg *datamodel.Config, opts Options) error {
 		out = os.Stdout
 	}
 	return guardRun(store.Root(), os.Stderr, func() error {
-		icons := detectIcons(cfg.UI.Icons, osEnv, termx.WriterIsTTY(out)).
-			withTypeIcons(itemTypeIcons)
+		icons := detectIcons(cfg.UI.Icons, osEnv, termx.WriterIsTTY(out))
+		icons.typeIcons = itemTypeIcons
 		m := newModel(store, cfg, theme.For(out, cfg.UI, opts.NoColor), icons, opts.InjectPanic)
 		m.bar.run = opts.RunCommand
 		m.view = opts.InitialView

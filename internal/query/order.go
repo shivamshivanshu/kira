@@ -15,9 +15,8 @@ type OrderKey struct {
 func (o *Order) Keyer(cfg *datamodel.Config) func(*datamodel.Item) OrderKey {
 	switch o.Field {
 	case fieldPriority:
-		index := PriorityIndex(datamodel.Priorities)
 		return func(it *datamodel.Item) OrderKey {
-			idx, ok := index[ptr.Deref(it.Priority)]
+			idx, ok := PriorityRank[ptr.Deref(it.Priority)]
 			if !ok {
 				return OrderKey{null: true}
 			}

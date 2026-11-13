@@ -151,9 +151,8 @@ func sortMatched(cfg *datamodel.Config, matched []*datamodel.Item, order *query.
 		return
 	}
 	keyOf := order.Keyer(cfg)
-	priorityIndex := query.PriorityIndex(datamodel.Priorities)
 	sortByKey(matched, func(it *datamodel.Item) orderedKey {
-		return orderedKey{order: order, key: keyOf(it), tie: precedenceKeyOf(priorityIndex, it)}
+		return orderedKey{order: order, key: keyOf(it), tie: precedenceKeyOf(it)}
 	})
 }
 

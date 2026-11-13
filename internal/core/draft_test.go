@@ -166,9 +166,15 @@ func TestDefaultTemplateOffersBodySections(t *testing.T) {
 	}
 }
 
-func TestParseDraftRejectsUnknownKey(t *testing.T) {
-	content := strings.Replace(serializeDraft(draft{Title: "t", Type: "ticket"}), "type: ticket\n", "type: ticket\nseverity: high\n", 1)
-	if _, err := parseDraft(content); err == nil || !strings.Contains(err.Error(), `field "severity": unknown frontmatter key`) {
-		t.Fatalf("parseDraft error = %v, want an unknown-frontmatter-key rejection", err)
+func TestParseDraftRejectsUndeclaredNames(t *testing.T) {
+	for _, tc := range []struct{ typeLine, want string }{
+		{"type: ticket\nseverity: high\n", `field "severity": unknown frontmatter key`},
+		{"type: mystery\n", `field "type": unknown type "mystery"`},
+		{"type: ticket\nlinks: {mystery: [DEMO-1]}\n", `field "links": unknown link type "mystery"`},
+	} {
+		content := strings.Replace(serializeDraft(draft{Title: "t", Type: "ticket"}), "type: ticket\n", tc.typeLine, 1)
+		if _, err := parseDraft(content); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%q: parseDraft error = %v, want %s", tc.typeLine, err, tc.want)
+		}
 	}
 }

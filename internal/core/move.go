@@ -68,10 +68,7 @@ func (b *Batch) Move(ref, state string, opts MoveOpts) (*datamodel.MoveResult, e
 
 func applyStateChange(it *datamodel.Item, from string, opts MoveOpts, edited map[string]bool, items []*datamodel.Item) (hard, warns, wipWarns []error) {
 	state := it.State
-	wf, ok := datamodel.WorkflowOf(it.Type)
-	if !ok {
-		return []error{fmt.Errorf("no workflow configured for type %q", it.Type)}, nil, nil
-	}
+	wf, _ := datamodel.WorkflowOf(it.Type)
 	target, ok := wf.StateByKey(state)
 	if !ok {
 		return []error{errx.User("%q is not a state in the %s workflow", state, it.Type).WithHint("%s", stateHint(wf, state))}, nil, nil

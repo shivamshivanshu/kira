@@ -75,7 +75,12 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 			result.Skipped = append(result.Skipped, path)
 			continue
 		}
-		res := merge.Merge(parseOrNil(base.Content), oursItem, theirsItem, remote, gitTextMerge)
+		baseItem, err := parseBase(base.Content, path)
+		if err != nil {
+			result.Skipped = append(result.Skipped, path)
+			continue
+		}
+		res := merge.Merge(baseItem, oursItem, theirsItem, remote, gitTextMerge)
 		if interactive {
 			s.pickFields(res.Item, oursItem, theirsItem, res.Arbitrated)
 		}
@@ -95,15 +100,15 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 	return result, nil
 }
 
-func parseOrNil(content string) *datamodel.Item {
+// parseBase returns nil for an absent base (both sides added the file). A base
+// that exists but does not parse is an error rather than an absent base:
+// merging against nothing would turn every field the two sides kept unchanged
+// into a conflict and let the newer side silently win it.
+func parseBase(content, path string) (*datamodel.Item, error) {
 	if strings.TrimSpace(content) == "" {
-		return nil
+		return nil, nil
 	}
-	it, err := codec.Parse(content)
-	if err != nil {
-		return nil
-	}
-	return it
+	return parseContent([]byte(content), path)
 }
 
 // RefMatches reports whether ref identifies it, by display number, ULID, or alias.

@@ -57,13 +57,13 @@ func (c *validationCtx) validateItem(it *datamodel.Item) (errs, warns []error) {
 			warns = append(warns, vocabViolationError{v})
 		}
 	}
+	errs = append(errs, duplicateValueErrors(it)...)
 	if it.Due != nil && *it.Due != "" && !datamodel.ValidDate(*it.Due) {
 		errs = append(errs, fmt.Errorf("field %q: expected type date, got string", datamodel.KeyDue))
 	}
 
-	if wf, ok := datamodel.WorkflowOf(it.Type); !ok {
-		errs = append(errs, fmt.Errorf("field %q: no workflow configured for type %q", datamodel.KeyType, it.Type))
-	} else if _, defined := wf.StateByKey(it.State); !defined {
+	wf, _ := datamodel.WorkflowOf(it.Type)
+	if _, defined := wf.StateByKey(it.State); !defined {
 		errs = append(errs, fmt.Errorf("field %q: %q is not a state in the %s workflow", datamodel.KeyState, it.State, it.Type))
 	}
 
@@ -87,9 +87,37 @@ func (c *validationCtx) validateAssembled(it *datamodel.Item) (hard, warns []err
 // keeping first-occurrence order, so a stored or newly-entered duplicate is
 // healed rather than rejected.
 func dedupSetFields(it *datamodel.Item) {
-	it.Labels = dedupStrings(it.Labels)
-	it.BlockedBy = dedupStrings(it.BlockedBy)
-	it.Aliases = dedupStrings(it.Aliases)
+	for _, f := range setValuedFields(it) {
+		*f.values = dedupStrings(*f.values)
+	}
+}
+
+type setValuedField struct {
+	key    string
+	values *[]string
+}
+
+func setValuedFields(it *datamodel.Item) []setValuedField {
+	return []setValuedField{
+		{datamodel.KeyLabels, &it.Labels},
+		{datamodel.KeyBlockedBy, &it.BlockedBy},
+		{datamodel.KeyAliases, &it.Aliases},
+	}
+}
+
+// duplicateValueErrors reports what dedupSetFields would heal, for paths that
+// validate an item as stored rather than assembling it.
+func duplicateValueErrors(it *datamodel.Item) []error {
+	var errs []error
+	for _, f := range setValuedFields(it) {
+		seen := setx.NewDeduper[string]()
+		for _, v := range *f.values {
+			if !seen.Add(v) {
+				errs = append(errs, fmt.Errorf("field %q: duplicate value %q in a unique list", f.key, v))
+			}
+		}
+	}
+	return errs
 }
 
 func dedupStrings(xs []string) []string {

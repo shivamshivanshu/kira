@@ -59,7 +59,7 @@ func newCreateCmd(g *globalFlags) *cobra.Command {
 				return err
 			}
 			if _, ok := datamodel.WorkflowOf(opts.Type); !ok {
-				return errx.User("%q is not a known type", opts.Type).WithHint("known types: %s", strings.Join(datamodel.ItemTypes, ", "))
+				return core.UnknownTypeError(opts.Type)
 			}
 			if printTemplate {
 				tmpl, err := s.ResolveTemplate(cfg, opts)

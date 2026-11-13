@@ -341,8 +341,9 @@ func (p *parser) parsePrimary() (Expr, error) {
 				return &boolExpr{field: name, want: true}, nil
 			}
 		} else if p.startsFieldPredicate() {
-			// A schema may declare this field; only the compiler knows, so
-			// parse the shape and let it resolve the name and the value's type.
+			// Parse any field-shaped predicate and let the compiler resolve the
+			// name, so a misspelled field fails as an unknown field instead of
+			// falling through to a free-text search.
 			switch {
 			case p.peek2().isCmp():
 				return p.parsePredicate()

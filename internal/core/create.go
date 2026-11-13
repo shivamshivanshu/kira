@@ -133,7 +133,7 @@ func (s *Store) resolveHere(_ *datamodel.Config, opts *CreateOpts) (string, erro
 func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel.CreateResult, error) {
 	wf, ok := datamodel.WorkflowOf(opts.Type)
 	if !ok {
-		return nil, errx.User("no workflow configured for type %q", opts.Type)
+		return nil, UnknownTypeError(opts.Type)
 	}
 
 	boardKey, err := resolveBoardKey(cfg, opts.Board)

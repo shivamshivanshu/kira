@@ -492,7 +492,7 @@ func TestCheckReportsBuiltinDanglingRefOnce(t *testing.T) {
 
 	f := doctor.Check(config.Default(), resolver(it), it)
 	if len(f) != 1 || f[0].Field != datamodel.KeyParent {
-		t.Fatalf("epic is both a built-in and schema-declared; it must be reported once, got %+v", f)
+		t.Fatalf("a dangling parent must be reported once, got %+v", f)
 	}
 }
 

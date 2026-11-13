@@ -221,7 +221,8 @@ func (pageData) Subtypes() []string { return datamodel.Subtypes }
 func (pageData) Resolutions() []string { return datamodel.Resolutions }
 
 // WorkflowStates lists every type's states in ItemTypes order, so a state two
-// types share (DONE) appears once per type.
+// types share (DONE) appears once per type. The duplicate is kept so the bulk
+// page's datalist markup stays as it was when workflows came from config.
 func (pageData) WorkflowStates() []string {
 	var states []string
 	for _, typ := range datamodel.ItemTypes {

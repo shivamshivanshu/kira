@@ -108,8 +108,6 @@ func renderList(w io.Writer, res *datamodel.ListResult, columns []string) {
 	_ = tw.Flush()
 }
 
-// knownColumns splits configured column names into those a list cell can
-// render and those nothing can.
 func knownColumns(configured []string) (known, unknown []string) {
 	for _, name := range configured {
 		if _, builtin := listCells[name]; builtin {

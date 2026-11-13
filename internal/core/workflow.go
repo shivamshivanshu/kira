@@ -1,6 +1,15 @@
 package core
 
-import "github.com/shivamshivanshu/kira/internal/datamodel"
+import (
+	"strings"
+
+	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/errx"
+)
+
+func UnknownTypeError(typ string) error {
+	return errx.User("%q is not a known type", typ).WithHint("known types: %s", strings.Join(datamodel.ItemTypes, ", "))
+}
 
 func firstStateInCategory(wf datamodel.Workflow, cat datamodel.Category) (string, bool) {
 	for _, st := range wf.States {

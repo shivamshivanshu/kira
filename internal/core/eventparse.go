@@ -20,6 +20,8 @@ type eventFields struct {
 	order   []string
 }
 
+var trackedEventFields = newEventFields()
+
 func newEventFields() eventFields {
 	f := eventFields{tracked: make(map[string]bool, len(scalarFields))}
 	for _, key := range datamodel.FrontmatterKeys {
@@ -31,12 +33,12 @@ func newEventFields() eventFields {
 	return f
 }
 
-func walkPatch(stream string, fields eventFields, emit func(path string, events []datamodel.Event)) {
+func walkPatch(stream string, emit func(path string, events []datamodel.Event)) {
 	var d fmDiffState
 	var sha, ts, path string
 	minus, plus := map[string]string{}, map[string]string{}
 	flush := func() {
-		emit(path, fmEvents(d.created, minus, plus, ts, sha, fields))
+		emit(path, fmEvents(d.created, minus, plus, ts, sha))
 		d.reset()
 		minus, plus = map[string]string{}, map[string]string{}
 	}
@@ -54,7 +56,7 @@ func walkPatch(stream string, fields eventFields, emit func(path string, events 
 		case strings.HasPrefix(line, "+++ b/"):
 			path = line[len("+++ b/"):]
 		default:
-			if added, k, v, ok := d.step(line, fields); ok {
+			if added, k, v, ok := d.step(line); ok {
 				if added {
 					plus[k] = v
 				} else {
@@ -79,7 +81,7 @@ func (d *fmDiffState) reset() {
 	d.created = false
 }
 
-func (d *fmDiffState) step(line string, fields eventFields) (added bool, key, value string, isField bool) {
+func (d *fmDiffState) step(line string) (added bool, key, value string, isField bool) {
 	if strings.HasPrefix(line, "--- /dev/null") {
 		d.created = true
 		return
@@ -102,7 +104,7 @@ func (d *fmDiffState) step(line string, fields eventFields) (added bool, key, va
 	if d.fences != 1 {
 		return
 	}
-	k, v, ok := frontmatterField(content, fields)
+	k, v, ok := frontmatterField(content)
 	if !ok {
 		return
 	}
@@ -126,24 +128,24 @@ func scalarFieldSet() map[string]bool {
 	return scalar
 }
 
-func frontmatterField(line string, fields eventFields) (key, value string, ok bool) {
+func frontmatterField(line string) (key, value string, ok bool) {
 	colon := strings.IndexByte(line, ':')
 	if colon <= 0 {
 		return "", "", false
 	}
 	key = line[:colon]
-	if !fields.tracked[key] {
+	if !trackedEventFields.tracked[key] {
 		return "", "", false
 	}
 	return key, codec.DecodeScalar(line[colon+1:]), true
 }
 
-func fmEvents(created bool, minus, plus map[string]string, ts, sha string, fields eventFields) []datamodel.Event {
+func fmEvents(created bool, minus, plus map[string]string, ts, sha string) []datamodel.Event {
 	if created {
 		return nil
 	}
 	var events []datamodel.Event
-	for _, field := range fields.order {
+	for _, field := range trackedEventFields.order {
 		mv, hadMinus := minus[field]
 		pv, hadPlus := plus[field]
 		if (hadMinus || hadPlus) && mv != pv {
@@ -154,7 +156,6 @@ func fmEvents(created bool, minus, plus map[string]string, ts, sha string, field
 }
 
 func (s *Store) deriveEvents(ulid string) ([]datamodel.Event, error) {
-	fields := newEventFields()
 	out, err := s.repo().FileLog(s.fs().RelToRoot(s.itemPath(ulid)))
 	if err != nil {
 		if strings.Contains(err.Error(), "does not have any commits") {
@@ -163,7 +164,7 @@ func (s *Store) deriveEvents(ulid string) ([]datamodel.Event, error) {
 		return nil, errx.User("%s", err)
 	}
 	var events []datamodel.Event
-	walkPatch(out, fields, func(_ string, evs []datamodel.Event) {
+	walkPatch(out, func(_ string, evs []datamodel.Event) {
 		events = append(events, evs...)
 	})
 	return events, nil
@@ -200,7 +201,6 @@ func (s *Store) deriveEventBatch(ids []string) (map[string][]datamodel.Event, er
 			paths[n] = s.fs().RelToRoot(s.itemPath(id))
 		}
 	}
-	fields := newEventFields()
 	stream, err := s.repo().FileLogs(paths)
 	if err != nil {
 		return nil, errx.User("%s", err)
@@ -208,7 +208,7 @@ func (s *Store) deriveEventBatch(ids []string) (map[string][]datamodel.Event, er
 	for _, id := range ids {
 		out[id] = nil
 	}
-	walkPatch(stream, fields, func(path string, events []datamodel.Event) {
+	walkPatch(stream, func(path string, events []datamodel.Event) {
 		id := storage.ULIDFromPath(path)
 		if _, wanted := out[id]; wanted {
 			out[id] = append(out[id], events...)
@@ -219,13 +219,12 @@ func (s *Store) deriveEventBatch(ids []string) (map[string][]datamodel.Event, er
 
 func (s *Store) rangeEvents(repo gitx.Repo, sinceSHA, headSHA string, tracked map[string]*datamodel.Item) (map[string][]datamodel.Event, error) {
 	fs := s.fs()
-	fields := newEventFields()
 	out, err := repo.RangePatch(sinceSHA+".."+headSHA, fs.RelToRoot(fs.ItemsDir()))
 	if err != nil {
 		return nil, errx.User("%s", err)
 	}
 	events := map[string][]datamodel.Event{}
-	walkPatch(out, fields, func(path string, evs []datamodel.Event) {
+	walkPatch(out, func(path string, evs []datamodel.Event) {
 		if len(evs) == 0 {
 			return
 		}

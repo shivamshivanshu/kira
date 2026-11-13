@@ -40,9 +40,9 @@ func sampleTree() ([]datamodel.TreeNode, map[string]datamodel.ListItem, map[stri
 
 // declaredIcons supplies glyphs of deliberately differing display widths -- 1
 // cell for nerd, 2 for emoji, 3 for the bracketed text form -- so the layout
-// code is exercised at each. It is NOT what the shipped schemas declare: those
-// declare one mode-independent glyph, which
-// TestShippedSchemaIconsIgnoreIconMode pins separately.
+// code is exercised at each. They are NOT kira's own type glyphs: those are
+// one mode-independent glyph per type, which TestItemTypeIconsIgnoreIconMode
+// pins separately.
 func declaredIcons(mode datamodel.IconMode) iconSet {
 	glyphs := map[datamodel.IconMode]map[string]string{
 		datamodel.IconNerd:  {datamodel.TypeEpic: "\uf45d", datamodel.TypeTicket: "\uf41b"},
@@ -52,7 +52,7 @@ func declaredIcons(mode datamodel.IconMode) iconSet {
 	if !ok {
 		icons = map[string]string{datamodel.TypeEpic: "[E]", datamodel.TypeTicket: "[T]"}
 	}
-	return iconSet{mode: mode}.withTypeIcons(icons)
+	return iconSet{mode: mode, typeIcons: icons}
 }
 
 func loadedTree() treeModel {
@@ -114,28 +114,12 @@ func TestTypeGlyphComesFromTheIconSet(t *testing.T) {
 	}
 
 	// the attached glyphs are what gets drawn, verbatim
-	declared := iconSet{mode: datamodel.IconNerd}.withTypeIcons(map[string]string{
+	declared := iconSet{mode: datamodel.IconNerd, typeIcons: map[string]string{
 		datamodel.TypeEpic: "\uf45d", datamodel.TypeTicket: "@",
-	})
+	}}
 	out := tm.render(th, declared, 100, 6, true, true)
 	if !strings.Contains(out, "\uf45d") {
 		t.Errorf("declared epic glyph missing:\n%s", out)
-	}
-}
-
-func TestTypeGlyphCellWidthIsUniform(t *testing.T) {
-	t.Parallel()
-	// A schema can declare any glyph, so the cell is normalised: a two-wide
-	// emoji in one schema must not shift the column against a one-wide glyph
-	// in another.
-	for _, mode := range []datamodel.IconMode{datamodel.IconNerd, datamodel.IconEmoji, datamodel.IconText} {
-		ic := iconSet{mode: mode}.withTypeIcons(map[string]string{"wide": "\U0001F680", "narrow": "@", "absent": ""})
-		want := lipgloss.Width(ic.typeGlyph("narrow"))
-		for _, typ := range []string{"wide", "absent"} {
-			if got := lipgloss.Width(ic.typeGlyph(typ)); got != want {
-				t.Errorf("mode %s: %s cell width = %d, want %d", mode, typ, got, want)
-			}
-		}
 	}
 }
 
@@ -203,7 +187,7 @@ func TestTreeRowPlumbsPriorityAndResolution(t *testing.T) {
 	}
 	tm := newTreeModel()
 	(&tm).load(nodes, fields, map[string]datamodel.ContainerProgress{})
-	out := tm.render(asciiTheme(), iconSet{mode: datamodel.IconText, priorities: []string{"P0", "P1", "P2", "P3"}}, 100, 3, true, false)
+	out := tm.render(asciiTheme(), iconSet{mode: datamodel.IconText}, 100, 3, true, false)
 	if !strings.Contains(out, "!") {
 		t.Errorf("P0 priority marker missing from row:\n%s", out)
 	}
@@ -241,32 +225,10 @@ func TestDetailMemoServesCacheWithoutStore(t *testing.T) {
 func TestItemTypeIconsIgnoreIconMode(t *testing.T) {
 	for typ, declared := range itemTypeIcons {
 		for _, mode := range []datamodel.IconMode{datamodel.IconNerd, datamodel.IconEmoji, datamodel.IconText} {
-			ic := iconSet{mode: mode}.withTypeIcons(map[string]string{typ: declared})
+			ic := iconSet{mode: mode, typeIcons: itemTypeIcons}
 			if got := ic.typeGlyph(typ); got != declared {
 				t.Errorf("type %q in mode %q: typeGlyph = %q, want the declared %q", typ, mode, got, declared)
 			}
 		}
-	}
-}
-
-// The cell is uniform whether a glyph is padded or truncated, so uniformity
-// alone cannot tell the two apart -- only the glyph surviving intact can.
-func TestTypeGlyphKeepsTheDeclaredGlyphIntact(t *testing.T) {
-	for _, icon := range []string{"@", "\uf41b", "[E]", "\U0001F680", "[EPIC]"} {
-		ic := iconSet{mode: datamodel.IconNerd}.withTypeIcons(map[string]string{datamodel.TypeTicket: icon})
-
-		if got := ic.typeGlyph(datamodel.TypeTicket); !strings.HasPrefix(got, icon) {
-			t.Errorf("icon %q: typeGlyph = %q, want it to start with the declared glyph", icon, got)
-		}
-	}
-}
-
-func TestWithTypeIconsDoesNotAccumulateCellWidthAcrossCalls(t *testing.T) {
-	ic := iconSet{mode: datamodel.IconNerd}.
-		withTypeIcons(map[string]string{datamodel.TypeTicket: "\U0001F680"}).
-		withTypeIcons(map[string]string{datamodel.TypeTicket: "@"})
-
-	if got := ic.typeGlyph(datamodel.TypeTicket); got != "@" {
-		t.Errorf("typeGlyph = %q, want %q -- the cell kept a width from a superseded icon set", got, "@")
 	}
 }

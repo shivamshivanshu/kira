@@ -125,6 +125,7 @@ func TestValidateItemVocabAndFields(t *testing.T) {
 		{"sprint-unknown", nil, func(it *datamodel.Item) { it.Sprint = new("2099-S1") }, false, true, false},
 		{"due-valid", nil, func(it *datamodel.Item) { it.Due = new("2026-07-20") }, false, false, false},
 		{"due-invalid", nil, func(it *datamodel.Item) { it.Due = new("someday") }, false, true, false},
+		{"labels-duplicate", nil, func(it *datamodel.Item) { it.Labels = []string{"captured", "captured"} }, false, true, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

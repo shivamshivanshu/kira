@@ -11,10 +11,9 @@ import (
 
 func TestPriorityWeightByVocabPosition(t *testing.T) {
 	t.Parallel()
-	vocab := []string{"high", "medium", "low"}
-	ic := iconSet{mode: datamodel.IconText, priorities: vocab}
+	ic := iconSet{mode: datamodel.IconText}
 
-	marks := map[string]int{"high": 3, "medium": 2, "low": 1, "urgent": 0, "": 0}
+	marks := map[string]int{"P0": 3, "P1": 2, "P2": 1, "P3": 1, "urgent": 0, "": 0}
 	for value, want := range marks {
 		if got := strings.Count(ic.priorityCell(value), "!"); got != want {
 			t.Errorf("priorityCell(%q) has %d marks, want %d (position-derived)", value, got, want)
@@ -22,9 +21,9 @@ func TestPriorityWeightByVocabPosition(t *testing.T) {
 	}
 
 	for _, mode := range []datamodel.IconMode{datamodel.IconNerd, datamodel.IconEmoji, datamodel.IconText} {
-		im := iconSet{mode: mode, priorities: vocab}
+		im := iconSet{mode: mode}
 		gutter := 3 * lipgloss.Width(glyphPriority.pick(mode))
-		for _, v := range []string{"high", "medium", "low", "urgent", ""} {
+		for _, v := range []string{"P0", "P1", "P2", "P3", "urgent", ""} {
 			if got := lipgloss.Width(im.priorityCell(v)); got != gutter {
 				t.Errorf("%s priorityCell(%q) width = %d, want fixed gutter %d", mode, v, got, gutter)
 			}
@@ -51,14 +50,14 @@ func TestPriorityHueByTier(t *testing.T) {
 
 func TestTreeRowPriorityMarksFromVocab(t *testing.T) {
 	t.Parallel()
-	high := "high"
+	high := "P0"
 	nodes := []datamodel.TreeNode{{ID: "T1", Number: "KIRA-1", Type: datamodel.TypeTicket, Title: "Hot"}}
 	fields := map[string]datamodel.ListItem{
 		"T1": {ID: "T1", Number: "KIRA-1", State: "TODO", Category: "todo", Type: datamodel.TypeTicket, Priority: &high},
 	}
 	tm := newTreeModel()
 	(&tm).load(nodes, fields, map[string]datamodel.ContainerProgress{})
-	out := tm.render(asciiTheme(), iconSet{mode: datamodel.IconText, priorities: []string{"high", "medium", "low"}}, 100, 3, true, false)
+	out := tm.render(asciiTheme(), iconSet{mode: datamodel.IconText}, 100, 3, true, false)
 	if !strings.Contains(out, "!!!") {
 		t.Errorf("an index-0 priority must render three marks in the row:\n%s", out)
 	}

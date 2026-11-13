@@ -169,11 +169,11 @@ func (s *boardScreen) moveCard(m *model, dir int) tea.Cmd {
 		return nil
 	}
 	to := cols[target].State
-	if m.cfg == nil || !core.StateDeclared(s.board.result.Type, to) {
+	if !core.StateDeclared(s.board.result.Type, to) {
 		s.setNotice(card.Number + ": " + to + " is not a state in the " + s.board.result.Type + " workflow")
 		return nil
 	}
-	if m.store == nil {
+	if m.store == nil || m.cfg == nil {
 		return nil
 	}
 	return m.request(boardMoveCmd(m.store, m.cfg, card.ID, to))
