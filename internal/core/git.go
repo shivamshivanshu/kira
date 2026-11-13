@@ -25,7 +25,6 @@ func (s *Store) requireRepo() error {
 }
 
 type commitSpec struct {
-	trailerKey    string
 	subject       string
 	trailerNumber string
 }
@@ -37,7 +36,7 @@ func (s *Store) finalize(mode datamodel.CommitMode, spec commitSpec, paths ...st
 	if mode == datamodel.CommitManual {
 		return "", nil
 	}
-	if err := s.repo().CommitIn(paths, spec.subject, spec.trailerKey, spec.trailerNumber); err != nil {
+	if err := s.repo().CommitIn(paths, spec.subject, datamodel.TicketTrailerKey, spec.trailerNumber); err != nil {
 		return "", errx.User("%s", err)
 	}
 	sha, _ := s.repo().Output("rev-parse", "HEAD")

@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	sepChars = "-_"
-	sepClass = `[-_]`
-	boundary = `[^a-z0-9]`
+	separator = "-"
+	sepChars  = "-_"
+	sepClass  = `[-_]`
+	boundary  = `[^a-z0-9]`
 )
 
 var (
@@ -20,7 +21,7 @@ var (
 	bareTokenRe   = regexp.MustCompile(`^[0-9A-Za-z]+$`)
 )
 
-func normalize(s, sep string) string {
+func normalize(s string) string {
 	var b strings.Builder
 	prevSep := true
 	for _, r := range strings.ToLower(s) {
@@ -30,20 +31,20 @@ func normalize(s, sep string) string {
 			continue
 		}
 		if !prevSep {
-			b.WriteString(sep)
+			b.WriteString(separator)
 			prevSep = true
 		}
 	}
-	return strings.TrimRight(b.String(), sep)
+	return strings.TrimRight(b.String(), separator)
 }
 
-func Slug(title, sep string) string { return normalize(title, sep) }
+func Slug(title string) string { return normalize(title) }
 
-func RenderBranch(pattern, key, number, title, sep string) string {
+func RenderBranch(pattern, key, number, title string) string {
 	return strings.NewReplacer(
-		"{key}", normalize(key, sep),
-		"{number}", normalize(number, sep),
-		"{slug}", Slug(title, sep),
+		"{key}", normalize(key),
+		"{number}", normalize(number),
+		"{slug}", Slug(title),
 	).Replace(pattern)
 }
 
@@ -68,7 +69,7 @@ func quoteSeparatorInsensitive(s string) string {
 	return b.String()
 }
 
-func branchRegexp(pattern, key, number, sep string) *regexp.Regexp {
+func branchRegexp(pattern, key, number string) *regexp.Regexp {
 	var b strings.Builder
 	b.WriteString(`^`)
 	rest := pattern
@@ -87,9 +88,9 @@ func branchRegexp(pattern, key, number, sep string) *regexp.Regexp {
 		b.WriteString(regexp.QuoteMeta(lit))
 		switch ph {
 		case "{key}":
-			b.WriteString(quoteSeparatorInsensitive(normalize(key, sep)))
+			b.WriteString(quoteSeparatorInsensitive(normalize(key)))
 		case "{number}":
-			b.WriteString(quoteSeparatorInsensitive(normalize(number, sep)))
+			b.WriteString(quoteSeparatorInsensitive(normalize(number)))
 		case "{slug}":
 			b.WriteString(`.*`)
 		}
@@ -98,8 +99,8 @@ func branchRegexp(pattern, key, number, sep string) *regexp.Regexp {
 	return regexp.MustCompile(b.String())
 }
 
-func MatchBranch(branches []string, pattern, key, number, sep string) (string, bool) {
-	re := branchRegexp(pattern, key, number, sep)
+func MatchBranch(branches []string, pattern, key, number string) (string, bool) {
+	re := branchRegexp(pattern, key, number)
 	for _, b := range branches {
 		if re.MatchString(b) {
 			return b, true

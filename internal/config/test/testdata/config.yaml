@@ -7,9 +7,6 @@ project:
 boards:
   - { key: KIRA, name: kira, default: true }
 
-id:
-  style: sequential          # sequential (default, reconciled post-merge) | hash (ULID-derived, zero reconciliation)
-
 workflows:
   ticket:
     states:
@@ -49,9 +46,7 @@ sprints:                      # scrum sprint entities; `sprint` frontmatter is a
   - { key: 2026-S14, name: "Sprint 14", start: 2026-07-13, end: 2026-07-26 }
 
 commit:
-  mode: auto                  # auto | manual | prompt
-  trailer: Kira-Ticket
-  # close_trailer: Kira-Closes   # v2: auto-transition to done when landed
+  mode: auto                  # auto | manual
 
 merge:
   policy: auto                # auto | manual

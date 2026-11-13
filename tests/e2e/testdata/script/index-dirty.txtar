@@ -44,9 +44,6 @@ project:
 boards:
   - { key: KIRA, name: kira, default: true }
 
-id:
-  style: sequential
-
 workflows:
   ticket:
     states:
@@ -73,7 +70,6 @@ people:
 
 commit:
   mode: manual
-  trailer: Kira-Ticket
 
 merge:
   policy: auto

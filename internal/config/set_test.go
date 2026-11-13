@@ -12,8 +12,7 @@ project:
   name: kira
 
 commit:
-  mode: auto                  # auto | manual | prompt
-  trailer: Kira-Ticket
+  mode: auto                  # auto | manual
 
 sync:
   push: false                 # true | false
@@ -50,7 +49,7 @@ func TestSetScalarPreservesEveryOtherLine(t *testing.T) {
 	cases := []struct {
 		key, value, wantLine string
 	}{
-		{"commit.mode", "manual", "  mode: manual                  # auto | manual | prompt"},
+		{"commit.mode", "manual", "  mode: manual                  # auto | manual"},
 		{"sync.push", "true", "  push: true                 # true | false"},
 		{"workon.branch_pattern", "kira/{number}", "  branch_pattern: kira/{number}   # tokens: {key} {number} {slug}"},
 		{"project.name", "my proj", "  name: my proj"},

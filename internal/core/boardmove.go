@@ -61,7 +61,7 @@ func (b *Batch) BoardMove(ref, targetKey string) (*datamodel.BoardMoveResult, er
 	subject := "board " + from + " -> " + to
 	b.replace(it)
 	b.resolver = id.NewResolver(storage.Snapshot(cfg.Project.Key, b.items))
-	if _, err := s.finalize(cfg.Commit.Mode, commitSpec{trailerKey: datamodel.TicketTrailerKey, subject: subject, trailerNumber: to}, path); err != nil {
+	if _, err := s.finalize(cfg.Commit.Mode, commitSpec{subject: subject, trailerNumber: to}, path); err != nil {
 		return nil, err
 	}
 	return &datamodel.BoardMoveResult{ID: it.ID, From: from, To: to, Board: board.Key}, nil

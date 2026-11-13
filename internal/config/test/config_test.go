@@ -86,22 +86,25 @@ func TestLoadReadsFromKiraDir(t *testing.T) {
 	}
 }
 
-func TestLoadRejectsVersionOneThatParseAccepts(t *testing.T) {
+func TestLoadRejectsPreBoardsConfigsThatParseAccepts(t *testing.T) {
 	t.Parallel()
-	v1 := []byte("version: 1\nproject:\n  key: KIRA\n  name: kira\n")
-	if _, err := config.Parse(v1); err != nil {
-		t.Fatalf("Parse must keep reading version 1 for historical trees: %v", err)
-	}
-	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".kira"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, ".kira", "config.yaml"), v1, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	_, err := config.Load(root)
-	if err == nil || !strings.Contains(err.Error(), "version 1 is no longer supported") {
-		t.Fatalf("Load = %v, want the version 1 rejection", err)
+	for _, c := range []struct{ yaml, wantErr string }{
+		{"version: 1\nproject:\n  key: KIRA\n  name: kira\n", "version 1 is no longer supported"},
+		{"version: 2\nproject:\n  key: KIRA\n  name: kira\n", "at least one board is required"},
+	} {
+		if _, err := config.Parse([]byte(c.yaml)); err != nil {
+			t.Fatalf("Parse must keep reading %q for historical trees: %v", c.yaml, err)
+		}
+		root := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(root, ".kira"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, ".kira", "config.yaml"), []byte(c.yaml), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := config.Load(root); err == nil || !strings.Contains(err.Error(), c.wantErr) {
+			t.Fatalf("Load(%q) = %v, want %q", c.yaml, err, c.wantErr)
+		}
 	}
 }
 

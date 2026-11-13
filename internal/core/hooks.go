@@ -92,6 +92,14 @@ func (s *Store) installGitHook(repo gitx.Repo, name, script string) (datamodel.H
 			return status, nil
 		}
 		if hooks.HasMarker(content) {
+			replaced, ok := hooks.ReplaceChainBlock(content, name)
+			if !ok {
+				status.Note = "its kira chain block has lost its end marker; remove kira's lines and re-run `kira hooks install`"
+				return status, nil
+			}
+			if err := writeExecutable(dst, replaced); err != nil {
+				return status, err
+			}
 			status.Installed, status.Chained = true, true
 			return status, nil
 		}

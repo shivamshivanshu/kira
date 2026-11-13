@@ -100,7 +100,7 @@ func (s *Store) prepareTree(repo gitx.Repo, opts SyncOpts, report *syncx.Report)
 	if opts.Dirty != syncx.DirtyCommit {
 		return errx.User("uncommitted kira changes; re-run with --commit")
 	}
-	if _, err := s.finalize(datamodel.CommitAuto, commitSpec{trailerKey: datamodel.TicketTrailerKey, subject: "sync checkpoint"}, dirty...); err != nil {
+	if _, err := s.finalize(datamodel.CommitAuto, commitSpec{subject: "sync checkpoint"}, dirty...); err != nil {
 		return err
 	}
 	report.Add("prepare", syncx.StepDone, fmt.Sprintf("committed %d paths", len(dirty)))

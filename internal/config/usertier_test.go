@@ -12,7 +12,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
-const minimalRepo = "version: 2\nproject:\n  key: KIRA\n"
+const minimalRepo = "version: 2\nproject:\n  key: KIRA\nboards:\n  - { key: KIRA, name: kira, default: true }\n"
 
 func loadWithUser(t *testing.T, repoYAML, userYAML string) (cfg *datamodel.Config, warn, repoPath, userPath string) {
 	t.Helper()

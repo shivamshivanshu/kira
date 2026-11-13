@@ -61,7 +61,7 @@ see `REVIEW.md` for the full bottom-up file list):
 - `index` — disposable SQLite cache under `.kira/.cache/` (staleness detection, incremental refresh).
 - `treeish` — loads an item set + config from any git tree-ish (for `diff`/`changes`/merge-driver).
 - `hooks` — embedded git-hook shim scripts + their pure logic.
-- `syncx` — report shape, dirty-tree policy, seams for `sync`.
+- `syncx` — report shape and dirty-tree policy of `sync`.
 - `workon` — pure branch-naming/slug/active-pointer logic.
 - `showfmt` — item-reference string forms shared by TUI/CLI.
 - `warningfmt` — renders `datamodel.Warning` codes as user-facing text shared by CLI/webui.

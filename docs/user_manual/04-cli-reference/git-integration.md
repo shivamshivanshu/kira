@@ -217,6 +217,10 @@ Auto-merging .kira/tickets/01KYHXEZGZF09V18RD96CXH9GG.md
 Merge made by the 'ort' strategy.
 ```
 
+Re-running `install` leaves a current block alone. A block that has drifted —
+written by an older kira, or edited by hand between its two marker lines — is
+rewritten in place to the current text; lines outside the markers are kept.
+
 kira declines to chain in three cases, and says which instead of guessing:
 
 ```console

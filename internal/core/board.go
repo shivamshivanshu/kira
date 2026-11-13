@@ -136,23 +136,11 @@ func (s *Store) mutateConfig(edit func(data []byte, locked *datamodel.Config) (c
 	if err := os.WriteFile(fs.ConfigPath(), e.data, filePerm); err != nil {
 		return errx.Env("writing config: %v", err)
 	}
-	_, err = s.finalize(e.commit.Mode, commitSpec{trailerKey: datamodel.TicketTrailerKey, subject: e.subject}, fs.RelToRoot(fs.ConfigPath()))
+	_, err = s.finalize(e.commit.Mode, commitSpec{subject: e.subject}, fs.RelToRoot(fs.ConfigPath()))
 	return err
 }
 
-func adoptImplicitBoard(locked *datamodel.Config) (*datamodel.Board, error) {
-	if !config.ValidBoardKey(locked.Project.Key) {
-		return nil, errx.User("project.key %q is not a valid board key (must match %s); boards cannot be adopted until the project key conforms", locked.Project.Key, config.BoardKeyPattern)
-	}
-	name := locked.Project.Name
-	if name == "" {
-		name = locked.Project.Key
-	}
-	return &datamodel.Board{Key: locked.Project.Key, Name: name, Default: true}, nil
-}
-
-// BoardCreate adds a new board to the config, adopting the project as an
-// implicit board first if none exist yet.
+// BoardCreate adds a new board to the config.
 func (s *Store) BoardCreate(_ *datamodel.Config, key, name, description string) (*datamodel.BoardCreateResult, error) {
 	if !config.ValidBoardKey(key) {
 		return nil, errx.User("board key %q must match %s", key, config.BoardKeyPattern)
@@ -170,19 +158,7 @@ func (s *Store) BoardCreate(_ *datamodel.Config, key, name, description string) 
 				return configEdit{}, errx.User("board %q already exists", b.Key)
 			}
 		}
-		var implicit *datamodel.Board
-		if locked.Boards == nil {
-			if strings.EqualFold(key, locked.Project.Key) || locked.Project.Key == "" {
-				board.Default = true
-			} else {
-				adopted, err := adoptImplicitBoard(locked)
-				if err != nil {
-					return configEdit{}, err
-				}
-				implicit = adopted
-			}
-		}
-		out, err := config.AddBoard(data, board, implicit)
+		out, err := config.AddBoard(data, board)
 		if err != nil {
 			return configEdit{}, errx.User("%v", err)
 		}
@@ -233,15 +209,6 @@ func (s *Store) updateBoard(_ *datamodel.Config, key, verb string, guardLastActi
 			if len(active) == 1 && strings.EqualFold(active[0].Key, key) {
 				return configEdit{}, errx.User("cannot archive %s: it is the last active board", key).
 					WithHint("create or unarchive another board first")
-			}
-		}
-		if locked.Boards == nil {
-			adopted, err := adoptImplicitBoard(locked)
-			if err != nil {
-				return configEdit{}, err
-			}
-			if data, err = config.AddBoard(data, *adopted, nil); err != nil {
-				return configEdit{}, errx.User("%v", err)
 			}
 		}
 		out, err := config.UpdateBoard(data, target.Key, mutate)

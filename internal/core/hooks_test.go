@@ -128,7 +128,7 @@ func TestInstallHooksRefusesHookEndingInExecOrExit(t *testing.T) {
 	}
 }
 
-func TestInstallHooksNeverRewritesChainedUserHook(t *testing.T) {
+func TestInstallHooksKeepsUserLinesAndRefreshesStaleChainBlock(t *testing.T) {
 	s, _, _ := stagedFixture(t)
 	dst := installedHookPath(t, s, "post-merge")
 	userHook := "#!/bin/sh\necho user-hook-ran\n"
@@ -169,7 +169,7 @@ func TestInstallHooksNeverRewritesChainedUserHook(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != mangledChain {
-		t.Errorf("install rewrote a hook containing user content:\n%q", got)
+	if string(got) != string(chained) {
+		t.Errorf("reinstall over a stale chain block = %q, want the user lines plus the current block %q", got, chained)
 	}
 }

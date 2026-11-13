@@ -14,9 +14,6 @@ project:
   key: KIRA
   name: kira
 
-id:
-  style: sequential          # sequential (default) | hash
-
 workflows:
   ticket:
     states:
@@ -28,23 +25,25 @@ workflows:
 filters: {}                   # named saved queries
 
 commit:
-  mode: auto                  # auto | manual | prompt
+  mode: auto                  # auto | manual
 `
 
-var implicitKIRA = datamodel.Board{Key: "KIRA", Name: "kira", Default: true}
-
-func addBoard(t *testing.T, data string, b datamodel.Board, implicit *datamodel.Board) string {
+func addBoard(t *testing.T, data string, b datamodel.Board) string {
 	t.Helper()
-	out, err := config.AddBoard([]byte(data), b, implicit)
+	out, err := config.AddBoard([]byte(data), b)
 	if err != nil {
 		t.Fatalf("AddBoard(%s): %v", b.Key, err)
 	}
 	return string(out)
 }
 
-func TestAddBoardFirstMaterializesImplicit(t *testing.T) {
-	imp := implicitKIRA
-	out := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)
+func withKIRABoard(t *testing.T) string {
+	t.Helper()
+	return addBoard(t, boardBaseConfig, datamodel.Board{Key: "KIRA", Name: "kira", Default: true})
+}
+
+func TestAddBoardAppendsAfterExistingBoard(t *testing.T) {
+	out := addBoard(t, withKIRABoard(t), datamodel.Board{Key: "XYZ", Name: "Beta"})
 
 	cfg, err := config.Parse([]byte(out))
 	if err != nil {
@@ -54,15 +53,15 @@ func TestAddBoardFirstMaterializesImplicit(t *testing.T) {
 		t.Fatalf("parsed boards = %+v, want 2 entries", cfg.Boards)
 	}
 	if cfg.Boards[0].Key != "KIRA" || !cfg.Boards[0].Default {
-		t.Errorf("first board = %+v, want implicit KIRA default", cfg.Boards[0])
+		t.Errorf("first board = %+v, want KIRA default", cfg.Boards[0])
 	}
 	if cfg.Boards[1].Key != "XYZ" || cfg.Boards[1].Default {
 		t.Errorf("second board = %+v, want XYZ non-default", cfg.Boards[1])
 	}
 }
 
-func TestAddBoardKeyEqualsProjectWritesSingleDefault(t *testing.T) {
-	out := addBoard(t, boardBaseConfig, datamodel.Board{Key: "KIRA", Name: "kira", Default: true}, nil)
+func TestAddBoardOpensMissingBoardsList(t *testing.T) {
+	out := addBoard(t, boardBaseConfig, datamodel.Board{Key: "KIRA", Name: "kira", Default: true})
 
 	cfg, err := config.Parse([]byte(out))
 	if err != nil {
@@ -74,9 +73,8 @@ func TestAddBoardKeyEqualsProjectWritesSingleDefault(t *testing.T) {
 }
 
 func TestAddBoardSecondAppendKeepsEarlierBoards(t *testing.T) {
-	imp := implicitKIRA
-	first := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)
-	out := addBoard(t, first, datamodel.Board{Key: "ABC", Name: "Gamma"}, nil)
+	first := addBoard(t, withKIRABoard(t), datamodel.Board{Key: "XYZ", Name: "Beta"})
+	out := addBoard(t, first, datamodel.Board{Key: "ABC", Name: "Gamma"})
 
 	cfg, err := config.Parse([]byte(out))
 	if err != nil {
@@ -88,8 +86,7 @@ func TestAddBoardSecondAppendKeepsEarlierBoards(t *testing.T) {
 }
 
 func TestUpdateBoardRenamePreservesOtherEntries(t *testing.T) {
-	imp := implicitKIRA
-	base := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)
+	base := addBoard(t, withKIRABoard(t), datamodel.Board{Key: "XYZ", Name: "Beta"})
 	out, err := config.UpdateBoard([]byte(base), "xyz", func(b datamodel.Board) datamodel.Board {
 		b.Name = "Beta Squad"
 		return b
@@ -110,8 +107,7 @@ func TestUpdateBoardRenamePreservesOtherEntries(t *testing.T) {
 }
 
 func TestUpdateBoardArchiveSetsFlag(t *testing.T) {
-	imp := implicitKIRA
-	base := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)
+	base := addBoard(t, withKIRABoard(t), datamodel.Board{Key: "XYZ", Name: "Beta"})
 	out, err := config.UpdateBoard([]byte(base), "XYZ", func(b datamodel.Board) datamodel.Board {
 		b.Archived = true
 		return b
@@ -126,8 +122,7 @@ func TestUpdateBoardArchiveSetsFlag(t *testing.T) {
 }
 
 func TestUpdateBoardUnknownKeyErrors(t *testing.T) {
-	imp := implicitKIRA
-	base := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)
+	base := addBoard(t, withKIRABoard(t), datamodel.Board{Key: "XYZ", Name: "Beta"})
 	if _, err := config.UpdateBoard([]byte(base), "NOPE", func(b datamodel.Board) datamodel.Board { return b }); err == nil {
 		t.Fatal("expected an error updating an unknown board key")
 	}
@@ -135,8 +130,7 @@ func TestUpdateBoardUnknownKeyErrors(t *testing.T) {
 
 func TestAddBoardQuotesFlowBreakingValues(t *testing.T) {
 	for _, name := range []string{"Ops,Live", "a{b}c", "x[y]z", "key: val"} {
-		imp := implicitKIRA
-		out := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: name}, &imp)
+		out := addBoard(t, withKIRABoard(t), datamodel.Board{Key: "XYZ", Name: name})
 		cfg, err := config.Parse([]byte(out))
 		if err != nil {
 			t.Fatalf("parse after quoting %q: %v\n%s", name, err, out)
@@ -151,7 +145,7 @@ func TestAddBoardQuotesFlowBreakingValues(t *testing.T) {
 func TestAddBoardAppendsToFlowList(t *testing.T) {
 	flowCfg := boardBaseConfig +
 		"boards: [{ key: KIRA, name: kira, default: true }]\n"
-	out := addBoard(t, flowCfg, datamodel.Board{Key: "XYZ", Name: "Beta"}, nil)
+	out := addBoard(t, flowCfg, datamodel.Board{Key: "XYZ", Name: "Beta"})
 	cfg, err := config.Parse([]byte(out))
 	if err != nil {
 		t.Fatalf("parse: %v\n%s", err, out)
@@ -162,8 +156,7 @@ func TestAddBoardAppendsToFlowList(t *testing.T) {
 }
 
 func TestUpdateBoardPreservesTrailingComment(t *testing.T) {
-	imp := implicitKIRA
-	base := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)
+	base := addBoard(t, withKIRABoard(t), datamodel.Board{Key: "XYZ", Name: "Beta"})
 	base = strings.Replace(base, "{ key: XYZ, name: Beta }", "{ key: XYZ, name: Beta }  # squad", 1)
 	out, err := config.UpdateBoard([]byte(base), "XYZ", func(b datamodel.Board) datamodel.Board {
 		b.Name = "Beta Squad"
@@ -182,8 +175,7 @@ func TestUpdateBoardPreservesTrailingComment(t *testing.T) {
 }
 
 func TestUpdateBoardPreservesCommentContainingBrace(t *testing.T) {
-	imp := implicitKIRA
-	base := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)
+	base := addBoard(t, withKIRABoard(t), datamodel.Board{Key: "XYZ", Name: "Beta"})
 	base = strings.Replace(base, "{ key: XYZ, name: Beta }", "{ key: XYZ, name: Beta }  # squad {ops}", 1)
 	out, err := config.UpdateBoard([]byte(base), "XYZ", func(b datamodel.Board) datamodel.Board {
 		b.Name = "Beta Squad"
@@ -205,8 +197,7 @@ func TestUpdateBoardPreservesCommentContainingBrace(t *testing.T) {
 }
 
 func TestUpdateBoardQuotedNameWithBraceRoundTrips(t *testing.T) {
-	imp := implicitKIRA
-	base := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Ops}Live"}, &imp)
+	base := addBoard(t, withKIRABoard(t), datamodel.Board{Key: "XYZ", Name: "Ops}Live"})
 	out, err := config.UpdateBoard([]byte(base), "XYZ", func(b datamodel.Board) datamodel.Board {
 		b.Archived = true
 		return b
@@ -280,8 +271,7 @@ func TestUpdateBoardNonASCIISiblingNameByteOffset(t *testing.T) {
 }
 
 func TestAddBoardPreservesUnrelatedLines(t *testing.T) {
-	imp := implicitKIRA
-	out := addBoard(t, boardBaseConfig, datamodel.Board{Key: "XYZ", Name: "Beta"}, &imp)
+	out := addBoard(t, withKIRABoard(t), datamodel.Board{Key: "XYZ", Name: "Beta"})
 
 	for line := range strings.SplitSeq(boardBaseConfig, "\n") {
 		if strings.HasPrefix(line, "version:") {

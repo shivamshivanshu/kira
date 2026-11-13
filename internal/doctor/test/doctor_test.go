@@ -146,7 +146,7 @@ func TestCheckUnknownBoardPrefixWarnsForHashNumber(t *testing.T) {
 	it := valid(ulidA, "ZZZ-a1b2c3")
 	findings := doctor.Check(config.Default(), resolver(it), it)
 	if classes(findings)[doctor.ClassBoard] != doctor.SeverityWarning {
-		t.Fatalf("expected a board warning for the unconfigured hash-style prefix ZZZ, got %+v", findings)
+		t.Fatalf("expected a board warning for the unconfigured prefix ZZZ on a legacy non-numeric number, got %+v", findings)
 	}
 }
 

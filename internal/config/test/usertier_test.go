@@ -47,7 +47,7 @@ func writeUserFile(t *testing.T, dir, name, body string) {
 	}
 }
 
-const minimalRepo = "version: 2\nproject:\n  key: KIRA\n"
+const minimalRepo = "version: 2\nproject:\n  key: KIRA\nboards:\n  - { key: KIRA, name: kira, default: true }\n"
 
 func loadWith(t *testing.T, repoBody string, env func(string) string) (*datamodel.Config, string) {
 	t.Helper()

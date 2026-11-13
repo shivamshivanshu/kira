@@ -11,24 +11,14 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 )
 
-func AddBoard(data []byte, b datamodel.Board, materializeImplicit *datamodel.Board) ([]byte, error) {
+func AddBoard(data []byte, b datamodel.Board) ([]byte, error) {
 	original, err := Parse(data)
 	if err != nil {
 		return nil, err
 	}
-	expected := append([]datamodel.Board{}, original.Boards...)
-	if materializeImplicit != nil {
-		expected = append(expected, *materializeImplicit)
-	}
-	expected = append(expected, b)
-
-	out := data
-	if materializeImplicit != nil {
-		if out, err = spliceBoard(out, *materializeImplicit); err != nil {
-			return nil, err
-		}
-	}
-	if out, err = spliceBoard(out, b); err != nil {
+	expected := append(append([]datamodel.Board{}, original.Boards...), b)
+	out, err := spliceBoard(data, b)
+	if err != nil {
 		return nil, err
 	}
 	cfg, err := Parse(out)

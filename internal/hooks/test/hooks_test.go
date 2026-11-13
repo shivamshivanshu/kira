@@ -173,6 +173,22 @@ func TestUnchainPreservesContentAfterNoNewlineBlock(t *testing.T) {
 	}
 }
 
+func TestReplaceChainBlockUpgradesOlderBlockInPlace(t *testing.T) {
+	const currentCall = "  kira hooks run post-merge \"$@\" || exit\n"
+	const olderCall = "  \".kira/hooks/post-merge\" \"$@\" || exit\n"
+	for _, orig := range []string{"#!/bin/sh\necho user\n", "#!/bin/sh\necho no-trailing-newline"} {
+		current := hooks.Chain(orig, "post-merge") + "echo appended-by-hand\n"
+		older := strings.Replace(current, currentCall, olderCall, 1)
+		if state := hooks.StateOf(older, "post-merge"); state != hooks.StateDrifted {
+			t.Fatalf("older block state = %s, want drifted", state)
+		}
+		got, ok := hooks.ReplaceChainBlock(older, "post-merge")
+		if !ok || got != current {
+			t.Errorf("ReplaceChainBlock(%q) = (%q, %v), want %q", older, got, ok, current)
+		}
+	}
+}
+
 func TestStateOf(t *testing.T) {
 	script, _ := hooks.Script("post-merge")
 	legacy := "#!/bin/sh\n# kira post-merge hook — delegates to the kira binary\nexec kira hooks post-merge \"$@\"\n"

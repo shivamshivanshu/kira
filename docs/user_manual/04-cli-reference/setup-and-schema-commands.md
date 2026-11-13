@@ -426,18 +426,16 @@ blank lines, and alignment survive untouched. Here is the `commit` block
 before and after a change, with its inline documentation intact:
 
 ```console
-$ grep -A2 '^commit:' .kira/config.yaml
+$ grep -A1 '^commit:' .kira/config.yaml
 commit:
   mode: auto                  # auto | manual
-  trailer: Kira-Ticket        # trailer key that links a commit to its ticket
 
 $ kira config set commit.mode manual
 Set commit.mode = manual
 
-$ grep -A2 '^commit:' .kira/config.yaml
+$ grep -A1 '^commit:' .kira/config.yaml
 commit:
   mode: manual                  # auto | manual
-  trailer: Kira-Ticket        # trailer key that links a commit to its ticket
 ```
 
 If the key is not present in the file at all — including when it exists only

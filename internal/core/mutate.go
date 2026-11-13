@@ -179,6 +179,6 @@ func scopeVocabWarnings(warns []error, changed []string) []error {
 }
 
 func (s *Store) commit(cfg *datamodel.Config, cs *datamodel.ChangeSet) error {
-	_, err := s.finalize(cfg.Commit.Mode, commitSpec{trailerKey: datamodel.TicketTrailerKey, subject: cs.Subject, trailerNumber: cs.After.Number}, cs.Paths...)
+	_, err := s.finalize(cfg.Commit.Mode, commitSpec{subject: cs.Subject, trailerNumber: cs.After.Number}, cs.Paths...)
 	return err
 }

@@ -28,7 +28,7 @@ Verify: exit-code taxonomy (1 user / 2 conflict / 3 env / 4 crash); ULID monoton
 - [ ] internal/errx/suggest.go — Nearest-candidate suggestion via edit-distance threshold matching.
 - [ ] internal/errx/suggest_test.go — Tests for Nearest and editDistance.
 - [ ] internal/id/id.go — Two-tier identity: mints monotonic ULIDs and parses them.
-- [ ] internal/id/number.go — KIRA-n display numbers: parse, allocate next, hash-style generation.
+- [ ] internal/id/number.go — KIRA-n display numbers: parse and allocate the next sequential number.
 - [ ] internal/id/resolve.go — Resolves tokens (ULID/prefix/number/alias) to ULIDs with ambiguity/not-found errors.
 - [ ] internal/id/sortkey.go — SortKey ordering items by numeric number then string then ULID.
 - [ ] internal/id/id_test.go — Tests for ULID minting monotonicity and parsing.

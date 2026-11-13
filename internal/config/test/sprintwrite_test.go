@@ -14,9 +14,6 @@ project:
   key: KIRA
   name: kira
 
-id:
-  style: sequential          # sequential (default) | hash
-
 workflows:
   ticket:
     states:
@@ -34,7 +31,7 @@ filters: {}                   # named saved queries
 sprints: []                   # sprint entities (kira sprint create)
 
 commit:
-  mode: auto                  # auto | manual | prompt
+  mode: auto                  # auto | manual
 `
 
 var s15 = datamodel.Sprint{Key: "2026-S15", Name: "Sprint 15", Start: "2026-07-27", End: "2026-08-09"}

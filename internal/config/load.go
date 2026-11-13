@@ -25,7 +25,7 @@ func Load(root string) (*datamodel.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cfg, requireCurrentVersion(cfg)
+	return cfg, requireCurrentSchema(cfg)
 }
 
 // LoadWithUser loads the repo config and merges in user preferences from the user config directory.
@@ -47,7 +47,7 @@ func LoadWithUser(root string, env func(string) string, warn io.Writer) (*datamo
 	if err := parseInto(cfg, data, ignore); err != nil {
 		return nil, err
 	}
-	if err := requireCurrentVersion(cfg); err != nil {
+	if err := requireCurrentSchema(cfg); err != nil {
 		return nil, err
 	}
 	cfg.UIProvenance = tierFor(!reflect.DeepEqual(cfg.UI, uiBeforeRepo), tier.ui != nil)
@@ -64,18 +64,26 @@ func LoadWithUser(root string, env func(string) string, warn io.Writer) (*datamo
 	return cfg, nil
 }
 
-// requireCurrentVersion refuses a pre-boards config in the working tree. Parse
-// still accepts it, so configs read from historical git trees keep loading.
-func requireCurrentVersion(cfg *datamodel.Config) error {
-	if cfg.Version == datamodel.SchemaVersion {
+// requireCurrentSchema refuses a pre-boards config in the working tree. Parse
+// still accepts one, so configs read from historical git trees keep loading.
+func requireCurrentSchema(cfg *datamodel.Config) error {
+	if cfg.Version == datamodel.SchemaVersion && len(cfg.Boards) > 0 {
 		return nil
 	}
-	defaultBoard, err := InlineBoardEntry(datamodel.Board{Key: cfg.Project.Key, Name: cfg.Project.Name, Default: true})
-	if err != nil {
-		defaultBoard = "{ key: <KEY>, name: <name>, default: true }"
+	addBoards := "add boards: [" + defaultBoardEntry(cfg) + "]"
+	if cfg.Version != datamodel.SchemaVersion {
+		return errx.User("config: version %d is no longer supported", cfg.Version).
+			WithHint("set version: %d and %s", datamodel.SchemaVersion, addBoards)
 	}
-	return errx.User("config: version %d is no longer supported", cfg.Version).
-		WithHint("set version: %d and add boards: [%s]", datamodel.SchemaVersion, defaultBoard)
+	return errx.User("config: boards: at least one board is required").WithHint("%s", addBoards)
+}
+
+func defaultBoardEntry(cfg *datamodel.Config) string {
+	entry, err := InlineBoardEntry(datamodel.Board{Key: cfg.Project.Key, Name: cfg.Project.Name, Default: true})
+	if err != nil {
+		return "{ key: <KEY>, name: <name>, default: true }"
+	}
+	return entry
 }
 
 // tierFor reports which tier supplied a section's effective value: repo when

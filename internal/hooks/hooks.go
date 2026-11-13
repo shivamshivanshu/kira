@@ -163,6 +163,30 @@ func chainTail(name string) string {
 		markerEnd + "\n"
 }
 
+// ReplaceChainBlock swaps the body of an existing chain block for the current
+// one, keeping its marker line (and so its newline variant) and its position,
+// so a block written by an older kira stops calling what that kira called.
+func ReplaceChainBlock(content, name string) (string, bool) {
+	start := strings.Index(content, marker)
+	if start < 0 {
+		return content, false
+	}
+	markerLineLen := strings.IndexByte(content[start:], '\n')
+	if markerLineLen < 0 {
+		return content, false
+	}
+	bodyStart := start + markerLineLen + 1
+	endOffset := strings.Index(content[bodyStart:], markerEnd)
+	if endOffset < 0 {
+		return content, false
+	}
+	bodyEnd := bodyStart + endOffset + len(markerEnd)
+	if bodyEnd < len(content) && content[bodyEnd] == '\n' {
+		bodyEnd++
+	}
+	return content[:bodyStart] + chainTail(name) + content[bodyEnd:], true
+}
+
 func Unchain(content, name string) (string, bool) {
 	if stripped := strings.Replace(content, "\n"+chainBlockAddedNewline(name), "", 1); stripped != content {
 		return stripped, true

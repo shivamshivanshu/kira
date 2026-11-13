@@ -207,12 +207,12 @@ func (c *compiler) compilePred(n *predExpr) (Predicate, error) {
 func unknownFieldErr(pos int, field string) *Error {
 	return &Error{
 		Pos:          pos,
-		Msg:          fmt.Sprintf("unknown field %s (available: %s)", quote(field), strings.Join(FieldNames(), ", ")),
+		Msg:          fmt.Sprintf("unknown field %s (available: %s)", quote(field), strings.Join(fieldNames(), ", ")),
 		unknownField: true,
 	}
 }
 
-func FieldNames() []string {
+func fieldNames() []string {
 	return slices.Sorted(maps.Keys(fields))
 }
 

@@ -70,7 +70,7 @@ func numberTitle(it Item) string {
 // branch renders through workon so the yanked name is exactly the branch
 // `kira workon` would create for this item.
 func branch(it Item, w datamodel.Workon) string {
-	return workon.RenderBranch(w.BranchPattern, id.KeyOf(it.Number), it.Number, it.Title, "-")
+	return workon.RenderBranch(w.BranchPattern, id.KeyOf(it.Number), it.Number, it.Title)
 }
 
 // CommentsHeader is the section title `kira show` and the TUI detail panel

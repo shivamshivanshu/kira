@@ -51,7 +51,7 @@ func (s *Store) Find(cfg *datamodel.Config, args FindArgs) ([]FindRow, error) {
 
 func (s *Store) findInItems(args FindArgs, items []*datamodel.Item) ([]FindRow, error) {
 	if args.Pattern == "" {
-		return nil, errx.User("find: a search pattern is required")
+		return nil, errx.User("find: a search pattern is required").WithHint("example: kira find \"race condition\"")
 	}
 	expr := args.Pattern
 	if args.Word {

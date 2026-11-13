@@ -306,8 +306,12 @@ while removing it from pickers and from the default board list. An archived
 board cannot serve as the default.
 
 `kira init` writes the list with one default board keyed by `project.key`.
-Without any board, `kira create` has nowhere to number an item and stops with
-`no boards configured`.
+The list must hold at least one board; a config without one does not load:
+
+```
+kira: config: boards: at least one board is required
+  hint: add boards: [{ key: KIRA, name: kira, default: true }]
+```
 
 See [Boards and sprints](04-cli-reference/boards-and-sprints.md) for working
 with them day to day.
