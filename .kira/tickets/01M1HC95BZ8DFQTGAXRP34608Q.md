@@ -4,13 +4,14 @@ number: CORE-65
 aliases: []
 type: ticket
 title: "An epic cannot be blocked by a ticket, which looks unintended"
-state: TODO
+state: DONE
+resolution: done
 priority: P3
 labels: []
 parent: null
 blocked_by: []
 created: 2026-09-02T17:37:25+02:00
-updated: 2026-09-02T17:37:25+02:00
+updated: 2026-11-13T17:19:13+05:30
 ---
 `blocked_by` declares a different ref target per type:
 
