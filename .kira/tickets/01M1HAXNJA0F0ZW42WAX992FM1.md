@@ -4,13 +4,14 @@ number: KIRA-170
 aliases: []
 type: ticket
 title: "webui still hardcodes the epic type, so a declared container is invisible to it"
-state: TODO
+state: DONE
+resolution: done
 priority: P3
 labels: []
 parent: null
 blocked_by: []
 created: 2026-09-02T17:13:40+02:00
-updated: 2026-09-02T17:13:40+02:00
+updated: 2026-11-13T17:19:13+05:30
 ---
 CORE-63 made "container" a schema-declared capability and replaced nine
 hardcoded `TypeEpic` comparisons in core, cli and doctor. It touched **zero**
