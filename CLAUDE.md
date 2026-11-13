@@ -81,7 +81,7 @@ see `REVIEW.md` for the full bottom-up file list):
 
 - `build-test`: matrix over `ubuntu-latest`/`macos-latest` — `go build`, `go vet`, `go test -race ./...`.
 - `lint`: `golangci-lint-action` pinned to `v2.12.2` in `ci.yml` — install that exact version locally, config lives in `.golangci.yml`.
-- `tag` (main only, after build-test+lint): computes and pushes the next `vX.Y.Z` patch tag. Uses the default `GITHUB_TOKEN` — pushes made with that token do **not** trigger other workflow runs, so anything that should fire on the new tag must be a job in this same workflow (not a separate `on: push: tags` workflow), consuming the tag via a job output.
+- `tag` (main only, after build-test+lint): computes and pushes the next `vX.Y.Z` tag — patch on push, or the `bump` input (`patch|minor|major`) of a manual `workflow_dispatch` run. Uses the default `GITHUB_TOKEN` — pushes made with that token do **not** trigger other workflow runs, so anything that should fire on the new tag must be a job in this same workflow (not a separate `on: push: tags` workflow), consuming the tag via a job output.
 - `release` (needs `tag`): checks out the tag, runs `goreleaser/goreleaser-action@v6` (pinned `v2.5.1`) against `.goreleaser.yaml` — builds `cmd/kira` for linux/darwin × amd64/arm64, `CGO_ENABLED=0` + `-trimpath` (static, reproducible), `-ldflags "-s -w -X internal/cli.version=..."`, publishes `.tar.gz` archives + checksums to GitHub Releases.
 
 `.github/workflows/perf.yml` — non-gating perf check: runs the deterministic

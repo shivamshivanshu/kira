@@ -4,6 +4,13 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version part to bump for the release cut from main
+        type: choice
+        options: [patch, minor, major]
+        default: patch
 
 jobs:
   build-test:
@@ -48,16 +55,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Tag and push next patch version
+      - name: Tag and push next version
         id: next
+        env:
+          BUMP: ${{ inputs.bump || 'patch' }}
         run: |
           latest="$(git tag -l 'v*.*.*' | sort -V | tail -n1)"
-          if [ -z "$latest" ]; then
-            next="v0.0.1"
-          else
-            IFS='.' read -r major minor patch <<< "${latest#v}"
-            next="v${major}.${minor}.$((patch + 1))"
-          fi
+          IFS='.' read -r major minor patch <<< "${latest:-v0.0.0}"
+          major="${major#v}"
+          case "$BUMP" in
+            major) next="v$((major + 1)).0.0" ;;
+            minor) next="v${major}.$((minor + 1)).0" ;;
+            *) next="v${major}.${minor}.$((patch + 1))" ;;
+          esac
           git tag "$next"
           git push origin "$next"
           echo "tag=$next" >> "$GITHUB_OUTPUT"
