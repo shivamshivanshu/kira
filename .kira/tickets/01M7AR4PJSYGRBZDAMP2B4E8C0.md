@@ -5,13 +5,14 @@ aliases: []
 type: ticket
 subtype: bug
 title: "config explain says resolutions_dropped affects epic progress; it does not"
-state: TODO
+state: DONE
+resolution: done
 priority: P3
 labels: []
 parent: null
 blocked_by: []
 created: 2026-11-13T20:54:12+05:30
-updated: 2026-11-13T20:54:12+05:30
+updated: 2026-11-13T21:41:39+05:30
 ---
 
 ## Description
