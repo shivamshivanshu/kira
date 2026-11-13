@@ -51,6 +51,6 @@ stderr 'merge.policy'
 exec kira config set commit.mode manual
 grep 'mode: manual' .kira/config.yaml
 # editing a live scalar line preserves its inline doc comment
-grep 'mode: manual.*# auto \| manual \| prompt' .kira/config.yaml
+grep '(?m)mode: manual.*# auto \| manual$' .kira/config.yaml
 exec git log --oneline
 stdout 'kira: config set commit.mode'

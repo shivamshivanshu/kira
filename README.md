@@ -52,7 +52,7 @@ push), `commit`, `doctor` (id collisions, dangling refs, schema violations),
 (`Kira-Ticket`, `Kira-Closes`) link and auto-close tickets from commit messages.
 
 **Configuration** — label/people vocab, boards, commit mode
-(auto/manual/prompt), merge policy, sprints, saved filters, and a personal
+(auto/manual), merge policy, sprints, saved filters, and a personal
 overlay (`~/.config/kira/config.yaml` via `config init`) for editor/UI/worktree
 preferences that never touches the shared repo config.
 

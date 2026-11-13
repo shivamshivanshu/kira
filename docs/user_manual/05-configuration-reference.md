@@ -390,14 +390,14 @@ managed with `kira sprint create` rather than edited by hand.
 
 ```yaml
 commit:
-  mode: auto                  # auto | manual | prompt
+  mode: auto                  # auto | manual
   subject_prefix: ""
   trailer: Kira-Ticket
 ```
 
 | Key | Type | Default |
 |---|---|---|
-| `mode` | `auto` \| `manual` \| `prompt` | `auto` |
+| `mode` | `auto` \| `manual` | `auto` |
 | `trailer` | string | `Kira-Ticket` |
 | `close_trailer` | string | `Kira-Closes` |
 | `subject_prefix` | string, single line | `"kira: "` |
@@ -411,8 +411,6 @@ commit:
   This is the default and what this repo uses.
 - `manual` — changes are written and staged but not committed; you run `kira
   commit` when you want to bundle them.
-- `prompt` — kira asks. This needs a terminal; without one, changes stage but
-  are not committed.
 
 **`trailer`** is the git trailer key that links a commit to an item, e.g.
 `Kira-Ticket: KIRA-46`. It may not be empty — an empty trailer key would

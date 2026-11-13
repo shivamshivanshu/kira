@@ -9,7 +9,7 @@ This repo dogfoods itself: its own tickets live in `.kira/tickets/`, config in
 `INFRA`, `DX`. Ticket states: `TODO`, `IN_PROGRESS`, `REVIEW`, `DONE`,
 `WONT_DO` — a plain enum, any state to any state. `commit.mode: auto` — most `kira`
 mutations (create/edit/move/...) auto-commit to `.kira/` immediately; `kira
-commit` only exists for `manual`/`prompt` modes.
+commit` only exists for `manual` mode.
 
 ## Code style: names carry the meaning, not comments
 

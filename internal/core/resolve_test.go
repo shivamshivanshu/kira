@@ -20,8 +20,6 @@ type scriptedPrompter struct {
 
 func (p *scriptedPrompter) Interactive() bool { return true }
 
-func (p *scriptedPrompter) Confirm(string) bool { return false }
-
 func (p *scriptedPrompter) ReadLine(prompt, def string) string {
 	p.prompts = append(p.prompts, prompt)
 	if p.pos >= len(p.answers) {

@@ -14,10 +14,9 @@ type CommitMode string
 const (
 	CommitAuto   CommitMode = "auto"
 	CommitManual CommitMode = "manual"
-	CommitPrompt CommitMode = "prompt"
 )
 
-var CommitModes = []CommitMode{CommitAuto, CommitManual, CommitPrompt}
+var CommitModes = []CommitMode{CommitAuto, CommitManual}
 
 type LinkMarker string
 

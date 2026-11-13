@@ -86,7 +86,7 @@ Look hard at: NUL-delimited git output parsing (forgery resistance — bodies/au
 - [ ] internal/gitx/trailers_test.go — Tests LogTrailers resists forged trailer/record injection from commit bodies.
 - [ ] internal/rgx/rgx.go — ripgrep wrapper: Line type, Installed, ParseLine, Search over a directory.
 - [ ] internal/rgx/test/rgx_test.go — Tests rgx.ParseLine on match/context/separator ripgrep output lines.
-- [ ] internal/termx/termx.go — Terminal helpers: IsTerminal, IsInteractive, Confirm, ReadLineDefault prompts.
+- [ ] internal/termx/termx.go — Terminal helpers: IsTerminal, IsInteractive, ReadLineDefault prompts.
 - [ ] internal/editorx/editorx.go — Editor launcher: resolves $EDITOR/$VISUAL and opens a file for editing.
 - [ ] internal/clipx/clipx.go — Clipboard copy via OSC 52 (tmux-wrapped) plus external tool detection.
 - [ ] internal/clipx/test/clipx_test.go — Tests clipboard copy chain matrix and OSC52 tmux-passthrough encoding.

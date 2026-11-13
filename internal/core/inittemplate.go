@@ -22,7 +22,7 @@ people:
   strict: false
 
 commit:
-  mode: auto                  # auto | manual | prompt (prompt needs a terminal; without one, changes stage but are not committed)
+  mode: auto                  # auto | manual
   trailer: Kira-Ticket        # trailer key that links a commit to its ticket
   close_trailer: Kira-Closes  # trailer key that closes a ticket when the commit lands
   link_markers: [trailer, subject, leading_number]  # what links a commit: trailer, a [[KIRA-n]] subject marker, and/or a bare KIRA-n leading the subject

@@ -33,7 +33,7 @@ func (s *server) actionRedirect(r *http.Request) string {
 		} else {
 			message, selected, err = s.mutate(cfg, name, r.PostForm)
 		}
-		if err == nil && stagesChanges(name) && (cfg.Commit.Mode == datamodel.CommitManual || cfg.Commit.Mode == datamodel.CommitPrompt) {
+		if err == nil && stagesChanges(name) && cfg.Commit.Mode == datamodel.CommitManual {
 			message = joinMessages(message, "Commit mode: "+string(cfg.Commit.Mode)+". Run kira commit in the command bar to commit staged changes.")
 		}
 	}

@@ -84,7 +84,7 @@ prose off stderr:
 
 ```console
 $ kira config set commit.mode bogus --json
-{"error":"config: commit.mode: invalid value \"bogus\", want one of [auto manual prompt]","hint":"","code":1}
+{"error":"config: commit.mode: invalid value \"bogus\", want one of [auto manual]","hint":"","code":1}
 ```
 
 The authoritative description of every one of these shapes is
@@ -425,7 +425,7 @@ bad value is rejected rather than written and discovered later:
 
 ```console
 $ kira config set commit.mode bogus
-kira: config: commit.mode: invalid value "bogus", want one of [auto manual prompt]
+kira: config: commit.mode: invalid value "bogus", want one of [auto manual]
 ```
 
 **Comments and formatting are preserved.** kira splices the single line that
@@ -436,7 +436,7 @@ before and after a change, with its inline documentation intact:
 ```console
 $ grep -A2 '^commit:' .kira/config.yaml
 commit:
-  mode: auto                  # auto | manual | prompt (prompt needs a terminal; without one, changes stage but are not committed)
+  mode: auto                  # auto | manual
   trailer: Kira-Ticket        # trailer key that links a commit to its ticket
 
 $ kira config set commit.mode manual
@@ -444,7 +444,7 @@ Set commit.mode = manual
 
 $ grep -A2 '^commit:' .kira/config.yaml
 commit:
-  mode: manual                  # auto | manual | prompt (prompt needs a terminal; without one, changes stage but are not committed)
+  mode: manual                  # auto | manual
   trailer: Kira-Ticket        # trailer key that links a commit to its ticket
 ```
 

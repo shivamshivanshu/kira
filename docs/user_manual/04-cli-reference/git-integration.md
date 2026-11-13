@@ -42,14 +42,13 @@ It decides what happens to the git working tree after any kira mutation —
 | --- | --- | --- |
 | `auto` (default) | Stages **and commits** the change immediately, as its own commit. | No — there is never anything pending. |
 | `manual` | Stages the change and stops. You commit when you like. | Yes — this is the mode it exists for. |
-| `prompt` | Asks you, per mutation, whether to commit. Needs a terminal. | Yes, as the fallback when there was no terminal. |
 
 kira's own repository ships `commit.mode: auto`, and its `.kira/config.yaml`
 records it like this:
 
 ```yaml
 commit:
-  mode: auto                  # auto | manual | prompt
+  mode: auto                  # auto | manual
   subject_prefix: ""
   trailer: Kira-Ticket
 ```
@@ -117,26 +116,6 @@ You can equally run plain `git commit` yourself; `kira commit` is a
 convenience that generates the subject, body, and trailers for you. Note that
 kira has already *staged* the files, so a bare `git commit` (no `-a`, no
 pathspec) picks them up.
-
-### `prompt`
-
-`prompt` confirms each mutation interactively:
-
-```console
-$ kira move ACME-5 IN_PROGRESS
-commit "kira: ACME-5 state TODO -> IN_PROGRESS"? [y/N] y
-Moved ACME-5: TODO -> IN_PROGRESS
-```
-
-Without a terminal — in a script, a CI job, a pipeline — it degrades to
-`manual` and tells you so, rather than hanging on a prompt nobody can answer:
-
-```console
-$ kira move ACME-5 IN_PROGRESS
-kira: warning: staged, not committed (commit.mode=prompt, non-interactive); run `kira commit`
-  hint: commit.mode=prompt requires an interactive terminal; re-run interactively, or set commit.mode to auto or manual
-Moved ACME-5: TODO -> IN_PROGRESS
-```
 
 See [Configuration reference](../05-configuration-reference.md) for the full
 `commit:` block, including `subject_prefix`, `trailer`, and `close_trailer`.
@@ -565,8 +544,7 @@ collisions. `kira sync` does it whether or not hooks are installed.
 If anything under `.kira/` is uncommitted when you sync, `prepare` has to do
 something with it — a rebase over dirty files will not start. The default
 depends on `commit.mode`: under `auto` a dirty tree is unexpected, so kira just
-commits it as a checkpoint; under `manual` or `prompt` your staged batch is
-deliberate, so kira refuses rather than committing a batch you were still
+commits it as a checkpoint; under `manual` your staged batch is deliberate, so kira refuses rather than committing a batch you were still
 assembling.
 
 Committing, the default under `commit.mode: auto`:

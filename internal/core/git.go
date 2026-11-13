@@ -1,8 +1,6 @@
 package core
 
 import (
-	"fmt"
-	"os"
 	"os/exec"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
@@ -36,26 +34,12 @@ func (s *Store) finalize(mode datamodel.CommitMode, spec commitSpec, paths ...st
 	if err := s.repo().Stage(paths...); err != nil {
 		return "", errx.User("%s", err)
 	}
-	switch mode {
-	case datamodel.CommitManual:
+	if mode == datamodel.CommitManual {
 		return "", nil
-	case datamodel.CommitPrompt:
-		if !s.prompter.Interactive() {
-			warn := errx.User("staged, not committed (commit.mode=prompt, non-interactive); run `kira commit`").
-				WithHint("commit.mode=prompt requires an interactive terminal; re-run interactively, or set commit.mode to auto or manual")
-			fmt.Fprintln(os.Stderr, "kira: warning:", warn.Error())
-			fmt.Fprintln(os.Stderr, "  hint:", warn.Hint)
-			return "", nil
-		}
-		if !s.prompter.Confirm(fmt.Sprintf("commit %q? [y/N] ", spec.subject)) {
-			return "", nil
-		}
-		fallthrough
-	default:
-		if err := s.repo().CommitIn(paths, spec.subject, spec.trailerKey, spec.trailerNumber); err != nil {
-			return "", errx.User("%s", err)
-		}
-		sha, _ := s.repo().Output("rev-parse", "HEAD")
-		return sha, nil
 	}
+	if err := s.repo().CommitIn(paths, spec.subject, spec.trailerKey, spec.trailerNumber); err != nil {
+		return "", errx.User("%s", err)
+	}
+	sha, _ := s.repo().Output("rev-parse", "HEAD")
+	return sha, nil
 }

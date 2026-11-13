@@ -31,15 +31,6 @@ func IsInteractive() bool {
 	return IsTerminal(os.Stdin) && IsTerminal(os.Stderr)
 }
 
-func Confirm(prompt string) bool {
-	switch strings.ToLower(ReadLineDefault(prompt, "")) {
-	case "y", "yes":
-		return true
-	default:
-		return false
-	}
-}
-
 // stdinReader is shared across prompts: a per-call reader would buffer ahead
 // and drop the remaining piped input between consecutive prompts.
 var stdinReader *bufio.Reader

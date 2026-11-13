@@ -35,7 +35,6 @@ func TestConfigTemplateParses(t *testing.T) {
 type keyPrompter struct{ key string }
 
 func (keyPrompter) Interactive() bool             { return true }
-func (keyPrompter) Confirm(string) bool           { return true }
 func (p keyPrompter) ReadLine(_, _ string) string { return p.key }
 
 func initRepoNamed(t *testing.T, name string) string {
