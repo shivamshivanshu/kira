@@ -4,13 +4,14 @@ number: CLI-13
 aliases: []
 type: ticket
 title: "tabwriter sizes columns by rune count, misaligning any non-ASCII cell"
-state: TODO
+state: DONE
+resolution: done
 priority: P3
 labels: []
 parent: null
 blocked_by: []
 created: 2026-09-02T17:13:40+02:00
-updated: 2026-09-02T17:13:40+02:00
+updated: 2026-11-13T21:50:05+05:30
 ---
 `text/tabwriter` sizes columns by rune count, not terminal display width -- its
 own documentation says it "assumes all Unicode code points have the same
