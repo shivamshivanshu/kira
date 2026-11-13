@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"text/tabwriter"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/warningfmt"
@@ -31,8 +30,4 @@ func emitJSON(w io.Writer, v any) error {
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
-}
-
-func newTabWriter(w io.Writer) *tabwriter.Writer {
-	return tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 }
