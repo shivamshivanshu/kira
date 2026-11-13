@@ -45,8 +45,8 @@ type Error struct {
 func (e *Error) Error() string { return fmt.Sprintf("query: %s at position %d", e.Msg, e.Pos) }
 
 // IsUnknownField reports whether err is a query error about an unrecognised
-// field name — the one class of compile error whose validity depends on which
-// schema-declared fields the caller could supply.
+// field name — the one class of compile error config load tolerates in a
+// saved filter.
 func IsUnknownField(err error) bool {
 	e, ok := errors.AsType[*Error](err)
 	return ok && e.unknownField

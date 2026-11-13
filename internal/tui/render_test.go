@@ -101,19 +101,19 @@ func TestCollapseViaKey(t *testing.T) {
 	golden.RequireEqual(t, []byte(updated.(model).View()))
 }
 
-func TestTypeGlyphComesFromTheSchema(t *testing.T) {
+func TestTypeGlyphComesFromTheIconSet(t *testing.T) {
 	t.Parallel()
 	th := asciiTheme()
 	tm := loadedTree()
 
-	// kira ships no per-type glyph of its own, so a tree rendered without
-	// schema icons draws none -- it does not fall back to a hardcoded one.
+	// a tree rendered without type icons draws none -- it does not fall back
+	// to a hardcoded one.
 	bare := tm.render(th, iconSet{mode: datamodel.IconNerd}, 100, 6, true, true)
 	if strings.ContainsAny(bare, "\uf41b\uf45d") {
-		t.Errorf("no schema icon was declared, so no type glyph should appear:\n%s", bare)
+		t.Errorf("no type icon was attached, so no type glyph should appear:\n%s", bare)
 	}
 
-	// what a schema declares is what gets drawn, verbatim
+	// the attached glyphs are what gets drawn, verbatim
 	declared := iconSet{mode: datamodel.IconNerd}.withTypeIcons(map[string]string{
 		datamodel.TypeEpic: "\uf45d", datamodel.TypeTicket: "@",
 	})

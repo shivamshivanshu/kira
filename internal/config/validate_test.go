@@ -43,8 +43,8 @@ func TestValidateFilters(t *testing.T) {
 		wantErr    bool
 	}{
 		{"builtin fields", "owner=shivam ORDER BY due", false},
-		{"custom field passes unresolved", "team = infra", false},
-		{"custom field in ORDER BY passes unresolved", "x ORDER BY team", false},
+		{"unknown field passes unresolved", "team = infra", false},
+		{"unknown field in ORDER BY passes unresolved", "x ORDER BY team", false},
 		{"syntax error still rejected", "state =", true},
 		{"bad date still rejected", "created > notadate", true},
 	}

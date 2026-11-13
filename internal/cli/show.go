@@ -79,9 +79,8 @@ func printShow(cmd *cobra.Command, g *globalFlags, res *datamodel.ShowResult) er
 
 func renderShow(w io.Writer, r *datamodel.ShowResult) {
 	_, _ = fmt.Fprintf(w, "%s  %s  [%s]\n", r.Number, r.Title, r.State)
-	// The label column is sized from the labels actually present: link types
-	// and schema-declared field names are both arbitrary, so any fixed width
-	// eventually misaligns.
+	// The label column is sized from the labels actually present: link type
+	// names vary in length, so any fixed width eventually misaligns.
 	type row struct{ label, value string }
 	var rows []row
 	line := func(label, value string) {

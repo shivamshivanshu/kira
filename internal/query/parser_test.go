@@ -119,8 +119,7 @@ func TestParseErrors(t *testing.T) {
 	}
 }
 
-// A misspelled field parses: only the compiler knows which names a schema
-// declares, so it owns the rejection.
+// A misspelled field parses: the compiler owns the field-name rejection.
 func TestCompileRejectsUnknownField(t *testing.T) {
 	if _, err := Parse("onwer=shivam"); err != nil {
 		t.Fatalf("Parse should defer an unknown field to compile, got %v", err)

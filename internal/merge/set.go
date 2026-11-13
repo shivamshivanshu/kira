@@ -8,11 +8,11 @@ import (
 
 func setMerge[T ~string](base, ours, theirs []T) []T {
 	switch {
-	case listEqual(ours, theirs):
+	case slices.Equal(ours, theirs):
 		return ours
-	case listEqual(ours, base):
+	case slices.Equal(ours, base):
 		return theirs
-	case listEqual(theirs, base):
+	case slices.Equal(theirs, base):
 		return ours
 	}
 	b, o, t := setx.ToSet(base), setx.ToSet(ours), setx.ToSet(theirs)
@@ -75,11 +75,4 @@ func keyUnion[V any](ms ...map[string]V) map[string]bool {
 		}
 	}
 	return keys
-}
-
-// listEqual keeps nil distinct from empty: for extras those are different
-// values (key absent vs key present and empty), so setMerge's identity fast
-// paths must not collapse them the way a bare slices.Equal would.
-func listEqual[T ~string](a, b []T) bool {
-	return (a == nil) == (b == nil) && slices.Equal(a, b)
 }

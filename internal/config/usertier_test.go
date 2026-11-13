@@ -130,7 +130,7 @@ func TestUnknownColumnDoesNotWarnAtLoad(t *testing.T) {
 	repo := minimalRepo + "ui:\n  list:\n    columns: [number, severity, title]\n"
 	cfg, warn, _, _ := loadWithUser(t, repo, "")
 	if strings.Contains(warn, "unknown column") {
-		t.Errorf("columns must not be checked at load (schemas resolve at the use site): %q", warn)
+		t.Errorf("columns must not be checked at load (`kira list` checks them at render): %q", warn)
 	}
 	want := []string{"number", "severity", "title"}
 	if !slices.Equal(cfg.UI.List.Columns, want) {

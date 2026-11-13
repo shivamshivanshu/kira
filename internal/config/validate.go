@@ -154,10 +154,8 @@ func validateWorkonSection(w datamodel.Workon) error {
 
 func UIWarnings(ui datamodel.UI) []string {
 	var out []string
-	// ui.list.columns is deliberately unchecked here: a schema may declare a
-	// field as a column, and config has no view of schemas, so a closed-set
-	// test at load would reject legitimate names. `kira list` warns about
-	// genuinely unknown columns at render time, where the schemas are loaded.
+	// ui.list.columns is deliberately unchecked here: `kira list` warns about
+	// and drops unknown columns at render time.
 	for _, slot := range slices.Sorted(maps.Keys(ui.Theme)) {
 		switch {
 		case !slices.Contains(datamodel.ThemeSlots, slot):
@@ -217,10 +215,9 @@ func validateFilters(c *datamodel.Config) error {
 		if name == "" {
 			return errx.User("config: filters: empty filter name")
 		}
-		// Unknown fields pass here: schema-declared custom fields resolve
-		// only where a store can load schemas, and every use site re-parses
-		// the saved filter with them; a stricter check would brick config
-		// load for any repo whose saved filter names one.
+		// Unknown fields pass here: every use site compiles the saved filter
+		// and reports the unknown field there; rejecting it at load would
+		// brick every command for a repo whose saved filter names one.
 		if _, err := query.Parse(q); err != nil && !query.IsUnknownField(err) {
 			return errx.User("config: filters.%s: %v", name, err)
 		}

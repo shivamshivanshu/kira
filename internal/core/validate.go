@@ -83,7 +83,7 @@ func (c *validationCtx) validateAssembled(it *datamodel.Item) (hard, warns []err
 	return append(hard, v...), w
 }
 
-// dedupSetFields normalizes the set-valued fields the schema marks unique,
+// dedupSetFields normalizes the set-valued fields to unique members,
 // keeping first-occurrence order, so a stored or newly-entered duplicate is
 // healed rather than rejected.
 func dedupSetFields(it *datamodel.Item) {

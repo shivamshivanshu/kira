@@ -7,8 +7,8 @@ import (
 )
 
 // WipOverruns reports wip-capped states holding more items than their limit.
-// The write path enforces the cap on moves, but a hand edit, merge, or sync
-// auto-resolve can push a state over it without any move ever failing.
+// A move over the cap only warns, and a hand edit, merge, or sync
+// auto-resolve can push a state over it without any move at all.
 func WipOverruns(items []*datamodel.Item) []Finding {
 	counts := map[string]map[string]int{}
 	for _, it := range items {

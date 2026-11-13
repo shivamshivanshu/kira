@@ -190,7 +190,7 @@ func TestCheckExemptsSystemCapturedLabel(t *testing.T) {
 	}
 }
 
-func TestCheckEnumVocabFollowsStrict(t *testing.T) {
+func TestCheckBuiltinVocabFollowsStrict(t *testing.T) {
 	t.Parallel()
 	it := valid(ulidA, "KIRA-1")
 	it.Priority = new("P9")
