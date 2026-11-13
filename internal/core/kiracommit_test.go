@@ -24,7 +24,7 @@ func TestCommitKiraPackagesDirtyChanges(t *testing.T) {
 	if len(res.Items) != 1 || res.Items[0] != "KIRA-1" {
 		t.Errorf("items = %v, want [KIRA-1]", res.Items)
 	}
-	if res.Subject != "kira: update 1 items" {
+	if res.Subject != "update 1 items" {
 		t.Errorf("subject = %q", res.Subject)
 	}
 
@@ -32,7 +32,7 @@ func TestCommitKiraPackagesDirtyChanges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("git log: %v", err)
 	}
-	for _, want := range []string{"kira: update 1 items", "KIRA-1 T", "Kira-Ticket: KIRA-1"} {
+	for _, want := range []string{"update 1 items", "KIRA-1 T", "Kira-Ticket: KIRA-1"} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("commit message missing %q:\n%s", want, msg)
 		}
@@ -88,7 +88,7 @@ func TestRenderCommitSubject(t *testing.T) {
 		numbers  []string
 		want     string
 	}{
-		{"kira: update {count} items", 2, []string{"KIRA-1", "KIRA-2"}, "kira: update 2 items"},
+		{"update {count} items", 2, []string{"KIRA-1", "KIRA-2"}, "update 2 items"},
 		{"tickets: {numbers}", 2, []string{"KIRA-1", "KIRA-2"}, "tickets: KIRA-1 KIRA-2"},
 		{"{numbers}", 7, []string{"A-1", "A-2", "A-3", "A-4", "A-5", "A-6", "A-7"}, "A-1 A-2 A-3 A-4 A-5 +2 more"},
 		{"no placeholders", 1, nil, "no placeholders"},

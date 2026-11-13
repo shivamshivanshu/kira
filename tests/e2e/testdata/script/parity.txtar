@@ -44,7 +44,7 @@ exec kira show KIRA-1 --json
 stdout '"relates": \[\]'
 exec kira link KIRA-1 --duplicate-of KIRA-2
 exec git log --oneline
-stdout 'kira: KIRA-1 link duplicate-of KIRA-2'
+stdout 'KIRA-1 link duplicate-of KIRA-2'
 
 # move records --resolution alongside the state write
 exec kira move KIRA-1 WONT_DO --resolution dropped

@@ -9,22 +9,6 @@ const (
 
 var CommitModes = []CommitMode{CommitAuto, CommitManual}
 
-type LinkMarker string
-
-const (
-	LinkMarkerTrailer       LinkMarker = "trailer"
-	LinkMarkerSubject       LinkMarker = "subject"
-	LinkMarkerLeadingNumber LinkMarker = "leading_number"
-)
-
-var LinkMarkers = []LinkMarker{LinkMarkerTrailer, LinkMarkerSubject, LinkMarkerLeadingNumber}
-
-type ReferenceMarker string
-
-const ReferenceMarkerBare ReferenceMarker = "bare"
-
-var ReferenceMarkers = []ReferenceMarker{ReferenceMarkerBare}
-
 type MergePolicy string
 
 const (

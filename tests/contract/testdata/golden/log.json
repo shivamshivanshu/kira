@@ -56,42 +56,42 @@
       "kind": "commit",
       "ts": "<TS>",
       "sha": "<SHA>",
-      "subject": "kira: KIRA-2 state TODO -> IN_PROGRESS",
+      "subject": "KIRA-2 state TODO -> IN_PROGRESS",
       "author": "tester"
     },
     {
       "kind": "commit",
       "ts": "<TS>",
       "sha": "<SHA>",
-      "subject": "kira: KIRA-2 comment",
+      "subject": "KIRA-2 comment",
       "author": "tester"
     },
     {
       "kind": "commit",
       "ts": "<TS>",
       "sha": "<SHA>",
-      "subject": "kira: KIRA-2 link relates KIRA-3",
+      "subject": "KIRA-2 link relates KIRA-3",
       "author": "tester"
     },
     {
       "kind": "commit",
       "ts": "<TS>",
       "sha": "<SHA>",
-      "subject": "kira: KIRA-2 link blocked-by KIRA-3",
+      "subject": "KIRA-2 link blocked-by KIRA-3",
       "author": "tester"
     },
     {
       "kind": "commit",
       "ts": "<TS>",
       "sha": "<SHA>",
-      "subject": "kira: KIRA-2 edit subtype,priority,rank,reporter,sprint,due",
+      "subject": "KIRA-2 edit subtype,priority,rank,reporter,sprint,due",
       "author": "tester"
     },
     {
       "kind": "commit",
       "ts": "<TS>",
       "sha": "<SHA>",
-      "subject": "kira: KIRA-2 create \"Rich ticket\"",
+      "subject": "KIRA-2 create \"Rich ticket\"",
       "author": "tester"
     }
   ]

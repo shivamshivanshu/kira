@@ -13,7 +13,7 @@ exec kira move KIRA-1 IN_PROGRESS --json
 stdout '"from": "TODO"'
 stdout '"to": "IN_PROGRESS"'
 exec git log --oneline
-stdout 'kira: KIRA-1 state TODO -> IN_PROGRESS'
+stdout 'KIRA-1 state TODO -> IN_PROGRESS'
 
 # any declared state is reachable from any other: a direct jump to DONE lands
 # and stamps the target state's resolution

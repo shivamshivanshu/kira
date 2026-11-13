@@ -42,9 +42,9 @@ func (s *Store) Link(cfg *datamodel.Config, ref string, opts LinkOpts) (*datamod
 			verb = "unlink"
 		}
 		if opts.Target == LinkParent && opts.Remove {
-			return fmt.Sprintf("%s%s %s %s", cfg.Commit.SubjectPrefix, orig.Number, verb, edge)
+			return fmt.Sprintf("%s %s %s", orig.Number, verb, edge)
 		}
-		return fmt.Sprintf("%s%s %s %s %s", cfg.Commit.SubjectPrefix, orig.Number, verb, edge, opts.Ref)
+		return fmt.Sprintf("%s %s %s %s", orig.Number, verb, edge, opts.Ref)
 	}
 
 	updated, changed, warns, err := s.mutate(cfg, ref, opts.Force, apply, subjectOf)

@@ -84,7 +84,6 @@ func (b *Batch) LabelSet(ref, label string, add, force bool) (*datamodel.Mutatio
 	if strings.TrimSpace(label) == "" {
 		return nil, errx.User("label name cannot be empty")
 	}
-	cfg := b.cfg
 	apply := func(it *datamodel.Item, _ *id.Resolver, _ []*datamodel.Item) (hard, warns []error) {
 		if add {
 			it.Labels = setx.AppendUnique(it.Labels, label)
@@ -98,7 +97,7 @@ func (b *Batch) LabelSet(ref, label string, add, force bool) (*datamodel.Mutatio
 		verb = "rm"
 	}
 	subjectOf := func(orig *datamodel.Item) string {
-		return cfg.Commit.SubjectPrefix + orig.Number + " label " + verb + " " + label
+		return orig.Number + " label " + verb + " " + label
 	}
 	updated, changed, warns, err := b.Mutate(ref, force, apply, subjectOf)
 	if err != nil {

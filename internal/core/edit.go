@@ -138,7 +138,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 	}
 
 	changed := datamodel.ChangedFields(orig, updated)
-	subject := cfg.Commit.SubjectPrefix + updated.Number + " edit " + strings.Join(changed, ",")
+	subject := updated.Number + " edit " + strings.Join(changed, ",")
 	finalWarns, err := s.commitMutation(cfg, updated, changed, warns, subject)
 	if err != nil {
 		return nil, err
@@ -162,7 +162,7 @@ func (b *Batch) EditFields(ref string, fields []FieldEdit, force bool) (*datamod
 		return hard, warns
 	}
 	subject := func(it *datamodel.Item) string {
-		return b.cfg.Commit.SubjectPrefix + it.Number + " edit " + strings.Join(changed, ",")
+		return it.Number + " edit " + strings.Join(changed, ",")
 	}
 	updated, changed, warns, err := b.Mutate(ref, force, apply, subject)
 	if err != nil {

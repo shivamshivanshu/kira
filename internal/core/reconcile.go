@@ -39,8 +39,8 @@ func (s *Store) Reconcile(cfg *datamodel.Config) (*datamodel.ReconcileResult, er
 		if err != nil {
 			return nil, err
 		}
-		subject := fmt.Sprintf("%sdoctor renumbered %s -> %s", cfg.Commit.SubjectPrefix, r.From, r.To)
-		if _, err := s.finalize(datamodel.CommitAuto, commitSpec{trailerKey: cfg.Commit.Trailer, subject: subject, trailerNumber: r.To}, path); err != nil {
+		subject := fmt.Sprintf("doctor renumbered %s -> %s", r.From, r.To)
+		if _, err := s.finalize(datamodel.CommitAuto, commitSpec{trailerKey: datamodel.TicketTrailerKey, subject: subject, trailerNumber: r.To}, path); err != nil {
 			return nil, err
 		}
 		result.Renumbered = append(result.Renumbered, datamodel.Renumbering{ID: it.ID, From: r.From, To: r.To})

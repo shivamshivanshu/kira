@@ -16,7 +16,7 @@ exec kira label create backend frontend
 stdout 'Created label backend'
 stdout 'Created label frontend'
 exec git log --oneline
-stdout 'kira: label create backend,frontend'
+stdout 'label create backend,frontend'
 grep 'known: \[backend, frontend\]' .kira/config.yaml
 
 # create is idempotent: an already-known label is reported and exits 0

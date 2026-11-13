@@ -62,13 +62,7 @@ func (f repoFixture) commitTrailer(t *testing.T, subject, trailer string) {
 }
 
 func trailerOpts() index.Options {
-	return index.Options{
-		ProjectKey:       "KIRA",
-		TrailerKey:       "Kira-Ticket",
-		CloseTrailer:     "Kira-Closes",
-		LinkMarkers:      datamodel.LinkMarkers,
-		ReferenceMarkers: datamodel.ReferenceMarkers,
-	}
+	return index.Options{ProjectKey: "KIRA"}
 }
 
 func run(t *testing.T, dir string, name string, args ...string) {
@@ -504,81 +498,6 @@ func TestCommitLinkLeadingNumber(t *testing.T) {
 	}
 }
 
-func TestCommitLinkLeadingNumberSubjectPrefix(t *testing.T) {
-	t.Parallel()
-	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
-	f := newRepo(t)
-	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
-	f.commit(t, "seed")
-	f.commitTrailer(t, "kira: KIRA-1 state TODO -> DOING", "unrelated: x")
-	f.commitTrailer(t, "notes on kira: KIRA-1 later", "unrelated: y")
-
-	opts := trailerOpts()
-	opts.SubjectPrefix = "kira: "
-
-	idx := open(t, f)
-	if _, err := index.Refresh(f.store, f.repo, opts, false); err != nil {
-		t.Fatalf("EnsureFresh: %v", err)
-	}
-	kinds := kindsOf(mustCommitLinks(t, idx, a))
-	if kinds["kira: KIRA-1 state TODO -> DOING"] != index.LinkLinked {
-		t.Fatalf("prefixed leading number should link: %+v", kinds)
-	}
-	if kinds["notes on kira: KIRA-1 later"] != index.LinkReferenced {
-		t.Fatalf("mid-subject prefix mention should stay referenced: %+v", kinds)
-	}
-}
-
-func TestCommitLinkLeadingNumberDisabled(t *testing.T) {
-	t.Parallel()
-	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
-	f := newRepo(t)
-	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
-	f.commit(t, "seed")
-	f.commitTrailer(t, "KIRA-1 old behavior", "unrelated: x")
-
-	opts := trailerOpts()
-	opts.LinkMarkers = []datamodel.LinkMarker{datamodel.LinkMarkerTrailer, datamodel.LinkMarkerSubject}
-
-	idx := open(t, f)
-	if _, err := index.Refresh(f.store, f.repo, opts, false); err != nil {
-		t.Fatalf("EnsureFresh: %v", err)
-	}
-	links := mustCommitLinks(t, idx, a)
-	if len(links) != 1 || links[0].Kind != index.LinkReferenced {
-		t.Fatalf("with leading_number off a bare leading token must stay referenced: %+v", links)
-	}
-}
-
-func TestCommitLinkLeadingNumberRetroactiveReclassify(t *testing.T) {
-	t.Parallel()
-	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
-	f := newRepo(t)
-	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
-	f.commit(t, "seed")
-	f.commitTrailer(t, "KIRA-1 claim by convention", "unrelated: x")
-
-	off := trailerOpts()
-	off.LinkMarkers = []datamodel.LinkMarker{datamodel.LinkMarkerTrailer, datamodel.LinkMarkerSubject}
-
-	idx := open(t, f)
-	if _, err := index.Refresh(f.store, f.repo, off, false); err != nil {
-		t.Fatalf("EnsureFresh knob-off: %v", err)
-	}
-	links := mustCommitLinks(t, idx, a)
-	if len(links) != 1 || links[0].Kind != index.LinkReferenced {
-		t.Fatalf("knob-off scan should classify as referenced: %+v", links)
-	}
-
-	if _, err := index.Refresh(f.store, f.repo, trailerOpts(), false); err != nil {
-		t.Fatalf("EnsureFresh knob-on: %v", err)
-	}
-	links = mustCommitLinks(t, idx, a)
-	if len(links) != 1 || links[0].Kind != index.LinkLinked {
-		t.Fatalf("flipping the knob must reclassify without a history change: %+v", links)
-	}
-}
-
 func mustCommitLinks(t *testing.T, idx *index.Index, ulid string) []index.CommitLink {
 	t.Helper()
 	links, err := idx.CommitLinks(ulid)
@@ -586,32 +505,6 @@ func mustCommitLinks(t *testing.T, idx *index.Index, ulid string) []index.Commit
 		t.Fatalf("CommitLinks: %v", err)
 	}
 	return links
-}
-
-func TestCommitLinkMarkersDisable(t *testing.T) {
-	t.Parallel()
-	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
-	f := newRepo(t)
-	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
-	f.commit(t, "seed")
-	f.commitTrailer(t, "[[KIRA-1]] marker only", "unrelated: x")
-	f.commitTrailer(t, "bare only", "mentions KIRA-1 here")
-
-	opts := trailerOpts()
-	opts.LinkMarkers = []datamodel.LinkMarker{datamodel.LinkMarkerTrailer}
-	opts.ReferenceMarkers = nil
-
-	idx := open(t, f)
-	if _, err := index.Refresh(f.store, f.repo, opts, false); err != nil {
-		t.Fatalf("EnsureFresh: %v", err)
-	}
-	links, err := idx.CommitLinks(a)
-	if err != nil {
-		t.Fatalf("CommitLinks: %v", err)
-	}
-	if len(links) != 0 {
-		t.Fatalf("subject markers ignored and bare disabled should yield no links, got %+v", links)
-	}
 }
 
 func TestCommitLinkNonPrimaryMarkerReferenced(t *testing.T) {
@@ -850,7 +743,7 @@ func TestDeletedItemSweepsGitDerivedRows(t *testing.T) {
 		full bool
 	}{
 		{"incremental refresh", trailerOpts(), false},
-		{"full rebuild without trailer scan", index.Options{}, true},
+		{"full rebuild", index.Options{}, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1253,39 +1146,6 @@ func TestCommitLinkMarkerNonDefaultBoard(t *testing.T) {
 	links := mustCommitLinks(t, idx, b)
 	if len(links) != 1 || links[0].Kind != index.LinkLinked {
 		t.Fatalf("explicit [[CORE-1]] marker on a non-default board must link: %+v", links)
-	}
-}
-
-func TestCommitLinkMarkerRetroactiveReclassify(t *testing.T) {
-	t.Parallel()
-	const a = "01J8X7B1Q2W3E4R5T6Y7U8I9O0"
-	const b = "01J8X8Q7RZTN5Y3VXW2A9K4E7F"
-	f := newRepo(t)
-	f.writeTicket(t, a, ticket(a, "KIRA-1", "first"))
-	f.writeTicket(t, b, ticket(b, "CORE-1", "other board"))
-	f.commit(t, "seed")
-	f.commitTrailer(t, "[[CORE-1]] explicit marker", "unrelated: x")
-
-	off := trailerOpts()
-	off.BoardKeys = []string{"KIRA", "CORE"}
-	off.LinkMarkers = []datamodel.LinkMarker{datamodel.LinkMarkerTrailer}
-
-	idx := open(t, f)
-	if _, err := index.Refresh(f.store, f.repo, off, false); err != nil {
-		t.Fatalf("EnsureFresh markers-off: %v", err)
-	}
-	if links := mustCommitLinks(t, idx, b); len(links) != 1 || links[0].Kind != index.LinkReferenced {
-		t.Fatalf("subject markers off must demote to referenced: %+v", links)
-	}
-
-	on := trailerOpts()
-	on.BoardKeys = []string{"KIRA", "CORE"}
-	if _, err := index.Refresh(f.store, f.repo, on, false); err != nil {
-		t.Fatalf("EnsureFresh markers-on: %v", err)
-	}
-	links := mustCommitLinks(t, idx, b)
-	if len(links) != 1 || links[0].Kind != index.LinkLinked {
-		t.Fatalf("config change must retroactively reclassify the marker: %+v", links)
 	}
 }
 

@@ -39,7 +39,7 @@ func (b *Batch) Assign(ref, user string, opts AssignOpts) (*datamodel.MutationRe
 		return nil, nil
 	}
 	subjectOf := func(orig *datamodel.Item) string {
-		return cfg.Commit.SubjectPrefix + orig.Number + " assign " + field + " " + user
+		return orig.Number + " assign " + field + " " + user
 	}
 
 	updated, changed, warns, err := b.Mutate(ref, opts.Force, apply, subjectOf)

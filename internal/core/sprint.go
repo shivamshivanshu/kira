@@ -149,7 +149,7 @@ func (s *Store) SprintClose(cfg *datamodel.Config, key, moveTo string) (*datamod
 			return nil, nil
 		}
 		subjectOf := func(orig *datamodel.Item) string {
-			return fmt.Sprintf("%s%s sprint %s -> %s", cfg.Commit.SubjectPrefix, orig.Number, key, moveTo)
+			return fmt.Sprintf("%s sprint %s -> %s", orig.Number, key, moveTo)
 		}
 		b, err := s.BeginBatch(cfg)
 		if err != nil {

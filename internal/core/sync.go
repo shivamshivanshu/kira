@@ -29,7 +29,7 @@ func (s *Store) Sync(cfg *datamodel.Config, opts SyncOpts) (*syncx.Report, error
 	repo := s.repo()
 	report := &syncx.Report{}
 
-	if e := s.prepareTree(cfg, repo, opts, report); e != nil {
+	if e := s.prepareTree(repo, opts, report); e != nil {
 		return report, e
 	}
 
@@ -88,7 +88,7 @@ func (s *Store) syncCloses(cfg *datamodel.Config) syncx.Step {
 	return syncx.Step{Name: "closes", Status: syncx.StepDone, Detail: fmt.Sprintf("closed %s", strings.Join(res.Closed, ", "))}
 }
 
-func (s *Store) prepareTree(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts, report *syncx.Report) error {
+func (s *Store) prepareTree(repo gitx.Repo, opts SyncOpts, report *syncx.Report) error {
 	dirty, err := repo.DirtyPaths(storage.DirName)
 	if err != nil {
 		return errx.User("%v", err)
@@ -100,7 +100,7 @@ func (s *Store) prepareTree(cfg *datamodel.Config, repo gitx.Repo, opts SyncOpts
 	if opts.Dirty != syncx.DirtyCommit {
 		return errx.User("uncommitted kira changes; re-run with --commit")
 	}
-	if _, err := s.finalize(datamodel.CommitAuto, commitSpec{trailerKey: cfg.Commit.Trailer, subject: cfg.Commit.SubjectPrefix + "sync checkpoint"}, dirty...); err != nil {
+	if _, err := s.finalize(datamodel.CommitAuto, commitSpec{trailerKey: datamodel.TicketTrailerKey, subject: "sync checkpoint"}, dirty...); err != nil {
 		return err
 	}
 	report.Add("prepare", syncx.StepDone, fmt.Sprintf("committed %d paths", len(dirty)))

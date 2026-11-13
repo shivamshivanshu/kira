@@ -102,54 +102,16 @@ func explainCommit(cfg, def *datamodel.Config) datamodel.ExplainSection {
 	lines := []string{
 		"mode: " + string(c.Mode),
 		fmt.Sprintf("subject: %q (up to %d ticket numbers listed, then a count)", commitSubjectTemplate(cfg, 1), subjectNumbersCap),
-		fmt.Sprintf("trailer: %s (up to %d numbers)", c.Trailer, commitTrailerCap),
-		"close_trailer: " + c.CloseTrailer,
-	}
-	if cfg.UserCommitSubject != "" {
-		lines = append(lines, "subject template is a user override from ~/.config/kira/config.yaml")
-	}
-	for _, m := range datamodel.LinkMarkers {
-		if slices.Contains(c.LinkMarkers, m) {
-			lines = append(lines, "link marker: "+describeLinkMarker(m, c))
-		}
-	}
-	for _, m := range c.ReferenceMarkers {
-		lines = append(lines, "reference marker: "+describeReferenceMarker(m))
 	}
 	userSubject := cfg.UserCommitSubject != ""
+	if userSubject {
+		lines = append(lines, "subject template is a user override from ~/.config/kira/config.yaml")
+	}
 	tier := datamodel.ProvenanceRepo
 	if userSubject {
 		tier = datamodel.ProvenanceUser
 	}
 	return datamodel.ExplainSection{Name: "commit", Provenance: tierOf(changed(c, def.Commit) || userSubject, tier), Lines: lines}
-}
-
-// describeLinkMarker documents a marker that associates a commit with a
-// ticket (and thus can auto-close it). Precedence when multiple markers
-// match is fixed — trailer, then subject, then leading_number — regardless
-// of this list's order in config; the list only enables/disables markers.
-func describeLinkMarker(m datamodel.LinkMarker, c datamodel.Commit) string {
-	switch m {
-	case datamodel.LinkMarkerTrailer:
-		return fmt.Sprintf("trailer — a %q git trailer naming the ticket", c.Trailer)
-	case datamodel.LinkMarkerSubject:
-		return "subject — a `[KEY-n]` marker in the commit subject"
-	case datamodel.LinkMarkerLeadingNumber:
-		return "leading_number — a bare KEY-n token leading the subject"
-	default:
-		return string(m)
-	}
-}
-
-// describeReferenceMarker documents a marker that only mentions a ticket
-// (recorded for `kira log`/`kira show`, never auto-closes it).
-func describeReferenceMarker(m datamodel.ReferenceMarker) string {
-	switch m {
-	case datamodel.ReferenceMarkerBare:
-		return "bare — a KEY-n token anywhere in the commit body"
-	default:
-		return string(m)
-	}
 }
 
 func explainVocab(cfg, def *datamodel.Config) datamodel.ExplainSection {

@@ -13,7 +13,7 @@ stdout '"changed"'
 stdout 'state'
 stdout 'owner'
 exec git log --oneline
-stdout 'kira: KIRA-1 edit'
+stdout 'KIRA-1 edit'
 exec kira show KIRA-1 --json
 stdout '"state": "IN_PROGRESS"'
 stdout '"owner": "bob"'

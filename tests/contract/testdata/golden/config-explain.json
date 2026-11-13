@@ -13,13 +13,7 @@
       "provenance": "default",
       "lines": [
         "mode: auto",
-        "subject: \"kira: update {count} items\" (up to 5 ticket numbers listed, then a count)",
-        "trailer: Kira-Ticket (up to 20 numbers)",
-        "close_trailer: Kira-Closes",
-        "link marker: trailer — a \"Kira-Ticket\" git trailer naming the ticket",
-        "link marker: subject — a `[KEY-n]` marker in the commit subject",
-        "link marker: leading_number — a bare KEY-n token leading the subject",
-        "reference marker: bare — a KEY-n token anywhere in the commit body"
+        "subject: \"update {count} items\" (up to 5 ticket numbers listed, then a count)"
       ]
     },
     {

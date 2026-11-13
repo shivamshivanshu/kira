@@ -26,7 +26,7 @@ stderr 'XYZ-1'
 exec kira board move KIRA-1 XYZ
 stdout 'KIRA-1 -> XYZ-2'
 exec git log --oneline
-stdout 'kira: board KIRA-1 -> XYZ-2'
+stdout 'board KIRA-1 -> XYZ-2'
 
 # both the new number and the old (alias) resolve to the same item
 exec kira show XYZ-2 --json

@@ -11,7 +11,7 @@ exec kira create ticket --title 'A' --no-edit
 exec kira assign KIRA-1 shivam --json
 stdout '"changed"'
 exec git log --oneline
-stdout 'kira: KIRA-1 assign owner shivam'
+stdout 'KIRA-1 assign owner shivam'
 exec kira show KIRA-1 --json
 stdout '"owner": "shivam"'
 

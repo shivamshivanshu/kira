@@ -40,7 +40,7 @@ func (s *Store) PrepareCommitMsg(cfg *datamodel.Config, msgFile string) error {
 	if !ok {
 		return nil
 	}
-	if err := repo.AddTrailer(msgFile, cfg.Commit.Trailer, number); err != nil {
+	if err := repo.AddTrailer(msgFile, datamodel.TicketTrailerKey, number); err != nil {
 		return errx.User("%v", err)
 	}
 	return nil

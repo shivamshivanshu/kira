@@ -20,8 +20,8 @@ stdout '"key": "2026-S14"'
 exec kira sprint create --key 2026-S15 --name 'Sprint 15' --start 2026-07-27 --end 2026-08-09
 cmp .kira/config.yaml ../expected-config.yaml
 exec git log --oneline
-stdout 'kira: sprint create 2026-S15'
-stdout 'kira: sprint create 2026-S14'
+stdout 'sprint create 2026-S15'
+stdout 'sprint create 2026-S14'
 
 # duplicate keys and inverted windows are rejected
 ! exec kira sprint create --key 2026-S14 --name X --start 2026-01-01 --end 2026-01-02
@@ -66,7 +66,7 @@ stdout '"was_active": true'
 exec kira show KIRA-2 --json
 stdout '"sprint": "2026-S15"'
 exec git log --oneline
-stdout 'kira: KIRA-2 sprint 2026-S14 -> 2026-S15'
+stdout 'KIRA-2 sprint 2026-S14 -> 2026-S15'
 ! exists .kira/.cache/active-sprint
 
 # after the move nothing is left in the closed sprint
@@ -92,10 +92,6 @@ people:
 
 commit:
   mode: auto                  # auto | manual
-  trailer: Kira-Ticket        # trailer key that links a commit to its ticket
-  close_trailer: Kira-Closes  # trailer key that closes a ticket when the commit lands
-  link_markers: [trailer, subject, leading_number]  # what links a commit: trailer, a [[KIRA-n]] subject marker, and/or a bare KIRA-n leading the subject
-  reference_markers: [bare]   # what weakly references a commit: bare KIRA-n refs; [] to disable
 
 merge:
   policy: auto                # auto | manual: auto-resolve same-field kira conflicts vs leave markers

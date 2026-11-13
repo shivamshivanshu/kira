@@ -47,7 +47,7 @@ func (s *Store) CommitKira(cfg *datamodel.Config) (*datamodel.CommitResult, erro
 		return nil, errx.User("%s", err)
 	}
 	parts := []string{subject, strings.Join(body, "\n")}
-	if trailers := commitTrailers(cfg.Commit.Trailer, numbers); trailers != "" {
+	if trailers := commitTrailers(datamodel.TicketTrailerKey, numbers); trailers != "" {
 		parts = append(parts, trailers)
 	}
 	if err := repo.CommitScoped([]string{storage.DirName}, parts...); err != nil {
@@ -93,9 +93,9 @@ func commitSubjectTemplate(cfg *datamodel.Config, items int) string {
 		return cfg.UserCommitSubject
 	}
 	if items == 0 {
-		return cfg.Commit.SubjectPrefix + "update {count} files"
+		return "update {count} files"
 	}
-	return cfg.Commit.SubjectPrefix + "update {count} items"
+	return "update {count} items"
 }
 
 func renderCommitSubject(template string, count int, numbers []string) string {

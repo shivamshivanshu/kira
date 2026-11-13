@@ -69,14 +69,14 @@ made immediately:
 
 ```console
 $ git log --oneline
-0628f5c kira: DEMO-2 state REVIEW -> DONE
-badf3af kira: DEMO-2 state IN_PROGRESS -> REVIEW
-e76a029 kira: DEMO-2 state TODO -> IN_PROGRESS
-5c692a6 kira: DEMO-3 edit due
-f105046 kira: DEMO-3 edit priority
-6f16580 kira: DEMO-3 create "Add search to the docs site"
-9a26938 kira: DEMO-2 create "Fix broken anchor links"
-08f8842 kira: DEMO-1 create "Write the getting-started guide"
+0628f5c DEMO-2 state REVIEW -> DONE
+badf3af DEMO-2 state IN_PROGRESS -> REVIEW
+e76a029 DEMO-2 state TODO -> IN_PROGRESS
+5c692a6 DEMO-3 edit due
+f105046 DEMO-3 edit priority
+6f16580 DEMO-3 create "Add search to the docs site"
+9a26938 DEMO-2 create "Fix broken anchor links"
+08f8842 DEMO-1 create "Write the getting-started guide"
 ```
 
 This is deliberate. There is no separate audit log to consult, because the

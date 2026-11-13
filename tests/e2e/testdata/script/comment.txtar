@@ -10,7 +10,7 @@ exec kira create ticket --title 'C' --no-edit
 
 exec kira comment KIRA-1 -m 'first note'
 exec git log --oneline
-stdout 'kira: KIRA-1 comment'
+stdout 'KIRA-1 comment'
 exec kira show KIRA-1 --json
 stdout '"text": "first note"'
 stdout '"author": "tester"'

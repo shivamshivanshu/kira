@@ -63,9 +63,6 @@ func TestParseAppliesOverrides(t *testing.T) {
 	if got.Commit.Mode != datamodel.CommitManual {
 		t.Errorf("commit.mode = %q, want manual (override did not flow from yaml)", got.Commit.Mode)
 	}
-	if got.Commit.Trailer != "Kira-Ticket" {
-		t.Errorf("commit.trailer = %q, want default preserved alongside the override", got.Commit.Trailer)
-	}
 	if got.Estimate.Unit != datamodel.EstimateHours {
 		t.Errorf("estimate.unit = %q, want hours", got.Estimate.Unit)
 	}

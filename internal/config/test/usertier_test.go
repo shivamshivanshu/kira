@@ -197,13 +197,13 @@ func TestUserCommitSubjectRepoCannotOverride(t *testing.T) {
 	dir, env := userTierEnv(t)
 	writeUserFile(t, dir, "config.yaml", "commit:\n  subject: 'mine {count}'\n")
 
-	repo := minimalRepo + "commit:\n  subject_prefix: 'repo: '\n"
+	repo := minimalRepo + "commit:\n  mode: manual\n"
 	cfg, _ := loadWith(t, repo, env)
 	if cfg.UserCommitSubject != "mine {count}" {
 		t.Errorf("repo tier clobbered user commit subject: %q", cfg.UserCommitSubject)
 	}
-	if cfg.Commit.SubjectPrefix != "repo: " {
-		t.Errorf("repo subject_prefix lost: %q", cfg.Commit.SubjectPrefix)
+	if cfg.Commit.Mode != datamodel.CommitManual {
+		t.Errorf("repo commit.mode lost: %q", cfg.Commit.Mode)
 	}
 }
 

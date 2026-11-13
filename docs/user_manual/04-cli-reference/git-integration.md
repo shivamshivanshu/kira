@@ -49,8 +49,6 @@ records it like this:
 ```yaml
 commit:
   mode: auto                  # auto | manual
-  subject_prefix: ""
-  trailer: Kira-Ticket
 ```
 
 Under `auto`, each mutation lands as a separate commit with a `Kira-Ticket`
@@ -61,7 +59,7 @@ $ kira create ticket "Document the sync flow" --priority P3 --no-edit
 Created ACME-3 Document the sync flow
 
 $ git log -1 --format='%s%n%n%b'
-kira: ACME-3 create "Document the sync flow"
+ACME-3 create "Document the sync flow"
 
 Kira-Ticket: ACME-3
 ```
@@ -100,10 +98,10 @@ a subject that counts the items and a trailer per ticket:
 
 ```console
 $ kira commit
-committed 2af17bd: kira: update 2 items (2 files)
+committed 2af17bd: update 2 items (2 files)
 
 $ git log -1 --format='%s%n%n%b'
-kira: update 2 items
+update 2 items
 
 ACME-1 Wire up the payments retry loop
 ACME-2 Cache warm-up is slow on cold start
@@ -117,8 +115,8 @@ convenience that generates the subject, body, and trailers for you. Note that
 kira has already *staged* the files, so a bare `git commit` (no `-a`, no
 pathspec) picks them up.
 
-See [Configuration reference](../05-configuration-reference.md) for the full
-`commit:` block, including `subject_prefix`, `trailer`, and `close_trailer`.
+See [Configuration reference](../05-configuration-reference.md) for the
+`commit:` block and the fixed `Kira-Ticket`/`Kira-Closes` trailers.
 
 ---
 
@@ -553,7 +551,7 @@ reindex:   done (6 items)
 closes:    done (no transitions)
 
 $ git log -1 --format='%s'
-kira: sync checkpoint
+sync checkpoint
 ```
 
 ### Conflicts during the pull
@@ -859,9 +857,8 @@ so does the `post-merge` hook. Both are how a ticket closes itself when the
 branch that fixes it merges. Reach for `kira index --closes` directly only when
 neither has had a chance to run.
 
-The trailer key is `commit.close_trailer` (default `Kira-Closes`), distinct
-from `commit.trailer` (`Kira-Ticket`), which merely links a commit to a ticket
-without changing its state.
+The trailer key is `Kira-Closes`, distinct from `Kira-Ticket`, which merely
+links a commit to a ticket without changing its state.
 
 ---
 

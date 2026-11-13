@@ -180,7 +180,7 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 	if err != nil {
 		return nil, err
 	}
-	subject := cfg.Commit.SubjectPrefix + finalItem.Number + " create " + quoteTitle(finalItem.Title)
+	subject := finalItem.Number + " create " + quoteTitle(finalItem.Title)
 	cs := &datamodel.ChangeSet{
 		After:   finalItem,
 		Paths:   []string{path},

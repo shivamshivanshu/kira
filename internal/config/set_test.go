@@ -14,7 +14,6 @@ project:
 commit:
   mode: auto                  # auto | manual | prompt
   trailer: Kira-Ticket
-  close_trailer: Kira-Closes
 
 sync:
   push: false                 # true | false
@@ -100,21 +99,20 @@ func TestSetScalarCreatesAbsentBlock(t *testing.T) {
 }
 
 func TestSetScalarInsertsLeafUnderExistingParent(t *testing.T) {
-	// an older config whose commit block predates close_trailer
-	src := "version: 1\n\ncommit:\n  mode: auto                  # auto | manual | prompt\n  trailer: Kira-Ticket\n"
-	out, err := SetScalar([]byte(src), "commit.close_trailer", "Kira-Closes")
+	src := "version: 1\n\nworkon:\n  worktree: false\n"
+	out, err := SetScalar([]byte(src), "workon.branch_pattern", "{key}-{number}")
 	if err != nil {
 		t.Fatalf("SetScalar: %v", err)
 	}
-	if !strings.Contains(string(out), "\n  close_trailer: Kira-Closes\n") {
-		t.Errorf("close_trailer not inserted under commit at the right indent:\n%s", out)
+	if !strings.Contains(string(out), "\n  branch_pattern: ") {
+		t.Errorf("branch_pattern not inserted under workon at the right indent:\n%s", out)
 	}
 	cfg, err := Parse(out)
 	if err != nil {
 		t.Fatalf("parse result: %v", err)
 	}
-	if cfg.Commit.CloseTrailer != "Kira-Closes" {
-		t.Errorf("commit.close_trailer = %q, want Kira-Closes", cfg.Commit.CloseTrailer)
+	if cfg.Workon.BranchPattern != "{key}-{number}" {
+		t.Errorf("workon.branch_pattern = %q, want {key}-{number}", cfg.Workon.BranchPattern)
 	}
 }
 

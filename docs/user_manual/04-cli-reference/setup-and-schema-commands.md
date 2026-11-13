@@ -247,13 +247,7 @@ identity (repo)
 
 commit (default)
   mode: auto
-  subject: "kira: update {count} items" (up to 5 ticket numbers listed, then a count)
-  trailer: Kira-Ticket (up to 20 numbers)
-  close_trailer: Kira-Closes
-  link marker: trailer — a "Kira-Ticket" git trailer naming the ticket
-  link marker: subject — a `[KEY-n]` marker in the commit subject
-  link marker: leading_number — a bare KEY-n token leading the subject
-  reference marker: bare — a KEY-n token anywhere in the commit body
+  subject: "update {count} items" (up to 5 ticket numbers listed, then a count)
 
 vocab (default)
   system label: captured (auto-added by `kira create --here`; excluded from vocabulary checks)
@@ -414,7 +408,7 @@ lists the valid ones:
 
 ```console
 $ kira config set ui.nope true
-kira: config: unknown key "ui.nope"; valid keys: commit.close_trailer, commit.mode, commit.trailer, estimate.unit, git.landed_ref, merge.policy, project.name, sync.push, ui.background, ui.icons, workon.branch_pattern
+kira: config: unknown key "ui.nope"; valid keys: commit.mode, estimate.unit, git.landed_ref, merge.policy, project.name, sync.push, ui.background, ui.icons, workon.branch_pattern
 ```
 
 Values are validated against the same rules the config loader enforces, so a
@@ -466,7 +460,7 @@ Like other mutations, the edit is committed when the project uses
 
 ```console
 $ git log --oneline -1
-50350ac kira: config set commit.mode
+50350ac config set commit.mode
 ```
 
 ## `kira schema`

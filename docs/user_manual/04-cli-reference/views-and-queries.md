@@ -552,9 +552,9 @@ $ kira log PAY-3
 2026-07-27T19:19:01+05:30  commit 9a8f7da PAY-3 memoize tokenizer lookups (Ada Byron)
 2026-07-27T19:19:01+05:30  commit 73bcba5 Add PAN tokenizer (Ada Byron)
 2026-07-27T19:18:42+05:30  state: TODO -> IN_PROGRESS
-2026-07-27T19:18:42+05:30  commit c1a10bc kira: PAY-3 state TODO -> IN_PROGRESS (Ada Byron)
-2026-07-27T19:18:41+05:30  commit 5d7f617 kira: PAY-4 link blocked-by PAY-3 (Ada Byron)
-2026-07-27T19:18:25+05:30  commit c109cf6 kira: PAY-3 create "Tokenize card numbers at ingest" (Ada Byron)
+2026-07-27T19:18:42+05:30  commit c1a10bc PAY-3 state TODO -> IN_PROGRESS (Ada Byron)
+2026-07-27T19:18:41+05:30  commit 5d7f617 PAY-4 link blocked-by PAY-3 (Ada Byron)
+2026-07-27T19:18:25+05:30  commit c109cf6 PAY-3 create "Tokenize card numbers at ingest" (Ada Byron)
 ```
 
 Two kinds of entry are interleaved here. Lines like `state: TODO ->
@@ -572,10 +572,10 @@ Note that two field changes made in the same edit appear as separate events:
 $ kira log PAY-6
 2026-07-27T19:18:42+05:30  priority: P1 -> P0
 2026-07-27T19:18:42+05:30  state: TODO -> IN_PROGRESS
-2026-07-27T19:18:42+05:30  commit a33484b kira: PAY-6 edit priority (Ada Byron)
-2026-07-27T19:18:42+05:30  commit 4399e73 kira: PAY-6 state TODO -> IN_PROGRESS (Ada Byron)
-2026-07-27T19:18:41+05:30  commit 3b37787 kira: PAY-7 link relates PAY-6 (Ada Byron)
-2026-07-27T19:18:25+05:30  commit 9a059c1 kira: PAY-6 create "Batch scoring is 4x slower than target" (Ada Byron)
+2026-07-27T19:18:42+05:30  commit a33484b PAY-6 edit priority (Ada Byron)
+2026-07-27T19:18:42+05:30  commit 4399e73 PAY-6 state TODO -> IN_PROGRESS (Ada Byron)
+2026-07-27T19:18:41+05:30  commit 3b37787 PAY-7 link relates PAY-6 (Ada Byron)
+2026-07-27T19:18:25+05:30  commit 9a059c1 PAY-6 create "Batch scoring is 4x slower than target" (Ada Byron)
 ```
 
 Under `--json` each entry carries a `kind` of `"event"` or `"commit"`, so the

@@ -20,8 +20,6 @@ const (
 var setKeys = map[string]setKind{
 	"project.name":          kindStr,
 	"commit.mode":           kindLiteral,
-	"commit.trailer":        kindStr,
-	"commit.close_trailer":  kindStr,
 	"merge.policy":          kindLiteral,
 	"sync.push":             kindLiteral,
 	"ui.icons":              kindLiteral,

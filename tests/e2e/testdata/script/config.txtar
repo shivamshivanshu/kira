@@ -32,8 +32,8 @@ grep '#git: \{\}' .kira/config.yaml
 
 # each set auto-commits (commit.mode is still auto) and leaves nothing dirty
 exec git log --oneline
-stdout 'kira: config set git.landed_ref'
-stdout 'kira: config set ui.icons'
+stdout 'config set git.landed_ref'
+stdout 'config set ui.icons'
 exec git status --porcelain
 ! stdout '\.kira'
 
@@ -53,4 +53,4 @@ grep 'mode: manual' .kira/config.yaml
 # editing a live scalar line preserves its inline doc comment
 grep '(?m)mode: manual.*# auto \| manual$' .kira/config.yaml
 exec git log --oneline
-stdout 'kira: config set commit.mode'
+stdout 'config set commit.mode'

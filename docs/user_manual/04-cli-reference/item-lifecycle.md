@@ -19,10 +19,10 @@ commit subject describes the change:
 
 ```console
 $ git log --oneline
-6614371 kira: KIRA-10 link duplicate-of KIRA-5
-409fef1 kira: KIRA-8 link relates KIRA-9
-bc06f15 kira: KIRA-9 label add tooling
-a4a2e0f kira: label create tooling,release
+6614371 KIRA-10 link duplicate-of KIRA-5
+409fef1 KIRA-8 link relates KIRA-9
+bc06f15 KIRA-9 label add tooling
+a4a2e0f label create tooling,release
 ```
 
 **Bulk forms.** `edit`, `move`, `assign`, `label add`, and `label rm` accept

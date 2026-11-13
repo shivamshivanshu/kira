@@ -134,7 +134,7 @@ The create was committed automatically:
 
 ```console
 $ git log --oneline -1
-08f8842 kira: DEMO-1 create "Write the getting-started guide"
+08f8842 DEMO-1 create "Write the getting-started guide"
 ```
 
 ### The interactive path
@@ -253,8 +253,8 @@ $ kira show DEMO-3 --json
   "created": "2026-07-27T19:19:17+05:30",
   "updated": "2026-07-27T19:19:24+05:30",
   "linked_commits": [
-    { "sha": "5c692a656662b27b3700961df8131148dc3f5468", "subject": "kira: DEMO-3 edit due", "author": "Demo User", "ts": "2026-07-27T19:19:24+05:30" },
-    { "sha": "f1050467b04f86488751d75bb46fd266f293f6c0", "subject": "kira: DEMO-3 edit priority", "author": "Demo User", "ts": "2026-07-27T19:19:24+05:30" }
+    { "sha": "5c692a656662b27b3700961df8131148dc3f5468", "subject": "DEMO-3 edit due", "author": "Demo User", "ts": "2026-07-27T19:19:24+05:30" },
+    { "sha": "f1050467b04f86488751d75bb46fd266f293f6c0", "subject": "DEMO-3 edit priority", "author": "Demo User", "ts": "2026-07-27T19:19:24+05:30" }
   ],
   "history_tail": [
     { "ts": "2026-07-27T19:19:24+05:30", "field": "due", "from": null, "to": "2026-08-15" },
@@ -345,14 +345,14 @@ Every one of those moves is a commit:
 
 ```console
 $ git log --oneline
-0628f5c kira: DEMO-2 state REVIEW -> DONE
-badf3af kira: DEMO-2 state IN_PROGRESS -> REVIEW
-e76a029 kira: DEMO-2 state TODO -> IN_PROGRESS
-5c692a6 kira: DEMO-3 edit due
-f105046 kira: DEMO-3 edit priority
-6f16580 kira: DEMO-3 create "Add search to the docs site"
-9a26938 kira: DEMO-2 create "Fix broken anchor links"
-08f8842 kira: DEMO-1 create "Write the getting-started guide"
+0628f5c DEMO-2 state REVIEW -> DONE
+badf3af DEMO-2 state IN_PROGRESS -> REVIEW
+e76a029 DEMO-2 state TODO -> IN_PROGRESS
+5c692a6 DEMO-3 edit due
+f105046 DEMO-3 edit priority
+6f16580 DEMO-3 create "Add search to the docs site"
+9a26938 DEMO-2 create "Fix broken anchor links"
+08f8842 DEMO-1 create "Write the getting-started guide"
 f209bfd kira: init
 1625437 initial commit
 ```
@@ -363,13 +363,13 @@ with the commits that caused them:
 ```console
 $ kira log DEMO-3
 2026-07-27T19:22:02+05:30  state: TODO -> IN_PROGRESS
-2026-07-27T19:22:02+05:30  commit b27843c kira: DEMO-3 state TODO -> IN_PROGRESS (Demo User)
-2026-07-27T19:21:54+05:30  commit 2752bc8 kira: DEMO-1 link blocked-by DEMO-3 (Demo User)
+2026-07-27T19:22:02+05:30  commit b27843c DEMO-3 state TODO -> IN_PROGRESS (Demo User)
+2026-07-27T19:21:54+05:30  commit 2752bc8 DEMO-1 link blocked-by DEMO-3 (Demo User)
 2026-07-27T19:19:24+05:30  due:  -> 2026-08-15
 2026-07-27T19:19:24+05:30  priority: P2 -> P1
-2026-07-27T19:19:24+05:30  commit 5c692a6 kira: DEMO-3 edit due (Demo User)
-2026-07-27T19:19:24+05:30  commit f105046 kira: DEMO-3 edit priority (Demo User)
-2026-07-27T19:19:17+05:30  commit 6f16580 kira: DEMO-3 create "Add search to the docs site" (Demo User)
+2026-07-27T19:19:24+05:30  commit 5c692a6 DEMO-3 edit due (Demo User)
+2026-07-27T19:19:24+05:30  commit f105046 DEMO-3 edit priority (Demo User)
+2026-07-27T19:19:17+05:30  commit 6f16580 DEMO-3 create "Add search to the docs site" (Demo User)
 ```
 
 ## 8. The TUI

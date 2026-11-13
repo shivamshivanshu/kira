@@ -20,15 +20,10 @@ import (
 // Options configures how commit trailers and subjects are scanned for ticket
 // links, references, and closes.
 type Options struct {
-	ProjectKey       string
-	BoardKeys        []string
-	TrailerKey       string
-	CloseTrailer     string
-	SubjectPrefix    string
-	LandedRef        string
-	Closes           bool
-	LinkMarkers      []datamodel.LinkMarker
-	ReferenceMarkers []datamodel.ReferenceMarker
+	ProjectKey string
+	BoardKeys  []string
+	LandedRef  string
+	Closes     bool
 }
 
 // LinkKind distinguishes a commit that links an item (via trailer, subject
@@ -72,7 +67,7 @@ func (i *Index) scanTrailers(root gitx.Repo, opts Options, head string, prev met
 	if wm == nil {
 		wm = map[string]string{}
 	}
-	if opts.TrailerKey == "" || head == "" || wm[trailerRef] == head {
+	if head == "" || wm[trailerRef] == head {
 		return nil, wm, nil
 	}
 
@@ -80,7 +75,7 @@ func (i *Index) scanTrailers(root gitx.Repo, opts Options, head string, prev met
 	if err != nil {
 		return nil, nil, err
 	}
-	commits, err := root.LogTrailers(rangeExpr, opts.TrailerKey, opts.CloseTrailer)
+	commits, err := root.LogTrailers(rangeExpr, datamodel.TicketTrailerKey, datamodel.CloseTrailerKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -113,7 +108,7 @@ func (i *Index) collectCloses(root gitx.Repo, opts Options, prev meta, loadNumbe
 		if err != nil {
 			return CloseScan{}, err
 		}
-		commits, err = root.LogTrailers(rangeExpr, opts.TrailerKey, opts.CloseTrailer)
+		commits, err = root.LogTrailers(rangeExpr, datamodel.TicketTrailerKey, datamodel.CloseTrailerKey)
 		if err != nil {
 			return CloseScan{}, err
 		}
@@ -196,16 +191,11 @@ func trailerRange(root gitx.Repo, watermark, head string) (rangeExpr string, rew
 }
 
 type linkPolicy struct {
-	trailer       bool
-	subject       bool
-	leadingNumber bool
-	bare          bool
-	subjectPrefix string
-	marker        *regexp.Regexp
-	bareRef       *regexp.Regexp
+	marker  *regexp.Regexp
+	bareRef *regexp.Regexp
 }
 
-const scanPolicyVersion = "2"
+const scanPolicyVersion = "3"
 
 func scanConfigHash(opts Options) string {
 	var b strings.Builder
@@ -217,35 +207,14 @@ func scanConfigHash(opts Options) string {
 		b.WriteString(k)
 		b.WriteByte(0x1f)
 	}
-	b.WriteByte(0)
-	b.WriteString(opts.TrailerKey)
-	b.WriteByte(0)
-	b.WriteString(opts.CloseTrailer)
-	b.WriteByte(0)
-	for _, m := range opts.LinkMarkers {
-		b.WriteString(string(m))
-		b.WriteByte(0x1f)
-	}
-	b.WriteByte(0)
-	for _, m := range opts.ReferenceMarkers {
-		b.WriteString(string(m))
-		b.WriteByte(0x1f)
-	}
-	b.WriteByte(0)
-	b.WriteString(opts.SubjectPrefix)
 	sum := sha256.Sum256([]byte(b.String()))
 	return hex.EncodeToString(sum[:])
 }
 
 func newLinkPolicy(opts Options, numbers map[string]string) linkPolicy {
 	return linkPolicy{
-		trailer:       slices.Contains(opts.LinkMarkers, datamodel.LinkMarkerTrailer),
-		subject:       slices.Contains(opts.LinkMarkers, datamodel.LinkMarkerSubject),
-		leadingNumber: slices.Contains(opts.LinkMarkers, datamodel.LinkMarkerLeadingNumber),
-		bare:          slices.Contains(opts.ReferenceMarkers, datamodel.ReferenceMarkerBare),
-		subjectPrefix: opts.SubjectPrefix,
-		marker:        subjectMarkerPattern(opts, numbers),
-		bareRef:       lenientPattern(opts.BoardKeys, numbers),
+		marker:  subjectMarkerPattern(opts, numbers),
+		bareRef: lenientPattern(opts.BoardKeys, numbers),
 	}
 }
 
@@ -297,25 +266,23 @@ func resolveItemRefs(c gitx.Commit, numbers map[string]string, pol linkPolicy) (
 			linked = append(linked, ulid)
 		}
 	}
-	if pol.trailer {
-		for _, t := range c.Tickets {
-			addLinked(t)
-		}
+	for _, t := range c.Tickets {
+		addLinked(t)
 	}
-	if pol.subject && pol.marker != nil && len(linked) == 0 {
+	if pol.marker != nil && len(linked) == 0 {
 		if m := pol.marker.FindString(c.Subject); m != "" {
 			addLinked(strings.Trim(m, "[]"))
 		}
 	}
-	if pol.leadingNumber && pol.bareRef != nil && len(linked) == 0 && (!pol.trailer || len(c.Tickets) == 0) {
-		s := strings.TrimLeft(strings.TrimPrefix(c.Subject, pol.subjectPrefix), " \t")
+	if pol.bareRef != nil && len(linked) == 0 && len(c.Tickets) == 0 {
+		s := strings.TrimLeft(c.Subject, " \t")
 		if loc := pol.bareRef.FindStringIndex(s); loc != nil && loc[0] == 0 {
 			addLinked(s[:loc[1]])
 		}
 	}
 
 	refSeen := setx.NewDeduper[string]()
-	if pol.bare && pol.bareRef != nil {
+	if pol.bareRef != nil {
 		for _, tok := range pol.bareRef.FindAllString(stripMarkers(bodyOutsideTrailers(c), pol.marker), -1) {
 			if ulid, ok := numbers[strings.ToUpper(tok)]; ok && !linkedSeen.Has(ulid) && refSeen.Add(ulid) {
 				referenced = append(referenced, ulid)

@@ -7,14 +7,9 @@ import (
 
 func indexOptions(cfg *datamodel.Config) index.Options {
 	return index.Options{
-		ProjectKey:       cfg.Project.Key,
-		BoardKeys:        cfg.BoardKeys(),
-		TrailerKey:       cfg.Commit.Trailer,
-		CloseTrailer:     cfg.Commit.CloseTrailer,
-		SubjectPrefix:    cfg.Commit.SubjectPrefix,
-		LandedRef:        cfg.Git.LandedRef,
-		LinkMarkers:      cfg.Commit.LinkMarkers,
-		ReferenceMarkers: cfg.Commit.ReferenceMarkers,
+		ProjectKey: cfg.Project.Key,
+		BoardKeys:  cfg.BoardKeys(),
+		LandedRef:  cfg.Git.LandedRef,
 	}
 }
 

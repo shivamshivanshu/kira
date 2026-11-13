@@ -546,9 +546,9 @@ item's spillover:
 
 ```console
 $ git log --oneline | head -3
-1f82ea8 kira: WEB-2 state REVIEW -> DONE
-a26bdc4 kira: API-2 edit sprint
-c117b39 kira: API-1 edit sprint
+1f82ea8 WEB-2 state REVIEW -> DONE
+a26bdc4 API-2 edit sprint
+c117b39 API-1 edit sprint
 
 $ kira sprint close S1 --move-to S2
 Closed sprint S1
@@ -559,14 +559,14 @@ Moved 3 unfinished item(s) to S2
 Cleared the active-sprint pointer
 
 $ git log --oneline | head -8
-2fcbf21 kira: API-2 sprint S1 -> S2
-a726a25 kira: API-1 sprint S1 -> S2
-eeba50a kira: WEB-1 sprint S1 -> S2
-1f82ea8 kira: WEB-2 state REVIEW -> DONE
-a26bdc4 kira: API-2 edit sprint
-c117b39 kira: API-1 edit sprint
-1ae7be1 kira: WEB-2 edit sprint
-d4d00f6 kira: WEB-1 edit sprint
+2fcbf21 API-2 sprint S1 -> S2
+a726a25 API-1 sprint S1 -> S2
+eeba50a WEB-1 sprint S1 -> S2
+1f82ea8 WEB-2 state REVIEW -> DONE
+a26bdc4 API-2 edit sprint
+c117b39 API-1 edit sprint
+1ae7be1 WEB-2 edit sprint
+d4d00f6 WEB-1 edit sprint
 ```
 
 Three unfinished items, three commits, each naming the item and the sprint

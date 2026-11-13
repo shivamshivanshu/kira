@@ -27,7 +27,7 @@ stdout 'from the base template'
 # auto-commit subjects are number-first: "<prefix><number> create ..."
 exec kira create ticket --title Real --subtype bug --no-edit
 exec git log -1 --format=%s
-stdout '^kira: KIRA-1 create'
+stdout '^KIRA-1 create'
 
 -- base.md --
 ---

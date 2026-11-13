@@ -13,7 +13,7 @@ exec kira create epic --title 'E' --no-edit
 # blocked-by is stored on the dependent (KIRA-1) only
 exec kira link KIRA-1 --blocked-by KIRA-2
 exec git log --oneline
-stdout 'kira: KIRA-1 link blocked-by KIRA-2'
+stdout 'KIRA-1 link blocked-by KIRA-2'
 exec kira show KIRA-1 --json
 stdout '"blocked_by": \['
 # the blocker's own file stores no inverse edge; blocks is derived from the set

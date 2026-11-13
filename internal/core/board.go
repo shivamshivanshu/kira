@@ -136,7 +136,7 @@ func (s *Store) mutateConfig(edit func(data []byte, locked *datamodel.Config) (c
 	if err := os.WriteFile(fs.ConfigPath(), e.data, filePerm); err != nil {
 		return errx.Env("writing config: %v", err)
 	}
-	_, err = s.finalize(e.commit.Mode, commitSpec{trailerKey: e.commit.Trailer, subject: e.commit.SubjectPrefix + e.subject}, fs.RelToRoot(fs.ConfigPath()))
+	_, err = s.finalize(e.commit.Mode, commitSpec{trailerKey: datamodel.TicketTrailerKey, subject: e.subject}, fs.RelToRoot(fs.ConfigPath()))
 	return err
 }
 

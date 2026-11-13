@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/syncx"
 )
@@ -27,7 +26,7 @@ func dirtyKira(t *testing.T, s *Store, state string) {
 
 func TestPrepareTreeCleanTree(t *testing.T) {
 	s, repo := seededSyncRepo(t)
-	if err := s.prepareTree(config.Default(), repo, SyncOpts{}, &syncx.Report{}); err != nil {
+	if err := s.prepareTree(repo, SyncOpts{}, &syncx.Report{}); err != nil {
 		t.Fatalf("prepareTree clean: %v", err)
 	}
 }
@@ -36,7 +35,7 @@ func TestPrepareTreeCommitsDirty(t *testing.T) {
 	s, repo := seededSyncRepo(t)
 	dirtyKira(t, s, "IN_PROGRESS")
 
-	if err := s.prepareTree(config.Default(), repo, SyncOpts{Dirty: syncx.DirtyCommit}, &syncx.Report{}); err != nil {
+	if err := s.prepareTree(repo, SyncOpts{Dirty: syncx.DirtyCommit}, &syncx.Report{}); err != nil {
 		t.Fatalf("prepareTree commit: %v", err)
 	}
 	dirty, _ := repo.DirtyPaths(".kira")
@@ -49,7 +48,7 @@ func TestPrepareTreeRefusesDirtyWithoutCommit(t *testing.T) {
 	s, repo := seededSyncRepo(t)
 	dirtyKira(t, s, "IN_PROGRESS")
 
-	err := s.prepareTree(config.Default(), repo, SyncOpts{}, &syncx.Report{})
+	err := s.prepareTree(repo, SyncOpts{}, &syncx.Report{})
 	if err == nil || !strings.Contains(err.Error(), "re-run with --commit") {
 		t.Fatalf("err = %v, want refusal on uncommitted changes even under commit.mode auto", err)
 	}

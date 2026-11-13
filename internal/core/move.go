@@ -27,7 +27,6 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 }
 
 func (b *Batch) Move(ref, state string, opts MoveOpts) (*datamodel.MoveResult, error) {
-	cfg := b.cfg
 	var from string
 	apply := func(it *datamodel.Item, _ *id.Resolver, items []*datamodel.Item) ([]error, []error) {
 		from = it.State
@@ -39,7 +38,7 @@ func (b *Batch) Move(ref, state string, opts MoveOpts) (*datamodel.MoveResult, e
 		return nil, append(warns, wipWarns...)
 	}
 	subjectOf := func(orig *datamodel.Item) string {
-		return fmt.Sprintf("%s%s state %s -> %s", cfg.Commit.SubjectPrefix, orig.Number, orig.State, state)
+		return fmt.Sprintf("%s state %s -> %s", orig.Number, orig.State, state)
 	}
 
 	updated, _, warns, err := b.Mutate(ref, opts.Force, apply, subjectOf)

@@ -90,9 +90,9 @@ line, leaving every comment and every other line byte-identical. It accepts a
 fixed list of keys:
 
 ```
-commit.close_trailer   commit.mode        commit.trailer     estimate.unit
-git.landed_ref         merge.policy       project.name       sync.push
-ui.background          ui.icons           workon.branch_pattern
+commit.mode            estimate.unit      git.landed_ref     merge.policy
+project.name           sync.push          ui.background      ui.icons
+workon.branch_pattern
 ```
 
 Everything else is edited by hand. For the full flags and output of these
@@ -342,18 +342,11 @@ managed with `kira sprint create` rather than edited by hand.
 ```yaml
 commit:
   mode: auto                  # auto | manual
-  subject_prefix: ""
-  trailer: Kira-Ticket
 ```
 
 | Key | Type | Default |
 |---|---|---|
 | `mode` | `auto` \| `manual` | `auto` |
-| `trailer` | string | `Kira-Ticket` |
-| `close_trailer` | string | `Kira-Closes` |
-| `subject_prefix` | string, single line | `"kira: "` |
-| `link_markers` | list | `[trailer, subject, leading_number]` |
-| `reference_markers` | list | `[bare]` |
 
 **`mode`** decides what happens to `.kira/` after a mutation.
 
@@ -363,32 +356,19 @@ commit:
 - `manual` — changes are written and staged but not committed; you run `kira
   commit` when you want to bundle them.
 
-**`trailer`** is the git trailer key that links a commit to an item, e.g.
-`Kira-Ticket: KIRA-46`. It may not be empty — an empty trailer key would
-disable commit linking entirely, so kira rejects it:
+Subjects kira generates carry no prefix: `KIRA-46 state TODO -> DONE`.
 
-```
-kira: config: commit.trailer: required; an empty trailer key disables all commit linking
-```
+### Commit linking
 
-A single commit's trailer may name up to 20 numbers.
+The trailers are fixed. `Kira-Ticket: KIRA-46` links a commit to an item; a
+single commit's trailer may name up to 20 numbers. `Kira-Closes: KIRA-46`
+*closes* the item when its commit lands on [`git.landed_ref`](#git), moving it
+to its type's first `done`-category state.
 
-**`close_trailer`** is the trailer that *closes* an item when its commit lands
-on [`git.landed_ref`](#git), moving it to its type's first
-`done`-category state. Writing `Kira-Closes: KIRA-46` in a commit
-means the ticket transitions by itself once that commit reaches mainline.
-
-**`subject_prefix`** is prepended to every commit subject kira generates —
-`kira: KIRA-46 state TODO -> DONE` with the default `"kira: "`. It must be a
-single line. This repo sets it to `""`, which is why its history reads
-`CORE-46 state TODO -> DONE` with no prefix. Setting it lets you filter kira's
-own commits out of `git log` with a single grep, or fold them into an existing
-convention.
-
-**`link_markers` and `reference_markers`** control how kira *recognizes* a
-ticket in a commit that was written by hand — by you, or by a tool that knows
-nothing about kira. This matters because `kira show` lists the commits that
-touched an item, and that list is built by scanning history.
+kira also *recognizes* a ticket in a commit that was written by hand — by you,
+or by a tool that knows nothing about kira. This matters because `kira show`
+lists the commits that touched an item, and that list is built by scanning
+history.
 
 The distinction is strength of association. A **link** is a claim that this
 commit is work on that ticket. A **reference** is a passing mention. They are
@@ -396,19 +376,10 @@ stored separately and displayed differently.
 
 | Marker | Kind | Matches |
 |---|---|---|
-| `trailer` | link | a `Kira-Ticket:` git trailer naming the ticket |
-| `subject` | link | a `[KEY-n]` marker in the commit subject |
-| `leading_number` | link | a bare `KEY-n` token leading the subject |
-| `bare` | reference | a `KEY-n` token anywhere in the commit body |
-
-All three link markers and the one reference marker are on by default. Drop
-`bare` from `reference_markers` (set it to `[]`) if your commit bodies mention
-ticket numbers conversationally and the noise is not worth it. Drop
-`leading_number` if your subjects start with something else that looks like a
-ticket number.
-
-Changing any of these invalidates the cached commit scan, so the next `kira
-index` re-scans history under the new rules.
+| trailer | link | a `Kira-Ticket:` git trailer naming the ticket |
+| subject | link | a `[[KEY-n]]` marker in the commit subject |
+| leading number | link | a bare `KEY-n` token leading the subject |
+| bare | reference | a `KEY-n` token anywhere in the commit body |
 
 ### `commit.subject` — the user-file key
 
@@ -421,7 +392,7 @@ commit:
   subject: "chore(tickets): batch update"
 ```
 
-By default that subject is `kira: update {count} items` (with up to five
+By default that subject is `update {count} items` (with up to five
 numbers listed before falling back to a count). It must be a single line.
 
 ---
@@ -721,8 +692,6 @@ people:
 
 commit:
   mode: auto
-  subject_prefix: ""
-  trailer: Kira-Ticket
 
 merge:
   policy: auto

@@ -10,7 +10,7 @@ import (
 
 func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed []string, notes []datamodel.Warning, err error) {
 	for _, value := range scan.Unknown {
-		notes = append(notes, datamodel.Warning{Code: datamodel.WarnCloseUnknown, Args: []string{value, cfg.Commit.CloseTrailer}})
+		notes = append(notes, datamodel.Warning{Code: datamodel.WarnCloseUnknown, Args: []string{value, datamodel.CloseTrailerKey}})
 	}
 	b, err := s.BeginBatch(cfg)
 	if err != nil {

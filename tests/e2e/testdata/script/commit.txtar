@@ -27,7 +27,7 @@ stdout 'update 2 items'
 exec git rev-list --count HEAD
 stdout '^3$'
 exec git log -1 --format=%B
-stdout 'kira: update 2 items'
+stdout 'update 2 items'
 stdout 'KIRA-1 First'
 stdout 'KIRA-2 Second'
 stdout 'Kira-Ticket: KIRA-1'
@@ -53,7 +53,7 @@ env XDG_CONFIG_HOME=
 cp new-ignore .kira/.gitignore
 exec kira commit --json
 stdout '"items": \[\]'
-stdout '"subject": "kira: update 1 files"'
+stdout '"subject": "update 1 files"'
 
 # a pre-staged foreign file is neither committed nor unstaged by kira commit.
 cp user-config.yaml foreign.txt

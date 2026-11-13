@@ -438,7 +438,7 @@ func TestBoardMoveHitsCoreMovePath(t *testing.T) {
 		t.Fatalf("board move did not reach core.Move: on-disk state = %s", state)
 	}
 	out := gitOutput(t, s.Root(), "log", "--format=%s", "-1")
-	if !strings.Contains(out, "kira: "+cr.Number+" state TODO -> IN_PROGRESS") {
+	if !strings.Contains(out, cr.Number+" state TODO -> IN_PROGRESS") {
 		t.Fatalf("commit subject %q is not the core.Move subject only that path writes", strings.TrimSpace(out))
 	}
 }

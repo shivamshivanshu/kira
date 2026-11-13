@@ -27,7 +27,7 @@ grep 'key: KIRA' .kira/config.yaml
 grep 'default: true' .kira/config.yaml
 grep 'key: XYZ' .kira/config.yaml
 exec git log --oneline
-stdout 'kira: board create XYZ'
+stdout 'board create XYZ'
 
 # the pre-materialization number still resolves afterward
 exec kira show KIRA-1
