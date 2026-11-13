@@ -52,7 +52,6 @@ see `REVIEW.md` for the full bottom-up file list):
 - `datamodel` — domain types (items, config, workflow) and JSON result shapes. Depends only on the `errx`/`ptr`/`setx`/`timex` leaves.
 - `id` — two-tier identity: immutable ULIDs + renumberable `KIRA-n` display numbers.
 - `codec` — parses/serializes items to/from Markdown-with-frontmatter.
-- `entityschema` — entity types (ticket/epic/board + user-defined) as JSON schema data: embedded builtins layered under `.kira/schema/*.json`, pure validator.
 - `storage` — reads/writes item files under `.kira/`, file locking, path resolution.
 - `gitx` — git CLI wrapper: commands, staging, branches, trailers, sync.
 - `query` — the `list`/filter expression grammar.

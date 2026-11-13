@@ -23,7 +23,6 @@ Candidate implementations were supplied through temporary Go build overlays.
 | --- | --- | --- |
 | One warm event lookup in a cache with 1,000 event histories | 869.5 µs, 195 allocations | Same queries with a reused handle: 25.4 µs, 82 allocations; about 34× faster |
 | Evaluate `state = DONE AND "important"` over 1,000 TODO items with mixed-case titles | 132.6 µs, 64 KB, 1,000 allocations | Short-circuit AND: 3.92 µs, zero allocations; about 34× faster |
-| Validate one integer extra on an item with a 1,000-line description | 3.46 ms, 41.5 MB, 2,008 allocations | Parse body sections only if requested by the schema: 0.30 µs, 528 bytes, four allocations |
 | Compute progress for 100 nested epics and one leaf ticket | 0.490 ms, 0.431 MB | Baseline only |
 | Compute progress for 1,000 nested epics and one leaf ticket | 54.8 ms, 44.0 MB | Baseline only; 10× depth takes about 112× time |
 | Render a seeded 1,000-item tree page, excluding data loading | 35.4 ms, 13.6 MB, about 459,145 allocations; 2,390,395 HTML bytes | Baseline only |
@@ -90,20 +89,7 @@ left; gains depend on real filter selectivity and operand cost.
 
 ### 3. Make body-section projection lazy and linear
 
-**High allocation benefit for long descriptions; small effort.**
-
-Location: [project.go](../internal/entityschema/project.go#L14).
-
-`ValidateExtras` filters its schema to frontmatter fields and then calls
-`ProjectItem`. `ProjectItem` still calls `bodySections`, although none of those
-fields need Markdown. Each `sections[current] += line + "\n"` also recopies all
-previous text in the section, making long sections quadratic in copied bytes.
-
-Create the section map only when the first body field is encountered. This alone
-removes the 41.5 MB allocation cost in the measured extras-validation case; the
-candidate passed the existing entity-schema tests. For actual body projection,
-use source offsets or a builder per section to make construction linear. Preserve
-the existing behavior for repeated headings and whitespace trimming.
+Obsolete: the entity-schema package this targeted was removed in CORE-68.
 
 ### 4. Keep web bulk mutations inside one core batch
 

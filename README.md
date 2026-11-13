@@ -59,8 +59,7 @@ timeout, and receive a versioned JSON payload on stdin (plus env-var mirrors).
 `automation trust` hashes and trusts the current hook config; `automation
 list` shows defined hooks and trust status.
 
-**Configuration** — per-type workflows (states, categories, WIP limits),
-label/people vocab, priorities, subtypes, resolutions, commit mode
+**Configuration** — label/people vocab, boards, commit mode
 (auto/manual/prompt), merge policy, sprints, saved filters, and a personal
 overlay (`~/.config/kira/config.yaml` via `config init`) for editor/UI/worktree
 preferences that never touches the shared repo config.
@@ -110,7 +109,7 @@ points.
 
 ## Documentation
 
-- **[docs/user_manual/](docs/user_manual/README.md)** — the full user manual: getting started, concepts, a complete CLI reference, configuration reference, custom fields/schema, the TUI guide, recipes, and current limitations.
+- **[docs/user_manual/](docs/user_manual/README.md)** — the full user manual: getting started, concepts, a complete CLI reference, configuration reference, the TUI guide, recipes, and current limitations.
 - `kira --help` and `kira <command> --help` — the command surface.
 - `kira schema` / [schema/kira.json](schema/kira.json) — published JSON schema for every `--json` output and the automation hook-stdin payload.
 - `kira version` — build version.

@@ -1,10 +1,10 @@
 # Configuration Reference
 
 Everything kira knows about your project lives in one committed file:
-`.kira/config.yaml`. It defines your workflow states, your vocabularies, how
+`.kira/config.yaml`. It defines your boards, your vocabularies, how
 commits link to tickets, and how `kira sync` behaves. It is read on every
 command, validated strictly, and versioned alongside your code — so a change to
-the workflow arrives with the commit that needed it, and code review covers it.
+it arrives with the commit that needed it, and code review covers it.
 
 This page documents every key: its shape, its default, and what actually
 changes when you set it.
@@ -77,10 +77,8 @@ nothing.
 Each section carries a provenance tag saying where its values came from:
 
 ```
-workflow: ticket (repo)
-  initial: TODO
-  wip_policy: warn
-  TODO (todo)
+ui (repo)
+  icons: auto (override with the KIRA_ICONS env var: nerd|emoji|text|always|never)
   ...
 
 merge (default)
@@ -218,189 +216,31 @@ permanently mixed set of numbers. Treat it as a decision to make once, at
 
 ---
 
-## `workflows`
+## Item types and states are built in
 
-This is the largest and most consequential key. It defines your item *types* —
-each top-level key under `workflows` is a type name — and for each one, its
-states, their categories, and their WIP caps.
-
-`kira init` scaffolds two types, `ticket` and `epic`. Referring to a type that
-is not configured is an error:
+Item types, their states and the item vocabularies are part of kira itself,
+not configuration. There are two types, `ticket` and `epic`; referring to any
+other is an error:
 
 ```
-kira: "bug" is not a configured type
-  hint: configured types: epic, ticket
+kira: "bug" is not a known type
+  hint: known types: epic, ticket
 ```
 
-Here is this repo's real `ticket` workflow:
+Their states, categories, advisory WIP caps and the subtype, priority and
+resolution vocabularies are listed in
+[Concepts](03-concepts.md#workflow-states-and-categories).
 
-```yaml
-workflows:
-  ticket:
-    states:
-      - { key: TODO,        category: todo }
-      - { key: IN_PROGRESS, category: doing, wip: 3 }
-      - { key: REVIEW,      category: doing, wip: 2 }
-      - { key: DONE,        category: done, resolution: done }
-      - { key: WONT_DO,     category: done, resolution: dropped }
-    initial: TODO
-  epic:
-    states:
-      - { key: PLANNED, category: todo }
-      - { key: ACTIVE,  category: doing }
-      - { key: DONE,    category: done, resolution: done }
-    initial: PLANNED
-```
-
-`states` and `initial` are the whole of it. There is no transition graph:
-`state` is a plain enum, and any state may move to any other state the
-workflow declares. `kira config explain` prints what each state means:
-
-```
-workflow: epic (default)
-  initial: PLANNED
-  wip_policy: warn
-  PLANNED (todo)
-  ACTIVE (doing)
-  DONE (done), resolution=done; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)
-```
-
-### `states`
-
-A list, in display order. Each entry is a mapping:
-
-| Key | Type | Required | Default |
-|---|---|---|---|
-| `key` | string | yes | — |
-| `category` | `todo` \| `doing` \| `done` | yes | — |
-| `wip` | int ≥ 0 | no | `0` (unlimited) |
-| `resolution` | string | no | unset |
-
-**`category`** is the coarse three-bucket grouping every state maps into, and
-it does a lot of work:
-
-- `--category todo|doing|done` filtering, and `category=` in query expressions
-- board column grouping and the TUI's colouring
-- "is this item finished?" — an item is closed when its state's category is
-  `done`, which is what epic progress counts and what the blockers check on a
-  close tests
-- stats: cycle time measures first entry into a `doing` state through first
-  entry into a `done` state; a move back into `doing` after `done` counts as a
-  reopen
-
-State keys are yours to name; categories are the fixed vocabulary the rest of
-kira reasons in.
-
-**`wip`** is a work-in-progress cap for that state. `0` or absent means
-unlimited. When you move an item in, kira counts items *of the same type*
-already in the target state; if the move would exceed the cap you get a warning
-or a hard error depending on [`wip_policy`](#wip_policy). Board columns render
-the count as `IN_PROGRESS 3/3` and colour it as it approaches and exceeds the
-cap.
-
-The default config ships `wip: 3` on `IN_PROGRESS` and `wip: 2` on `REVIEW`;
-this repo keeps both.
-
-**`resolution`** is a *default resolution applied on arrival*, not a
-requirement. When an item moves into this state and no resolution was set
-explicitly — not on the command line, not by an edit in the same operation —
-kira fills in this value. That is how `WONT_DO`'s `resolution: dropped` works:
-moving anything to `WONT_DO` marks it dropped without you saying so.
-
-It only means anything on a `done`-category state. Moving into any state whose
-category is not `done` clears the resolution outright, and trying to set a
-resolution while moving to a non-done state is an error.
-
-### `initial`
-
-```yaml
-initial: TODO
-```
-
-The state new items of this type are created in. Required, and must be one of
-the declared state keys.
-
-### Moving between states
-
-There is no adjacency map and no per-edge guard. Any declared state is a legal
-target from any other, in either direction; a state that the workflow does not
-declare is refused:
-
-```
-kira: "SHIPPED" is not a state in the ticket workflow
-  hint: valid states: TODO, IN_PROGRESS, REVIEW, DONE, WONT_DO
-```
-
-Two rules hang off the `done` category rather than off any particular edge.
-
-**Closing checks blockers.** Entering a `done`-category state is refused while
-any item in this one's `blocked_by` list is still open:
-
-```
-kira: REVIEW -> DONE is blocked by open items: KIRA-8, KIRA-12
-  hint: close the blockers first, or use `--force` to override
-```
-
-A blocker that cannot be resolved — a dangling reference to an item that no
-longer exists, or an unknown ref — warns and counts as satisfied rather than
-wedging the close, as `kira config explain` spells out:
-
-```
-DONE (done), resolution=done; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)
-```
-
-`--force` downgrades the refusal to a warning recorded on the move.
-
-**Closing stamps a resolution.** Entering a `done` state applies that state's
-[`resolution`](#states) if the item has none; leaving the `done` category for a
-`todo` or `doing` state clears `resolution` again.
-
-
-### `close_target`
-
-```yaml
-close_target: DONE
-```
-
-| Type | Default |
-|---|---|
-| string (a state key) | the first `done`-category state, in `states` order |
-
-The state that a landed `Kira-Closes:` commit trailer moves an item to. Set it
-only when your first `done` state is not the one you want automatic closes to
-land in — for example if `states` lists `WONT_DO` before `DONE`.
-
-See [`commit.close_trailer`](#commit) and [`git.landed_ref`](#git) for the rest
-of that mechanism.
-
-### `wip_policy`
-
-```yaml
-wip_policy: block     # warn | block
-```
-
-| Type | Default |
-|---|---|
-| `warn` \| `block` | `warn` |
-
-What happens when a move would push a state past its `wip` cap. Under `warn`
-the move succeeds and prints a warning. Under `block` it is a hard error:
-
-```
-kira: IN_PROGRESS is over its WIP limit (4 > 3)
-  hint: move an item out of IN_PROGRESS first, or use `--force` to override
-```
-
-This is per workflow, not per state — a state's `wip` sets the number, the
-workflow's `wip_policy` decides whether that number has teeth.
+Older configs may still carry `workflows`, `priorities`, `subtypes`,
+`resolutions`, `resolutions_dropped` or `fields`. kira no longer reads these
+keys and ignores them; delete them at your convenience.
 
 ---
 
-## Vocabularies: `labels`, `people`, `priorities`, `subtypes`, `resolutions`
+## Vocabularies: `labels`, `people`
 
-Five keys that constrain what values a field may take. They come in two shapes.
-
-**`labels` and `people`** use `known` plus `strict`:
+Two keys that constrain what values a field may take, each with `known` plus
+`strict`:
 
 ```yaml
 labels:
@@ -412,33 +252,15 @@ people:
   strict: false
 ```
 
-**`priorities`, `subtypes` and `resolutions`** accept either a bare list or the
-long `{values, strict}` form:
-
-```yaml
-# short form — this is what this repo uses
-priorities: [P0, P1, P2, P3]
-subtypes: [bug, task, feature, support]
-resolutions: [done, dropped, duplicate, cannot-reproduce]
-
-# long form — same thing, with an explicit strict flag
-priorities:
-  values: [P0, P1, P2, P3]
-  strict: true
-```
-
 ### `strict`
 
 `strict: true` rejects any value outside the vocabulary; `--force` accepts it
 anyway. `strict: false` is advisory — the value is accepted with a warning, and
 `kira doctor` reports it at a lower severity.
 
-There is one non-obvious rule here: for `priorities`, `subtypes` and
-`resolutions`, when `strict` is **not** explicitly set it inherits
-**`labels.strict`**. It does not default to `false` independently. So writing
-`labels: {strict: true}` and leaving the other three in short-list form turns
-strictness on for all four at once. Set `strict` explicitly in the long form if
-you want them to differ.
+The built-in priority, subtype and resolution vocabularies follow
+**`labels.strict`**: writing `labels: {strict: true}` turns strictness on for
+all of them at once.
 
 `kira config explain` prints the effective answer per vocabulary, so you never
 have to work it out:
@@ -450,13 +272,6 @@ vocab (repo)
   subtypes: bug, task, feature, support (advisory)
   resolutions: done, dropped, duplicate, cannot-reproduce (advisory)
 ```
-
-### Ordering matters for `priorities`
-
-`priorities` is not just a set — it is an *ordered* list, high to low. That
-order defines the ranked sort in `kira list` and gives meaning to `>` and `<`
-comparisons in query expressions (`priority > P2`). An empty list `[]` makes
-the field free-form and equality-only.
 
 ### `people` entries
 
@@ -479,38 +294,6 @@ name or address the commit was authored under. Every entry needs a `name`.
 `captured` is a system label kira adds itself to items created with `kira create
 --here`. It is exempt from vocabulary checks, so you never need to declare it —
 though this repo lists it anyway for documentation value.
-
----
-
-## `resolutions_dropped`
-
-```yaml
-resolutions_dropped: [dropped]
-```
-
-| Type | Default |
-|---|---|
-| list of strings | `[dropped]` |
-
-Resolutions that mean "this item went away" rather than "this item was
-completed". Every value must also appear in `resolutions`, or config load
-fails — a dropped value that is not a real resolution could never match
-anything:
-
-```
-kira: config: resolutions_dropped: "wont_fix" is not one of the configured
-resolutions [done dropped duplicate cannot-reproduce]; dropped detection
-would never match
-```
-
-Items resolved this way land in a `done`-category state, so they are closed —
-but counting them as *completed work* would flatter every metric. So they are
-excluded from throughput, cycle time and lead time, and reported in their own
-`dropped` bucket alongside `done` in completion stats. Epic progress treats
-them the same way.
-
-If your team distinguishes "won't do" from "duplicate" from "can't reproduce"
-and none of them should count as delivery, list all three.
 
 ---
 
@@ -646,8 +429,8 @@ kira: config: commit.trailer: required; an empty trailer key disables all commit
 A single commit's trailer may name up to 20 numbers.
 
 **`close_trailer`** is the trailer that *closes* an item when its commit lands
-on [`git.landed_ref`](#git), moving it to the workflow's
-[`close_target`](#close_target). Writing `Kira-Closes: KIRA-46` in a commit
+on [`git.landed_ref`](#git), moving it to its type's first
+`done`-category state. Writing `Kira-Closes: KIRA-46` in a commit
 means the ticket transitions by itself once that commit reaches mainline.
 
 **`subject_prefix`** is prepended to every commit subject kira generates —
@@ -896,20 +679,17 @@ under `--json` or `--no-input`. Set it to `false` if you want bare `kira` to
 print help instead.
 
 **`list.columns`** customizes which columns `kira list` renders, in the order
-given. This repo does not set it, so it uses the shipped default `[number,
-state, type, priority, title]`. The full set of selectable columns is:
+given. This repo pins `[number, state, type,
+subtype, priority, title]`; the shipped default is `[number, state, type,
+priority, title]`. The full set of selectable columns is:
 
 ```
 number  title  type  subtype  state  category  priority  owner
 labels  epic   epic_number  resolution  due  id
 ```
 
-Any frontmatter field a schema declares is also a valid column name. A
-body-placed field is not — there is no cell to render it into.
-
-A name that is neither is a warning, not an error: the column is dropped and
-the rest of the list still renders. The check happens when `kira list` runs,
-not at config load, because only then are the schemas available:
+Any other name is a warning, not an error: the column is dropped and the rest
+of the list still renders:
 
 ```
 kira: warning: ui.list.columns: unknown column "assignee"; ignored
@@ -967,7 +747,7 @@ git:
 **`landed_ref`** is the ref whose history means "this work has reached
 mainline". It is what drives automatic closing: when kira scans commits and
 finds a `Kira-Closes:` trailer in this ref's history, the named item moves to
-its workflow's [`close_target`](#close_target). It is also the boundary `kira
+its type's first `done`-category state. It is also the boundary `kira
 index --closes` and the git hooks work against.
 
 By default kira resolves `origin/HEAD` and falls back to `main` if that fails.
@@ -1216,23 +996,6 @@ reported and skipped in full rather than partially applied.
 
 ---
 
-## `fields`
-
-```yaml
-fields: {}
-```
-
-**This key is reserved and not currently used.** It is accepted by the config
-parser and appears in kira's own annotated template as *"reserved: per-type
-extra-field declarations"*, but nothing reads it — setting it changes no
-behaviour anywhere in kira today.
-
-Custom per-type fields are a real feature, but they are declared through entity
-schemas rather than through this key. See
-[Custom fields and schema](06-custom-fields-and-schema.md).
-
----
-
 ## A complete example
 
 This repo's own `.kira/config.yaml`, in full — a working config for a
@@ -1248,29 +1011,10 @@ project:
 id:
   style: sequential
 
-workflows:
-  ticket:
-    states:
-      - { key: TODO,        category: todo }
-      - { key: IN_PROGRESS, category: doing, wip: 3 }
-      - { key: REVIEW,      category: doing, wip: 2 }
-      - { key: DONE,        category: done, resolution: done }
-      - { key: WONT_DO,     category: done, resolution: dropped }
-    initial: TODO
-  epic:
-    states:
-      - { key: PLANNED, category: todo }
-      - { key: ACTIVE,  category: doing }
-      - { key: DONE,    category: done, resolution: done }
-    initial: PLANNED
-
 filters:
   backlog: "state = TODO ORDER BY priority"
   core: "label = core AND state != DONE"
 
-priorities: [P0, P1, P2, P3]
-subtypes: [bug, task, feature, support]
-resolutions: [done, dropped, duplicate, cannot-reproduce]
 labels:
   known: [captured]
   strict: false
@@ -1292,6 +1036,8 @@ sync:
 
 ui:
   icons: auto
+  list:
+    columns: [number, state, type, subtype, priority, title]
 
 estimate:
   unit: points

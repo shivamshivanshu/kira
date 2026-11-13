@@ -25,8 +25,7 @@ you give it; with no filters it prints everything.
 
 Results are ordered by *precedence*: items carrying an explicit `rank` come
 first, sorted lexicographically by that rank; the rest follow, sorted by
-priority in the order your config declares (`priorities: [P0, P1, P2, P3]`
-means P0 sorts first), and ties broken by item number. An explicit
+priority (`P0` sorts first, then `P1`, `P2`, `P3`), and ties broken by item number. An explicit
 `ORDER BY` in a query expression overrides that, with precedence retained only
 as the tie-break.
 
@@ -35,7 +34,7 @@ as the tie-break.
 | `--at` | git ref or `YYYY-MM-DD` | Read the item set as it stood at that point, anchored on `HEAD`. |
 | `--category` | `todo`\|`doing`\|`done` | Filter by workflow category rather than a specific state. |
 | `--epic` | item reference | Only items whose parent epic is that item. |
-| `--field` | `key=value` | Equality filter on any schema-declared field. Repeatable; multiple uses are ANDed. |
+| `--field` | `key=value` | Equality filter on any item field. Repeatable; multiple uses are ANDed. |
 | `--filter` | filter name | Run a named saved query from `filters:` in `.kira/config.yaml`. |
 | `--label` | label | Only items carrying that label. |
 | `--owner` | person or `@me` | Filter by owner. `@me` resolves to your git identity. |
@@ -43,7 +42,7 @@ as the tie-break.
 | `--query` | query expression | Filter by an expression (see [Query expressions](#query-expressions)). |
 | `--sprint` | sprint key or `active` | Filter by sprint. `active` resolves your locally activated sprint. |
 | `--state` | state key | Only items in that exact state. |
-| `--subtype` | subtype | Only items of that subtype (`bug`, `story`, …). |
+| `--subtype` | subtype | Only items of that subtype (`bug`, `task`, …). |
 | `--tree` | — | Group the results under their epics instead of printing a flat table. |
 | `--type` | `ticket`\|`epic` | Restrict to one item type. |
 
@@ -78,9 +77,8 @@ PAY-5   REVIEW       ticket  P0        Settlement report off by one day
 PAY-6   IN_PROGRESS  ticket  P0        Batch scoring is 4x slower than target
 ```
 
-`--category doing` matches every state your workflow declares as `doing`
-(here `IN_PROGRESS` and `REVIEW`), which is what you want when the workflow
-has more than one in-flight column and you do not want to enumerate them.
+`--category doing` matches every `doing` state (`IN_PROGRESS` and `REVIEW`),
+so you do not have to enumerate the in-flight columns.
 
 `--owner @me` resolves your git `user.name`/`user.email` to a person in the
 `people:` roster, so the same command works for everyone on the team:
@@ -251,7 +249,7 @@ appear once, and must be the last thing in the expression.
 | --- | --- | --- |
 | `state`, `category`, `type`, `subtype`, `resolution`, `board` | text | `board` matching is case-insensitive. |
 | `owner`, `reporter` | text | Accept `@me`. |
-| `priority`, `rank` | ordered / text | `priority` compares by the order in `priorities:`, so `priority < P2` means "more urgent than P2". |
+| `priority`, `rank` | ordered / text | `priority` compares by priority order (`P0` highest), so `priority < P2` means "more urgent than P2". |
 | `epic`, `sprint` | reference | `sprint = active` resolves your active sprint. |
 | `label`, `blocked_by`, `links` | list | Equality means "contains"; cannot be used with `ORDER BY`. |
 | `estimate` | number | Supports `<`, `<=`, `>`, `>=`. |

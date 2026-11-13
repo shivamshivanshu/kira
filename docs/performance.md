@@ -57,8 +57,8 @@ keyboard navigation, filtering, ancestor expansion and bulk selection.
 ## Reproduce the benchmarks
 
 ```sh
-go test ./internal/query ./internal/entityschema ./internal/core ./internal/webui \
-  -run '^$' -bench 'Benchmark(SelectiveQuery|ValidateExtras|EpicProgress|LoadPage|RenderPage)$' \
+go test ./internal/query ./internal/core ./internal/webui \
+  -run '^$' -bench 'Benchmark(SelectiveQuery|EpicProgress|LoadPage|RenderPage)$' \
   -benchtime=200ms -count=3 -p=1
 
 go test ./tests/perf -run '^$' \

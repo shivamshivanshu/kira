@@ -64,7 +64,7 @@ jobs:
       - name: Build package benchmarks
         run: |
           ab_pkgs=""
-          for pkg in core query entityschema webui; do
+          for pkg in core query webui; do
             go test -c -o "/tmp/kira-head-$pkg.test" "./internal/$pkg"
             if [ ! -d "/tmp/base-tree/internal/$pkg" ]; then
               echo "::notice title=Perf A/B skipped::$pkg — the package does not exist at the merge-base"
@@ -92,7 +92,7 @@ jobs:
                 -bench='Benchmark(Commands|Mutations|StatsCache)$' -benchtime=3x -count=1 ./tests/perf/ >> "$revision.txt"
               for pkg in $ab_pkgs; do
                 "/tmp/kira-$revision-$pkg.test" -test.run='^$' \
-                  -test.bench='Benchmark(EpicProgress|SelectiveQuery|ValidateExtras|RenderPage)$' \
+                  -test.bench='Benchmark(EpicProgress|SelectiveQuery|RenderPage)$' \
                   -test.benchtime=200ms -test.count=1 >> "$revision.txt"
               done
             done

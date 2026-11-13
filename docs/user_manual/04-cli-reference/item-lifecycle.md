@@ -30,11 +30,10 @@ several ids at once. Each id is applied independently and reported on its own
 line. `create`, `link`, and `comment` are single-item commands.
 
 **What `--force` means.** Every command on this page has a `--force` flag, and
-it always means *accept a value the configuration would otherwise reject* —
-a label, owner, priority, subtype, or resolution outside the configured
-vocabulary. On `move` (and on `edit` when it changes state) it additionally
-closes an item whose blockers are still open, and exceeds a `block` WIP cap. It
-never lets you invent a new *field name*.
+it always means *accept a value the vocabulary would otherwise reject* —
+a label, owner, priority, subtype, or resolution outside its vocabulary. On
+`move` (and on `edit` when it changes state) it additionally closes an item
+whose blockers are still open. It never lets you invent a new *field name*.
 
 **Vocabulary: warning or error.** With `strict: false` (the default for both
 labels and people) an out-of-vocabulary value is accepted with a warning on
@@ -58,8 +57,8 @@ Added tooling to KIRA-8
 
 ## `create`
 
-Creates a new item of a configured type (`ticket`, `epic`, or whatever types
-your workflow declares) and assigns it the next display number. There are three
+Creates a new item of one of kira's types (`ticket` or `epic`) and assigns it
+the next display number. There are three
 ways to supply the content, and choosing the right one is most of what you need
 to know about this command:
 
@@ -95,11 +94,11 @@ The title may be given positionally or with `--title`, but not both.
 | `--owner` | string | Owner. |
 | `--parent` | string | Epic to set as this item's parent. |
 | `--print-template` | bool | Print the resolved template for the type and exit without creating anything. |
-| `--priority` | string | Priority, validated against the configured priorities. |
+| `--priority` | string | Priority, validated against kira's priorities (`P0`–`P3`). |
 | `--rank` | string | Lexicographic grooming key. |
 | `--reporter` | string | Reporter. |
 | `--sprint` | string | Sprint key, from the configured sprints. |
-| `--subtype` | string | Item subtype (e.g. `bug`, `story`), validated against the configured subtypes. |
+| `--subtype` | string | Item subtype (`bug`, `task`, `feature`, `support`), validated against that list. |
 
 ### Seeing the template before you write
 
@@ -290,8 +289,8 @@ the error lists the full accepted set:
 ```console
 $ kira create ticket "X" --no-edit --field severity=high
 kira: invalid item: --field: unknown or immutable field "severity"
-  hint: editable fields: acceptance, description, due, epic, estimate, labels,
-        owner, priority, rank, reporter, resolution, sprint, state, subtype, title
+  hint: editable fields: acceptance, description, due, estimate, labels, owner,
+        parent, priority, rank, reporter, resolution, sprint, state, subtype, title
 ```
 
 For the fields that have a dedicated flag (`--priority`, `--owner`, …), prefer
@@ -323,7 +322,7 @@ kira edit <id>... [flags]
 | --- | --- | --- |
 | `--due` | string | Set due date (RFC3339 date; empty clears). |
 | `--field` | string array | `key=value` edit, repeatable; skips `$EDITOR`. Same accepted key set as `create --field`. |
-| `--force` | bool | Accept values outside the configured vocabulary, and bypass workflow guards on state changes. |
+| `--force` | bool | Accept values outside the vocabulary, and close an item with open blockers on state changes. |
 | `--from-file` | string | Round-trip an edited item file, or `-` for stdin. Single id only. |
 | `--label` | string array | **Set** labels, repeatable — replaces the entire label set. |
 | `--owner` | string | Set owner (empty clears). |
@@ -415,8 +414,8 @@ the target is declared at all.
 | Flag | Type | Description |
 | --- | --- | --- |
 | `--activate` | bool | Set this item as the active ticket — what `kira now` reports and what `create --here` inherits from. |
-| `--force` | bool | Close an item with open blockers, and exceed a `block` WIP cap. |
-| `--resolution` | string | Resolution to record, validated against the configured resolutions. |
+| `--force` | bool | Close an item with open blockers. |
+| `--resolution` | string | Resolution to record, validated against kira's resolutions. |
 
 ### A full transition sequence
 
@@ -437,8 +436,8 @@ kira: invalid item: "SHIPPED" is not a state in the ticket workflow
 
 ### Landing in a done state
 
-Moving into a `done`-category state applies that state's declared
-`resolution:` when the item has none — `--resolution` overrides it — and
+Moving into a `done`-category state applies that state's default
+resolution when the item has none — `--resolution` overrides it — and
 moving back out to a `todo` or `doing` state clears `resolution` again:
 
 ```console

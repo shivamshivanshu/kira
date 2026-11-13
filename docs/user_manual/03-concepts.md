@@ -14,14 +14,13 @@ identity (repo)
   id style: sequential
   board: DEMO (kira-docs-demo) [default]
 
-workflow: ticket (default)
-  initial: TODO
-  wip_policy: warn
-  TODO (todo)
-  IN_PROGRESS (doing), wip 3/warn
-  REVIEW (doing), wip 2/warn
-  DONE (done), resolution=done; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)
-  WONT_DO (done), resolution=dropped; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)
+vocab (default)
+  system label: captured (auto-added by `kira create --here`; excluded from vocabulary checks)
+  labels: none (advisory)
+  people: none (advisory)
+  priorities: P0, P1, P2, P3 (advisory)
+  subtypes: bug, task, feature, support (advisory)
+  resolutions: done, dropped, duplicate, cannot-reproduce (advisory)
 ...
 ```
 
@@ -64,7 +63,7 @@ other. Boards have four properties:
 
 | Key | Meaning |
 | --- | --- |
-| `key` | The number prefix. Declared immutable by the board schema. |
+| `key` | The number prefix. Fixed once the board exists. |
 | `name` | Display name. Changeable with `kira board rename`. |
 | `default` | Exactly one board should carry this. `kira create` puts items here when `--board` is not given. |
 | `archived` | Hides the board from pickers; its tickets still resolve and list. |
@@ -115,30 +114,22 @@ worth the ugliness. Otherwise `sequential` is the right default.
 
 ## Workflow, states, and categories
 
-Each item type has a workflow in `.kira/config.yaml` under `workflows:`. Here
-is this repository's ticket workflow:
+Each item type has a fixed workflow built into kira — a set of states and the
+one an item starts in:
 
-```yaml
-workflows:
-  ticket:
-    states:
-      - { key: TODO,        category: todo }
-      - { key: IN_PROGRESS, category: doing, wip: 3 }
-      - { key: REVIEW,      category: doing, wip: 2 }
-      - { key: DONE,        category: done, resolution: done }
-      - { key: WONT_DO,     category: done, resolution: dropped }
-    initial: TODO
-```
+| Type | States (category) | Initial |
+| --- | --- | --- |
+| `ticket` | `TODO` (todo), `IN_PROGRESS` (doing, WIP 3), `REVIEW` (doing, WIP 2), `DONE` (done), `WONT_DO` (done) | `TODO` |
+| `epic` | `PLANNED` (todo), `ACTIVE` (doing), `DONE` (done) | `PLANNED` |
 
-That is the whole workflow: a set of states and the one an item starts in.
-`state` is a plain enum — any state may move to any other declared state, in
-either direction. There is no transition graph to declare or maintain.
+`state` is a plain enum — any state may move to any other state of the item's
+type, in either direction. There is no transition graph to declare or
+maintain. Changing a type's states is a change to kira itself, not to config.
 
 ### Categories
 
-Every state declares a `category`, one of `todo`, `doing`, or `done`. Categories
-are what tooling reasons about, so that a repository can rename or add states
-without breaking reports:
+Every state has a `category`, one of `todo`, `doing`, or `done`. Categories
+are what tooling reasons about:
 
 | Category | Used for |
 | --- | --- |
@@ -146,20 +137,19 @@ without breaking reports:
 | `doing` | In flight. Feeds cycle-time metrics. |
 | `done` | Closed, for any reason — including `WONT_DO`. |
 
-`kira list --category doing` works regardless of what your states are called.
+`kira list --category doing` works regardless of what the states are called.
 Note that `done` means "no longer open", not "successfully completed" — which
-is what `resolutions_dropped` exists to disambiguate.
+is what the `dropped` resolution exists to disambiguate.
 
-A state may also carry `resolution:`, which records a default resolution when
-an item lands there — `resolution: done` on `DONE`, `resolution: dropped` on
-`WONT_DO`.
+Two `done` states carry a default resolution, recorded when an item lands
+there: `DONE` stamps `done`, `WONT_DO` stamps `dropped`.
 
 ### Moving between states
 
-Any state may move to any other state declared in that workflow, in either
+Any state may move to any other state of the item's type, in either
 direction. Reopening a closed ticket, jumping `TODO` straight to `DONE`, or
 skipping `REVIEW` are all ordinary moves, not overrides. The only membership
-rule is that the target has to be a state the workflow declares:
+rule is that the target has to be one of the type's states:
 
 ```console
 $ kira move DEMO-2 SHIPPED
@@ -181,39 +171,28 @@ you came from:
   ```
 
 - **`resolution` follows the category.** Entering a `done` state stamps that
-  state's declared `resolution:` on the item if it has none; leaving the `done`
+  state's default resolution on the item if it has none; leaving the `done`
   category for a `todo` or `doing` state clears `resolution` again. Pass
   `--resolution` to record something other than the state's default.
 
 ### WIP limits
 
-A state can declare `wip: N`, a soft cap on how many items may sit in it. The
-workflow-level `wip_policy` decides what happens when you exceed it:
-
-| `wip_policy` | Behaviour over the limit |
-| --- | --- |
-| `warn` (default) | Warns on stderr, performs the move. |
-| `block` | Refuses the move. |
+`IN_PROGRESS` is capped at 3 tickets and `REVIEW` at 2. The caps are advisory:
+a move that exceeds one warns on stderr and still happens.
 
 ```console
-$ kira move DEMO-3 IN_PROGRESS          # wip_policy: warn
+$ kira move DEMO-3 IN_PROGRESS
 kira: warning: IN_PROGRESS is over its WIP limit (4 > 3)
 Moved DEMO-3: TODO -> IN_PROGRESS
-
-$ kira move DEMO-8 IN_PROGRESS          # wip_policy: block
-kira: invalid item: IN_PROGRESS is over its WIP limit (5 > 3)
-  hint: move an item out of IN_PROGRESS first, or use `--force` to override
 ```
 
-WIP limits are a process signal, not a correctness constraint. `warn` is the
-right default for most teams; `block` is for teams who have agreed the limit is
-a real rule.
+WIP limits are a process signal, not a correctness constraint; `kira doctor`
+reports a state that is over its cap.
 
 ### `--force`
 
-`--force` on `move` bypasses the blockers-closed check and a `block` WIP
-policy. On `edit` and `create` it additionally accepts out-of-vocabulary field
-values. It is loud about it:
+`--force` on `move` bypasses the blockers-closed check. On `edit` and `create`
+it additionally accepts out-of-vocabulary field values. It is loud about it:
 
 ```console
 $ kira move DEMO-5 DONE --force
@@ -227,16 +206,16 @@ under it are now wrong. That is the danger — `--force` does not skip a
 formality, it lands the item in a state the guard existed to prevent.
 
 Appropriate uses are narrow: closing work whose blocker is tracked somewhere
-else, importing history from another tracker, or exceeding a WIP cap you have
-agreed to exceed. It is not needed to move backwards or to skip a state —
-those are ordinary moves.
+else, or importing history from another tracker. It is not needed to move
+backwards or to skip a state — those are ordinary moves.
 
 ## Labels, priorities, subtypes, and resolutions
 
-These four are **vocabulary fields**: config declares the accepted values, and
-kira validates against them. They come in two spellings.
+These four are **vocabulary fields**: each has a set of accepted values, and
+kira validates against them.
 
-`labels` and `people` use `known` plus `strict`:
+`labels` and `people` are declared per repository in config, as `known` plus
+`strict`:
 
 ```yaml
 labels:
@@ -248,17 +227,13 @@ people:
   strict: false
 ```
 
-`priorities`, `subtypes`, and `resolutions` are either a bare list or a map of
-`values` plus `strict`:
+`priorities`, `subtypes`, and `resolutions` are built into kira:
 
-```yaml
-priorities: [P0, P1, P2, P3]
-
-# equivalently, with explicit strictness:
-priorities:
-  values: [P0, P1, P2, P3]
-  strict: true
-```
+| Field | Values |
+| --- | --- |
+| `priority` | `P0`, `P1`, `P2`, `P3` (highest first) |
+| `subtype` | `bug`, `task`, `feature`, `support` |
+| `resolution` | `done`, `dropped`, `duplicate`, `cannot-reproduce` |
 
 ### Strictness
 
@@ -276,36 +251,26 @@ kira: warning: field "labels": value "nope" is not in the "label" vocabulary
 Edited DEMO-6: labels
 ```
 
-An empty vocabulary (`[]` or `known: []`) means free-form: nothing to validate
-against, so nothing is rejected.
+An empty `labels.known` or `people.known` means nothing is known yet, so with
+`strict: false` every value only warns.
 
-One inheritance rule is easy to miss: if `priorities`, `subtypes`, or
-`resolutions` is written as a bare list, it has no `strict` of its own and
-falls back to `labels.strict`. Setting `labels.strict: true` therefore tightens
-all four at once unless you override each explicitly.
+`priority`, `subtype`, and `resolution` have no `strict` of their own: they
+follow `labels.strict`. Setting `labels.strict: true` therefore tightens all
+four at once.
 
 ### Ordering
 
-`priorities` is ordered, highest first. That order is not just cosmetic — it
+Priorities are ordered, highest first. That order is not just cosmetic — it
 defines what `ORDER BY priority` sorts by and what `>` / `<` comparisons in a
-query expression mean. With `[]`, priority becomes an equality-only free-form
-string.
+query expression mean.
 
-### `resolutions_dropped`
+### The `dropped` resolution
 
-```yaml
-resolutions: [done, dropped, duplicate, cannot-reproduce]
-resolutions_dropped: [dropped]
-```
-
-`resolutions_dropped` names the resolutions that put an item in a `done`
-category without it really having been completed. An item resolved `dropped`
-is closed — it is out of the backlog and off the board — but it should not
-count as delivered work when epic progress is computed. Without this
-distinction, cancelling enough tickets would make an epic look finished.
-
-`wont_fix`, `duplicate`, and `cannot-reproduce` are the usual candidates
-depending on how your team wants them counted.
+An item resolved `dropped` is closed — it is out of the backlog and off the
+board — but it does not count as delivered work: it is excluded from
+throughput and cycle time and from epic progress. Without this distinction,
+cancelling enough tickets would make an epic look finished. `WONT_DO` stamps
+`dropped` by default.
 
 ## Sprints
 
@@ -430,25 +395,21 @@ everyone who checks it out.
 For the full key-by-key breakdown of both files, see the
 [Configuration Reference](05-configuration-reference.md).
 
-## Extensibility
+## Built-in item shape
 
-Item types are not hardcoded — each is defined by a JSON schema file under
-`.kira/schema/`, which `kira init` seeds with `ticket.json`, `epic.json`, and
-`board.json`. Those files declare each type's fields, their types, whether they
-are required or immutable, which config vocabulary validates them, and which
-columns `kira list` shows. Adding a field to tickets means adding an entry to
-`ticket.json`; adding a whole new item type means adding a schema file and a
-matching workflow.
+Item types, their states, and the `priority`/`subtype`/`resolution`
+vocabularies are part of kira, not of a repository's config. An item file may
+carry only the fields kira knows: an unknown frontmatter key, an unknown link
+type under `links:`, or an unknown `type` is a parse error. Commands skip such
+a file with a note, and `kira doctor` reports it as a `schema` error.
 
-Once a field is declared there, you set it with `--field key=value` on `create`
-and `edit`. kira rejects fields the schema does not know about, and tells you
-what it does know:
+Besides the frontmatter fields, two Markdown body sections are addressable as
+fields: `description` (`## Description`) and `acceptance`
+(`## Acceptance criteria`). `--field key=value` on `create` and `edit` sets
+any of them, and names what it accepts when you misspell one:
 
 ```console
 $ kira edit DEMO-6 --field severity=high
 kira: invalid item: --field: unknown or immutable field "severity"
-  hint: editable fields: acceptance, description, due, epic, estimate, labels, owner, priority, rank, reporter, resolution, sprint, state, subtype, title
+  hint: editable fields: acceptance, description, due, estimate, labels, owner, parent, priority, rank, reporter, resolution, sprint, state, subtype, title
 ```
-
-See [Custom Fields and Schema](06-custom-fields-and-schema.md) for the schema
-format and a worked example of adding a field.

@@ -1,6 +1,6 @@
 # Manual code review plan
 
-Read bottom-up by dependency layer: with the exceptions below, each layer only uses layers above it in this list. ~278 files — a snapshot; packages added since (setx, timex, statsfmt, syncx, automation, entityschema, schema, warningfmt, webui, commandline) are not listed. Mark `- [x]` as you go.
+Read bottom-up by dependency layer: with the exceptions below, each layer only uses layers above it in this list. ~278 files — a snapshot; packages added since (setx, timex, statsfmt, syncx, automation, schema, warningfmt, webui, commandline) are not listed. Mark `- [x]` as you go.
 
 Forward references (verified with `go list -f '{{.Imports}}'`): datamodel (1) uses the errx/ptr leaves (2); config (4) uses storage (5) and query (9); showfmt (6) uses workon (8); core (10) uses doctor (11); cli (12) uses tui (13).
 

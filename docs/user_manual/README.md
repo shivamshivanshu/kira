@@ -19,7 +19,6 @@ internals.
 | --- | --- |
 | [CLI Reference](04-cli-reference/README.md) | Every command and flag, grouped by area. |
 | [Configuration Reference](05-configuration-reference.md) | Every key in `.kira/config.yaml`. |
-| [Custom Fields and Schema](06-custom-fields-and-schema.md) | Adding fields to existing types, and the entity schema system. |
 | [TUI Guide](07-tui-guide.md) | Screens, keybindings, and the `:` command bar. |
 
 ## Practical

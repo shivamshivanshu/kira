@@ -163,22 +163,16 @@ $ tree -a --noreport .kira
 .kira
 ├── .gitignore
 ├── config.yaml
-├── schema
-│   ├── board.json
-│   ├── epic.json
-│   └── ticket.json
 ├── templates
 │   ├── epic.md
 │   └── ticket.md
 └── tickets
 ```
 
-- `config.yaml` — the project config, scaffolded with the default workflows,
-  vocabularies, and commented-out optional blocks.
+- `config.yaml` — the project config, scaffolded with the default
+  vocabularies and commented-out optional blocks.
 - `tickets/` — where item files will be written. Empty at first.
 - `templates/ticket.md`, `templates/epic.md` — the bodies new items start from.
-- `schema/*.json` — the per-type field schemas that `kira validate` and every
-  mutation check against.
 - `.kira/.gitignore` — ignores `.cache/`, the disposable index kira maintains
   underneath `.kira/`.
 
@@ -213,9 +207,7 @@ kira: .kira already exists
 ```
 
 `--force` proceeds, rewriting `config.yaml` and the templates — so any edits
-you made to those are lost. Schema files are the deliberate exception:
-`.kira/schema/*.json` is never overwritten, because those are expected to be
-customized. Note also that a `--force` run which changes nothing has nothing
+you made to those are lost. Note also that a `--force` run which changes nothing has nothing
 to commit and will report a git failure; pass a different `--key`, or simply
 leave the store alone.
 
@@ -254,22 +246,6 @@ identity (repo)
   id style: sequential
   board: ACME (acme) [default]
 
-workflow: epic (default)
-  initial: PLANNED
-  wip_policy: warn
-  PLANNED (todo)
-  ACTIVE (doing)
-  DONE (done), resolution=done; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)
-
-workflow: ticket (default)
-  initial: TODO
-  wip_policy: warn
-  TODO (todo)
-  IN_PROGRESS (doing), wip 3/warn
-  REVIEW (doing), wip 2/warn
-  DONE (done), resolution=done; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)
-  WONT_DO (done), resolution=dropped; entering it requires blockers closed (a dangling or unknown blocker counts as satisfied and only warns)
-
 commit (default)
   mode: auto
   subject: "kira: update {count} items" (up to 5 ticket numbers listed, then a count)
@@ -285,7 +261,7 @@ vocab (default)
   labels: none (advisory)
   people: none (advisory)
   priorities: P0, P1, P2, P3 (advisory)
-  subtypes: bug, story, task, spike (advisory)
+  subtypes: bug, task, feature, support (advisory)
   resolutions: done, dropped, duplicate, cannot-reproduce (advisory)
   resolutions_dropped: dropped (a done-category resolution treated as a non-completion outcome for epic progress)
 
@@ -639,10 +615,7 @@ $ kira doctor --json
 ```
 
 Run it after a hand edit, an import, or a merge you are unsure about — it is
-read-only and safe to run anytime. See
-[Current limits](../06-custom-fields-and-schema.md#current-limits) for the one
-gap in this check: a dangling reference in a *custom* schema-declared `ref`
-field is not yet caught the way `epic`/`blocked_by`/`links` are.
+read-only and safe to run anytime.
 
 ## `kira changes --since <ref>`
 
@@ -745,9 +718,8 @@ $ echo $?
 
 Whether a vocabulary violation is a warning or an error depends on the
 project. `labels.strict` in `.kira/config.yaml` promotes unknown values to
-errors, and it doubles as the default for the `priorities`, `subtypes`, and
-`resolutions` vocabularies — each of which may override it with its own
-`strict:` key. `kira config explain` shows the outcome per vocabulary, tagged
+errors, and the built-in `priorities`, `subtypes`, and `resolutions`
+vocabularies follow it. `kira config explain` shows the outcome per vocabulary, tagged
 either `(advisory)` or `(strict)`:
 
 ```console
@@ -758,7 +730,7 @@ vocab (repo)
   labels: none (strict)
   people: none (strict)
   priorities: P0, P1, P2, P3 (strict)
-  subtypes: bug, story, task, spike (strict)
+  subtypes: bug, task, feature, support (strict)
   resolutions: done, dropped, duplicate, cannot-reproduce (strict)
   resolutions_dropped: dropped (a done-category resolution treated as a non-completion outcome for epic progress)
 ```

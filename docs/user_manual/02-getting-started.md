@@ -55,9 +55,8 @@ That creates:
 
 | Path | Contents |
 | --- | --- |
-| `.kira/config.yaml` | Project config: workflow, vocabularies, commit mode. Heavily commented; read it. |
+| `.kira/config.yaml` | Project config: vocabularies, commit mode. Heavily commented; read it. |
 | `.kira/tickets/` | One Markdown file per item. Empty to begin with. |
-| `.kira/schema/` | `ticket.json`, `epic.json`, `board.json` — the field definitions for each item type. |
 | `.kira/templates/` | `ticket.md`, `epic.md` — what `$EDITOR` opens when you create an item interactively. |
 | `.kira/.gitignore` | Ignores `.cache/`, the disposable local index. |
 
@@ -175,21 +174,21 @@ You can also pipe a complete item in: `kira create ticket --from-file -`.
 $ kira create ticket "Fix broken anchor links" --no-edit --priority P0 --subtype bug
 Created DEMO-2 Fix broken anchor links
 
-$ kira create ticket "Add search to the docs site" --no-edit --priority P2 --subtype story
+$ kira create ticket "Add search to the docs site" --no-edit --priority P2 --subtype feature
 Created DEMO-3 Add search to the docs site
 ```
 
-If you pass a value outside the configured vocabulary — say `--subtype
-feature`, when the default vocabulary is `bug, story, task, spike` — the
-default non-strict config warns and accepts it:
+If you pass a value outside the vocabulary — say `--subtype story`, when the
+subtypes are `bug, task, feature, support` — the default non-strict config
+warns and accepts it:
 
 ```console
-$ kira create ticket "Add search to the docs site" --no-edit --priority P1 --subtype feature
-kira: warning: field "subtype": value "feature" is not in the "subtype" vocabulary
+$ kira create ticket "Add search to the docs site" --no-edit --priority P1 --subtype story
+kira: warning: field "subtype": value "story" is not in the "subtype" vocabulary
 Created DEMO-2 Add search to the docs site
 ```
 
-Set `strict: true` on the vocabulary and the same command fails instead. See
+Set `labels.strict: true` and the same command fails instead. See
 [Concepts](03-concepts.md#labels-priorities-subtypes-and-resolutions).
 
 ## 4. List
@@ -237,7 +236,7 @@ $ kira show DEMO-3 --json
   "number": "DEMO-3",
   "board": "DEMO",
   "type": "ticket",
-  "subtype": "story",
+  "subtype": "feature",
   "title": "Add search to the docs site",
   "state": "TODO",
   "category": "todo",
@@ -275,25 +274,22 @@ $ kira edit DEMO-3 --priority P1
 Edited DEMO-3: priority
 ```
 
-Anything else declared in the schema goes through `--field key=value`, which
-is repeatable:
+Any other editable field goes through `--field key=value`, which is
+repeatable:
 
 ```console
 $ kira edit DEMO-3 --field due=2026-08-15
 Edited DEMO-3: due
 ```
 
-`--field` only accepts fields the schema declares. Misspell one and kira tells
-you what is editable:
+`--field` only accepts fields kira knows. Misspell one and kira tells you what
+is editable:
 
 ```console
 $ kira edit DEMO-6 --field severity=high
 kira: invalid item: --field: unknown or immutable field "severity"
-  hint: editable fields: acceptance, description, due, epic, estimate, labels, owner, priority, rank, reporter, resolution, sprint, state, subtype, title
+  hint: editable fields: acceptance, description, due, estimate, labels, owner, parent, priority, rank, reporter, resolution, sprint, state, subtype, title
 ```
-
-Adding `severity` as a real field means editing `.kira/schema/ticket.json` —
-see [Custom Fields and Schema](06-custom-fields-and-schema.md).
 
 With no flags at all, `kira edit <id>` opens the item in `$EDITOR`.
 
@@ -304,8 +300,8 @@ $ kira move DEMO-2 IN_PROGRESS
 Moved DEMO-2: TODO -> IN_PROGRESS
 ```
 
-`state` is a plain enum: any state may move to any other state the workflow
-declares, forwards or backwards. Only an undeclared state is refused:
+`state` is a plain enum: any state may move to any other state of the type,
+forwards or backwards. Only a state outside the type's workflow is refused:
 
 ```console
 $ kira move DEMO-2 SHIPPED
@@ -323,7 +319,7 @@ $ kira move DEMO-2 DONE
 Moved DEMO-2: REVIEW -> DONE
 ```
 
-Landing in a `done` state stamps that state's declared `resolution:` — `done`
+Landing in a `done` state stamps that state's default resolution — `done`
 for `DONE`, `dropped` for `WONT_DO` — unless you pass `--resolution` to record
 something else. Moving back out of `done` clears it again.
 
@@ -336,16 +332,14 @@ kira: invalid item: REVIEW -> DONE is blocked by open items: DEMO-1
   hint: close the blockers first, or use `--force` to override
 ```
 
-States can also carry advisory WIP limits. The default gives `IN_PROGRESS` a
-limit of 3 under `wip_policy: warn`, so a fourth item warns but proceeds:
+States can also carry advisory WIP limits. `IN_PROGRESS` has a limit of 3, so
+a fourth item warns but proceeds:
 
 ```console
 $ kira move DEMO-3 IN_PROGRESS
 kira: warning: IN_PROGRESS is over its WIP limit (4 > 3)
 Moved DEMO-3: TODO -> IN_PROGRESS
 ```
-
-Under `wip_policy: block` the same move is refused.
 
 Every one of those moves is a commit:
 
@@ -399,7 +393,6 @@ are in the [TUI Guide](07-tui-guide.md).
 | [Concepts](03-concepts.md) | Before configuring anything. Identity, workflows, boards, sprints, relationships. |
 | [CLI Reference](04-cli-reference/README.md) | Command-by-command flags and output, grouped by area. |
 | [Configuration Reference](05-configuration-reference.md) | Every key in `.kira/config.yaml`. |
-| [Custom Fields and Schema](06-custom-fields-and-schema.md) | Adding fields or item types. |
 | [TUI Guide](07-tui-guide.md) | Keybindings and screens. |
 | [Recipes and Examples](08-recipes-and-examples.md) | Worked day-to-day workflows. |
 | [Limitations and Roadmap](09-limitations-and-roadmap.md) | What kira does not do yet. |

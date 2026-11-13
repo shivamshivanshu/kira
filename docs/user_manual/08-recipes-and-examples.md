@@ -478,7 +478,7 @@ $ echo $?
 1
 ```
 
-`kira validate` checks files against the schema and your workflow config and
+`kira validate` checks files against kira's item shape and states and
 exits non-zero on any error, which is all a CI step needs:
 
 ```yaml
@@ -502,17 +502,12 @@ identity (repo)
   board: CORE (demo) [default]
   board: INFRA (Infrastructure)
 
-workflow: ticket (default)
-  initial: TODO
-  wip_policy: warn
-  TODO (todo)
-  IN_PROGRESS (doing), wip 3/warn
+vocab (default)
   ...
 ```
 
 `kira config explain` renders your repository's effective rules in prose, with
-the provenance of each one — so when a move is rejected over a WIP cap or an
-open blocker, this tells you the rule that stopped it and whether it came from
+the provenance of each one — so when a value is rejected as outside a strict vocabulary, this tells you the rule that stopped it and whether it came from
 the repository config, your user config, or the built-in default.
 It is the fastest answer to "why did that not work".
 
@@ -521,7 +516,7 @@ It is the fastest answer to "why did that not work".
 ## See also
 
 - [Overview](01-overview.md) — what kira is and why tickets live in git.
-- [Concepts](03-concepts.md) — identity, workflows, vocabularies, relationships.
+- [Concepts](03-concepts.md) — identity, states, vocabularies, relationships.
 - [Item lifecycle](04-cli-reference/item-lifecycle.md) — `create`, `edit`, `move`, `link`.
 - [Views and queries](04-cli-reference/views-and-queries.md) — the query grammar, `list`, `tree`, `board`.
 - [Boards and sprints](04-cli-reference/boards-and-sprints.md) — numbering namespaces and sprint commands.
