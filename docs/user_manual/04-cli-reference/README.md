@@ -1,14 +1,14 @@
 # CLI Reference
 
-Every kira command, grouped by what it's used for. Each file below covers a
-full area with a flag-by-flag reference and verified examples.
+Each command and flag is documented once, here. `kira <command> --help` is the
+terse form of the same.
 
 | File | Commands |
 | --- | --- |
-| [Item lifecycle](item-lifecycle.md) | `create`, `edit`, `move`, `link`, `label add/rm/create/list`, `assign`, `comment` — the commands that create and mutate items. |
-| [Views and queries](views-and-queries.md) | `list`, `show`, `tree`, `find`, `log`, `blame`, `stats`, `now`, `diff` — read-only commands. |
-| [Boards and sprints](boards-and-sprints.md) | `board *`, `sprint *` — the grouping and time-boxing constructs. |
-| [Git integration](git-integration.md) | `sync`, `resolve`, `hooks *`, `commit`, `index`, `workon` — how kira and git work together. |
-| [Setup and schema commands](setup-and-schema-commands.md) | `init`, `config *`, `schema`, `validate`, `version`, `completion`, plus the global flags (`-C`, `--json`, `--no-color`) shared by every command. |
+| [Item lifecycle](item-lifecycle.md) | `create`, `edit`, `move`, `link`, `label`, `assign`, `comment` |
+| [Views and queries](views-and-queries.md) | `list`, `show`, `tree`, `find`, `log`, `blame`, `stats`, `now`, `diff`, `changes`; the query language |
+| [Boards and sprints](boards-and-sprints.md) | `board` (kanban view and board management), `sprint` |
+| [Git integration](git-integration.md) | `commit`, `hooks`, `sync`, `resolve`, `index`, `workon`; commit-link markers |
+| [Setup and schema commands](setup-and-schema-commands.md) | global flags, exit codes, `init`, `config`, `schema`, `doctor`, `validate`, `version`, `completion`, `server` |
 
-Back to the [manual index](../README.md).
+`kira tui` (and bare `kira`): [TUI Guide](../07-tui-guide.md).
