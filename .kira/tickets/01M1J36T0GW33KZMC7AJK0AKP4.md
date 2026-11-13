@@ -4,13 +4,14 @@ number: CORE-67
 aliases: []
 type: ticket
 title: "blame, log and changes silently omit every list-valued field"
-state: TODO
+state: DONE
+resolution: done
 priority: P2
 labels: []
 parent: null
 blocked_by: []
 created: 2026-09-03T00:18:05+02:00
-updated: 2026-09-03T00:18:05+02:00
+updated: 2026-11-13T22:03:56+05:30
 ---
 `scalarFieldSet()` (`internal/core/eventparse.go:136`) builds the set of fields
 the history walker tracks by excluding the non-scalar ones:
