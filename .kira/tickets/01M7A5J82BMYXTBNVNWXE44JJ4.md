@@ -5,12 +5,12 @@ aliases: []
 type: ticket
 subtype: task
 title: "Remove the schema-driven item-type design"
-state: IN_PROGRESS
+state: REVIEW
 labels: []
 parent: null
 blocked_by: []
 created: 2026-11-13T15:29:33+05:30
-updated: 2026-11-13T15:29:37+05:30
+updated: 2026-11-13T17:19:14+05:30
 ---
 
 ## Description
