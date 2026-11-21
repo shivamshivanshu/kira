@@ -51,6 +51,7 @@ func topLevelTypes() []reflect.Type {
 		reflect.TypeFor[datamodel.BoardResult](),
 		reflect.TypeFor[datamodel.VersionResult](),
 		reflect.TypeFor[datamodel.NowResult](),
+		reflect.TypeFor[datamodel.BlockersResult](),
 		reflect.TypeFor[datamodel.CommitResult](),
 		reflect.TypeFor[datamodel.HooksStatusResult](),
 		reflect.TypeFor[datamodel.HooksUninstallResult](),

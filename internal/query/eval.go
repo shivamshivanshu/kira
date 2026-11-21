@@ -334,18 +334,25 @@ func (c *compiler) blockedPred() Predicate {
 	}
 }
 
-// SkippedBlocker is a blocked_by reference that is missing or points to an
-// unknown item type.
+// SkippedBlocker is a blocked_by reference that is missing or has no known
+// state category.
 type SkippedBlocker struct {
 	ID      string
 	Blocker *datamodel.Item // nil if the ID resolves to no known item
 	Reason  string
 }
 
+type UnknownBlockerPolicy uint8
+
+const (
+	SkipUnknownBlockers UnknownBlockerPolicy = iota
+	KeepUnknownBlockersOpen
+)
+
 // OpenBlockers classifies it.BlockedBy against byID (a lookup of ULID to
-// item): open includes items with an unknown state in a known workflow type,
-// since removing their state definition does not complete the dependency.
-func OpenBlockers(cfg *datamodel.Config, it *datamodel.Item, byID map[string]*datamodel.Item) (open []*datamodel.Item, skipped []SkippedBlocker) {
+// item). The close guard keeps unknown states of known item types open because
+// removing a state definition does not complete a dependency.
+func OpenBlockers(cfg *datamodel.Config, it *datamodel.Item, byID map[string]*datamodel.Item, unknowns UnknownBlockerPolicy) (open []*datamodel.Item, skipped []SkippedBlocker) {
 	for _, b := range it.BlockedBy {
 		blocker, ok := byID[b]
 		if !ok {
@@ -353,7 +360,7 @@ func OpenBlockers(cfg *datamodel.Config, it *datamodel.Item, byID map[string]*da
 			continue
 		}
 		active, evaluated := blockerStatus(cfg, blocker)
-		if active {
+		if active && (evaluated || unknowns == KeepUnknownBlockersOpen) {
 			open = append(open, blocker)
 		} else if !evaluated {
 			skipped = append(skipped, SkippedBlocker{ID: b, Blocker: blocker, Reason: "has no known state category"})

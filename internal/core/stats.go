@@ -69,7 +69,7 @@ func (s *Store) resolveScope(cfg *datamodel.Config, opts StatsOpts, items []*dat
 			return nil, nil, err
 		}
 		scope.Parent, scope.ParentNumber = parent.ID, parent.Number
-		set, err = descendants(items, parent.ID)
+		set, err = descendants(parentChildren(items), parent.ID)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -100,9 +100,9 @@ func (s *Store) resolveScope(cfg *datamodel.Config, opts StatsOpts, items []*dat
 	return scope, set, nil
 }
 
-func descendants(items []*datamodel.Item, parentULID string) ([]*datamodel.Item, error) {
+func descendants(byParent map[string][]*datamodel.Item, parentULID string) ([]*datamodel.Item, error) {
 	var out []*datamodel.Item
-	err := walkDescendants(parentChildren(items), parentULID, func(*datamodel.Item) bool { return true }, func(c *datamodel.Item) {
+	err := walkDescendants(byParent, parentULID, func(*datamodel.Item) bool { return true }, func(c *datamodel.Item) {
 		out = append(out, c)
 	})
 	if err != nil {

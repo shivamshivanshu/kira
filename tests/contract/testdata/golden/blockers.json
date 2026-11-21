@@ -1,0 +1,25 @@
+{
+  "item": {
+    "id": "<ULID-1>",
+    "number": "KIRA-1",
+    "title": "Epic one",
+    "state": "PLANNED"
+  },
+  "actionable": [
+    {
+      "item": {
+        "id": "<ULID-2>",
+        "number": "KIRA-3",
+        "title": "Blocker",
+        "state": "TODO"
+      },
+      "affected": 1,
+      "path": [
+        "KIRA-2",
+        "KIRA-3"
+      ]
+    }
+  ],
+  "direct": [],
+  "incomplete": []
+}

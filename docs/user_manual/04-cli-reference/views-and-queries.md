@@ -401,6 +401,20 @@ blocked by:  PAY-3 [IN_PROGRESS]
 commits:     0 since last state change
 ```
 
+## `kira blockers`
+
+```sh
+kira blockers <ticket-or-epic> [--json]
+```
+
+Follow open dependency chains to actionable blockers, with an example path for
+each. A closed ticket reports no open blockers. For an epic, results are ranked
+by the number of distinct unfinished descendant tickets they hold up, even when
+a blocker is outside the epic. Blockers of the epic itself appear separately.
+
+Missing targets, unknown state categories, and cycles appear as incomplete
+chains. An incomplete chain can coexist with a separate actionable path.
+
 ## `kira diff`
 
 ```

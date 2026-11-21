@@ -121,7 +121,7 @@ func wipOverrunWarnings(cfg *datamodel.Config, it *datamodel.Item, items []*data
 
 func blockersClosedGuard(cfg *datamodel.Config, it *datamodel.Item, items []*datamodel.Item, from, state string, force bool) (hard, warns []error) {
 	byID := datamodel.IndexByID(items)
-	open, skipped := query.OpenBlockers(cfg, it, byID)
+	open, skipped := query.OpenBlockers(cfg, it, byID, query.KeepUnknownBlockersOpen)
 	for _, s := range skipped {
 		warns = append(warns, fmt.Errorf("blocked_by %s %s; treating blocker as satisfied", numberOrID(s.Blocker, s.ID), s.Reason))
 	}
