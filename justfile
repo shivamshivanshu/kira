@@ -12,8 +12,8 @@ build:
 release version="dev":
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X github.com/shivamshivanshu/kira/internal/cli.version=$1" -o ./kira ./cmd/kira
 
-# Install the release binary in /usr/local/bin or a directory you specify.
-install bindir="/usr/local/bin": release
+# Install the release binary in ~/.local/bin or a directory you specify.
+install bindir=(env_var("HOME") / ".local/bin"): release
     mkdir -p "$1"
     install -m 0755 ./kira "$1/"
 

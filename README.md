@@ -31,7 +31,7 @@ pinned in [CI](.github/workflows/ci.yml).
 ```sh
 just build                         # standard build, ./kira
 just release 0.1.0                 # stripped release build, ./kira
-just install                       # install to /usr/local/bin/kira
+just install                       # install to ~/.local/bin/kira
 just debug                         # unoptimized build, ./kira-debug
 just clean                         # remove local binaries and the Kira index cache
 just run --help                    # run the CLI from source
@@ -42,8 +42,8 @@ just check                         # build, vet, race tests, and lint
 just perf                          # CI performance checks
 ```
 
-`just install` requires write access to the destination. Pass a different
-directory with `just install "$HOME/.local/bin"`.
+For a system-wide install, run `just install /usr/local/bin` from an account
+with write access to that directory.
 
 `just clean` keeps the installed binary, tickets, config, and local active
 ticket and sprint selections.
