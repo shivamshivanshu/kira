@@ -11,8 +11,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 // shortSHALen matches git's own default abbreviation length.
@@ -153,12 +151,30 @@ func (r Repo) logPatch(args ...string) (string, error) {
 }
 
 // FileLog returns the full-context patch log for relPath.
-func (r Repo) FileLog(relPath string) (string, error) {
-	return r.logPatch("--", relPath)
+func (r Repo) FileLog(revision, relPath string) (string, error) {
+	if revision == "" {
+		return r.logPatch("--", relPath)
+	}
+	return r.logPatch(revision, "--", relPath)
 }
 
-func (r Repo) FileLogs(relPaths []string) (string, error) {
-	return r.logPatch(append([]string{"--"}, relPaths...)...)
+func (r Repo) LogFollowsRenames() (bool, error) {
+	value, err := r.Output("config", "--type=bool", "--default=false", "--get", "log.follow")
+	return value == "true", err
+}
+
+func (r Repo) FirstParentMergePaths(revision, pathspec string) ([]string, error) {
+	out, err := r.OutputRaw("log", "--first-parent", "--full-history", "--merges", "--diff-merges=first-parent",
+		"--name-only", "--no-renames", "--relative", "--format=", "-z", revision, "--", pathspec)
+	if err != nil || out == "" {
+		return nil, err
+	}
+	return strings.Split(strings.TrimSuffix(out, nul), nul), nil
+}
+
+func (r Repo) FirstParentFileLogs(revision string, relPaths []string) (string, error) {
+	return r.logPatch(append([]string{"--first-parent", "--no-diff-merges", "--no-renames", "--relative",
+		"--src-prefix=a/", "--dst-prefix=b/", revision, "--"}, relPaths...)...)
 }
 
 // RangePatch returns the full-context patch log for pathspec over revRange.
@@ -173,32 +189,27 @@ func (r Repo) LastCommitFor(relPath string) (string, error) {
 
 // LastCommits returns, for every path under pathspec, the SHA of its most
 // recent commit, keyed by path relative to r.Dir.
-func (r Repo) LastCommits(pathspec string) (map[string]string, error) {
-	out, err := r.Output("log", "--format="+nulFmt+"%H", "--name-only", "--", pathspec)
+func (r Repo) LastCommits(revision, pathspec string) (map[string]string, error) {
+	args := []string{"log", "--format=" + nulFmt + "%H", "--name-only", "--relative"}
+	if revision != "" {
+		args = append(args, revision)
+	}
+	out, err := r.Output(append(args, "--", pathspec)...)
 	if err != nil {
 		return nil, err
 	}
-	var paths, shas []string
-	dedup := setx.NewDeduper[string]()
+	shaByPath := make(map[string]string)
 	var sha string
 	for line := range strings.SplitSeq(out, "\n") {
 		if strings.HasPrefix(line, nul) {
 			sha = line[len(nul):]
 			continue
 		}
-		if line == "" || !dedup.Add(line) {
-			continue
+		if line != "" {
+			if _, found := shaByPath[line]; !found {
+				shaByPath[line] = sha
+			}
 		}
-		paths = append(paths, line)
-		shas = append(shas, sha)
-	}
-	rel, err := r.relToDir(paths)
-	if err != nil {
-		return nil, err
-	}
-	shaByPath := make(map[string]string, len(rel))
-	for i, p := range rel {
-		shaByPath[p] = shas[i]
 	}
 	return shaByPath, nil
 }

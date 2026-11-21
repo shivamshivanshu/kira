@@ -102,8 +102,13 @@ func ulids(items []*datamodel.Item) []string {
 func TestLoadReconstructsLosslessly(t *testing.T) {
 	t.Parallel()
 	f := newRepo(t)
-	f.writeTicket(t, "01J8X8Q7RZTN5Y3VXW2A9K4E7F", ticket("01J8X8Q7RZTN5Y3VXW2A9K4E7F", "KIRA-2", "second"))
-	f.writeTicket(t, "01J8X7B1Q2W3E4R5T6Y7U8I9O0", ticket("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first"))
+	first := ticket("01J8X7B1Q2W3E4R5T6Y7U8I9O0", "KIRA-1", "first")
+	first = strings.Replace(first, "state: TODO\n", "state: TODO\nowner: alice\nestimate: 3\n", 1)
+	second := ticket("01J8X8Q7RZTN5Y3VXW2A9K4E7F", "KIRA-2", "second")
+	second = strings.Replace(second, "state: TODO\n", "state: TODO\nestimate: 8\n", 1)
+	f.writeTicket(t, "01J8X7B1Q2W3E4R5T6Y7U8I9O0", first)
+	f.writeTicket(t, "01J8X8Q7RZTN5Y3VXW2A9K4E7F", second)
+	f.writeTicket(t, "01J8X9Q7RZTN5Y3VXW2A9K4E7F", ticket("01J8X9Q7RZTN5Y3VXW2A9K4E7F", "KIRA-3", "third"))
 	f.commit(t, "init")
 
 	items, _, err := index.Load(f.store, f.repo, index.Options{})

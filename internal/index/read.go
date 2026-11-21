@@ -58,10 +58,10 @@ func (i *Index) scanItems() ([]*datamodel.Item, map[string]*datamodel.Item, erro
 	defer func() { _ = rows.Close() }()
 
 	var items []*datamodel.Item
+	var subtype, resolution, priority, rank, owner, reporter, parent, sprint, due sql.NullString
+	var estimate sql.NullFloat64
 	for rows.Next() {
 		var it datamodel.Item
-		var subtype, resolution, priority, rank, owner, reporter, parent, sprint, due sql.NullString
-		var estimate sql.NullFloat64
 		if err := rows.Scan(&it.ID, &it.Number, &it.Type, &subtype, &it.Title, &it.State,
 			&resolution, &priority, &rank, &owner, &reporter, &parent, &sprint, &due,
 			&estimate, &it.Created, &it.Updated); err != nil {
@@ -77,7 +77,7 @@ func (i *Index) scanItems() ([]*datamodel.Item, map[string]*datamodel.Item, erro
 		it.Sprint = strPtr(sprint)
 		it.Due = strPtr(due)
 		if estimate.Valid {
-			it.Estimate = &estimate.Float64
+			it.Estimate = new(estimate.Float64)
 		}
 		items = append(items, &it)
 	}

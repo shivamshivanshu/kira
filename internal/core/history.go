@@ -23,8 +23,8 @@ func (s *Store) fileHead(ulid string) string {
 	return head
 }
 
-func (s *Store) fileHeads() map[string]string {
-	raw, err := s.repo().LastCommits(s.fs().RelToRoot(s.fs().ItemsDir()))
+func (s *Store) fileHeads(revision string) map[string]string {
+	raw, err := s.repo().LastCommits(revision, s.fs().RelToRoot(s.fs().ItemsDir()))
 	if err != nil {
 		return nil
 	}
@@ -75,17 +75,20 @@ type metricItem struct {
 
 // itemsMetrics derives metrics for a whole item set, reading every item's
 // cached state events through a single index open rather than one per item,
-// and deriving whatever the cache is missing in a single git log.
+// and batching missing histories that follow the first-parent chain.
 func (s *Store) itemsMetrics(items []*datamodel.Item) ([]metricItem, error) {
 	if len(items) == 0 {
 		return nil, nil
 	}
-	heads := s.fileHeads()
+	revision, _ := s.repo().ResolveTreeish("HEAD")
+	heads := s.fileHeads(revision)
 	selected := make(map[string]string, len(items))
 	for _, it := range items {
 		selected[it.ID] = heads[it.ID]
 	}
-	byItem, err := index.StateEventsByItem(s.fs(), selected, s.deriveEventBatch)
+	byItem, err := index.StateEventsByItem(s.fs(), selected, func(ids []string) (map[string][]datamodel.Event, error) {
+		return s.deriveEventBatch(revision, ids)
+	})
 	if err != nil {
 		return nil, err
 	}

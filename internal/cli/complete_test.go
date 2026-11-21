@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"slices"
 	"strings"
 	"testing"
 
@@ -20,7 +21,7 @@ func complete(t *testing.T, dir string, args ...string) []string {
 		t.Fatalf("__complete %v: %v\n%s", args, err, out.String())
 	}
 	var suggestions []string
-	for _, line := range strings.Split(out.String(), "\n") {
+	for line := range strings.SplitSeq(out.String(), "\n") {
 		if line == "" || strings.HasPrefix(line, ":") || strings.HasPrefix(line, "Completion ended") {
 			continue
 		}
@@ -30,12 +31,7 @@ func complete(t *testing.T, dir string, args ...string) []string {
 }
 
 func hasSuggestion(got []string, want string) bool {
-	for _, g := range got {
-		if g == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(got, want)
 }
 
 func TestPositionalCompleters(t *testing.T) {

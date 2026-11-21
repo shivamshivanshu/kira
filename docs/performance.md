@@ -1,5 +1,68 @@
 # Performance changes
 
+## Cold stats on Kira's history
+
+Ran five paired samples against a local clone of `bdbba3e` with 286 current
+tickets, 1,175 commits and 44 reachable merges. Cold runs started with no Kira
+cache. Each warm run immediately followed its cold run.
+
+| Workload | Before, median (range) | After, median (range) |
+| --- | --- | --- |
+| Cold `stats --json` | 4.69 s (4.66–4.72 s) | 1.38 s (1.35–1.38 s) |
+| Warm `stats --json` | 52.0 ms (50.8–52.8 ms) | 53.9 ms (51.9–55.6 ms) |
+| Cold Git processes | 292 | 99 |
+
+A first-parent merge changed 90 current ticket paths relative to its first
+parent. Those tickets retained per-file logs. The other 196 shared a patch
+scan. Stats JSON and all 1,116 cached event and event-head rows matched
+between binaries. The warm trace showed that rebuilding the per-ticket commit
+map took about 30 ms on its own.
+
+The synthetic scaling check used nine Git processes for linear history and
+ten for a merge affecting one ticket, at both 100 and 1,000 tickets. A
+follow-up that reads project-relative paths directly from Git removed one
+process in each case.
+
+Measurements used Linux/amd64, Go 1.27-devel and Git 2.55.0 on a shared host.
+The CLI and its Git children ran on CPU 24. OS caches and CPU frequency were
+uncontrolled. To reproduce, build both binaries with `go build -o <binary>
+./cmd/kira`, check out `bdbba3e` in a disposable clone, and run the following
+for each binary from that clone after moving aside its `.kira/.cache`. Use the
+same available CPU for every sample. Alternate which binary goes first and
+discard one initial pair.
+
+```sh
+export KIRA_NOW=2026-11-21T00:00:00Z
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
+/usr/bin/time taskset -c 24 "$binary" stats --json > cold.json
+/usr/bin/time taskset -c 24 "$binary" stats --json > warm.json
+```
+
+## Allocation reductions
+
+Each change was measured in five paired microbenchmark samples on the same
+host with Go 1.27-devel. The patch row combines the two parser changes. Its
+input was 1.49 MB of first-parent patches from `bdbba3e`. The item scan used
+its warm 286-ticket SQLite index. The match benchmark timed a hit in a
+snapshot with an already populated match cache.
+
+| Workload | Before | After |
+| --- | --- | --- |
+| Parse a Git patch stream | 7.94 ms, 9.84 MB, 68,962 allocations | 6.16 ms, 7.31 MB, 48,267 allocations |
+| Match cache hit | 1.18 µs, 432 B, 2 allocations | 93 ns, 0 B, 0 allocations |
+| Read indexed items | 668 µs, 297 kB, 9,432 allocations | 602 µs, 231 kB, 6,582 allocations |
+
+The patch parser reuses frontmatter buffers and skips decoding equal blocks.
+Snapshot matches use the options struct as their key. Index reads reuse
+nullable SQL scan buffers while copying values into each result item.
+
+Across 12 paired CLI samples, `list`, warm `stats`, and
+`changes --since HEAD~300` produced identical JSON. Elapsed-time ranges
+overlapped for all three commands. With the same source built using Go
+1.26.11 and 1.27.4, their ranges also overlapped.
+
+## Earlier performance pass
+
 Results of the performance pass in commit `36c7fae`. Measurements are local to
 an Apple M3 Max with Go 1.26.5 on darwin/arm64; they are workload-specific, not
 universal speedups.
@@ -21,11 +84,11 @@ iterations; comparisons are directional rather than controlled confidence bounds
 - Stats opens one index handle, reads event heads and state events in chunks, and
   writes stale histories with prepared statements in one transaction. It avoids
   loading commit links and reuses an existing snapshot when invoked by the UI.
-- Cold histories are derived in one Git patch scan when the history is linear.
-  A scaling check reports **seven Git processes for both 100 and 1,000 items**.
-  Histories containing merges keep per-file derivation because Git path
-  simplification can choose different parents for different pathspecs. Warm reads
-  still use the batched cache in that case.
+- Cold history batches now share a first-parent patch scan for paths that
+  match the first parent at every first-parent merge. Paths changed at one of
+  those merges retain per-file logs because Git can simplify different paths
+  through different parents. The scaling check covers 100 and 1,000 tickets
+  with linear history and with a merge affecting one ticket.
 - Query AND/OR short-circuit during evaluation while both operands still compile.
   Large scalar IN sets extract a field once, boolean blocker checks return on the
   first open blocker, and `@me` is resolved lazily once per query context.

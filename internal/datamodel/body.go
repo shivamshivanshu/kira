@@ -41,7 +41,7 @@ func BodySections(body string) map[string]string {
 // ContainsSectionHeading reports whether s has a line BodySections would read
 // as a "## " heading; such a line inside section content would split it.
 func ContainsSectionHeading(s string) bool {
-	for _, line := range strings.Split(s, "\n") {
+	for line := range strings.SplitSeq(s, "\n") {
 		if _, ok := sectionName(line); ok {
 			return true
 		}

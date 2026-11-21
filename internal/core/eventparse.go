@@ -1,6 +1,7 @@
 package core
 
 import (
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
 	"github.com/shivamshivanshu/kira/internal/index"
+	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/storage"
 )
 
@@ -35,26 +37,33 @@ func newEventFields() eventFields {
 	return f
 }
 
-func walkPatch(stream string, emit func(path string, events []datamodel.Event)) {
+func walkPatch(stream string, emit func(oldPath, newPath string, events []datamodel.Event)) {
 	var d fmDiffState
-	var sha, ts, path string
+	var sha, ts, oldPath, newPath string
+	inHunk := false
 	flush := func() {
-		emit(path, d.events(ts, sha))
-		d = fmDiffState{}
+		emit(oldPath, newPath, d.events(ts, sha))
+		d = fmDiffState{
+			before: frontmatterLines{lines: d.before.lines[:0]},
+			after:  frontmatterLines{lines: d.after.lines[:0]},
+		}
+		oldPath, newPath, inHunk = "", "", false
 	}
 	for line := range strings.SplitSeq(stream, "\n") {
 		switch {
 		case strings.HasPrefix(line, "\x00"):
 			flush()
-			path = ""
 			if before, after, ok := strings.Cut(line[1:], "\x00"); ok {
 				sha, ts = before, after
 			}
 		case strings.HasPrefix(line, "diff --git "):
 			flush()
-			path = ""
-		case strings.HasPrefix(line, "+++ b/"):
-			path = line[len("+++ b/"):]
+		case !inHunk && strings.HasPrefix(line, "--- a/"):
+			oldPath = line[len("--- a/"):]
+		case !inHunk && strings.HasPrefix(line, "+++ b/"):
+			newPath = line[len("+++ b/"):]
+		case strings.HasPrefix(line, "@@ "):
+			inHunk = true
 		default:
 			d.step(line)
 		}
@@ -105,7 +114,7 @@ func (d *fmDiffState) step(line string) {
 }
 
 func (d *fmDiffState) events(ts, sha string) []datamodel.Event {
-	if d.created {
+	if d.created || slices.Equal(d.before.lines, d.after.lines) {
 		return nil
 	}
 	before, after := frontmatterValues(d.before.lines), frontmatterValues(d.after.lines)
@@ -159,7 +168,11 @@ func nonEmptyList(value string) string {
 }
 
 func (s *Store) deriveEvents(ulid string) ([]datamodel.Event, error) {
-	out, err := s.repo().FileLog(s.fs().RelToRoot(s.itemPath(ulid)))
+	return s.deriveEventsAt("", ulid)
+}
+
+func (s *Store) deriveEventsAt(revision, ulid string) ([]datamodel.Event, error) {
+	out, err := s.repo().FileLog(revision, s.fs().RelToRoot(s.itemPath(ulid)))
 	if err != nil {
 		if strings.Contains(err.Error(), "does not have any commits") {
 			return nil, nil
@@ -167,57 +180,73 @@ func (s *Store) deriveEvents(ulid string) ([]datamodel.Event, error) {
 		return nil, errx.User("%s", err)
 	}
 	var events []datamodel.Event
-	walkPatch(out, func(_ string, evs []datamodel.Event) {
+	walkPatch(out, func(_, _ string, evs []datamodel.Event) {
 		events = append(events, evs...)
 	})
 	return events, nil
 }
 
-// Linear histories have identical per-file and multi-file log simplification.
-// At merges Git can choose different parents for different pathspecs; retain
-// per-file derivation there so batching never changes historical metrics.
-func (s *Store) deriveEventBatch(ids []string) (map[string][]datamodel.Event, error) {
+func (s *Store) deriveEventBatch(revision string, ids []string) (map[string][]datamodel.Event, error) {
 	out := make(map[string][]datamodel.Event, len(ids))
-	if len(ids) == 0 {
-		return out, nil
-	}
-	if len(ids) == 1 {
-		events, err := s.deriveEvents(ids[0])
-		out[ids[0]] = events
-		return out, err
-	}
-	merges, err := s.repo().Output("rev-list", "--min-parents=2", "--max-count=1", "HEAD")
-	if err != nil || merges != "" {
-		for _, id := range ids {
-			events, err := s.deriveEvents(id)
-			if err != nil {
-				return nil, err
-			}
-			out[id] = events
-		}
-		return out, nil
-	}
-	paths := []string{s.fs().RelToRoot(s.fs().ItemsDir())}
-	if len(ids) <= 64 {
-		paths = make([]string, len(ids))
-		for n, id := range ids {
-			paths[n] = s.fs().RelToRoot(s.itemPath(id))
-		}
-	}
-	stream, err := s.repo().FileLogs(paths)
-	if err != nil {
-		return nil, errx.User("%s", err)
+	if len(ids) > 1 && revision != "" {
+		s.deriveFirstParentEvents(revision, ids, out)
 	}
 	for _, id := range ids {
+		if _, batched := out[id]; batched {
+			continue
+		}
+		events, err := s.deriveEventsAt(revision, id)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = events
+	}
+	return out, nil
+}
+
+func (s *Store) deriveFirstParentEvents(revision string, ids []string, out map[string][]datamodel.Event) {
+	repo := s.repo()
+	if follows, err := repo.LogFollowsRenames(); follows || err != nil {
+		return
+	}
+	itemsDir := filepath.ToSlash(s.fs().RelToRoot(s.fs().ItemsDir()))
+	mergePaths, err := repo.FirstParentMergePaths(revision, itemsDir)
+	if err != nil {
+		return
+	}
+	// A single-path log can leave the first-parent chain only at a merge
+	// whose tree entry differs from the first parent's.
+	changesAtMerge := setx.ToSet(mergePaths)
+	pathToID := make(map[string]string, len(ids))
+	paths := make([]string, 0, len(ids))
+	for _, id := range ids {
+		path := filepath.ToSlash(s.fs().RelToRoot(s.itemPath(id)))
+		if !changesAtMerge[path] {
+			pathToID[path] = id
+			paths = append(paths, path)
+		}
+	}
+	if len(paths) == 0 {
+		return
+	}
+	if len(paths) > 64 {
+		paths = []string{itemsDir}
+	}
+	stream, err := repo.FirstParentFileLogs(revision, paths)
+	if err != nil {
+		return
+	}
+	for _, id := range pathToID {
 		out[id] = nil
 	}
-	walkPatch(stream, func(path string, events []datamodel.Event) {
-		id := storage.ULIDFromPath(path)
-		if _, wanted := out[id]; wanted {
+	walkPatch(stream, func(oldPath, newPath string, events []datamodel.Event) {
+		if newPath == "" {
+			newPath = oldPath
+		}
+		if id, wanted := pathToID[newPath]; wanted {
 			out[id] = append(out[id], events...)
 		}
 	})
-	return out, nil
 }
 
 func (s *Store) rangeEvents(repo gitx.Repo, sinceSHA, headSHA string, tracked map[string]*datamodel.Item) (map[string][]datamodel.Event, error) {
@@ -227,7 +256,7 @@ func (s *Store) rangeEvents(repo gitx.Repo, sinceSHA, headSHA string, tracked ma
 		return nil, errx.User("%s", err)
 	}
 	events := map[string][]datamodel.Event{}
-	walkPatch(out, func(path string, evs []datamodel.Event) {
+	walkPatch(out, func(_, path string, evs []datamodel.Event) {
 		if len(evs) == 0 {
 			return
 		}

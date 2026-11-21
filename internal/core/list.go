@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"slices"
 	"sync"
 
@@ -79,14 +78,11 @@ func (ld *loaded) match(opts ListOpts, pred query.Predicate, order *query.Order)
 	if ld.matches == nil {
 		return filterSort(ld.cfg, ld.items, pred, order)
 	}
-	// ListOpts carries a slice, so it cannot key a map directly; %#v renders
-	// every field unambiguously.
-	key := fmt.Sprintf("%#v", opts)
-	if matched, ok := ld.matches[key]; ok {
+	if matched, ok := ld.matches[opts]; ok {
 		return matched
 	}
 	matched := filterSort(ld.cfg, ld.items, pred, order)
-	ld.matches[key] = matched
+	ld.matches[opts] = matched
 	return matched
 }
 
