@@ -32,7 +32,7 @@ exec kira config set sync.push true
 # absent (commented-out) block is created in place; its doc comment is kept
 exec kira config set git.landed_ref origin/main
 grep 'landed_ref: origin/main' .kira/config.yaml
-grep '#git: \{\}' .kira/config.yaml
+grep '^# git:$' .kira/config.yaml
 
 # each set auto-commits (commit.mode is still auto) and leaves nothing dirty
 exec git log --oneline
@@ -54,7 +54,7 @@ stderr 'merge.policy'
 # after which further sets only stage
 exec kira config set commit.mode manual
 grep 'mode: manual' .kira/config.yaml
-# editing a live scalar line preserves its inline doc comment
-grep '(?m)mode: manual.*# auto \| manual$' .kira/config.yaml
+# editing a live scalar line preserves its leading doc comment
+grep '  # auto commits each mutation. manual stages changes' .kira/config.yaml
 exec git log --oneline
 stdout 'config set commit.mode'

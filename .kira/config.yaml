@@ -1,43 +1,22 @@
+# Kira repository configuration
+#
+# This file is shared through Git. Run `kira config explain` to inspect the
+# effective settings and `kira config init` to scaffold personal preferences.
+# Personal settings live in $XDG_CONFIG_HOME/kira/config.yaml, or
+# ~/.config/kira/config.yaml. Repo settings take precedence on shared keys.
+
+# Config format version.
 version: 2
 
+# The project key identifies the initial board. The name is a display label.
 project:
   key: KIRA
   name: kira
 
-labels:
-  known: [captured, core, tui, cli, data, infra, dx]   # 'captured' is system; the rest are retired area labels still on older items
-  strict: false
-
-people:
-  known: [{ name: shivam }]   # add known people; strict rejects unknown assignees
-  strict: false
-
-commit:
-  mode: auto                  # auto | manual
-
-merge:
-  policy: auto                # auto | manual: auto-resolve same-field kira conflicts vs leave markers
-
-sync:
-  push: false                 # true = kira sync publishes after a clean pull; default is pull-only
-
-ui:
-  icons: auto                 # auto | nerd | emoji | text — if glyphs render as boxes, set emoji or text (nerd font not installed)
-  list:
-    columns: [number, state, type, subtype, priority, title]
-
-estimate:
-  unit: points                # points | hours
-
-# filters: named saved queries, run via kira list --filter <name>.
-filters:
-  backlog: "state = TODO ORDER BY priority"
-  core: "label = core AND state != DONE"
-  next: "state = TODO AND NOT blocked ORDER BY priority"
-
-sprints:
-  - { key: 2026-S14, name: Parity + restructure, start: "2026-07-13", end: "2026-07-20" }
-
+# Use `kira board create` and `kira board rename` to manage boards.
+# Keys are unique, use 2–10 uppercase letters or digits, and start with a
+# letter. Boards can have a description and be archived. Choose at most
+# one active board as the default.
 boards:
   - { key: KIRA, name: kira, default: true }
   - { key: CORE, name: Core store and domain }
@@ -46,3 +25,93 @@ boards:
   - { key: DATA, name: Index query and schema }
   - { key: INFRA, name: CI CD and build }
   - { key: DX, name: Tooling and hygiene }
+
+labels:
+  # Add labels with `kira label create` or list them here. captured is a system
+  # label. The other labels are retired area labels still used on older items.
+  known: [captured, core, tui, cli, data, infra, dx]
+
+  # Strict mode rejects unknown labels, priorities, subtypes, and resolutions.
+  strict: false
+
+people:
+  # Use names or entries with Git aliases, e.g. { name: jdoe, git: ["Jane Doe"] }.
+  # Git names and emails in git aliases resolve @me and comment authors.
+  known: [{ name: shivam }]
+
+  # Strict mode rejects unknown owners and reporters.
+  strict: false
+
+commit:
+  # auto commits each mutation. manual stages changes for `kira commit`.
+  mode: auto
+
+merge:
+  # auto merges ticket fields and resolves same-field changes. manual leaves
+  # conflict markers for you to resolve and stops `kira sync` on conflicts.
+  policy: auto
+
+sync:
+  # Enable pushing after a clean `kira sync`.
+  push: false
+
+estimate:
+  # Display estimates in points or hours. Changing this label leaves values as-is.
+  unit: points
+
+# Named queries for `kira list --filter`, `kira board --filter`, and the
+# board's TUI filter chips. The core filter uses the retired core label.
+filters:
+  backlog: "state = TODO ORDER BY priority"
+  core: "label = core AND state != DONE"
+  next: "state = TODO AND NOT blocked ORDER BY priority"
+
+# Sprints are usually managed with `kira sprint create`. Each entry needs
+# a key, a name, and start and end dates in YYYY-MM-DD format.
+sprints:
+  - { key: 2026-S14, name: Parity + restructure, start: "2026-07-13", end: "2026-07-20" }
+
+# Prefer the user file for personal UI settings and worktree preferences.
+# Set ui.editor and commit.subject in the user file.
+ui:
+  # Icon modes are auto, nerd, emoji and text. Use emoji or text if glyphs
+  # render as boxes because the terminal font lacks Nerd Font glyphs.
+  icons: auto
+
+  # Background can be dark or light. Color modes are auto, always and never.
+  # auto_tui controls bare `kira` and `kira board` in a terminal.
+  # background: dark
+  # color: auto
+  # auto_tui: true
+
+  list:
+    # Columns available are number, title, type, subtype, state, category,
+    # priority, owner, labels, parent, parent_number, resolution, due and id.
+    columns: [number, state, type, subtype, priority, title]
+
+  # split is the tree pane fraction, between 0 and 1 exclusive. refresh
+  # accepts "0" to disable it or durations of at least 1s.
+  # tui:
+  #   split: 0.5
+  #   refresh: "0"
+
+  # Set theme slots with quoted hex values such as "#7dcfff". The slots are
+  # accent, dim, border, todo, doing, done, warm and hot.
+
+# Optional settings
+#
+# Uncomment a section and the settings you want to use. The examples below
+# show the built-in defaults.
+
+# The landed ref controls when `Kira-Closes` trailers can close tickets.
+# An empty value uses the target of origin/HEAD when available, then main.
+# git:
+#   landed_ref: ""
+
+# Branch patterns must include {number} and also accept {key} and {slug}.
+# Enable worktree to create a separate checkout by default. worktree_dir
+# accepts {repo}, {branch}, {key} and {number}, with repo-relative or absolute paths.
+# workon:
+#   branch_pattern: "{key}/{number}-{slug}"
+#   worktree: false
+#   worktree_dir: "../{repo}-{branch}"

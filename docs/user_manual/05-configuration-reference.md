@@ -257,60 +257,11 @@ Label for the `estimate` field; no conversion.
 
 ## Scaffold
 
-What `kira init --key KIRA` writes (here in a directory named `config`):
-
-```yaml
-version: 2
-
-project:
-  key: KIRA
-  name: config
-
-boards:
-  - { key: KIRA, name: config, default: true }
-
-labels:
-  known: []                   # add project labels; strict rejects unknown ones (--force overrides)
-  # known: [bug, feature, perf, tech-debt, infra]   # example vocabulary
-  strict: false
-
-people:
-  known: []                   # add known people; strict rejects unknown assignees
-  # known: [{ name: jdoe }, { name: asmith }]        # example roster
-  strict: false
-
-commit:
-  mode: auto                  # auto | manual
-
-merge:
-  policy: auto                # auto | manual: auto-resolve same-field kira conflicts vs leave markers
-
-sync:
-  push: false                 # true = kira sync publishes after a clean pull; default is pull-only
-
-# workon: branch and worktree naming (built-in defaults shown; uncomment a key to pin it for this repo)
-#   branch_pattern: "{key}/{number}-{slug}"   # tokens: {key} {number} {slug}
-
-# ui: TUI and board appearance (personal presentation; prefer ~/.config/kira/config.yaml so pins are not shared across clones)
-#   icons: auto               # auto | nerd | emoji | text
-#   background: dark          # dark | light
-
-estimate:
-  unit: points                # points | hours
-
-# --- optional blocks: uncomment and edit to enable (defaults shown are inert) ---
-
-# filters: named saved queries, run via kira list --filter <name>.
-filters:
-  next: state = TODO AND NOT blocked ORDER BY priority
-
-# sprints: sprint entities, created by kira sprint create; items key into this list.
-#sprints:
-
-# git: relate kira items to the commits and branches that touch them.
-#   landed_ref — ref (e.g. origin/main) whose history marks work as merged/landed
-#git: {}
-```
+`kira init --key KIRA` writes `.kira/config.yaml` with `KIRA` as the initial
+board key and the directory name as the project and board display name. It
+starts with empty label and people lists and includes the `next` saved filter.
+Explanations appear above the settings, followed by commented examples for
+sprints, landed refs, worktrees, and the UI. [Repository scaffold template](../../internal/core/templates/repo-config.yaml)
 
 `kira config init` writes the user-file equivalent, every key commented out
 at its default.

@@ -1,7 +1,7 @@
 package config
 
 import (
-	"embed"
+	_ "embed"
 	"os"
 	"path/filepath"
 
@@ -10,15 +10,7 @@ import (
 )
 
 //go:embed templates/config.yaml
-var userTemplateFS embed.FS
-
-func mustTemplate(name string) string {
-	data, err := userTemplateFS.ReadFile("templates/" + name)
-	if err != nil {
-		panic("config: missing embedded template " + name)
-	}
-	return string(data)
-}
+var userConfigTemplate string
 
 func InitUser(env func(string) string) (*datamodel.ConfigInitResult, error) {
 	dir, ok := UserConfigDir(env)
@@ -32,7 +24,7 @@ func InitUser(env func(string) string) (*datamodel.ConfigInitResult, error) {
 		return &datamodel.ConfigInitResult{Path: dir, Created: false, Files: present}, nil
 	}
 	path := filepath.Join(dir, userConfigFileName)
-	if err := os.WriteFile(path, []byte(mustTemplate(userConfigFileName)), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(userConfigTemplate), 0o644); err != nil {
 		return nil, errx.Env("writing %s: %v", path, err)
 	}
 	return &datamodel.ConfigInitResult{Path: dir, Created: true, Files: []string{userConfigFileName}}, nil

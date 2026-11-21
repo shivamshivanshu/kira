@@ -26,7 +26,7 @@ func TestUserConfigTemplateMatchesDefaults(t *testing.T) {
 		UI     datamodel.UI     `yaml:"ui"`
 		Workon datamodel.Workon `yaml:"workon"`
 	}
-	if err := yaml.Unmarshal([]byte(uncomment(mustTemplate(userConfigFileName))), &got); err != nil {
+	if err := yaml.Unmarshal([]byte(uncomment(userConfigTemplate)), &got); err != nil {
 		t.Fatalf("uncommented template is not valid YAML: %v", err)
 	}
 

@@ -8,15 +8,18 @@ import (
 	"github.com/shivamshivanshu/kira/internal/config"
 )
 
-// uncommentOptional re-enables the commented-out config blocks. Documentation
-// prose uses "# " (hash-space) and stays inert; disabled config uses a bare "#"
-// prefixing the key, so stripping a leading hash not followed by a space turns
-// exactly the optional blocks back on.
+// uncommentOptional enables the example sections and their indented settings
+// so the parser checks the documented defaults as well as the active scaffold.
 func uncommentOptional(seed string) string {
 	lines := strings.Split(seed, "\n")
-	for i, l := range lines {
-		if len(l) >= 2 && l[0] == '#' && l[1] != ' ' {
-			lines[i] = l[1:]
+	for i, line := range lines {
+		switch line {
+		case "# sprints:", "# git:", "# workon:", "# ui:":
+			lines[i] = strings.TrimPrefix(line, "# ")
+		default:
+			if strings.HasPrefix(line, "#   ") {
+				lines[i] = strings.TrimPrefix(line, "# ")
+			}
 		}
 	}
 	return strings.Join(lines, "\n")

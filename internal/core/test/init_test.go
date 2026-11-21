@@ -13,7 +13,8 @@ import (
 
 func TestConfigTemplateParses(t *testing.T) {
 	t.Parallel()
-	root := testutil.InitGitRepo(t)
+	const name = "Kira: project #1"
+	root := initRepoNamed(t, name)
 	if _, err := core.Init(root, "ACME", false); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
@@ -23,6 +24,9 @@ func TestConfigTemplateParses(t *testing.T) {
 	}
 	if cfg.Project.Key != "ACME" {
 		t.Fatalf("key = %q, want ACME", cfg.Project.Key)
+	}
+	if cfg.Project.Name != name || len(cfg.Boards) != 1 || cfg.Boards[0].Name != name {
+		t.Fatalf("scaffold lost directory name %q: project=%+v boards=%+v", name, cfg.Project, cfg.Boards)
 	}
 	if len(cfg.Labels.Known) != 0 || len(cfg.People.Known) != 0 {
 		t.Fatalf("init must seed empty vocab, got labels=%v people=%v", cfg.Labels.Known, cfg.People.Known)
