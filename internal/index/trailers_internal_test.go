@@ -12,7 +12,7 @@ func TestLatestClosesUnparseableTimestampDoesNotWinRace(t *testing.T) {
 		{Timestamp: "not-a-timestamp", Closes: []string{"KIRA-1"}},
 		{Timestamp: "2026-01-01T00:00:00Z", Closes: []string{"KIRA-1"}},
 	}
-	candidates, unknown := latestCloses(commits, numbers)
+	candidates, unknown := LatestCloses(commits, numbers)
 	if len(unknown) != 0 {
 		t.Fatalf("unexpected unknown refs: %v", unknown)
 	}

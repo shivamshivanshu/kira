@@ -50,6 +50,7 @@ type CommitLink struct {
 type CloseCandidate struct {
 	ULID        string
 	CommitterTs string
+	CommitSHA   string
 }
 
 // CloseScan is the result of scanning landed commits for items to close.
@@ -118,18 +119,18 @@ func (i *Index) collectCloses(root gitx.Repo, opts Options, prev meta, loadNumbe
 	if err != nil {
 		return CloseScan{}, err
 	}
-	cs.Candidates, cs.Unknown = latestCloses(commits, numbers)
+	cs.Candidates, cs.Unknown = LatestCloses(commits, numbers)
 	return cs, nil
 }
 
-func latestCloses(commits []gitx.Commit, numbers map[string]string) (candidates []CloseCandidate, unknown []string) {
-	latest := map[string]string{}
+func LatestCloses(commits []gitx.Commit, numbers map[string]string) (candidates []CloseCandidate, unknown []string) {
+	latest := map[string]CloseCandidate{}
 	unknownDedup := setx.NewDeduper[string]()
 	var order []string
 	for _, c := range commits {
 		for _, value := range c.Closes {
-			ulid, ok := numbers[strings.ToUpper(value)]
-			if !ok {
+			ulid := numbers[strings.ToUpper(value)]
+			if ulid == "" {
 				if unknownDedup.Add(value) {
 					unknown = append(unknown, value)
 				}
@@ -138,14 +139,14 @@ func latestCloses(commits []gitx.Commit, numbers map[string]string) (candidates 
 			cur, seen := latest[ulid]
 			if !seen {
 				order = append(order, ulid)
-				latest[ulid] = c.Timestamp
-			} else if closesLater(c.Timestamp, cur) {
-				latest[ulid] = c.Timestamp
+			}
+			if !seen || closesLater(c.Timestamp, cur.CommitterTs) {
+				latest[ulid] = CloseCandidate{ULID: ulid, CommitterTs: c.Timestamp, CommitSHA: c.SHA}
 			}
 		}
 	}
 	for _, ulid := range order {
-		candidates = append(candidates, CloseCandidate{ULID: ulid, CommitterTs: latest[ulid]})
+		candidates = append(candidates, latest[ulid])
 	}
 	return candidates, unknown
 }
@@ -190,7 +191,7 @@ func trailerRange(root gitx.Repo, watermark, head string) (rangeExpr string, rew
 	return watermark + ".." + head, false, nil
 }
 
-type linkPolicy struct {
+type LinkPolicy struct {
 	marker  *regexp.Regexp
 	bareRef *regexp.Regexp
 }
@@ -211,8 +212,8 @@ func scanConfigHash(opts Options) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func newLinkPolicy(opts Options, numbers map[string]string) linkPolicy {
-	return linkPolicy{
+func NewLinkPolicy(opts Options, numbers map[string]string) LinkPolicy {
+	return LinkPolicy{
 		marker:  subjectMarkerPattern(opts, numbers),
 		bareRef: lenientPattern(opts.BoardKeys, numbers),
 	}
@@ -242,7 +243,7 @@ func (i *Index) upsertCommitLinks(commits []gitx.Commit, numbers map[string]stri
 	}
 	defer func() { _ = insReferenced.Close() }()
 
-	pol := newLinkPolicy(opts, numbers)
+	pol := NewLinkPolicy(opts, numbers)
 	for _, c := range commits {
 		linked, referenced := resolveItemRefs(c, numbers, pol)
 		for _, ulid := range linked {
@@ -259,27 +260,15 @@ func (i *Index) upsertCommitLinks(commits []gitx.Commit, numbers map[string]stri
 	return commit(tx)
 }
 
-func resolveItemRefs(c gitx.Commit, numbers map[string]string, pol linkPolicy) (linked, referenced []string) {
+func resolveItemRefs(c gitx.Commit, numbers map[string]string, pol LinkPolicy) (linked, referenced []string) {
 	linkedSeen := setx.NewDeduper[string]()
-	addLinked := func(token string) {
-		if ulid, ok := numbers[strings.ToUpper(token)]; ok && linkedSeen.Add(ulid) {
+	pol.VisitLinkedRefs(c, func(token, _ string) bool {
+		ulid, found := numbers[strings.ToUpper(token)]
+		if found && linkedSeen.Add(ulid) {
 			linked = append(linked, ulid)
 		}
-	}
-	for _, t := range c.Tickets {
-		addLinked(t)
-	}
-	if pol.marker != nil && len(linked) == 0 {
-		if m := pol.marker.FindString(c.Subject); m != "" {
-			addLinked(strings.Trim(m, "[]"))
-		}
-	}
-	if pol.bareRef != nil && len(linked) == 0 && len(c.Tickets) == 0 {
-		s := strings.TrimLeft(c.Subject, " \t")
-		if loc := pol.bareRef.FindStringIndex(s); loc != nil && loc[0] == 0 {
-			addLinked(s[:loc[1]])
-		}
-	}
+		return found
+	})
 
 	refSeen := setx.NewDeduper[string]()
 	if pol.bareRef != nil {
@@ -290,6 +279,27 @@ func resolveItemRefs(c gitx.Commit, numbers map[string]string, pol linkPolicy) (
 		}
 	}
 	return linked, referenced
+}
+
+// VisitLinkedRefs uses subject conventions only when a stronger link fails to resolve.
+func (pol LinkPolicy) VisitLinkedRefs(c gitx.Commit, visit func(token, source string) bool) {
+	resolved := false
+	for _, token := range c.Tickets {
+		if visit(token, datamodel.TicketTrailerKey) {
+			resolved = true
+		}
+	}
+	if !resolved && pol.marker != nil {
+		if marker := pol.marker.FindString(c.Subject); marker != "" {
+			resolved = visit(strings.Trim(marker, "[]"), "subject")
+		}
+	}
+	if !resolved && len(c.Tickets) == 0 && pol.bareRef != nil {
+		subject := strings.TrimLeft(c.Subject, " \t")
+		if loc := pol.bareRef.FindStringIndex(subject); loc != nil && loc[0] == 0 {
+			visit(subject[:loc[1]], "subject")
+		}
+	}
 }
 
 func stripMarkers(text string, marker *regexp.Regexp) string {

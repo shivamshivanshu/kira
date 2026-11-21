@@ -28,18 +28,11 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 			closeFailed(cand.ULID, resErr)
 			continue
 		}
-		if itemIsDone(cfg, it) {
+		target, _, eligibilityErr := closeEligibility(cfg, it, cand.CommitterTs)
+		if eligibilityErr != nil {
+			closeFailed(it.Number, eligibilityErr)
 			continue
 		}
-		touched, tsErr := touchedSince(cand.CommitterTs, it.Updated)
-		if tsErr != nil {
-			closeFailed(it.Number, tsErr)
-			continue
-		}
-		if touched {
-			continue
-		}
-		target := workflowFor(cfg, it).CloseTarget()
 		if target == "" {
 			continue
 		}
@@ -62,6 +55,24 @@ func (s *Store) applyCloses(cfg *datamodel.Config, scan index.CloseScan) (closed
 		}
 	}
 	return closed, notes, nil
+}
+
+func closeEligibility(cfg *datamodel.Config, it *datamodel.Item, committerTs string) (target, outcome string, err error) {
+	if itemIsDone(cfg, it) {
+		return "", datamodel.ReviewCloseAlreadyClosed, nil
+	}
+	touched, err := touchedSince(committerTs, it.Updated)
+	if err != nil {
+		return "", datamodel.ReviewCloseInvalidTimestamp, err
+	}
+	if touched {
+		return "", datamodel.ReviewCloseTicketNewer, nil
+	}
+	target = workflowFor(cfg, it).CloseTarget()
+	if target == "" {
+		return "", datamodel.ReviewCloseNoTarget, nil
+	}
+	return target, datamodel.ReviewCloseEligible, nil
 }
 
 func touchedSince(committerTs, updated string) (bool, error) {

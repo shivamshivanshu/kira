@@ -225,6 +225,29 @@ $ kira hooks run prepare-commit-msg
 kira: prepare-commit-msg needs the commit message file argument
 ```
 
+## `kira review`
+
+```sh
+kira review --base main
+kira review --base origin/main --json
+```
+
+Creates a branch summary from local committed Git history. The default output
+is Markdown. JSON includes the resolved base, merge-base and HEAD SHAs.
+
+Linked tickets come from `Kira-Ticket` and `Kira-Closes` trailers and the usual
+subject link conventions. Unresolved or ambiguous links include the source
+and commit SHA. Net state changes compare the merge-base and HEAD ticket
+snapshots by immutable ID, including changes made during merge resolution.
+The separate patch history can show intermediate transitions and can omit
+merge-only changes.
+
+The close preview reports the latest pending trailer for each resolved
+ticket. An eligible close assumes the original trailer reaches
+`git.landed_ref` and the committed ticket and config stay unchanged.
+It is a preview of eligibility before mutation, including whether the
+trailer is already reachable from the landed ref.
+
 ## `kira sync`
 
 ```

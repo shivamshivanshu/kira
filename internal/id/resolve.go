@@ -138,17 +138,30 @@ func (r *Resolver) Resolve(token string) (string, error) {
 	}
 
 	if strings.Contains(up, "-") {
-		h := r.holdersOf(up)
-		switch len(h) {
-		case 0:
-			return "", &NotFoundError{Token: token, Suggestion: errx.Nearest(up, r.numbers)}
-		case 1:
-			return h[0], nil
-		default:
-			return "", r.ambiguous(token, h)
-		}
+		return r.resolveNumber(token, up)
 	}
 	return r.resolveBare(token, up)
+}
+
+// LookupNumber uses only full display numbers and aliases.
+func (r *Resolver) LookupNumber(token string) (ulid string, ambiguous bool) {
+	holders := r.holdersOf(strings.ToUpper(strings.TrimSpace(token)))
+	if len(holders) == 1 {
+		return holders[0], false
+	}
+	return "", len(holders) > 1
+}
+
+func (r *Resolver) resolveNumber(token, up string) (string, error) {
+	holders := r.holdersOf(up)
+	switch len(holders) {
+	case 0:
+		return "", &NotFoundError{Token: token, Suggestion: errx.Nearest(up, r.numbers)}
+	case 1:
+		return holders[0], nil
+	default:
+		return "", r.ambiguous(token, holders)
+	}
 }
 
 func (r *Resolver) resolveBare(token, up string) (string, error) {

@@ -26,7 +26,11 @@ func Load(repo gitx.Repo, treeish string) (*Loaded, error) {
 	if err != nil {
 		return nil, errx.User("resolving %s: %v", treeish, err)
 	}
+	return LoadCommit(repo, sha)
+}
 
+// LoadCommit reads a snapshot pinned to a previously resolved commit SHA.
+func LoadCommit(repo gitx.Repo, sha string) (*Loaded, error) {
 	names, err := repo.LsTreeNames(sha, storage.TicketsPrefix, storage.ConfigRelPath)
 	if err != nil {
 		return nil, err

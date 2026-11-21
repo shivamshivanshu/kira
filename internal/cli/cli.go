@@ -125,6 +125,7 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 		newLabelCmd(g),
 		newConfigCmd(g),
 		newChangesCmd(g),
+		newReviewCmd(g),
 		newSchemaCmd(),
 	)
 	attachCompletions(root, g)

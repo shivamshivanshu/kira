@@ -24,6 +24,7 @@ func topLevelTypes() []reflect.Type {
 		reflect.TypeFor[datamodel.BulkOutcome](),
 		reflect.TypeFor[datamodel.DiffResult](),
 		reflect.TypeFor[datamodel.ChangesResult](),
+		reflect.TypeFor[datamodel.ReviewResult](),
 		reflect.TypeFor[datamodel.FindResult](),
 		reflect.TypeFor[datamodel.InitResult](),
 		reflect.TypeFor[datamodel.ConfigSetResult](),
