@@ -26,6 +26,30 @@ boards:
   - { key: INFRA, name: CI CD and build }
   - { key: DX, name: Tooling and hygiene }
 
+# Optional workflows for bug, task, feature, and support tickets. Omitted
+# subtypes use Kira's built-in workflow.
+#
+# State names are case-sensitive. Each state has a category of todo, doing,
+# or done. The first state is used on creation. The last must have category
+# done and is the target for Kira-Closes.
+# ticket_states:
+#   bug:
+#     - { name: Reported, category: todo }
+#     - { name: Fixing, category: doing }
+#     - { name: Verified, category: done }
+#   task:
+#     - { name: Queued, category: todo }
+#     - { name: In Progress, category: doing }
+#     - { name: Completed, category: done }
+#   feature:
+#     - { name: Proposed, category: todo }
+#     - { name: Building, category: doing }
+#     - { name: Implemented, category: done }
+#   support:
+#     - { name: Received, category: todo }
+#     - { name: Investigating, category: doing }
+#     - { name: Resolved, category: done }
+
 labels:
   # Add labels with `kira label create` or list them here. captured is a system
   # label. The other labels are retired area labels still used on older items.
