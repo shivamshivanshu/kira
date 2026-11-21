@@ -13,6 +13,7 @@ import (
 
 type MoveOpts struct {
 	Resolution string
+	Category   datamodel.Category
 	Force      bool
 	Activate   bool
 }
@@ -29,13 +30,10 @@ func (s *Store) Move(cfg *datamodel.Config, ref, state string, opts MoveOpts) (*
 func (b *Batch) Move(ref, state string, opts MoveOpts) (*datamodel.MoveResult, error) {
 	var from string
 	apply := func(it *datamodel.Item, _ *id.Resolver, items []*datamodel.Item) ([]error, []error) {
-		from = it.State
+		original := *it
+		from = original.State
 		it.State = state
-		hard, warns, wipWarns := applyStateChange(it, from, opts, nil, items)
-		if len(hard) > 0 {
-			return hard, nil
-		}
-		return nil, append(warns, wipWarns...)
+		return applyStateChange(b.cfg, &original, it, opts, false, items)
 	}
 	subjectOf := func(orig *datamodel.Item) string {
 		return fmt.Sprintf("%s state %s -> %s", orig.Number, orig.State, state)
@@ -60,45 +58,58 @@ func (b *Batch) Move(ref, state string, opts MoveOpts) (*datamodel.MoveResult, e
 	}, nil
 }
 
-func applyStateChange(it *datamodel.Item, from string, opts MoveOpts, edited map[string]bool, items []*datamodel.Item) (hard, warns, wipWarns []error) {
+func applyStateChange(cfg *datamodel.Config, orig, it *datamodel.Item, opts MoveOpts, resolutionEdited bool, items []*datamodel.Item) (hard, warns []error) {
 	state := it.State
-	wf, _ := datamodel.WorkflowOf(it.Type)
+	wf := workflowFor(cfg, it)
+	from := ""
+	var previousCategory datamodel.Category
+	if orig != nil {
+		from = orig.State
+		previousCategory, _ = cfg.ItemCategory(orig)
+	}
 	target, ok := wf.StateByKey(state)
 	if !ok {
-		return []error{errx.User("%q is not a state in the %s workflow", state, it.Type).WithHint("%s", stateHint(wf, state))}, nil, nil
+		return []error{errx.User("%q is not a state in the %s workflow", state, it.Type).WithHint("%s", stateHint(wf, state))}, nil
+	}
+	if opts.Category != "" && target.Category != opts.Category {
+		return []error{errx.User("%q belongs to category %s in this ticket's workflow", state, target.Category)}, nil
 	}
 	if opts.Resolution != "" {
 		if target.Category != datamodel.CategoryDone {
-			return []error{fmt.Errorf("field %q: cannot be set because %s is not a done-category state", datamodel.KeyResolution, state)}, nil, nil
+			return []error{fmt.Errorf("field %q: cannot be set because %s is not a done-category state", datamodel.KeyResolution, state)}, nil
 		}
 		it.Resolution = &opts.Resolution
 	}
 
 	if target.Category == datamodel.CategoryDone {
-		if from != state {
-			h, w := blockersClosedGuard(it, items, from, state, opts.Force)
+		if from != state || previousCategory != datamodel.CategoryDone {
+			h, w := blockersClosedGuard(cfg, it, items, from, state, opts.Force)
 			if len(h) > 0 {
-				return h, nil, nil
+				return h, nil
 			}
 			warns = append(warns, w...)
 		}
-		if opts.Resolution == "" && !edited[datamodel.KeyResolution] && target.Resolution != "" {
-			it.Resolution = &target.Resolution
+		if opts.Resolution == "" && !resolutionEdited {
+			if wf.Custom {
+				it.Resolution = new("done")
+			} else if target.Resolution != "" {
+				it.Resolution = &target.Resolution
+			}
 		}
 	} else {
 		it.Resolution = nil
 	}
 
-	return nil, warns, wipOverrunWarnings(it, items, from, state, target.Wip)
+	return nil, append(warns, wipOverrunWarnings(cfg, it, items, from, state, target.Wip)...)
 }
 
-func wipOverrunWarnings(it *datamodel.Item, items []*datamodel.Item, from, state string, wip int) []error {
+func wipOverrunWarnings(cfg *datamodel.Config, it *datamodel.Item, items []*datamodel.Item, from, state string, wip int) []error {
 	if from == state || wip <= 0 {
 		return nil
 	}
 	inTargetState := 1
 	for _, other := range items {
-		if other.ID != it.ID && other.Type == it.Type && other.State == state {
+		if other.ID != it.ID && other.Type == it.Type && other.State == state && !workflowFor(cfg, other).Custom {
 			inTargetState++
 		}
 	}
@@ -108,9 +119,9 @@ func wipOverrunWarnings(it *datamodel.Item, items []*datamodel.Item, from, state
 	return []error{fmt.Errorf("%s is over its WIP limit (%d > %d)", state, inTargetState, wip)}
 }
 
-func blockersClosedGuard(it *datamodel.Item, items []*datamodel.Item, from, state string, force bool) (hard, warns []error) {
+func blockersClosedGuard(cfg *datamodel.Config, it *datamodel.Item, items []*datamodel.Item, from, state string, force bool) (hard, warns []error) {
 	byID := datamodel.IndexByID(items)
-	open, skipped := query.OpenBlockers(it, byID)
+	open, skipped := query.OpenBlockers(cfg, it, byID)
 	for _, s := range skipped {
 		warns = append(warns, fmt.Errorf("blocked_by %s %s; treating blocker as satisfied", numberOrID(s.Blocker, s.ID), s.Reason))
 	}

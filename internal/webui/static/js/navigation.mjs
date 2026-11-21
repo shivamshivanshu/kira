@@ -133,12 +133,19 @@ export function setupNavigation({restored, writeState, dialogs, toggleSelection}
 
   function moveBoard(direction) {
     const column = selected?.closest(".kanban-column");
-    const target = columns[columns.indexOf(column) + direction];
     const form = document.getElementById("keyboard-move");
-    if (!column || !target || !form) return;
-    form.elements.id.value = selected.dataset.item;
-    form.elements.state.value = target.dataset.state;
-    form.requestSubmit();
+    if (!column || !form) return;
+    const allowed = JSON.parse(selected.dataset.moveColumns || "null");
+    if (!allowed) return;
+    for (let i = columns.indexOf(column) + direction; i >= 0 && i < columns.length; i += direction) {
+      if (!allowed.includes(i)) continue;
+      const target = columns[i];
+      form.elements.id.value = selected.dataset.item;
+      form.elements.state.value = target.dataset.state;
+      form.elements.category.value = target.dataset.category;
+      form.requestSubmit();
+      break;
+    }
   }
 
   function editSelected() {

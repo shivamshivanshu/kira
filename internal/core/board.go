@@ -1,12 +1,16 @@
 package core
 
 import (
+	"cmp"
+	"maps"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/query"
 )
 
@@ -76,19 +80,19 @@ func boardResult(ld *loaded, opts BoardOpts, qopts query.Options) (*datamodel.Bo
 		}
 	}
 
-	counts := make(map[string]int, len(global))
-	for _, it := range global {
-		counts[it.State]++
-	}
 	parentNumbers := parentNumberMap(ld.items)
-	byState := map[string][]datamodel.ListItem{}
+	byLane := map[boardLane][]datamodel.ListItem{}
 	for _, it := range shown {
-		byState[it.State] = append(byState[it.State], listItemOf(it, parentNumbers))
+		card := listItemOf(ld.cfg, it, parentNumbers)
+		lane := boardLane{card.State, datamodel.Category(card.Category)}
+		byLane[lane] = append(byLane[lane], card)
 	}
 
-	cols := make([]datamodel.BoardColumn, len(wf.States))
-	for i, st := range wf.States {
-		items := byState[st.Key]
+	states, counts := boardStates(ld.cfg, wf, global)
+	cols := make([]datamodel.BoardColumn, len(states))
+	for i, st := range states {
+		lane := boardLane{st.Key, st.Category}
+		items := byLane[lane]
 		if items == nil {
 			items = []datamodel.ListItem{}
 		}
@@ -96,11 +100,71 @@ func boardResult(ld *loaded, opts BoardOpts, qopts query.Options) (*datamodel.Bo
 			State:    st.Key,
 			Category: string(st.Category),
 			Wip:      st.Wip,
-			Count:    counts[st.Key],
+			Count:    counts[lane],
 			Items:    items,
 		}
 	}
 	return &datamodel.BoardResult{Type: typ, Columns: cols}, nil
+}
+
+type boardLane struct {
+	state    string
+	category datamodel.Category
+}
+
+func laneForItem(cfg *datamodel.Config, item *datamodel.Item) boardLane {
+	category, _ := cfg.ItemCategory(item)
+	return boardLane{item.State, category}
+}
+
+func boardStates(cfg *datamodel.Config, builtin datamodel.Workflow, items []*datamodel.Item) ([]datamodel.State, map[boardLane]int) {
+	subtypes := map[string][]datamodel.State{}
+	hasBuiltin := len(items) == 0
+	for _, item := range items {
+		if workflow := workflowFor(cfg, item); workflow.Custom {
+			subtypes[ptr.Deref(item.Subtype)] = workflow.States
+		} else {
+			hasBuiltin = true
+		}
+	}
+	out := make([]datamodel.State, 0, len(builtin.States))
+	positions := map[boardLane]int{}
+	add := func(state datamodel.State) {
+		lane := boardLane{state.Key, state.Category}
+		if index, exists := positions[lane]; exists {
+			out[index].Wip = min(out[index].Wip, state.Wip)
+			return
+		}
+		positions[lane] = len(out)
+		out = append(out, state)
+	}
+	if hasBuiltin {
+		for _, state := range builtin.States {
+			add(state)
+		}
+	}
+	for _, subtype := range slices.Sorted(maps.Keys(subtypes)) {
+		for _, state := range subtypes[subtype] {
+			add(state)
+		}
+	}
+	counts := make(map[boardLane]int, len(out))
+	legacy := map[boardLane]bool{}
+	for _, item := range items {
+		lane := laneForItem(cfg, item)
+		counts[lane]++
+		if index, present := positions[lane]; !present {
+			legacy[lane] = true
+		} else if _, custom := subtypes[ptr.Deref(item.Subtype)]; custom {
+			out[index].Wip = 0
+		}
+	}
+	for _, lane := range slices.SortedFunc(maps.Keys(legacy), func(a, b boardLane) int {
+		return cmp.Or(strings.Compare(a.state, b.state), strings.Compare(string(a.category), string(b.category)))
+	}) {
+		add(datamodel.State{Key: lane.state, Category: lane.category})
+	}
+	return out, counts
 }
 
 type configEdit struct {
@@ -239,14 +303,10 @@ func (s *Store) BoardList(cfg *datamodel.Config) (*datamodel.BoardListResult, er
 	return &datamodel.BoardListResult{Boards: views}, nil
 }
 
-// StateDeclared reports whether typ's workflow declares state. Every declared
-// state is reachable from every other, so a board column naming an undeclared
-// state is the only thing left to reject.
-func StateDeclared(typ, state string) bool {
-	wf, ok := datamodel.WorkflowOf(typ)
-	if !ok {
-		return false
-	}
-	_, defined := wf.StateByKey(state)
-	return defined
+// BoardColumnAllowed checks the state/category pair, since a state name can
+// belong to different categories on a mixed board.
+func BoardColumnAllowed(cfg *datamodel.Config, typ, subtype string, column datamodel.BoardColumn) bool {
+	wf, _ := cfg.ItemWorkflow(typ, subtype)
+	state, defined := wf.StateByKey(column.State)
+	return defined && string(state.Category) == column.Category
 }

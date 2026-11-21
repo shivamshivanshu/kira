@@ -117,17 +117,18 @@ func TestBoardAtRendersHistoricalState(t *testing.T) {
 	}
 }
 
-func TestStateDeclaredAcceptsEveryWorkflowState(t *testing.T) {
+func TestBoardColumnsAllowEveryWorkflowState(t *testing.T) {
 	t.Parallel()
 	for _, state := range []string{"TODO", "IN_PROGRESS", "REVIEW", "DONE", "WONT_DO"} {
-		if !core.StateDeclared(datamodel.TypeTicket, state) {
-			t.Errorf("StateDeclared(%s) = false, want true", state)
+		category, _ := datamodel.CategoryOf(datamodel.TypeTicket, state)
+		if !core.BoardColumnAllowed(nil, datamodel.TypeTicket, "", datamodel.BoardColumn{State: state, Category: string(category)}) {
+			t.Errorf("%s should be a valid column", state)
 		}
 	}
-	if core.StateDeclared(datamodel.TypeTicket, "NOPE") {
-		t.Error("StateDeclared(NOPE) = true, want false")
+	if core.BoardColumnAllowed(nil, datamodel.TypeTicket, "", datamodel.BoardColumn{State: "NOPE"}) {
+		t.Error("accepted an unknown column")
 	}
-	if core.StateDeclared("nosuchtype", "TODO") {
-		t.Error("StateDeclared on an unknown type = true, want false")
+	if core.BoardColumnAllowed(nil, "nosuchtype", "", datamodel.BoardColumn{State: "TODO"}) {
+		t.Error("accepted a column for an unknown type")
 	}
 }

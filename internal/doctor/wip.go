@@ -4,14 +4,18 @@ import (
 	"fmt"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 // WipOverruns reports wip-capped states holding more items than their limit.
 // A move over the cap only warns, and a hand edit, merge, or sync
 // auto-resolve can push a state over it without any move at all.
-func WipOverruns(items []*datamodel.Item) []Finding {
+func WipOverruns(cfg *datamodel.Config, items []*datamodel.Item) []Finding {
 	counts := map[string]map[string]int{}
 	for _, it := range items {
+		if workflow, _ := cfg.ItemWorkflow(it.Type, ptr.Deref(it.Subtype)); workflow.Custom {
+			continue
+		}
 		if counts[it.Type] == nil {
 			counts[it.Type] = map[string]int{}
 		}

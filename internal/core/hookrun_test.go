@@ -40,22 +40,50 @@ func stageItem(t *testing.T, s *Store, repo gitx.Repo, it *datamodel.Item) {
 }
 
 func TestValidateStagedAcceptsValidItem(t *testing.T) {
-	s, cfg, repo := stagedFixture(t)
+	s, _, repo := stagedFixture(t)
 	stageItem(t, s, repo, eventTicket())
 
-	if err := s.ValidateStaged(cfg); err != nil {
+	if err := s.ValidateStaged(); err != nil {
 		t.Fatalf("valid staged item rejected: %v", err)
 	}
 }
 
 func TestValidateStagedRejectsInvalidItem(t *testing.T) {
-	s, cfg, repo := stagedFixture(t)
+	s, _, repo := stagedFixture(t)
 	bad := eventTicket()
 	bad.State = "BOGUS"
 	stageItem(t, s, repo, bad)
 
-	if err := s.ValidateStaged(cfg); err == nil {
+	if err := s.ValidateStaged(); err == nil {
 		t.Fatal("staged item with unknown state must be rejected")
+	}
+}
+
+func TestValidateStagedUsesStagedWorkflow(t *testing.T) {
+	s, _, repo := stagedFixture(t)
+	path := s.fs().ConfigPath()
+	original, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configured := append(append([]byte{}, original...), "ticket_states:\n  bug:\n    - {name: Reported, category: todo}\n    - {name: Verified, category: done}\n"...)
+	if err := os.WriteFile(path, configured, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	item := eventTicket()
+	item.Subtype, item.State = new("bug"), "Reported"
+	stageItem(t, s, repo, item)
+	if err := os.WriteFile(path, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ValidateStaged(); err != nil {
+		t.Fatalf("rejected ticket using staged workflow: %v", err)
+	}
+	if err := repo.Stage(".kira/config.yaml"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ValidateStaged(); err == nil {
+		t.Fatal("accepted new state outside the staged workflow")
 	}
 }
 
@@ -132,7 +160,7 @@ func TestPrepareCommitMsgHookTicketBranchAddsTrailer(t *testing.T) {
 }
 
 func TestValidateStagedCatchesRenameToStray(t *testing.T) {
-	s, cfg, repo := stagedFixture(t)
+	s, _, repo := stagedFixture(t)
 	it := eventTicket()
 	stageItem(t, s, repo, it)
 	if err := repo.CommitIn(nil, "add ticket", "", ""); err != nil {
@@ -146,7 +174,7 @@ func TestValidateStagedCatchesRenameToStray(t *testing.T) {
 		t.Fatalf("stage: %v", err)
 	}
 
-	if err := s.ValidateStaged(cfg); err == nil {
+	if err := s.ValidateStaged(); err == nil {
 		t.Fatal("item renamed to a stray filename must be rejected")
 	}
 }

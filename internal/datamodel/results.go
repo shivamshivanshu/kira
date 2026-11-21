@@ -483,6 +483,18 @@ type BoardResult struct {
 	Columns []BoardColumn `json:"columns"`
 }
 
+func (r *BoardResult) ColumnName(column BoardColumn) string {
+	for _, other := range r.Columns {
+		if other.State == column.State && other.Category != column.Category {
+			if column.Category == "" {
+				return "unknown · " + column.State
+			}
+			return column.Category + " · " + column.State
+		}
+	}
+	return column.State
+}
+
 func (r *BoardResult) Empty() bool {
 	for _, c := range r.Columns {
 		if len(c.Items) > 0 {

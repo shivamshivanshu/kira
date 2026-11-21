@@ -12,6 +12,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/warningfmt"
 )
 
@@ -126,7 +127,7 @@ func (s *server) loadPage(ctx context.Context, u *url.URL) (pageData, error) {
 		}
 		p.Detail, p.Revision = detail.Item, detail.Revision
 		p.Selected = p.Detail.Number
-		p.Targets = core.MoveTargets(p.Detail.Type)
+		p.Targets = core.ItemMoveTargets(p.Config, p.Detail.Type, ptr.Deref(p.Detail.Subtype))
 		p.Message = joinMessages(p.Message, warningText(p.Detail.StderrNotes))
 	}
 	if sha := q.Get("commit"); sha != "" {

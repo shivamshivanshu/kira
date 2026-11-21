@@ -53,7 +53,7 @@ func listResult(ld *loaded, opts ListOpts, qopts query.Options) (*datamodel.List
 	parentNumbers := parentNumberMap(items)
 	rows := make([]datamodel.ListItem, len(matched))
 	for i, it := range matched {
-		rows[i] = listItemOf(it, parentNumbers)
+		rows[i] = listItemOf(cfg, it, parentNumbers)
 	}
 	res := &datamodel.ListResult{
 		Items:       rows,
@@ -126,7 +126,7 @@ func listWithMatches(cfg *datamodel.Config, items []*datamodel.Item, expr string
 	rows := make([]datamodel.ListItem, len(items))
 	matched := make(map[string]bool, len(items))
 	for i, it := range items {
-		rows[i] = listItemOf(it, parentNumbers)
+		rows[i] = listItemOf(cfg, it, parentNumbers)
 		if pred == nil || pred(it, cfg) {
 			matched[it.ID] = true
 		}
@@ -304,7 +304,7 @@ func parentNumberMap(items []*datamodel.Item) map[string]string {
 	return m
 }
 
-func listItemOf(it *datamodel.Item, parentNumbers map[string]string) datamodel.ListItem {
+func listItemOf(cfg *datamodel.Config, it *datamodel.Item, parentNumbers map[string]string) datamodel.ListItem {
 	li := datamodel.ListItem{
 		ID:         it.ID,
 		Number:     it.Number,
@@ -313,7 +313,7 @@ func listItemOf(it *datamodel.Item, parentNumbers map[string]string) datamodel.L
 		Type:       it.Type,
 		Subtype:    it.Subtype,
 		State:      it.State,
-		Category:   categoryString(it.Type, it.State),
+		Category:   itemCategoryString(cfg, it),
 		Owner:      it.Owner,
 		Labels:     nonNil(it.Labels),
 		Parent:     it.Parent,

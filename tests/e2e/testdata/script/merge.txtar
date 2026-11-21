@@ -12,7 +12,7 @@ exec kira create ticket --title 'Mergeable' --no-edit
 
 # register the auto merge driver the way hooks install (WP-3.1) will
 exec git config merge.kira.name 'kira field-level auto-merge'
-exec git config merge.kira.driver 'kira merge-file %O %A %B'
+exec git config merge.kira.driver 'kira merge-file %O %A %B --ours=%X --incoming=%Y'
 cp attributes .git/info/attributes
 
 # different-field edits on two branches union cleanly
@@ -25,5 +25,43 @@ exec kira show KIRA-1 --json
 stdout '"owner": "alice"'
 stdout '"priority": "P1"'
 
+exec kira create ticket --subtype bug --title 'Workflow conflict' --no-edit
+exec git checkout -b custom
+cp workflow.yaml .kira/config.yaml
+exec git add .kira/config.yaml
+exec git commit -m 'set bug workflow'
+exec kira move KIRA-2 Fixing
+exec git checkout -
+exec kira edit KIRA-2 --field 'title=Changed title'
+exec git branch before-workflow
+exec git checkout custom
+! exec git merge-tree --write-tree before-workflow custom
+stderr 'the merge sides do not share a config'
+exec git checkout -
+! exec git merge custom
+stderr 'the merge sides do not share a config'
+exec git diff --name-only --diff-filter=U
+stdout '\.kira/tickets/'
+! stdout '\.kira/config.yaml'
+exec kira resolve
+exec kira show KIRA-2 --json
+stdout '"title": "Changed title"'
+stdout '"state": "Fixing"'
+stdout '"category": "doing"'
+exec git diff --name-only --diff-filter=U
+! stdout '\.kira/'
+
 -- attributes --
 .kira/tickets/*.md merge=kira
+-- workflow.yaml --
+version: 2
+project:
+  key: KIRA
+  name: KIRA
+boards:
+  - { key: KIRA, name: KIRA, default: true }
+ticket_states:
+  bug:
+    - { name: Reported, category: todo }
+    - { name: Fixing, category: doing }
+    - { name: Verified, category: done }

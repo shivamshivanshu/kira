@@ -47,6 +47,7 @@ func TestResolveRefusesWhenLockAlreadyHeld(t *testing.T) {
 
 func TestResolveSkipsFilenameIDMismatchInsteadOfMisreportingResolved(t *testing.T) {
 	s, repo := seededSyncRepo(t)
+	writeResolveConfig(t, s)
 
 	mismatched := eventTicket()
 	mismatched.ID = "01HZZ0TEST0000000000000099"
@@ -118,6 +119,7 @@ func TestResolveSkipsFilenameIDMismatchInsteadOfMisreportingResolved(t *testing.
 
 func TestResolveClearsStaleResolutionAfterDivergentEdits(t *testing.T) {
 	s := eventRepo(t)
+	writeResolveConfig(t, s)
 	repo := s.repo()
 
 	it := eventTicket()
@@ -183,6 +185,17 @@ func TestResolveClearsStaleResolutionAfterDivergentEdits(t *testing.T) {
 	}
 	if merged.Resolution != nil {
 		t.Errorf("resolution = %q, want cleared: state %q is not a Done-category state, so a leftover resolution is stale", *merged.Resolution, merged.State)
+	}
+}
+
+func writeResolveConfig(t *testing.T, s *Store) {
+	t.Helper()
+	yaml, err := initConfigYAML("KIRA", "resolve-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(s.fs().ConfigPath(), []byte(yaml), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
 

@@ -160,7 +160,7 @@ func (s *Store) ValidateHooks(_ *datamodel.Config) (*datamodel.HooksValidateResu
 }
 
 func (s *Store) mergeDriverRegistered(repo gitx.Repo) bool {
-	if repo.ConfigValue("merge.kira.driver") == "" {
+	if repo.ConfigValue("merge.kira.driver") != mergeDriverCmd {
 		return false
 	}
 	return repo.InfoAttributeHasLine(mergeAttrLine)

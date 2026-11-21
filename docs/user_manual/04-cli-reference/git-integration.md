@@ -15,7 +15,7 @@ kira writes and reads these markers; they are fixed, not configurable.
 | `[[KEY-n]]` in the subject | link |
 | `KEY-n` leading the subject | link |
 | `KEY-n` elsewhere in the message | reference (weaker; `show --json` `referenced_by`) |
-| `Kira-Closes: KEY-n` trailer | moves the item to its type's first `done` state when the commit lands on `git.landed_ref` (see [`index --closes`](#--closes)) |
+| `Kira-Closes: KEY-n` trailer | moves the item to its workflow's close target when the commit lands on `git.landed_ref` (see [`index --closes`](#--closes)) |
 
 ## `kira commit`
 
@@ -137,10 +137,13 @@ gives only `.kira/** text eol=lf`).
 ```console
 $ git config --get-regexp "^merge\.kira\."
 merge.kira.name kira field-level auto-merge
-merge.kira.driver kira merge-file %O %A %B
+merge.kira.driver kira merge-file %O %A %B --ours=%X --incoming=%Y
 $ cat .git/info/attributes
 .kira/tickets/*.md merge=kira
 ```
+
+Run `kira hooks install` again if the registered command is missing
+`--ours=%X` or `--incoming=%Y`.
 
 It merges item files per field: a field changed on one side is taken from that
 side; a field changed on both is arbitrated by policy (`merge.policy: auto`;
@@ -361,7 +364,8 @@ index full (missing): 7 items
 ### `--closes`
 
 Scans commits that reached `git.landed_ref` since the last scan (a watermark
-per ref) and moves each `Kira-Closes` item to its first `done` state. The move
+per ref) and moves each `Kira-Closes` item to the last state of its configured
+ticket workflow or to built-in `DONE`. The move
 is forced (passes the blocker guard, with a warning); items already done, or
 updated after the closing commit, are skipped. `kira sync` and `post-merge`
 run this; call it directly only when neither has.

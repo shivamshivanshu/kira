@@ -132,6 +132,7 @@ func TestCopyPickerUsesSharedFormats(t *testing.T) {
 	} {
 		t.Run(view, func(t *testing.T) {
 			p.View, p.URL = view, "/?q=inside&item=WEB-7"
+			p.prepare()
 			var out bytes.Buffer
 			if err := pageTemplate().ExecuteTemplate(&out, view, p); err != nil {
 				t.Fatal(err)
@@ -154,6 +155,26 @@ func TestCopyPickerUsesSharedFormats(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestBoardMoveColumnsUseItemWorkflow(t *testing.T) {
+	cfg := config.Default()
+	cfg.TicketStates = map[string][]datamodel.State{
+		"bug": {
+			{Key: "Ready", Category: datamodel.CategoryTodo},
+			{Key: "Verified", Category: datamodel.CategoryDone},
+		},
+	}
+	item := datamodel.ListItem{Type: datamodel.TypeTicket, Subtype: new("bug")}
+	page := pageData{Config: cfg, Board: &datamodel.BoardResult{Columns: []datamodel.BoardColumn{
+		{State: "Ready", Category: "todo", Items: []datamodel.ListItem{item}},
+		{State: "Ready", Category: "doing"},
+		{State: "Verified", Category: "done"},
+	}}}
+	page.prepare()
+	if got := page.BoardMoveColumns(item); got != "[0,2]" {
+		t.Fatalf("keyboard target columns = %s, want [0,2]", got)
 	}
 }
 

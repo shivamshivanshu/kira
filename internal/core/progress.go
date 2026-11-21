@@ -24,10 +24,10 @@ func (s *Store) ContainerProgress(cfg *datamodel.Config) (map[string]datamodel.C
 	if err != nil {
 		return nil, err
 	}
-	return allContainerProgress(ld.items)
+	return allContainerProgress(ld.cfg, ld.items)
 }
 
-func allContainerProgress(items []*datamodel.Item) (map[string]datamodel.ContainerProgress, error) {
+func allContainerProgress(cfg *datamodel.Config, items []*datamodel.Item) (map[string]datamodel.ContainerProgress, error) {
 	_, children := indexByParent(items)
 	out := make(map[string]datamodel.ContainerProgress)
 	visiting := make(map[string]bool)
@@ -51,7 +51,7 @@ func allContainerProgress(items []*datamodel.Item) (map[string]datamodel.Contain
 				p.Done += sub.Done
 			} else {
 				p.Total++
-				if isDoneState(child.Type, child.State) {
+				if itemIsDone(cfg, child) {
 					p.Done++
 				}
 			}

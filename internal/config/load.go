@@ -21,6 +21,11 @@ func Load(root string) (*datamodel.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	return ParseCurrent(data)
+}
+
+// ParseCurrent validates a current repository config read from the worktree or index.
+func ParseCurrent(data []byte) (*datamodel.Config, error) {
 	cfg, err := Parse(data)
 	if err != nil {
 		return nil, err

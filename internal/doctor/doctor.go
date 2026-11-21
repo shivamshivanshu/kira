@@ -60,7 +60,7 @@ func Run(cfg *datamodel.Config, files []File, strays []string, env Env) *Report 
 	findings = append(findings, stampByID(Collisions(items), pathByID)...)
 	findings = append(findings, stampByID(RefTypeMismatches(items, resolver), pathByID)...)
 	findings = append(findings, stampByID(RefCycles(items, resolver), pathByID)...)
-	findings = append(findings, WipOverruns(items)...)
+	findings = append(findings, WipOverruns(cfg, items)...)
 	findings = append(findings, strayFindings(strays)...)
 	findings = append(findings, legacySchemaDirFindings(env)...)
 	findings = append(findings, envFindings(env)...)

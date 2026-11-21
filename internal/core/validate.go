@@ -46,7 +46,7 @@ func newValidationCtxByID(cfg *datamodel.Config, byID map[string]*datamodel.Item
 	return &validationCtx{cfg: cfg, resolver: resolver, byID: byID, force: force}
 }
 
-func (c *validationCtx) validateItem(it *datamodel.Item) (errs, warns []error) {
+func (c *validationCtx) validateItem(orig, it *datamodel.Item) (errs, warns []error) {
 	if it.Title == "" {
 		errs = append(errs, fmt.Errorf("field %q: required, missing", datamodel.KeyTitle))
 	}
@@ -62,8 +62,8 @@ func (c *validationCtx) validateItem(it *datamodel.Item) (errs, warns []error) {
 		errs = append(errs, fmt.Errorf("field %q: expected type date, got string", datamodel.KeyDue))
 	}
 
-	wf, _ := datamodel.WorkflowOf(it.Type)
-	if _, defined := wf.StateByKey(it.State); !defined {
+	wf := workflowFor(c.cfg, it)
+	if _, defined := wf.StateByKey(it.State); !defined && !sameWorkflowState(orig, it) {
 		errs = append(errs, fmt.Errorf("field %q: %q is not a state in the %s workflow", datamodel.KeyState, it.State, it.Type))
 	}
 
@@ -76,10 +76,10 @@ func (c *validationCtx) validateItem(it *datamodel.Item) (errs, warns []error) {
 	return errs, warns
 }
 
-func (c *validationCtx) validateAssembled(it *datamodel.Item) (hard, warns []error) {
+func (c *validationCtx) validateAssembled(orig, it *datamodel.Item) (hard, warns []error) {
 	dedupSetFields(it)
 	hard = normalizeAndCheckRefs(it, c.resolver)
-	v, w := c.validateItem(it)
+	v, w := c.validateItem(orig, it)
 	return append(hard, v...), w
 }
 
@@ -135,22 +135,22 @@ func dedupStrings(xs []string) []string {
 }
 
 func (c *validationCtx) validateMutation(orig, it *datamodel.Item) (hard, warns []error) {
-	hard, warns = c.validateAssembled(it)
-	hard = append(hard, validateResolutionState(orig, it)...)
+	hard, warns = c.validateAssembled(orig, it)
+	hard = append(hard, validateResolutionState(c.cfg, orig, it)...)
 	if len(hard) == 0 {
 		hard = validateGraph(it, c.byID)
 	}
 	return hard, warns
 }
 
-func validateResolutionState(orig, it *datamodel.Item) []error {
+func validateResolutionState(cfg *datamodel.Config, orig, it *datamodel.Item) []error {
 	if it.Resolution == nil {
 		return nil
 	}
-	if orig != nil && it.State == orig.State && ptr.Equal(it.Resolution, orig.Resolution) {
+	if sameWorkflowState(orig, it) && ptr.Equal(it.Resolution, orig.Resolution) {
 		return nil
 	}
-	if cat, known := datamodel.CategoryOf(it.Type, it.State); known && cat != datamodel.CategoryDone {
+	if cat, known := cfg.ItemCategory(it); known && cat != datamodel.CategoryDone {
 		return []error{errx.User("field %q: only allowed on done-category states; %s is %s", datamodel.KeyResolution, it.State, cat).WithHint("clear it with `kira edit --field resolution=`")}
 	}
 	return nil
@@ -162,7 +162,7 @@ func (c *validationCtx) validateBuffer(build func(string) (*datamodel.Item, []er
 		if len(errs) > 0 {
 			return errs
 		}
-		hard, _ := c.validateAssembled(it)
+		hard, _ := c.validateAssembled(nil, it)
 		return hard
 	}
 }

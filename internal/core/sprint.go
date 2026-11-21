@@ -85,7 +85,7 @@ func sprintList(cfg *datamodel.Config, items []*datamodel.Item, active string) *
 		}
 		counts := bySprint[*it.Sprint]
 		counts.Total++
-		if isDoneState(it.Type, it.State) {
+		if itemIsDone(cfg, it) {
 			counts.Done++
 		}
 		bySprint[*it.Sprint] = counts
@@ -137,7 +137,7 @@ func (s *Store) SprintClose(cfg *datamodel.Config, key, moveTo string) (*datamod
 	var unfinished []*datamodel.Item
 	res := &datamodel.SprintCloseResult{Closed: key, Unfinished: []string{}}
 	for _, it := range ld.items {
-		if inSprint(it, key) && !isDoneState(it.Type, it.State) {
+		if inSprint(it, key) && !itemIsDone(cfg, it) {
 			unfinished = append(unfinished, it)
 			res.Unfinished = append(res.Unfinished, it.Number)
 		}

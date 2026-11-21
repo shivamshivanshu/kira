@@ -9,6 +9,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/showfmt"
 )
@@ -78,7 +79,7 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 		"filter":     completeVocab(g, filterNames),
 		"resolution": completeStatic(datamodel.Resolutions),
 		"subtype":    subtypes,
-		"state":      completeStatic(workflowStates()),
+		"state":      completeWorkflowStates(g),
 		"format":     completeStatic(showfmt.Names()),
 		"category":   completeStatic(categoryValues()),
 		"type":       completeStatic(datamodel.ItemTypes),
@@ -116,7 +117,7 @@ const (
 
 func completeItems(g *globalFlags, scope itemScope) completer {
 	return func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		items, ok := cachedItems(g)
+		items, _, ok := cachedItems(g)
 		if !ok {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -140,7 +141,7 @@ func completeItems(g *globalFlags, scope itemScope) completer {
 
 func completeMoveTarget(g *globalFlags) completer {
 	return func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		items, ok := cachedItems(g)
+		items, cfg, ok := cachedItems(g)
 		if !ok {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -148,7 +149,7 @@ func completeMoveTarget(g *globalFlags) completer {
 		if it == nil {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		return prefixed(core.MoveTargets(it.Type), toComplete), cobra.ShellCompDirectiveNoFileComp
+		return prefixed(core.ItemMoveTargets(cfg, it.Type, ptr.Deref(it.Subtype)), toComplete), cobra.ShellCompDirectiveNoFileComp
 	}
 }
 
@@ -168,16 +169,16 @@ func completeStatic(values []string) completer {
 	}
 }
 
-func cachedItems(g *globalFlags) ([]*datamodel.Item, bool) {
-	s, _, err := openStore(g)
+func cachedItems(g *globalFlags) ([]*datamodel.Item, *datamodel.Config, bool) {
+	s, cfg, err := openStore(g)
 	if err != nil {
-		return nil, false
+		return nil, nil, false
 	}
 	items, err := s.CachedItems()
 	if err != nil {
-		return nil, false
+		return nil, nil, false
 	}
-	return items, true
+	return items, cfg, true
 }
 
 func findCached(items []*datamodel.Item, ref string) *datamodel.Item {
@@ -237,14 +238,20 @@ func filterNames(cfg *datamodel.Config) []string {
 	return out
 }
 
-func workflowStates() []string {
+func completeWorkflowStates(g *globalFlags) completer {
+	return func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		_, cfg, _ := openStore(g)
+		return prefixed(workflowStates(cfg), toComplete), cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+func workflowStates(cfg *datamodel.Config) []string {
 	dedup := setx.NewDeduper[string]()
 	var out []string
 	for _, typ := range datamodel.ItemTypes {
-		wf, _ := datamodel.WorkflowOf(typ)
-		for _, st := range wf.States {
-			if dedup.Add(st.Key) {
-				out = append(out, st.Key)
+		for _, name := range core.WorkflowStateNames(cfg, typ) {
+			if dedup.Add(name) {
+				out = append(out, name)
 			}
 		}
 	}

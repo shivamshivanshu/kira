@@ -36,6 +36,13 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 	if len(paths) == 0 {
 		return &datamodel.ResolveResult{}, nil
 	}
+	if slices.Contains(unmerged, storage.ConfigRelPath) {
+		return nil, errx.Conflict("resolve %s before resolving ticket workflows", storage.ConfigRelPath)
+	}
+	cfg, err := s.Config()
+	if err != nil {
+		return nil, err
+	}
 
 	specs := make([]string, 0, len(paths)*3)
 	for _, p := range paths {
@@ -84,7 +91,11 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 		if interactive {
 			s.pickFields(res.Item, oursItem, theirsItem, res.Arbitrated)
 		}
-		clearStaleResolution(res.Item)
+		if err := validateMergedWorkflow(cfg, res.Item, oursItem, theirsItem); err != nil {
+			result.Skipped = append(result.Skipped, path)
+			continue
+		}
+		clearStaleResolution(cfg, res.Item)
 		rel, err := s.fs().WriteItemRaw(res.Item.ID, codec.Serialize(res.Item))
 		if err != nil {
 			return nil, err

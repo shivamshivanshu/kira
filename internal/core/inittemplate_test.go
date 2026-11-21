@@ -12,13 +12,19 @@ import (
 // so the parser checks the documented defaults as well as the active scaffold.
 func uncommentOptional(seed string) string {
 	lines := strings.Split(seed, "\n")
+	example := false
 	for i, line := range lines {
 		switch line {
 		case "# sprints:", "# git:", "# workon:", "# ui:":
 			lines[i] = strings.TrimPrefix(line, "# ")
+			example = true
 		default:
 			if strings.HasPrefix(line, "#   ") {
-				lines[i] = strings.TrimPrefix(line, "# ")
+				if example {
+					lines[i] = strings.TrimPrefix(line, "# ")
+				}
+			} else {
+				example = false
 			}
 		}
 	}

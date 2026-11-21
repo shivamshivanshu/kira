@@ -63,6 +63,14 @@ filters:
 # show the built-in defaults. Prefer the user file for personal UI settings
 # and worktree preferences. Set ui.editor and commit.subject in the user file.
 
+# Optional ticket states for bug, task, feature or support. The first state
+# is used at creation, and the last must be done and is used by Kira-Closes.
+# ticket_states:
+#   bug:
+#     - { name: Reported, category: todo }
+#     - { name: Fixing, category: doing }
+#     - { name: Verified, category: done }
+
 # Sprints are usually managed with `kira sprint create`. Each entry needs
 # a key, a name, and start and end dates in YYYY-MM-DD format.
 # sprints:

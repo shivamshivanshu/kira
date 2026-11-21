@@ -30,8 +30,15 @@ func TestApplyClosesWatermark(t *testing.T) {
 	s := eventRepo(t)
 	cfg := defaultConfigWithKIRABoard()
 	cfg.Commit.Mode = datamodel.CommitManual
+	cfg.TicketStates = map[string][]datamodel.State{
+		"bug": {
+			{Key: "Reported", Category: datamodel.CategoryTodo},
+			{Key: "Fixed", Category: datamodel.CategoryDone},
+			{Key: "Verified", Category: datamodel.CategoryDone},
+		},
+	}
 
-	created, err := s.Create(cfg, CreateOpts{Type: "ticket", Title: "closeme", NoEdit: true})
+	created, err := s.Create(cfg, CreateOpts{Type: "ticket", Subtype: "bug", Title: "closeme", NoEdit: true})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -87,6 +94,10 @@ func TestApplyClosesWatermark(t *testing.T) {
 		}
 		if len(closed) != 1 || closed[0] != created.Number {
 			t.Fatalf("want closed=[%s], got %v", created.Number, closed)
+		}
+		ticket, err := s.Show(cfg, created.ID, "")
+		if err != nil || ticket.State != "Verified" {
+			t.Fatalf("want last custom state Verified, got %+v, %v", ticket, err)
 		}
 		if wm := landedWatermark(t, s); wm != scan.LandedHead {
 			t.Fatalf("watermark = %q, want %q after a successful close", wm, scan.LandedHead)

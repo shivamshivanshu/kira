@@ -69,14 +69,45 @@ Any other version: `version: unsupported version 3 (this kira understands 1..2)`
 
 ## Item types and vocabularies
 
-Not configurable: types, states, WIP limits, and the `priority`/`subtype`/
-`resolution` lists are built in ([Concepts](03-concepts.md#workflow-states-and-categories)).
+Types, WIP limits, and the `priority`/`subtype`/`resolution` vocabularies are
+built in ([Concepts](03-concepts.md#workflow-states-and-categories)).
 An unknown type is refused:
 
 ```
 kira: "bug" is not a known type
   hint: known types: epic, ticket
 ```
+
+## `ticket_states`
+
+Override the ordered states of `bug`, `task`, `feature`, or `support` tickets
+in the repo file.
+
+```yaml
+ticket_states:
+  bug:
+    - { name: Reported, category: todo }
+    - { name: Fixing, category: doing }
+    - { name: Verified, category: done }
+```
+
+Use unique, non-empty state names within a subtype and give each state a
+category of `todo`, `doing`, or `done`. Names are case-sensitive. The first
+entry is the state on creation. The last entry must have category `done`
+and is the state used by `Kira-Closes`. Every declared state can be a move
+target. The existing blocker check and `--force` override apply to closing
+moves. The built-in workflow applies to epics and tickets without a
+configured subtype workflow.
+
+To rename a state in use, retain the old and new names temporarily, move
+the tickets, and then remove the old name. Kira still shows tickets with
+undeclared states and `kira doctor` flags them. Prefer category predicates
+such as `type = ticket AND category = todo` in filters that should span
+subtype workflows.
+
+If Git also changed the repository config during a ticket conflict, finish
+resolving the config and run `kira resolve`. Run `kira hooks install` to update
+an existing Kira merge driver before adopting custom workflows.
 
 ## `labels`, `people`
 

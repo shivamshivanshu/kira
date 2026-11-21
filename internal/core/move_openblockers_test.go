@@ -42,7 +42,7 @@ func TestBlockedQueryMatchesBlockersClosedGuard(t *testing.T) {
 				t.Errorf("query blocked = %v, want %v", got, c.wantBlocked)
 			}
 
-			hard, warns := blockersClosedGuard(subject, all, "TODO", "IN_PROGRESS", false)
+			hard, warns := blockersClosedGuard(nil, subject, all, "TODO", "IN_PROGRESS", false)
 			if gotHard := len(hard) > 0; gotHard != c.wantHard {
 				t.Errorf("guard hard-blocked = %v, want %v (hard=%v)", gotHard, c.wantHard, hard)
 			}

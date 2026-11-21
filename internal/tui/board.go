@@ -87,6 +87,7 @@ func renderBoard(t theme.Theme, ic iconSet, res *datamodel.BoardResult, width, h
 		if i == focusCol {
 			fr = focusRow
 		}
+		col.State = res.ColumnName(col)
 		blocks = append(blocks, renderColumn(t, ic, col, widths[i], height, i == focusCol, fr))
 		if i < n-1 {
 			blocks = append(blocks, sep)

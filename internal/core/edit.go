@@ -13,12 +13,16 @@ import (
 	"github.com/shivamshivanshu/kira/internal/editorx"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/id"
-	"github.com/shivamshivanshu/kira/internal/setx"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 type FieldEdit struct {
 	Key   string
 	Value string
+}
+
+func editsField(fields []FieldEdit, key string) bool {
+	return slices.ContainsFunc(fields, func(field FieldEdit) bool { return field.Key == key })
 }
 
 type EditOpts struct {
@@ -93,7 +97,7 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 	var warns []error
 	finish := func(it *datamodel.Item) error {
 		restoreImmutable(it, orig)
-		guardErrs, guardWarns := applyEditGuards(orig, it, opts.Force, resolver, items)
+		guardErrs, guardWarns := applyEditGuards(cfg, orig, it, opts.Force, opts.Fields, resolver, items)
 		if len(guardErrs) > 0 {
 			return errx.Invalid(invalidItemPrefix, guardErrs)
 		}
@@ -157,7 +161,7 @@ func (b *Batch) EditFields(ref string, fields []FieldEdit, force bool) (*datamod
 		if errs := b.store.applyFieldEdits(b.cfg, it, fields); len(errs) > 0 {
 			return errs, nil
 		}
-		hard, warns = applyEditGuards(orig, it, force, resolver, items)
+		hard, warns = applyEditGuards(b.cfg, orig, it, force, fields, resolver, items)
 		changed = datamodel.ChangedFields(orig, it)
 		return hard, warns
 	}
@@ -191,7 +195,7 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 			return errs
 		}
 		restoreImmutable(it, orig)
-		if hard, _ := applyEditGuards(orig, it, opts.Force, resolver, items); len(hard) > 0 {
+		if hard, _ := applyEditGuards(cfg, orig, it, opts.Force, nil, resolver, items); len(hard) > 0 {
 			return hard
 		}
 		hard, _ := vctx.validateMutation(orig, it)
@@ -200,23 +204,24 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 	return content, snapshot, err
 }
 
-func applyEditGuards(orig, it *datamodel.Item, force bool, resolver *id.Resolver, items []*datamodel.Item) (hard, warns []error) {
+func applyEditGuards(cfg *datamodel.Config, orig, it *datamodel.Item, force bool, fields []FieldEdit, resolver *id.Resolver, items []*datamodel.Item) (hard, warns []error) {
 	if hard := normalizeAndCheckRefs(it, resolver); len(hard) > 0 {
 		return hard, nil
 	}
 	if it.State == orig.State {
-		return nil, nil
+		previousCategory, _ := cfg.ItemCategory(orig)
+		currentCategory, _ := cfg.ItemCategory(it)
+		if previousCategory == currentCategory {
+			return nil, nil
+		}
 	}
-	edited := setx.ToSet(datamodel.ChangedFields(orig, it))
+	resolutionEdited := !ptr.Equal(orig.Resolution, it.Resolution) ||
+		(workflowFor(cfg, it).Custom && editsField(fields, datamodel.KeyResolution))
 	mo := MoveOpts{Force: force}
-	if edited[datamodel.KeyResolution] && it.Resolution != nil {
-		mo.Resolution = *it.Resolution
+	if resolutionEdited {
+		mo.Resolution = ptr.Deref(it.Resolution)
 	}
-	h, w, wipWarns := applyStateChange(it, orig.State, mo, edited, items)
-	if len(h) > 0 {
-		return h, nil
-	}
-	return nil, append(w, wipWarns...)
+	return applyStateChange(cfg, orig, it, mo, resolutionEdited, items)
 }
 
 func parseFullItem(content string) (*datamodel.Item, []error) {

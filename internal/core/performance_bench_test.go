@@ -22,7 +22,7 @@ func BenchmarkContainerProgress(b *testing.B) {
 			items[n] = &datamodel.Item{ID: "ticket", Number: "KIRA-99999", Type: datamodel.TypeTicket, State: "DONE", Parent: new(items[n-1].ID)}
 			b.ReportAllocs()
 			for b.Loop() {
-				p, err := allContainerProgress(items)
+				p, err := allContainerProgress(nil, items)
 				if err != nil {
 					b.Fatal(err)
 				}

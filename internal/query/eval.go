@@ -322,10 +322,10 @@ func (c *compiler) blockedPred() Predicate {
 		c.byID = datamodel.IndexByID(c.opts.Items)
 	}
 	byID := c.byID
-	return func(it *datamodel.Item, _ *datamodel.Config) bool {
+	return func(it *datamodel.Item, cfg *datamodel.Config) bool {
 		for _, id := range it.BlockedBy {
 			if blocker := byID[id]; blocker != nil {
-				if cat, known := datamodel.CategoryOf(blocker.Type, blocker.State); known && cat != datamodel.CategoryDone {
+				if open, _ := blockerStatus(cfg, blocker); open {
 					return true
 				}
 			}
@@ -334,9 +334,8 @@ func (c *compiler) blockedPred() Predicate {
 	}
 }
 
-// SkippedBlocker is a blocked_by reference whose open/closed status could not
-// be determined — either it resolves to no known item, or the item's
-// type/state has no configured category. Both are treated as satisfied.
+// SkippedBlocker is a blocked_by reference that is missing or points to an
+// unknown item type.
 type SkippedBlocker struct {
 	ID      string
 	Blocker *datamodel.Item // nil if the ID resolves to no known item
@@ -344,33 +343,37 @@ type SkippedBlocker struct {
 }
 
 // OpenBlockers classifies it.BlockedBy against byID (a lookup of ULID to
-// item): open holds blockers whose category is known and not Done; skipped
-// holds blockers that could not be evaluated (and so are treated as
-// satisfied, same as a closed blocker).
-func OpenBlockers(it *datamodel.Item, byID map[string]*datamodel.Item) (open []*datamodel.Item, skipped []SkippedBlocker) {
+// item): open includes items with an unknown state in a known workflow type,
+// since removing their state definition does not complete the dependency.
+func OpenBlockers(cfg *datamodel.Config, it *datamodel.Item, byID map[string]*datamodel.Item) (open []*datamodel.Item, skipped []SkippedBlocker) {
 	for _, b := range it.BlockedBy {
 		blocker, ok := byID[b]
 		if !ok {
 			skipped = append(skipped, SkippedBlocker{ID: b, Reason: "resolves to no item"})
 			continue
 		}
-		cat, known := datamodel.CategoryOf(blocker.Type, blocker.State)
-		if !known {
-			skipped = append(skipped, SkippedBlocker{ID: b, Blocker: blocker, Reason: "has no known state category"})
-			continue
-		}
-		if cat != datamodel.CategoryDone {
+		active, evaluated := blockerStatus(cfg, blocker)
+		if active {
 			open = append(open, blocker)
+		} else if !evaluated {
+			skipped = append(skipped, SkippedBlocker{ID: b, Blocker: blocker, Reason: "has no known state category"})
 		}
 	}
 	return open, skipped
 }
 
+func blockerStatus(cfg *datamodel.Config, blocker *datamodel.Item) (open, evaluated bool) {
+	if category, known := cfg.ItemCategory(blocker); known {
+		return category != datamodel.CategoryDone, true
+	}
+	return blocker.Type == datamodel.TypeTicket || blocker.Type == datamodel.TypeEpic, false
+}
+
 var accessors = map[string]func(*datamodel.Item, *datamodel.Config) string{
 	fieldState: func(it *datamodel.Item, _ *datamodel.Config) string { return it.State },
 	fieldType:  func(it *datamodel.Item, _ *datamodel.Config) string { return it.Type },
-	fieldCategory: func(it *datamodel.Item, _ *datamodel.Config) string {
-		cat, _ := datamodel.CategoryOf(it.Type, it.State)
+	fieldCategory: func(it *datamodel.Item, cfg *datamodel.Config) string {
+		cat, _ := cfg.ItemCategory(it)
 		return string(cat)
 	},
 	fieldOwner:      func(it *datamodel.Item, _ *datamodel.Config) string { return ptr.Deref(it.Owner) },

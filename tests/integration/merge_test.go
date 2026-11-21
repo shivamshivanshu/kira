@@ -200,7 +200,7 @@ func TestMergeFileManualPolicyConflictExit(t *testing.T) {
 	ours := writeScratch(t, root, "mf_ours", "line1\nOURS\nline3\n")
 	theirs := writeScratch(t, root, "mf_theirs", "line1\nTHEIRS\nline3\n")
 
-	_, err := core.MergeFile(repo, base, ours, theirs)
+	_, err := core.MergeFile(repo, base, ours, theirs, core.MergeSides{})
 	if err == nil {
 		t.Fatal("manual policy with an overlapping edit must return a conflict error")
 	}
@@ -225,7 +225,7 @@ func TestMergeFileManualPolicyCleanTextMerge(t *testing.T) {
 	ours := writeScratch(t, root, "mf_ours", "OURS\nb\nc\n")
 	theirs := writeScratch(t, root, "mf_theirs", "a\nb\nTHEIRS\n")
 
-	if _, err := core.MergeFile(repo, base, ours, theirs); err != nil {
+	if _, err := core.MergeFile(repo, base, ours, theirs, core.MergeSides{}); err != nil {
 		t.Fatalf("non-overlapping manual merge must succeed cleanly: %v", err)
 	}
 	got, _ := os.ReadFile(ours)

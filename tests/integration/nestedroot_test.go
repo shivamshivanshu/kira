@@ -141,7 +141,7 @@ func TestNestedRootPreCommitValidatesStagedItems(t *testing.T) {
 	t.Parallel()
 	gitRoot := initGitRepo(t)
 	sub := nestedStoreRoot(t, gitRoot)
-	s, cfg := discoverStore(t, sub)
+	s, _ := discoverStore(t, sub)
 
 	bad := filepath.Join(sub, ".kira", "tickets", "broken.md")
 	if err := os.WriteFile(bad, []byte("not a kira item\n"), 0o644); err != nil {
@@ -151,7 +151,7 @@ func TestNestedRootPreCommitValidatesStagedItems(t *testing.T) {
 		t.Fatalf("git add: %v", err)
 	}
 
-	err := s.ValidateStaged(cfg)
+	err := s.ValidateStaged()
 	if err == nil {
 		t.Fatal("ValidateStaged must reject an unparseable staged item in a nested store")
 	}

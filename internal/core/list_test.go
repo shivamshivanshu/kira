@@ -14,7 +14,7 @@ func TestListItemOfCarriesPriorityAndResolution(t *testing.T) {
 		ID: "i1", Number: "KIRA-1", Type: datamodel.TypeTicket, State: "WONT_DO",
 		Priority: &priority, Resolution: &resolution,
 	}
-	li := listItemOf(it, nil)
+	li := listItemOf(nil, it, nil)
 	if li.Priority == nil || *li.Priority != priority {
 		t.Errorf("priority not carried into ListItem: %v", li.Priority)
 	}

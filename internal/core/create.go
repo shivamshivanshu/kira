@@ -167,8 +167,8 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 	}
 
 	sys := newSystemFields(ld.snap, boardKey, opts.Type, wf.Initial)
-	finalItem := itemFromDraft(d, sys)
-	if errs := s.applyFieldEdits(cfg, finalItem, opts.Fields); len(errs) > 0 {
+	finalItem, errs, stateWarnings := s.buildCreateItem(cfg, opts, d, sys, ld.items)
+	if len(errs) > 0 {
 		return nil, errx.Invalid(invalidItemPrefix, errs)
 	}
 	hard, warns := newValidationCtx(cfg, ld.items, ld.resolver, opts.Force).validateMutation(nil, finalItem)
@@ -196,7 +196,7 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 		Type:       finalItem.Type,
 		Title:      finalItem.Title,
 		State:      finalItem.State,
-		Category:   categoryString(finalItem.Type, finalItem.State),
+		Category:   itemCategoryString(cfg, finalItem),
 		Owner:      finalItem.Owner,
 		Labels:     nonNil(finalItem.Labels),
 		Parent:     finalItem.Parent,
@@ -205,7 +205,7 @@ func (s *Store) createLocked(cfg *datamodel.Config, opts CreateOpts) (*datamodel
 		Path:       path,
 		// A file that would not parse is why a number can look skipped; say so
 		// here rather than only on list.
-		Warnings: append(literalWarnings(ld.warnings), warningsFromErrors(warns)...),
+		Warnings: append(literalWarnings(ld.warnings), warningsFromErrors(append(warns, stateWarnings...))...),
 	}
 	if finalItem.Parent != nil {
 		if num, ok := parentNumberMap(ld.items)[*finalItem.Parent]; ok {
@@ -243,7 +243,8 @@ func (s *Store) draftForCreate(cfg *datamodel.Config, opts CreateOpts, boardKey,
 			if perr != nil {
 				return nil, []error{perr}
 			}
-			return itemFromDraft(d, sys), nil
+			item, errs, _ := s.buildCreateItem(cfg, opts, d, sys, ld.items)
+			return item, errs
 		}))
 		if err != nil {
 			return draft{}, err
@@ -259,6 +260,22 @@ type systemFields struct {
 	typ     string
 	state   string
 	created string
+}
+
+func (s *Store) buildCreateItem(cfg *datamodel.Config, opts CreateOpts, d draft, sys systemFields, items []*datamodel.Item) (*datamodel.Item, []error, []error) {
+	item := itemFromDraft(d, sys)
+	if errs := s.applyFieldEdits(cfg, item, opts.Fields); len(errs) > 0 {
+		return nil, errs, nil
+	}
+	workflow := workflowFor(cfg, item)
+	if !workflow.Custom {
+		return item, nil, nil
+	}
+	if !editsField(opts.Fields, datamodel.KeyState) {
+		item.State = workflow.Initial
+	}
+	hard, warns := applyStateChange(cfg, nil, item, MoveOpts{Force: opts.Force, Resolution: ptr.Deref(item.Resolution)}, editsField(opts.Fields, datamodel.KeyResolution), items)
+	return item, hard, warns
 }
 
 func newSystemFields(snap id.Snapshot, boardKey, typ, state string) systemFields {

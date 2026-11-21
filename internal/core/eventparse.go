@@ -151,7 +151,12 @@ func frontmatterValues(lines []string) map[string]string {
 		if !ok || !trackedEventFields.tracked[key] {
 			continue
 		}
-		if v := nonEmptyList(codec.DecodeScalar(raw)); v != "" {
+		v := codec.DecodeScalar(raw)
+		switch key {
+		case datamodel.KeyAliases, datamodel.KeyLabels, datamodel.KeyBlockedBy:
+			v = nonEmptyList(v)
+		}
+		if v != "" {
 			values[key] = v
 		}
 	}

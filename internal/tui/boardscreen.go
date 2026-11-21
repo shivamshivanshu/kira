@@ -7,6 +7,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/showfmt"
 )
 
@@ -164,19 +165,15 @@ func (s *boardScreen) moveCard(m *model, dir int) tea.Cmd {
 		return nil
 	}
 	cols := s.board.columns()
-	target := s.board.col + dir
-	if target < 0 || target >= len(cols) {
-		return nil
-	}
-	to := cols[target].State
-	if !core.StateDeclared(s.board.result.Type, to) {
-		s.setNotice(card.Number + ": " + to + " is not a state in the " + s.board.result.Type + " workflow")
-		return nil
-	}
 	if m.store == nil || m.cfg == nil {
 		return nil
 	}
-	return m.request(boardMoveCmd(m.store, m.cfg, card.ID, to))
+	for target := s.board.col + dir; target >= 0 && target < len(cols); target += dir {
+		if core.BoardColumnAllowed(m.cfg, s.board.result.Type, ptr.Deref(card.Subtype), cols[target]) {
+			return m.request(boardMoveCmd(m.store, m.cfg, card.ID, cols[target].State))
+		}
+	}
+	return nil
 }
 
 func (s *boardScreen) applyMove(m *model, msg boardMovedMsg) {

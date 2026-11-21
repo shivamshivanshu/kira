@@ -9,6 +9,7 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/showfmt"
 	"github.com/shivamshivanshu/kira/internal/timex"
 )
@@ -40,9 +41,10 @@ type pageData struct {
 }
 
 type pageCache struct {
-	query    url.Values
-	names    map[string]string
-	selected map[string]bool
+	query       url.Values
+	names       map[string]string
+	selected    map[string]bool
+	moveColumns map[boardWorkflow]string
 }
 
 func (p *pageData) prepare() {
@@ -61,6 +63,9 @@ func (p *pageData) prepare() {
 	}
 	for _, id := range p.Form["ids"] {
 		c.selected[id] = true
+	}
+	if p.Board != nil {
+		c.moveColumns = boardMoveColumns(p.Config, p.Board.Columns)
 	}
 	p.cache = c
 }
@@ -102,6 +107,33 @@ func (p pageData) CopyValues(id, number, title string) string {
 	}
 	encoded, _ := json.Marshal(values)
 	return string(encoded)
+}
+
+type boardWorkflow struct{ typ, subtype string }
+
+func boardMoveColumns(cfg *datamodel.Config, columns []datamodel.BoardColumn) map[boardWorkflow]string {
+	targets := make(map[boardWorkflow]string)
+	for _, column := range columns {
+		for _, item := range column.Items {
+			key := boardWorkflow{item.Type, ptr.Deref(item.Subtype)}
+			if _, exists := targets[key]; exists {
+				continue
+			}
+			var allowed []int
+			for i, target := range columns {
+				if core.BoardColumnAllowed(cfg, key.typ, key.subtype, target) {
+					allowed = append(allowed, i)
+				}
+			}
+			encoded, _ := json.Marshal(allowed)
+			targets[key] = string(encoded)
+		}
+	}
+	return targets
+}
+
+func (p pageData) BoardMoveColumns(item datamodel.ListItem) string {
+	return p.cache.moveColumns[boardWorkflow{item.Type, ptr.Deref(item.Subtype)}]
 }
 
 func (p pageData) CopyLabels() []copyOption {
@@ -203,10 +235,7 @@ func (p pageData) StateOptions() []string {
 			if p.Type != "" && typ != p.Type {
 				continue
 			}
-			workflow, _ := datamodel.WorkflowOf(typ)
-			for _, state := range workflow.States {
-				states = append(states, state.Key)
-			}
+			states = append(states, core.WorkflowStateNames(p.Config, typ)...)
 		}
 	}
 	return sortedOptions(states)
@@ -223,13 +252,10 @@ func (pageData) Resolutions() []string { return datamodel.Resolutions }
 // WorkflowStates lists every type's states in ItemTypes order, so a state two
 // types share (DONE) appears once per type. The duplicate is kept so the bulk
 // page's datalist markup stays as it was when workflows came from config.
-func (pageData) WorkflowStates() []string {
+func (p pageData) WorkflowStates() []string {
 	var states []string
 	for _, typ := range datamodel.ItemTypes {
-		workflow, _ := datamodel.WorkflowOf(typ)
-		for _, state := range workflow.States {
-			states = append(states, state.Key)
-		}
+		states = append(states, core.WorkflowStateNames(p.Config, typ)...)
 	}
 	return states
 }

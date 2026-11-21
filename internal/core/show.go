@@ -152,13 +152,13 @@ func historyTailView(events []datamodel.Event) []datamodel.HistoryEvent {
 // These fields depend on the whole loaded set, not on the item alone, which is
 // what separates this from showResultOf.
 func crossReferencedShowResultOf(ld *loaded, it *datamodel.Item, ulid string) datamodel.ShowResult {
-	res := showResultOf(it)
+	res := showResultOf(ld.cfg, it)
 	res.Blocks = blocksOf(ld.items, ulid)
 	numberReferences(&res, ld.items)
 	return res
 }
 
-func showResultOf(it *datamodel.Item) datamodel.ShowResult {
+func showResultOf(cfg *datamodel.Config, it *datamodel.Item) datamodel.ShowResult {
 	comments := codec.ParseComments(it.Body)
 	views := make([]datamodel.CommentView, len(comments))
 	for i, c := range comments {
@@ -173,7 +173,7 @@ func showResultOf(it *datamodel.Item) datamodel.ShowResult {
 		Subtype:       it.Subtype,
 		Title:         it.Title,
 		State:         it.State,
-		Category:      categoryString(it.Type, it.State),
+		Category:      itemCategoryString(cfg, it),
 		Resolution:    it.Resolution,
 		Priority:      it.Priority,
 		Rank:          it.Rank,

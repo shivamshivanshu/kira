@@ -8,16 +8,17 @@ type Config struct {
 	Labels  Vocab   `yaml:"labels"`
 	People  People  `yaml:"people"`
 
-	Filters  map[string]string `yaml:"filters"`
-	Boards   []Board           `yaml:"boards,omitempty"`
-	Sprints  []Sprint          `yaml:"sprints"`
-	Commit   Commit            `yaml:"commit"`
-	Merge    Merge             `yaml:"merge"`
-	Sync     Sync              `yaml:"sync"`
-	Workon   Workon            `yaml:"workon"`
-	UI       UI                `yaml:"ui"`
-	Git      Git               `yaml:"git"`
-	Estimate Estimate          `yaml:"estimate"`
+	Filters      map[string]string  `yaml:"filters"`
+	TicketStates map[string][]State `yaml:"ticket_states,omitempty"`
+	Boards       []Board            `yaml:"boards,omitempty"`
+	Sprints      []Sprint           `yaml:"sprints"`
+	Commit       Commit             `yaml:"commit"`
+	Merge        Merge              `yaml:"merge"`
+	Sync         Sync               `yaml:"sync"`
+	Workon       Workon             `yaml:"workon"`
+	UI           UI                 `yaml:"ui"`
+	Git          Git                `yaml:"git"`
+	Estimate     Estimate           `yaml:"estimate"`
 
 	UserCommitSubject string     `yaml:"-"`
 	UIProvenance      Provenance `yaml:"-"`

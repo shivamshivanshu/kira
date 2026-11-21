@@ -135,7 +135,7 @@ func TestValidateItemVocabAndFields(t *testing.T) {
 			}
 			it := base
 			tc.mutate(&it)
-			errs, warns := newValidationCtx(cfg, nil, nil, tc.force).validateItem(&it)
+			errs, warns := newValidationCtx(cfg, nil, nil, tc.force).validateItem(nil, &it)
 			if gotErr := len(errs) > 0; gotErr != tc.wantErr {
 				t.Errorf("errs = %v, wantErr = %v", errs, tc.wantErr)
 			}
@@ -169,20 +169,20 @@ func TestValidateResolutionState(t *testing.T) {
 	stale := &datamodel.Item{Type: datamodel.TypeTicket, State: "TODO", Resolution: new("done")}
 	done := &datamodel.Item{Type: datamodel.TypeTicket, State: "WONT_DO", Resolution: new("dropped")}
 
-	if errs := validateResolutionState(stale, stale); len(errs) != 0 {
+	if errs := validateResolutionState(nil, stale, stale); len(errs) != 0 {
 		t.Errorf("untouched stale item must be grandfathered, got %v", errs)
 	}
 	titleEdit := *stale
 	titleEdit.Title = "renamed"
-	if errs := validateResolutionState(stale, &titleEdit); len(errs) != 0 {
+	if errs := validateResolutionState(nil, stale, &titleEdit); len(errs) != 0 {
 		t.Errorf("edit not touching state/resolution must be grandfathered, got %v", errs)
 	}
-	if errs := validateResolutionState(nil, stale); len(errs) != 1 {
+	if errs := validateResolutionState(nil, nil, stale); len(errs) != 1 {
 		t.Errorf("newly created bad shape must be rejected, got %v", errs)
 	}
 	reEdit := *stale
 	reEdit.Resolution = new("duplicate")
-	errs := validateResolutionState(stale, &reEdit)
+	errs := validateResolutionState(nil, stale, &reEdit)
 	if len(errs) != 1 || !strings.Contains(errs[0].Error(), "done-category") {
 		t.Fatalf("re-writing resolution on a non-done state must be rejected, got %v", errs)
 	}
@@ -190,7 +190,7 @@ func TestValidateResolutionState(t *testing.T) {
 	if !errors.As(errs[0], &e) || !strings.Contains(e.Hint, "resolution=") {
 		t.Fatalf("rejection must hint the repair, got %v", errs[0])
 	}
-	if errs := validateResolutionState(stale, done); len(errs) != 0 {
+	if errs := validateResolutionState(nil, stale, done); len(errs) != 0 {
 		t.Errorf("resolution on a done state is valid, got %v", errs)
 	}
 }

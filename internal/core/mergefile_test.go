@@ -85,7 +85,7 @@ func TestMergeFileParseableCleanMerge(t *testing.T) {
 	writeItemFile(t, oursPath, &ours)
 	writeItemFile(t, theirsPath, &theirs)
 
-	res, err := MergeFile(repo, basePath, oursPath, theirsPath)
+	res, err := MergeFile(repo, basePath, oursPath, theirsPath, MergeSides{})
 	if err != nil {
 		t.Fatalf("MergeFile: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestMergeFileHonoursGitPrefixForNestedRoot(t *testing.T) {
 	writeItemFile(t, oursPath, &ours)
 	writeItemFile(t, theirsPath, &theirs)
 
-	res, err := MergeFile(repo, basePath, oursPath, theirsPath)
+	res, err := MergeFile(repo, basePath, oursPath, theirsPath, MergeSides{})
 	if err != nil {
 		t.Fatalf("MergeFile: %v (want it to find the nested store via GIT_PREFIX, matching a real merge driver invocation)", err)
 	}
@@ -148,7 +148,7 @@ func TestMergeFileParseablePerFieldConflict(t *testing.T) {
 	writeItemFile(t, oursPath, &ours)
 	writeItemFile(t, theirsPath, &theirs)
 
-	res, err := MergeFile(repo, basePath, oursPath, theirsPath)
+	res, err := MergeFile(repo, basePath, oursPath, theirsPath, MergeSides{})
 	if err != nil {
 		t.Fatalf("MergeFile: %v", err)
 	}

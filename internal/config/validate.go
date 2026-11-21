@@ -45,6 +45,9 @@ func Validate(c *datamodel.Config) error {
 	if err := validateWorkonSection(c.Workon); err != nil {
 		return err
 	}
+	if err := validateTicketStates(c.TicketStates); err != nil {
+		return err
+	}
 	for i, p := range c.People.Known {
 		if p.Name == "" {
 			return errx.User("config: people.known[%d].name: required", i)

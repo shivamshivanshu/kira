@@ -54,15 +54,19 @@ not items — see [Limitations](09-limitations-and-roadmap.md).
 
 ## Workflow, states and categories
 
-Each type has a fixed state set:
+These are the built-in workflows:
 
 | Type | States (category) | Initial |
 | --- | --- | --- |
 | `ticket` | `TODO` (todo), `IN_PROGRESS` (doing, WIP 3), `REVIEW` (doing, WIP 2), `DONE` (done), `WONT_DO` (done) | `TODO` |
 | `epic` | `PLANNED` (todo), `ACTIVE` (doing), `DONE` (done) | `PLANNED` |
 
-`state` is a plain enum: any state may move to any other state of the type,
-in either direction. A state outside the set is refused:
+Repositories can supply a different state list for a built-in ticket subtype.
+The first configured state is the initial state and the last is the automatic
+close target. See the [config reference](05-configuration-reference.md#ticket_states).
+
+An item may move between any states declared for its workflow, in either
+direction. A state outside the set is refused:
 
 ```console
 $ kira move DEMO-5 SHIPPED

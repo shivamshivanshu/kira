@@ -21,6 +21,7 @@
   {{template "csrf" .}}
   <input type="hidden" name="id">
   <input type="hidden" name="state">
+  <input type="hidden" name="category">
 </form>
 {{if .Config}}
 <datalist id="workflow-states">{{range .WorkflowStates}}<option value="{{.}}">{{end}}</datalist>

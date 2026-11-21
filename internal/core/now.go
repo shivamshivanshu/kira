@@ -42,7 +42,7 @@ func (s *Store) now(cfg *datamodel.Config, ld *loaded) (*datamodel.NowResult, er
 	}
 	commits, _ := s.repo().RevListSince(rev, sinceExclusive(since))
 
-	category := categoryString(it.Type, it.State)
+	category := itemCategoryString(ld.cfg, it)
 	return &datamodel.NowResult{
 		ID:         it.ID,
 		Number:     it.Number,

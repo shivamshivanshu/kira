@@ -3,8 +3,11 @@ package core
 import (
 	"fmt"
 	"regexp"
+	"slices"
+	"sync"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
+	"github.com/shivamshivanshu/kira/internal/config"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
@@ -76,14 +79,33 @@ func resolveNumber(items []*datamodel.Item, resolver *id.Resolver, ref string) (
 	return "", false
 }
 
-func (s *Store) ValidateStaged(cfg *datamodel.Config) error {
+func (s *Store) ValidateStaged() error {
 	if err := s.requireRepo(); err != nil {
 		return err
 	}
-	paths, err := s.repo().StagedPaths()
+	repo := s.repo()
+	paths, err := repo.StagedPaths()
 	if err != nil {
 		return errx.User("%v", err)
 	}
+	if !slices.ContainsFunc(paths, func(path string) bool {
+		return path == storage.ConfigRelPath || storage.UnderTicketsDir(path)
+	}) {
+		return nil
+	}
+	configData, err := repo.ShowStaged(storage.ConfigRelPath)
+	if err != nil {
+		return errx.User("reading staged %s: %v", storage.ConfigRelPath, err)
+	}
+	cfg, err := config.ParseCurrent([]byte(configData))
+	if err != nil {
+		return err
+	}
+	head := sync.OnceValue(func() string {
+		revision, _ := repo.ResolveTreeish("HEAD")
+		return revision
+	})
+	validation := newValidationCtx(cfg, nil, nil, false)
 	var problems []error
 	for _, p := range paths {
 		if storage.UnderTicketsDir(p) && !storage.IsItemPath(p) {
@@ -93,7 +115,7 @@ func (s *Store) ValidateStaged(cfg *datamodel.Config) error {
 		if !storage.IsItemPath(p) {
 			continue
 		}
-		content, err := s.repo().ShowStaged(p)
+		content, err := repo.ShowStaged(p)
 		if err != nil {
 			continue
 		}
@@ -102,7 +124,11 @@ func (s *Store) ValidateStaged(cfg *datamodel.Config) error {
 			problems = append(problems, fmt.Errorf("%s: %w", p, err))
 			continue
 		}
-		errs, _ := newValidationCtx(cfg, nil, nil, false).validateItem(it)
+		var previous *datamodel.Item
+		if _, declared := workflowFor(cfg, it).StateByKey(it.State); !declared {
+			previous = priorStagedItem(repo, head(), p, it.ID)
+		}
+		errs, _ := validation.validateItem(previous, it)
 		for _, e := range errs {
 			problems = append(problems, fmt.Errorf("%s: %w", p, e))
 		}
@@ -111,4 +137,19 @@ func (s *Store) ValidateStaged(cfg *datamodel.Config) error {
 		return errx.Invalid("invalid items", problems)
 	}
 	return nil
+}
+
+func priorStagedItem(repo gitx.Repo, head, path, id string) *datamodel.Item {
+	if head == "" {
+		return nil
+	}
+	data, err := repo.OutputRaw("cat-file", "blob", gitx.RevPath(head, path))
+	if err != nil {
+		return nil
+	}
+	item, err := codec.Parse(data)
+	if err != nil || item.ID != id {
+		return nil
+	}
+	return item
 }

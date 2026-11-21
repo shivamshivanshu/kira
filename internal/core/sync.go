@@ -28,6 +28,7 @@ func (s *Store) Sync(cfg *datamodel.Config, opts SyncOpts) (*syncx.Report, error
 	}
 	repo := s.repo()
 	report := &syncx.Report{}
+	push := opts.Push || cfg.Sync.Push
 
 	if e := s.prepareTree(repo, opts, report); e != nil {
 		return report, e
@@ -35,6 +36,11 @@ func (s *Store) Sync(cfg *datamodel.Config, opts SyncOpts) (*syncx.Report, error
 
 	if e := s.pullRebase(cfg, repo, opts, report); e != nil {
 		return report, e
+	}
+	cfg, err := s.Config()
+	if err != nil {
+		report.Add("reconcile", syncx.StepFailed, err.Error())
+		return report, err
 	}
 
 	rec, e := s.Reconcile(cfg)
@@ -54,7 +60,7 @@ func (s *Store) Sync(cfg *datamodel.Config, opts SyncOpts) (*syncx.Report, error
 		report.Steps = append(report.Steps, s.syncCloses(cfg))
 	}
 
-	if opts.Push || cfg.Sync.Push {
+	if push {
 		if e := repo.Push(opts.Remote); e != nil {
 			report.Add("push", syncx.StepFailed, e.Error())
 			return report, errx.User("%v", e)

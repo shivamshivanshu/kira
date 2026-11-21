@@ -8,12 +8,13 @@ import (
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/id"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 )
 
 func Check(cfg *datamodel.Config, resolver *id.Resolver, it *datamodel.Item) []Finding {
 	var out []Finding
-	out = append(out, stateFindings(it)...)
-	out = append(out, resolutionFindings(it)...)
+	out = append(out, stateFindings(cfg, it)...)
+	out = append(out, resolutionFindings(cfg, it)...)
 	out = append(out, vocabFindings(cfg, it)...)
 	out = append(out, scalarFindings(cfg, it)...)
 	out = append(out, boardFindings(cfg, it)...)
@@ -39,8 +40,8 @@ func boardFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
 	}}
 }
 
-func stateFindings(it *datamodel.Item) []Finding {
-	wf, _ := datamodel.WorkflowOf(it.Type)
+func stateFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
+	wf, _ := cfg.ItemWorkflow(it.Type, ptr.Deref(it.Subtype))
 	for _, st := range wf.States {
 		if st.Key == it.State {
 			return nil
@@ -50,8 +51,8 @@ func stateFindings(it *datamodel.Item) []Finding {
 		Message: fmt.Sprintf("%q is not a state in the %s workflow", it.State, it.Type)}}
 }
 
-func resolutionFindings(it *datamodel.Item) []Finding {
-	wf, _ := datamodel.WorkflowOf(it.Type)
+func resolutionFindings(cfg *datamodel.Config, it *datamodel.Item) []Finding {
+	wf, _ := cfg.ItemWorkflow(it.Type, ptr.Deref(it.Subtype))
 	for _, st := range wf.States {
 		if st.Key != it.State {
 			continue

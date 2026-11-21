@@ -1,7 +1,6 @@
 # The blockers-closed guard gates every move into a done-category state on each
 # blocked_by target being done itself: refuse by default, --force downgrades to
-# a warning, and an undeterminable blocker degrades to warn+pass rather than
-# bricking the move.
+# a warning, and a blocker in an unknown state stays open.
 env GIT_CONFIG_GLOBAL=/dev/null
 env GIT_CONFIG_SYSTEM=/dev/null
 env EDITOR=true
@@ -29,14 +28,14 @@ stderr 'blocked by open items'
 exec kira move KIRA-1 DONE --force
 stderr 'forced past blocker guard'
 
-# a blocker in a state the workflow no longer declares (no known state
-# category) cannot be evaluated: warn and pass rather than brick the move on
-# missing data. It stays type ticket (CORE-43 rejects a blocked_by target of
-# the wrong entity type on write), just with a state config.yaml doesn't list.
+# A blocker in a retired state stays unresolved until it is moved or the
+# caller explicitly overrides the guard.
 cp legacy-state.md .kira/tickets/01HXAGA0000000000000000000.md
 exec kira link KIRA-3 --blocked-by KIRA-77
-exec kira move KIRA-3 DONE
-stderr 'no known state category'
+! exec kira move KIRA-3 DONE
+stderr 'blocked by open items: KIRA-77'
+exec kira move KIRA-3 DONE --force
+stderr 'forced past blocker guard'
 
 -- config.yaml --
 version: 2

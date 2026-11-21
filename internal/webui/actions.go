@@ -125,7 +125,10 @@ func (s *server) mutate(cfg *datamodel.Config, action string, f url.Values) (mes
 		res, err := s.store.Edit(cfg, selected, opts)
 		return mutationMessage(res, err, "Updated", selected)
 	case "move":
-		res, err := s.store.Move(cfg, selected, f.Get("state"), core.MoveOpts{Resolution: f.Get("resolution")})
+		res, err := s.store.Move(cfg, selected, f.Get("state"), core.MoveOpts{
+			Resolution: f.Get("resolution"),
+			Category:   datamodel.Category(f.Get("category")),
+		})
 		if err != nil {
 			return "", selected, err
 		}

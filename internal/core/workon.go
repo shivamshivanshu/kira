@@ -58,19 +58,34 @@ func (s *Store) Workon(cfg *datamodel.Config, ref string, opts WorkonOpts) (*dat
 	}
 
 	if !opts.NoMove {
-		if to, ok := doingTarget(it); ok {
-			res, err := target.Move(cfg, ref, to, MoveOpts{})
-			var msgs []string
-			if err != nil {
-				msgs = []string{fmt.Sprintf("workon: skipped doing-transition: %v", err)}
-			} else {
-				result.Moved, result.From, result.To = true, res.From, res.To
-				msgs = res.Warnings
-			}
-			result.Warnings = literalWarnings(msgs)
+		if err := target.moveWorkonTicket(result); err != nil {
+			result.Warnings = literalWarnings([]string{fmt.Sprintf("workon: skipped doing-transition: %v", err)})
 		}
 	}
 	return result, nil
+}
+
+func (s *Store) moveWorkonTicket(result *datamodel.WorkonResult) error {
+	cfg, err := s.Config()
+	if err != nil {
+		return err
+	}
+	item, _, _, err := s.resolveRef(cfg, result.ID)
+	if err != nil {
+		return err
+	}
+	result.Number = item.Number
+	target, ok := doingTarget(cfg, item)
+	if !ok {
+		return nil
+	}
+	move, err := s.Move(cfg, item.ID, target, MoveOpts{})
+	if err != nil {
+		return err
+	}
+	result.Moved, result.From, result.To = true, move.From, move.To
+	result.Warnings = literalWarnings(move.Warnings)
+	return nil
 }
 
 func checkoutBranch(repo gitx.Repo, branch string, exists bool) (created bool, err error) {
@@ -107,13 +122,9 @@ func (s *Store) ensureWorktree(repo gitx.Repo, cfg *datamodel.Config, number, br
 	return path, createBranch, nil
 }
 
-func doingTarget(it *datamodel.Item) (string, bool) {
-	wf, ok := datamodel.WorkflowOf(it.Type)
-	if !ok {
+func doingTarget(cfg *datamodel.Config, it *datamodel.Item) (string, bool) {
+	if cat, ok := cfg.ItemCategory(it); ok && cat == datamodel.CategoryDoing {
 		return "", false
 	}
-	if cat, ok := datamodel.CategoryOf(it.Type, it.State); ok && cat == datamodel.CategoryDoing {
-		return "", false
-	}
-	return firstStateInCategory(wf, datamodel.CategoryDoing)
+	return workflowFor(cfg, it).FirstInCategory(datamodel.CategoryDoing)
 }

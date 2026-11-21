@@ -14,7 +14,7 @@ import (
 // itemMetric is the single-item form of itemsMetrics, for tests that assert on
 // one ticket's derived metrics.
 func itemMetric(s *Store, it *datamodel.Item) (metricItem, error) {
-	mis, err := s.itemsMetrics([]*datamodel.Item{it})
+	mis, err := s.itemsMetrics(nil, []*datamodel.Item{it})
 	if err != nil {
 		return metricItem{}, err
 	}
@@ -139,5 +139,115 @@ func TestCachedStateEventsChronology(t *testing.T) {
 	}
 	if !strings.HasPrefix(evs[0].ts.UTC().Format(time.RFC3339), "2026-01-06") {
 		t.Errorf("first event ts = %v, want 2026-01-06", evs[0].ts)
+	}
+}
+
+func TestConfiguredMetricsReplayCommittedSubtypeAndState(t *testing.T) {
+	s := eventRepo(t)
+	it := eventTicket()
+	cfg := &datamodel.Config{TicketStates: map[string][]datamodel.State{
+		"task": {
+			{Key: "[]", Category: datamodel.CategoryTodo},
+			{Key: "DOING", Category: datamodel.CategoryDoing},
+			{Key: "REVIEWING", Category: datamodel.CategoryDoing},
+			{Key: "CLOSED", Category: datamodel.CategoryDone},
+		},
+		"bug": {
+			{Key: "[]", Category: datamodel.CategoryDone},
+			{Key: "DOING", Category: datamodel.CategoryTodo},
+			{Key: "CLOSED", Category: datamodel.CategoryDone},
+		},
+	}}
+	task, bug := "task", "bug"
+	it.Subtype = &task
+	commitState(t, s, it, "[]", "2026-01-05")
+	it.Subtype = &bug
+	commitState(t, s, it, "[]", "2026-01-06")
+	it.Subtype = &task
+	commitState(t, s, it, "DOING", "2026-01-07")
+	commitState(t, s, it, "REVIEWING", "2026-01-08")
+
+	it.Subtype = &bug
+	it.State = "CLOSED"
+	if _, err := s.fs().WriteItem(it); err != nil {
+		t.Fatal(err)
+	}
+	wantDone := time.Date(2026, 1, 6, 10, 0, 0, 0, time.UTC)
+	wantDoing := time.Date(2026, 1, 7, 10, 0, 0, 0, time.UTC)
+	for range 2 {
+		metrics, err := s.itemsMetrics(cfg, []*datamodel.Item{it})
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := metrics[0]
+		if got.degraded || got.category != datamodel.CategoryDone || !got.hasDoing || !got.hasDone ||
+			got.reopens != 1 || !got.doneAt.Equal(wantDone) || !got.doingAt.Equal(wantDoing) {
+			t.Errorf("metrics = %+v, want live done, first close %s, first doing %s and one reopen", got, wantDone, wantDoing)
+		}
+	}
+}
+
+func TestConfiguredMetricsCountCommittedInitialCategoryAtCreation(t *testing.T) {
+	cfg := &datamodel.Config{TicketStates: map[string][]datamodel.State{
+		"task": {
+			{Key: "DOING", Category: datamodel.CategoryDoing},
+			{Key: "CLOSED", Category: datamodel.CategoryDone},
+		},
+	}}
+	for _, init := range []datamodel.State{
+		{Key: "DOING", Category: datamodel.CategoryDoing},
+		{Key: "CLOSED", Category: datamodel.CategoryDone},
+	} {
+		t.Run(init.Key, func(t *testing.T) {
+			s := eventRepo(t)
+			it := eventTicket()
+			task := "task"
+			it.Subtype = &task
+			commitState(t, s, it, init.Key, "2026-01-05")
+			got, err := s.itemsMetrics(cfg, []*datamodel.Item{it})
+			if err != nil {
+				t.Fatal(err)
+			}
+			metric := got[0]
+			want := time.Date(2026, 1, 5, 10, 0, 0, 0, time.UTC)
+			switch init.Category {
+			case datamodel.CategoryDoing:
+				if !metric.hasDoing || !metric.doingAt.Equal(want) || metric.hasDone {
+					t.Errorf("metrics = %+v, want doing at %s", metric, want)
+				}
+			case datamodel.CategoryDone:
+				if !metric.hasDone || !metric.doneAt.Equal(want) || metric.hasDoing {
+					t.Errorf("metrics = %+v, want done at %s", metric, want)
+				}
+			}
+		})
+	}
+}
+
+func TestConfiguredMetricsDoNotInferHistoryFromUnknownOrDirtyState(t *testing.T) {
+	s := eventRepo(t)
+	it := eventTicket()
+	task := "task"
+	it.Subtype = &task
+	cfg := &datamodel.Config{TicketStates: map[string][]datamodel.State{
+		task: {
+			{Key: "DOING", Category: datamodel.CategoryDoing},
+			{Key: "CLOSED", Category: datamodel.CategoryDone},
+		},
+	}}
+	commitState(t, s, it, "CLOSED", "2026-01-05")
+	commitState(t, s, it, "RETIRED", "2026-01-06")
+	commitState(t, s, it, "DOING", "2026-01-07")
+	got, err := s.itemsMetrics(cfg, []*datamodel.Item{it})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if metric := got[0]; !metric.degraded || !metric.hasDone || metric.hasDoing || metric.reopens != 0 {
+		t.Errorf("metrics = %+v, want known initial close and no inferred reopen", metric)
+	}
+
+	it.State = "CLOSED"
+	if metric := metricsFromWorkflow(cfg, it, nil, nil); !metric.degraded || metric.hasDone || metric.category != datamodel.CategoryDone {
+		t.Errorf("metrics = %+v, want live done and no synthesized history", metric)
 	}
 }

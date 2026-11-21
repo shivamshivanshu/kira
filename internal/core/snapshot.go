@@ -44,7 +44,7 @@ func (v *Snapshot) ActiveSummary() *ActiveItemSummary {
 		return nil
 	}
 	return &ActiveItemSummary{ID: it.ID, Number: it.Number, Title: it.Title,
-		State: it.State, Category: categoryString(it.Type, it.State),
+		State: it.State, Category: itemCategoryString(v.data.cfg, it),
 		Branch: activeBranch, BlockerCount: len(it.BlockedBy)}
 }
 
@@ -71,7 +71,7 @@ func (v *Snapshot) SprintList() *datamodel.SprintListResult {
 }
 
 func (v *Snapshot) ContainerProgress() (map[string]datamodel.ContainerProgress, error) {
-	return allContainerProgress(v.data.items)
+	return allContainerProgress(v.data.cfg, v.data.items)
 }
 
 func (v *Snapshot) Now() (*datamodel.NowResult, error) {

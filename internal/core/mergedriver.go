@@ -7,7 +7,7 @@ import (
 
 const (
 	mergeDriverName = "kira field-level auto-merge"
-	mergeDriverCmd  = "kira merge-file %O %A %B"
+	mergeDriverCmd  = "kira merge-file %O %A %B --ours=%X --incoming=%Y"
 )
 
 var mergeAttrLine = storage.TicketsPrefix + "/*.md merge=kira"

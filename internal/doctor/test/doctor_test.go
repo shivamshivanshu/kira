@@ -655,7 +655,7 @@ func TestWipOverrunsReportsOverLimitState(t *testing.T) {
 		{ID: "EPIC", Type: datamodel.TypeEpic, State: "REVIEW"},
 	}
 
-	f := doctor.WipOverruns(items)
+	f := doctor.WipOverruns(nil, items)
 
 	if len(f) != 1 || f[0].Class != doctor.ClassWipLimit || f[0].Severity != doctor.SeverityWarning {
 		t.Fatalf("expected one wip-limit warning, got %+v", f)
@@ -673,7 +673,7 @@ func TestWipOverrunsQuietAtOrUnderLimit(t *testing.T) {
 		{ID: ulidC, Type: datamodel.TypeTicket, State: "TODO"},
 	}
 
-	if f := doctor.WipOverruns(items); len(f) != 0 {
+	if f := doctor.WipOverruns(nil, items); len(f) != 0 {
 		t.Fatalf("expected no findings at the limit, got %+v", f)
 	}
 }

@@ -31,7 +31,7 @@ func TestProgressCountsDoneStatesAcrossNestedContainers(t *testing.T) {
 		under("E2", ticket("T4", "DONE", nil)),
 	}
 
-	got, err := allContainerProgress(items)
+	got, err := allContainerProgress(nil, items)
 	if err != nil {
 		t.Fatalf("allContainerProgress: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestProgressDoesNotDescendANonContainerChild(t *testing.T) {
 		under("T1", ticket("T2", "DONE", nil)),
 	}
 
-	got, err := allContainerProgress(items)
+	got, err := allContainerProgress(nil, items)
 	if err != nil {
 		t.Fatalf("allContainerProgress: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestProgressReportsAParentCycleInsteadOfRecursingForever(t *testing.T) {
 		under("E1", ticket("T1", "DONE", nil)),
 	}
 
-	_, err := allContainerProgress(items)
+	_, err := allContainerProgress(nil, items)
 
 	if err == nil {
 		t.Fatal("expected a cycle error for E1 <-> E2")

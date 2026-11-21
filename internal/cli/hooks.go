@@ -190,11 +190,7 @@ func runHookPreCommit(g *globalFlags) error {
 	if s == nil {
 		return err
 	}
-	cfg, err := s.Config()
-	if err != nil {
-		return err
-	}
-	return s.ValidateStaged(cfg)
+	return s.ValidateStaged()
 }
 
 func newHooksPostMergeCmd(g *globalFlags) *cobra.Command {
