@@ -1,4 +1,5 @@
 /kira
+/kira-debug
 .DS_Store
 
 # agent worktrees live inside the repo; never commit them
