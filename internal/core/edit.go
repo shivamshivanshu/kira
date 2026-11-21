@@ -97,7 +97,8 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 	var warns []error
 	finish := func(it *datamodel.Item) error {
 		restoreImmutable(it, orig)
-		guardErrs, guardWarns := applyEditGuards(cfg, orig, it, opts.Force, opts.Fields, resolver, items)
+		resolutionExplicit := editsField(opts.Fields, datamodel.KeyResolution)
+		guardErrs, guardWarns := applyEditGuards(cfg, orig, it, opts.Force, resolutionExplicit, resolver, items)
 		if len(guardErrs) > 0 {
 			return errx.Invalid(invalidItemPrefix, guardErrs)
 		}
@@ -161,7 +162,8 @@ func (b *Batch) EditFields(ref string, fields []FieldEdit, force bool) (*datamod
 		if errs := b.store.applyFieldEdits(b.cfg, it, fields); len(errs) > 0 {
 			return errs, nil
 		}
-		hard, warns = applyEditGuards(b.cfg, orig, it, force, fields, resolver, items)
+		resolutionExplicit := editsField(fields, datamodel.KeyResolution)
+		hard, warns = applyEditGuards(b.cfg, orig, it, force, resolutionExplicit, resolver, items)
 		changed = datamodel.ChangedFields(orig, it)
 		return hard, warns
 	}
@@ -195,7 +197,7 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 			return errs
 		}
 		restoreImmutable(it, orig)
-		if hard, _ := applyEditGuards(cfg, orig, it, opts.Force, nil, resolver, items); len(hard) > 0 {
+		if hard, _ := applyEditGuards(cfg, orig, it, opts.Force, false, resolver, items); len(hard) > 0 {
 			return hard
 		}
 		hard, _ := vctx.validateMutation(orig, it)
@@ -204,7 +206,7 @@ func (s *Store) editorContent(cfg *datamodel.Config, ref string, opts EditOpts) 
 	return content, snapshot, err
 }
 
-func applyEditGuards(cfg *datamodel.Config, orig, it *datamodel.Item, force bool, fields []FieldEdit, resolver *id.Resolver, items []*datamodel.Item) (hard, warns []error) {
+func applyEditGuards(cfg *datamodel.Config, orig, it *datamodel.Item, force, resolutionExplicit bool, resolver *id.Resolver, items []*datamodel.Item) (hard, warns []error) {
 	if hard := normalizeAndCheckRefs(it, resolver); len(hard) > 0 {
 		return hard, nil
 	}
@@ -216,7 +218,7 @@ func applyEditGuards(cfg *datamodel.Config, orig, it *datamodel.Item, force bool
 		}
 	}
 	resolutionEdited := !ptr.Equal(orig.Resolution, it.Resolution) ||
-		(workflowFor(cfg, it).Custom && editsField(fields, datamodel.KeyResolution))
+		(resolutionExplicit && workflowFor(cfg, it).Custom)
 	mo := MoveOpts{Force: force}
 	if resolutionEdited {
 		mo.Resolution = ptr.Deref(it.Resolution)
@@ -292,7 +294,7 @@ func fieldEditError(key string) error {
 }
 
 func replaceDescription(it, orig *datamodel.Item, description string) error {
-	_, comments, canonical := codec.SplitComments(codec.CanonicalizeCommentBody(orig.Body))
+	_, comments, canonical := codec.SplitCommentsWithLegacyPrefix(orig.Body)
 	if !canonical {
 		return errx.User("%s has non-canonical comment blocks; edit its file to preserve them", orig.Number)
 	}

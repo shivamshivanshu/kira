@@ -28,7 +28,7 @@ func attachCompletions(root *cobra.Command, g *globalFlags) {
 	activeBoards := completeVocab(g, activeBoardKeys)
 	allBoards := completeVocab(g, func(c *datamodel.Config) []string { return c.BoardKeys() })
 
-	for _, name := range []string{"show", "edit", "comment", "log", "blame", "workon", "link", "blockers"} {
+	for _, name := range []string{"show", "edit", "restore", "comment", "log", "blame", "workon", "link", "blockers"} {
 		if c := subCmd(root, name); c != nil {
 			c.ValidArgsFunction = positional(items)
 		}

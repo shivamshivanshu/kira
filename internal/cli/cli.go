@@ -99,6 +99,7 @@ func newRootCmd() (*cobra.Command, *globalFlags) {
 		newCreateCmd(g),
 		newShowCmd(g),
 		newEditCmd(g),
+		newRestoreCmd(g),
 		newMoveCmd(g),
 		newAssignCmd(g),
 		newLinkCmd(g),

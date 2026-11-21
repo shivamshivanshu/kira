@@ -122,15 +122,25 @@ func AppendCommentToDocument(doc string, c datamodel.Comment) (string, error) {
 }
 
 func CanonicalizeCommentBody(body string) string {
-	if _, _, canonical := SplitComments(body); canonical {
-		return body
+	_, _, canonicalBody, _ := splitCommentsWithLegacyPrefix(body)
+	return canonicalBody
+}
+
+func SplitCommentsWithLegacyPrefix(body string) (prose string, comments []datamodel.Comment, canonical bool) {
+	prose, comments, _, canonical = splitCommentsWithLegacyPrefix(body)
+	return prose, comments, canonical
+}
+
+func splitCommentsWithLegacyPrefix(body string) (string, []datamodel.Comment, string, bool) {
+	if prose, comments, canonical := SplitComments(body); canonical {
+		return prose, comments, body, true
 	}
 	if trimmed, ok := strings.CutPrefix(body, "\n"); ok {
-		if _, _, canonical := SplitComments(trimmed); canonical {
-			return trimmed
+		if prose, comments, canonical := SplitComments(trimmed); canonical {
+			return prose, comments, trimmed, true
 		}
 	}
-	return body
+	return body, nil, body, false
 }
 
 func SplitComments(body string) (prose string, comments []datamodel.Comment, canonical bool) {

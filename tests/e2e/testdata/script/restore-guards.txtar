@@ -1,0 +1,79 @@
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec git commit --allow-empty -m 'before ticket'
+exec git tag absent
+mkdir project
+cd project
+exec kira init --key NEST
+exec kira create ticket --title 'Subject' --field description='Historical prose' --no-edit
+exec kira move NEST-1 DONE
+exec git tag finished
+exec kira move NEST-1 TODO
+exec kira edit NEST-1 --field description='Local prose'
+exec kira restore NEST-1 --at finished --dry-run
+stdout 'body'
+exec kira restore NEST-1 --at finished
+exec kira show NEST-1
+stdout 'Historical prose'
+exec kira restore NEST-1 --at finished --field state --dry-run --json
+stdout '"field": "state"'
+stdout '"to": "DONE"'
+stdout '"field": "resolution"'
+stdout '"to": "done"'
+! exec kira restore NEST-1 --at absent --dry-run
+stderr 'reading NEST-1 at absent'
+exec sh -c 'file=$(git ls-files .kira/tickets) && printf "\n%s\n" "<!-- kira:comment malformed" >> "$file" && git add "$file"'
+exec git commit -m 'malformed source'
+exec git tag malformed
+! exec kira restore NEST-1 --at finished --dry-run
+stderr 'has malformed comment blocks'
+exec sh -c 'git restore --source=finished -- "$(git ls-files .kira/tickets)"'
+! exec kira restore NEST-1 --at malformed --dry-run
+stderr 'historical source for NEST-1 has malformed comment blocks'
+exec git add .kira/tickets
+exec git commit -m 'repair source'
+exec kira move NEST-1 TODO
+exec kira create ticket --title 'Blocker' --no-edit
+exec kira link NEST-1 --blocked-by NEST-2
+! exec kira restore NEST-1 --at finished --field state --dry-run
+stderr 'blocked by open items: NEST-2'
+! exec kira restore NEST-1 --at finished --field state
+stderr 'blocked by open items: NEST-2'
+
+# A path at the source ref must contain the same immutable identity and valid YAML.
+exec sh -c 'set -eu; file=$(grep -l "^number: NEST-1$" .kira/tickets/*.md); cp "$file" valid.tmp; sed "s/^id:.*/id: 01ARZ3NDEKTSV4RRFFQ69G5FAV/" "$file" > changed.tmp; mv changed.tmp "$file"; git add "$file"; git commit -m "mismatched source"; git tag mismatch; printf "%s\n" invalid > "$file"; git add "$file"; git commit -m "invalid source"; git tag invalid-source; mv valid.tmp "$file"'
+! exec kira restore NEST-1 --at mismatch --dry-run
+stderr 'has ID .* expected'
+! exec kira restore NEST-1 --at invalid-source --dry-run
+stderr 'invalid source for NEST-1'
+cp ../workflow.yaml .kira/config.yaml
+exec git add .kira/config.yaml
+exec git commit -m 'set bug workflow'
+exec kira create ticket --title 'Custom workflow' --subtype bug --no-edit
+exec kira move NEST-3 Verified --resolution duplicate
+exec git tag verified
+exec kira move NEST-3 Archived --resolution duplicate
+exec kira restore NEST-3 --at verified --field state --field resolution --dry-run --json
+stdout '"to": "Verified"'
+! stdout '"field": "resolution"'
+exec kira restore NEST-3 --at verified --field state --field resolution
+exec kira show NEST-3 --json
+stdout '"state": "Verified"'
+stdout '"resolution": "duplicate"'
+
+-- workflow.yaml --
+version: 2
+project:
+  key: NEST
+  name: Nested
+boards:
+  - { key: NEST, name: Nested, default: true }
+ticket_states:
+  bug:
+    - { name: Ready, category: todo }
+    - { name: Verified, category: done }
+    - { name: Archived, category: done }

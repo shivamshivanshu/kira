@@ -1,0 +1,80 @@
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'Original title' --field description='Original prose' --no-edit
+exec git tag source
+exec kira edit KIRA-1 --title 'Current title' --field description='Current prose'
+exec kira board create OTHER
+exec kira board move KIRA-1 OTHER
+exec kira comment OTHER-1 -m 'Keep this comment'
+
+# Preview matches the immutable ticket across the board move without writes.
+rm .kira/.cache
+exec git rev-parse HEAD
+cp stdout before-head
+exec sh -c 'cat "$(git ls-files .kira/tickets)"'
+cp stdout before-ticket
+exec kira restore OTHER-1 --at source --dry-run --json
+stdout '"number": "OTHER-1"'
+stdout '"dry_run": true'
+stdout '"field": "body"'
+stdout '\+1/-1 lines'
+! exists .kira/.cache
+exec git rev-parse HEAD
+cmp stdout before-head
+exec sh -c 'cat "$(git ls-files .kira/tickets)"'
+cmp stdout before-ticket
+exec git diff --cached --exit-code
+
+# Scoped apply carries same-ticket edits and leaves an unrelated staged file.
+exec sh -c 'file=$(git ls-files .kira/tickets) && sed "s/Current title/Staged title/" "$file" > item.tmp && mv item.tmp "$file" && git add "$file" && sed "s/Staged title/Working title/" "$file" > item.tmp && mv item.tmp "$file"'
+exec git add unrelated.txt
+exec kira restore KIRA-1 --at source
+stdout 'restored OTHER-1'
+exec git diff-tree --no-commit-id --name-only -r HEAD
+stdout '^\.kira/tickets/'
+! stdout 'unrelated.txt'
+exec git diff --cached --name-only
+stdout '^unrelated.txt$'
+exec kira show OTHER-1 --json
+stdout '"title": "Working title"'
+stdout 'Original prose'
+stdout 'Keep this comment'
+! stdout 'Current prose'
+stdout '"KIRA-1"'
+
+# Applying an identical body adds no commit and leaves the ticket bytes alone.
+exec git rev-parse HEAD
+cp stdout before-noop
+exec sh -c 'cat "$(git ls-files .kira/tickets)"'
+cp stdout before-noop-ticket
+exec kira restore OTHER-1 --at source
+stdout '^no changes$'
+exec git rev-parse HEAD
+cmp stdout before-noop
+exec sh -c 'cat "$(git ls-files .kira/tickets)"'
+cmp stdout before-noop-ticket
+
+# Named-field restoration follows manual mode and deduplicates selectors.
+exec kira config set commit.mode manual
+exec git rev-parse HEAD
+cp stdout before-manual
+exec kira restore OTHER-1 --at source --field title --field title --json
+stdout '"dry_run": false'
+stdout '"from": "Working title"'
+stdout '"to": "Original title"'
+exec git rev-parse HEAD
+cmp stdout before-manual
+exec git diff --cached -- .kira/tickets
+stdout 'Original title'
+stdout 'Working title'
+! stdout 'Original prose'
+! exec kira restore OTHER-1 --at HEAD --field id --dry-run
+stderr 'cannot be restored'
+
+-- unrelated.txt --
+unrelated staged change

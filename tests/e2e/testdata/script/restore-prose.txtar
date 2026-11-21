@@ -1,0 +1,54 @@
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env EDITOR=true
+exec git init
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'Exact prose' --no-edit
+exec sh write-prose.sh prose
+exec git add .kira/tickets
+exec git commit -m 'prose without terminal newline'
+exec git tag no-newline
+
+# A difference consisting only of trailing newlines is still a real restore.
+exec sh write-prose.sh 'prose\n\n'
+exec git add .kira/tickets
+exec git commit -m 'prose with trailing newlines'
+exec git tag two-newlines
+exec kira restore KIRA-1 --at no-newline --dry-run --json
+stdout '"field": "body"'
+exec sh -c 'tail -c 7 "$(git ls-files .kira/tickets)"'
+cp stdout before-restore
+exec sh -c 'printf "prose\n\n"'
+cmp stdout before-restore
+exec kira restore KIRA-1 --at no-newline
+stdout '^restored KIRA-1'
+exec sh -c 'tail -c 5 "$(git ls-files .kira/tickets)"'
+cp stdout restored-prose
+exec sh -c 'printf "%s" prose'
+cmp stdout restored-prose
+
+# The reverse operation restores exactly both terminal newlines.
+exec kira restore KIRA-1 --at two-newlines
+stdout '^restored KIRA-1'
+exec sh -c 'tail -c 7 "$(git ls-files .kira/tickets)"'
+cmp stdout before-restore
+exec kira restore KIRA-1 --at two-newlines
+stdout '^no changes$'
+
+# Newline-only restoration preserves every byte of the current comment.
+exec kira comment KIRA-1 -m 'Current comment'
+exec sh -c 'tail -n 3 "$(git ls-files .kira/tickets)"'
+cp stdout current-comment
+exec kira restore KIRA-1 --at no-newline
+stdout '^restored KIRA-1'
+exec sh -c 'tail -n 3 "$(git ls-files .kira/tickets)"'
+cmp stdout current-comment
+
+-- write-prose.sh --
+set -eu
+ticket_file=$(git ls-files .kira/tickets)
+awk '$0 == "---" { ++fences } { print } fences == 2 { exit }' "$ticket_file" > item.tmp
+printf '%b' "$1" >> item.tmp
+mv item.tmp "$ticket_file"

@@ -222,6 +222,31 @@ $ kira edit DEMO-3 DEMO-5
 kira: editing multiple ids requires field flags; editor mode is single-id only
 ```
 
+## `restore`
+
+```
+kira restore <id> --at <ref> [--dry-run] [--field <name>]... [--json]
+```
+
+Restore the ticket's prose from a Git revision or date. Current comments,
+identity, aliases, and creation time are preserved. Use repeatable
+`--field` selectors to restore specific editable frontmatter fields such as
+`title`, `owner`, or `state`, or `--field body` to include prose alongside
+those fields. The current workflow and edit validation apply.
+
+```console
+$ kira restore DEMO-3 --at HEAD~2 --dry-run
+would restore DEMO-3 from 2cb3c8e
+  body (+4/-1 lines)
+$ kira restore DEMO-3 --at HEAD~2 --field owner
+restored DEMO-3 from 2cb3c8e
+  owner: bob -> alice
+```
+
+A dry run reports field changes and the body line delta. Apply follows the
+repository's commit mode. An automatic commit can include pending edits to
+the same ticket. Unrelated staged files stay out of the restore commit.
+
 ## `move`
 
 ```
