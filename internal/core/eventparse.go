@@ -1,6 +1,7 @@
 package core
 
 import (
+	"cmp"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/id"
 	"github.com/shivamshivanshu/kira/internal/index"
 	"github.com/shivamshivanshu/kira/internal/setx"
 	"github.com/shivamshivanshu/kira/internal/storage"
@@ -219,10 +221,13 @@ func (s *Store) deriveFirstParentEvents(revision string, ids []string, out map[s
 	changesAtMerge := setx.ToSet(mergePaths)
 	pathToID := make(map[string]string, len(ids))
 	paths := make([]string, 0, len(ids))
-	for _, id := range ids {
-		path := filepath.ToSlash(s.fs().RelToRoot(s.itemPath(id)))
+	for _, itemID := range ids {
+		if _, err := id.ParseULID(itemID); err != nil {
+			continue
+		}
+		path := filepath.ToSlash(s.fs().RelToRoot(s.itemPath(itemID)))
 		if !changesAtMerge[path] {
-			pathToID[path] = id
+			pathToID[path] = itemID
 			paths = append(paths, path)
 		}
 	}
@@ -240,10 +245,7 @@ func (s *Store) deriveFirstParentEvents(revision string, ids []string, out map[s
 		out[id] = nil
 	}
 	walkPatch(stream, func(oldPath, newPath string, events []datamodel.Event) {
-		if newPath == "" {
-			newPath = oldPath
-		}
-		if id, wanted := pathToID[newPath]; wanted {
+		if id, wanted := pathToID[cmp.Or(newPath, oldPath)]; wanted {
 			out[id] = append(out[id], events...)
 		}
 	})

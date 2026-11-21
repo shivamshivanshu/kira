@@ -30,9 +30,10 @@ func checkBatchedHistory(t *testing.T, s *Store, ids ...string) map[string][]dat
 
 func TestBatchedHistoryMatchesPerFile(t *testing.T) {
 	s := newStore(filepath.Join(eventRepo(t).root, "prøject"))
-	a, b, resolved := eventTicket(), eventTicket(), eventTicket()
+	a, b, resolved, legacy := eventTicket(), eventTicket(), eventTicket(), eventTicket()
 	b.ID, b.Number = "01HZZ0TEST0000000000000001", "KIRA-2"
 	resolved.ID, resolved.Number = "01HZZ0TEST0000000000000002", "KIRA-3"
+	legacy.ID, legacy.Number = "01HZZ0 EST0000000000000009", "KIRA-9"
 	commitState(t, s, a, "TODO", "2026-01-05")
 	commitState(t, s, b, "TODO", "2026-01-05")
 	commitState(t, s, resolved, "TODO", "2026-01-05")
@@ -60,7 +61,9 @@ func TestBatchedHistoryMatchesPerFile(t *testing.T) {
 	commitState(t, s, b, "TODO", "2026-01-09")
 	gitRun(t, s, "", "merge", "--no-ff", "--no-commit", "side")
 	commitState(t, s, resolved, "DONE", "2026-01-10")
-	checkBatchedHistory(t, s, a.ID, b.ID, resolved.ID)
+	commitState(t, s, legacy, "TODO", "2026-01-11")
+	commitState(t, s, legacy, "IN_PROGRESS", "2026-01-12")
+	checkBatchedHistory(t, s, a.ID, b.ID, resolved.ID, legacy.ID)
 }
 
 func TestBatchedHistoryPreservesDeletion(t *testing.T) {
