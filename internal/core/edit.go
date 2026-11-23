@@ -151,6 +151,31 @@ func (s *Store) Edit(cfg *datamodel.Config, ref string, opts EditOpts) (*datamod
 	return &datamodel.MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed, Warnings: warningsFromErrors(finalWarns)}, nil
 }
 
+func (s *Store) PromoteTicket(cfg *datamodel.Config, ref string) (*datamodel.MutationResult, error) {
+	apply := func(it *datamodel.Item, _ *id.Resolver, _ []*datamodel.Item) ([]error, []error) {
+		if it.Type != datamodel.TypeTicket {
+			return []error{errx.User("%s is type %q and only tickets can be promoted", it.Number, it.Type)}, nil
+		}
+		category, _ := cfg.ItemCategory(it)
+		epicWorkflow, _ := datamodel.WorkflowOf(datamodel.TypeEpic)
+		state, ok := epicWorkflow.FirstInCategory(category)
+		if !ok {
+			return []error{errx.User("%s: state %q has no known workflow category", it.Number, it.State).
+				WithHint("move the ticket to a declared state before promoting it")}, nil
+		}
+		it.Type, it.Subtype, it.State = datamodel.TypeEpic, nil, state
+		clearStaleResolution(cfg, it)
+		return nil, nil
+	}
+	updated, changed, warns, err := s.mutate(cfg, ref, false, apply, func(it *datamodel.Item) string {
+		return it.Number + " promote ticket to epic"
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &datamodel.MutationResult{ID: updated.ID, Number: updated.Number, Changed: changed, Warnings: warningsFromErrors(warns)}, nil
+}
+
 // EditFields applies noninteractive field edits against the batch's live state.
 func (b *Batch) EditFields(ref string, fields []FieldEdit, force bool) (*datamodel.MutationResult, error) {
 	orig, err := b.Resolve(ref)

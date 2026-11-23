@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -126,6 +127,60 @@ func registerDriver(t *testing.T, root string) {
 	}
 	if err := s.RegisterMergeDriver(); err != nil {
 		t.Fatalf("register driver: %v", err)
+	}
+}
+
+type unexpectedResolvePrompt struct{ t *testing.T }
+
+func (unexpectedResolvePrompt) Interactive() bool { return true }
+
+func (p unexpectedResolvePrompt) ReadLine(prompt, _ string) string {
+	p.t.Fatalf("resolve should skip the workflow conflict before prompting: %s", prompt)
+	return ""
+}
+
+func TestPromotionWorkflowConflictSurvivesDriverAndResolve(t *testing.T) {
+	t.Parallel()
+	root := initGitRepo(t)
+	initStore(t, root)
+	repo := gitx.Repo{Dir: root}
+	base := mergeItem(nil)
+	ours := mergeItem(func(it *datamodel.Item) {
+		it.Type, it.State, it.Title, it.Updated = datamodel.TypeEpic, "PLANNED", "Promoted title", tsEarly
+	})
+	theirs := mergeItem(func(it *datamodel.Item) {
+		it.State, it.Title, it.Updated = "IN_PROGRESS", "Ticket title", tsLate
+	})
+	diverge(t, repo, root, base, ours, theirs)
+	registerDriver(t, root)
+	if out, err := repo.Output("merge", "other"); err == nil || !strings.Contains(err.Error(), "conflicting item workflows") {
+		t.Fatalf("driver merge = %q, %v, want workflow conflict", out, err)
+	}
+	path := mergeRelPath()
+	abs := filepath.Join(root, filepath.FromSlash(path))
+	snapshot := func() (string, string) {
+		t.Helper()
+		stages, err := repo.Output("ls-files", "--unmerged", "--", path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(abs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return stages, string(data)
+	}
+	stages, worktree := snapshot()
+	if len(strings.Split(stages, "\n")) != 3 || worktree != codec.Serialize(ours) {
+		t.Fatalf("driver left stages %q and worktree %q, want all stages and ours", stages, worktree)
+	}
+	s, _ := discoverStore(t, root)
+	res, err := s.WithPrompter(unexpectedResolvePrompt{t}).Resolve(nil, true)
+	if err != nil || len(res.Resolved) != 0 || !slices.Equal(res.Skipped, []string{path}) {
+		t.Fatalf("resolve = %+v, %v, want the workflow conflict skipped", res, err)
+	}
+	if afterStages, afterWorktree := snapshot(); afterStages != stages || afterWorktree != worktree {
+		t.Fatalf("resolve changed stages or worktree: %q, %q", afterStages, afterWorktree)
 	}
 }
 

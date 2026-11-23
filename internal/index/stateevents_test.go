@@ -25,7 +25,7 @@ func TestStateEventsRefreshAndReuse(t *testing.T) {
 		return map[string][]datamodel.Event{"one": {state, title}}, nil
 	}
 	for range 2 {
-		got, err := i.StateEvents(heads, StateOnly, derive)
+		got, err := i.StateEvents(heads, StateAndType, derive)
 		if err != nil || !reflect.DeepEqual(got["one"], []datamodel.Event{state}) || len(got["two"]) != 0 {
 			t.Fatalf("state events = %v, %v", got, err)
 		}
@@ -38,7 +38,7 @@ func TestStateEventsRefreshAndReuse(t *testing.T) {
 		t.Fatalf("stats dropped non-state history: %v, %v", all, err)
 	}
 	heads["one"] = "rewritten"
-	got, err := i.StateEvents(heads, StateOnly, func(ids []string) (map[string][]datamodel.Event, error) {
+	got, err := i.StateEvents(heads, StateAndType, func(ids []string) (map[string][]datamodel.Event, error) {
 		if !reflect.DeepEqual(ids, []string{"one"}) {
 			t.Fatalf("refreshed unaffected item: %v", ids)
 		}
@@ -61,7 +61,7 @@ func TestStateEventsDoesNotCacheUncommittedHistory(t *testing.T) {
 	defer func() { _ = i.Close() }()
 	calls := 0
 	for range 2 {
-		_, err := i.StateEvents(map[string]string{"new": ""}, StateOnly, func([]string) (map[string][]datamodel.Event, error) { calls++; return nil, nil })
+		_, err := i.StateEvents(map[string]string{"new": ""}, StateAndType, func([]string) (map[string][]datamodel.Event, error) { calls++; return nil, nil })
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -71,7 +71,7 @@ func TestStateEventsDoesNotCacheUncommittedHistory(t *testing.T) {
 	}
 }
 
-func TestStateAndSubtypeEventsFromColdAndWarmCache(t *testing.T) {
+func TestWorkflowEventsFromColdAndWarmCache(t *testing.T) {
 	i, err := Open(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -79,8 +79,9 @@ func TestStateAndSubtypeEventsFromColdAndWarmCache(t *testing.T) {
 	defer func() { _ = i.Close() }()
 	subtype := datamodel.Event{Field: datamodel.KeySubtype, Old: "task", New: "bug", Ts: "2026-08-31T10:00:00Z", CommitSHA: "a"}
 	state := datamodel.Event{Field: datamodel.KeyState, Old: "TODO", New: "DONE", Ts: subtype.Ts, CommitSHA: "a"}
+	itemType := datamodel.Event{Field: datamodel.KeyType, Old: "ticket", New: "epic", Ts: subtype.Ts, CommitSHA: "a"}
 	title := datamodel.Event{Field: datamodel.KeyTitle, Old: "old", New: "new", Ts: subtype.Ts, CommitSHA: "a"}
-	all := []datamodel.Event{subtype, title, state}
+	all := []datamodel.Event{itemType, subtype, title, state}
 	heads := map[string]string{"item": "a"}
 	calls := 0
 	derive := func([]string) (map[string][]datamodel.Event, error) {
@@ -88,14 +89,14 @@ func TestStateAndSubtypeEventsFromColdAndWarmCache(t *testing.T) {
 		return map[string][]datamodel.Event{"item": all}, nil
 	}
 	for range 2 {
-		got, err := i.StateEvents(heads, StateAndSubtype, derive)
-		if err != nil || !reflect.DeepEqual(got["item"], []datamodel.Event{subtype, state}) {
+		got, err := i.StateEvents(heads, StateTypeAndSubtype, derive)
+		if err != nil || !reflect.DeepEqual(got["item"], []datamodel.Event{itemType, subtype, state}) {
 			t.Fatalf("workflow events = %v, %v", got, err)
 		}
 	}
-	got, err := i.StateEvents(heads, StateOnly, derive)
-	if err != nil || !reflect.DeepEqual(got["item"], []datamodel.Event{state}) || calls != 1 {
-		t.Fatalf("state-only events = %v, %v, derived %d times", got, err, calls)
+	got, err := i.StateEvents(heads, StateAndType, derive)
+	if err != nil || !reflect.DeepEqual(got["item"], []datamodel.Event{itemType, state}) || calls != 1 {
+		t.Fatalf("state and type events = %v, %v, derived %d times", got, err, calls)
 	}
 	raw, err := i.events("item")
 	if err != nil || !reflect.DeepEqual(raw, all) {

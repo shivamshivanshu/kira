@@ -86,43 +86,52 @@ func (s *Store) itemsMetrics(cfg *datamodel.Config, items []*datamodel.Item) ([]
 		return nil, nil
 	}
 	revision, _ := s.repo().ResolveTreeish("HEAD")
-	heads := s.fileHeads(revision)
+	var heads map[string]string
+	if revision != "" {
+		heads = s.fileHeads(revision)
+	}
 	selected := make(map[string]string, len(items))
 	for _, it := range items {
 		selected[it.ID] = heads[it.ID]
 	}
-	fields := index.StateOnly
-	if cfg != nil && len(cfg.TicketStates) > 0 {
-		fields = index.StateAndSubtype
+	configured := cfg != nil && len(cfg.TicketStates) > 0
+	fields := index.StateAndType
+	if configured {
+		fields = index.StateTypeAndSubtype
 	}
 	byItem, err := index.StateEventsByItem(s.fs(), selected, fields, func(ids []string) (map[string][]datamodel.Event, error) {
+		if revision == "" {
+			return nil, nil
+		}
 		return s.deriveEventBatch(revision, ids)
 	})
 	if err != nil {
 		return nil, err
 	}
-	var anchors map[string]*datamodel.Item
-	if fields == index.StateAndSubtype {
-		anchors = s.committedMetricItems(revision, items, selected)
-	}
+	anchors := s.committedMetricItems(revision, items, selected, configured)
 	mis := make([]metricItem, len(items))
 	for i, it := range items {
-		if fields == index.StateAndSubtype && it.Type == datamodel.TypeTicket {
-			mis[i] = metricsFromWorkflow(cfg, it, anchors[it.ID], byItem[it.ID])
+		anchor, events := anchors[it.ID], byItem[it.ID]
+		promoted := it.Type == datamodel.TypeEpic && (anchor != nil && anchor.Type == datamodel.TypeTicket ||
+			slices.ContainsFunc(events, func(event datamodel.Event) bool {
+				return event.Field == datamodel.KeyType && event.Old == datamodel.TypeTicket && event.New == datamodel.TypeEpic
+			}))
+		if promoted || configured && it.Type == datamodel.TypeTicket {
+			mis[i] = metricsFromWorkflow(cfg, it, anchor, events, promoted)
 			continue
 		}
-		mis[i] = metricsFrom(it, stateTransitions(byItem[it.ID]), selected[it.ID] != "")
+		mis[i] = metricsFrom(it, stateTransitions(events), selected[it.ID] != "")
 	}
 	return mis, nil
 }
 
-func (s *Store) committedMetricItems(revision string, items []*datamodel.Item, heads map[string]string) map[string]*datamodel.Item {
+func (s *Store) committedMetricItems(revision string, items []*datamodel.Item, heads map[string]string, configured bool) map[string]*datamodel.Item {
 	if revision == "" {
 		return nil
 	}
 	var ids, specs []string
 	for _, it := range items {
-		if it.Type != datamodel.TypeTicket || heads[it.ID] == "" {
+		if heads[it.ID] == "" || it.Type != datamodel.TypeEpic && (!configured || it.Type != datamodel.TypeTicket) {
 			continue
 		}
 		path := filepath.ToSlash(s.fs().RelToRoot(s.itemPath(it.ID)))
@@ -198,11 +207,12 @@ func metricsFrom(it *datamodel.Item, evs []stateTransition, committed bool) metr
 }
 
 type categoryEvent struct {
-	category datamodel.Category
-	ts       time.Time
+	category        datamodel.Category
+	ts              time.Time
+	categoryChanged bool
 }
 
-func metricsFromWorkflow(cfg *datamodel.Config, live, committed *datamodel.Item, events []datamodel.Event) metricItem {
+func metricsFromWorkflow(cfg *datamodel.Config, live, committed *datamodel.Item, events []datamodel.Event, promoted bool) metricItem {
 	mi := newMetricItem(cfg, live)
 	if committed == nil {
 		mi.degraded = true
@@ -230,9 +240,12 @@ func metricsFromWorkflow(cfg *datamodel.Config, live, committed *datamodel.Item,
 		after, afterKnown := cfg.ItemCategory(&current)
 		if !beforeKnown || !afterKnown {
 			mi.degraded = true
-		} else if before != after {
+		}
+		categoryChanged := beforeKnown && before != after
+		sameTypeStateChange := previous.Type == current.Type && previous.State != current.State
+		if afterKnown && (categoryChanged || promoted && sameTypeStateChange) {
 			if ts, err := time.Parse(time.RFC3339, events[start].Ts); err == nil {
-				transitions = append(transitions, categoryEvent{category: after, ts: ts})
+				transitions = append(transitions, categoryEvent{category: after, ts: ts, categoryChanged: categoryChanged})
 			} else {
 				mi.degraded = true
 			}
@@ -240,18 +253,24 @@ func metricsFromWorkflow(cfg *datamodel.Config, live, committed *datamodel.Item,
 		current, start = previous, end
 	}
 
-	if !custom && rooted {
+	if !promoted && !custom && rooted {
 		legacy := metricsFrom(committed, stateTransitions(events), true)
 		legacy.number, legacy.category, legacy.dropped = mi.number, mi.category, mi.dropped
 		return legacy
 	}
-	if rooted && !mi.created.IsZero() {
+	builtinPromotion := promoted && !custom
+	if rooted && !builtinPromotion && !mi.created.IsZero() {
 		category, known := cfg.ItemCategory(&current)
 		mi.observe(category, mi.created)
 		mi.degraded = mi.degraded || !known
 	}
-	for i := len(transitions) - 1; i >= 0; i-- {
-		mi.observe(transitions[i].category, transitions[i].ts)
+	for _, ev := range slices.Backward(transitions) {
+		if builtinPromotion || ev.categoryChanged {
+			mi.observe(ev.category, ev.ts)
+		}
+	}
+	if builtinPromotion && rooted && !mi.hasDone && !mi.created.IsZero() && itemIsDone(cfg, committed) {
+		mi.observe(datamodel.CategoryDone, mi.created)
 	}
 	return mi
 }
@@ -263,6 +282,11 @@ func previousMetricItem(current datamodel.Item, events []datamodel.Event) (datam
 	previous := current
 	for _, event := range events {
 		switch event.Field {
+		case datamodel.KeyType:
+			if event.New != current.Type {
+				return datamodel.Item{}, false
+			}
+			previous.Type = event.Old
 		case datamodel.KeyState:
 			if event.New != current.State {
 				return datamodel.Item{}, false

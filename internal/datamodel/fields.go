@@ -36,6 +36,7 @@ func (d FieldDescriptor) withoutPresent() FieldDescriptor {
 }
 
 var Fields = []FieldDescriptor{
+	strField(KeyType, func(it *Item) *string { return &it.Type }).withoutSet().withoutPresent(),
 	ptrField(KeySubtype, func(it *Item) **string { return &it.Subtype }),
 	strField(KeyTitle, func(it *Item) *string { return &it.Title }),
 	strField(KeyState, func(it *Item) *string { return &it.State }).withoutPresent().guarded(),

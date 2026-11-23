@@ -88,6 +88,10 @@ func (s *Store) Resolve(refs []string, interactive bool) (*datamodel.ResolveResu
 			continue
 		}
 		res := merge.Merge(baseItem, oursItem, theirsItem, remote, gitTextMerge)
+		if res.WorkflowConflict {
+			result.Skipped = append(result.Skipped, path)
+			continue
+		}
 		if interactive {
 			s.pickFields(res.Item, oursItem, theirsItem, res.Arbitrated)
 		}

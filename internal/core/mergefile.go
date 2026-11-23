@@ -57,6 +57,10 @@ func MergeFile(repo gitx.Repo, basePath, oursPath, theirsPath string, sides Merg
 		return nil, err
 	}
 	res := merge.Merge(base, ours, theirs, remoteSide(repo), gitTextMerge)
+	if res.WorkflowConflict {
+		return nil, errx.Conflict("%s: conflicting item workflows", ours.Number).
+			WithHint("resolve the item workflow manually, then stage the file")
+	}
 	if err := validateMergedWorkflow(cfg, res.Item, ours, theirs); err != nil {
 		return nil, err
 	}

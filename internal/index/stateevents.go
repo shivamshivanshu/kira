@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"maps"
 	"slices"
+	"strings"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/errx"
@@ -13,8 +14,8 @@ import (
 type HistoryFields uint8
 
 const (
-	StateOnly HistoryFields = iota
-	StateAndSubtype
+	StateAndType HistoryFields = iota
+	StateTypeAndSubtype
 )
 
 // StateEventsByItem returns the selected history events for every id in heads, opening the
@@ -32,6 +33,10 @@ func StateEventsByItem(store *storage.FS, heads map[string]string, fields Histor
 // reading the whole batch in two queries rather than two per item. derive
 // returns all fields for stale files, so refreshing stats also warms Log.
 func (i *Index) StateEvents(heads map[string]string, fields HistoryFields, derive func([]string) (map[string][]datamodel.Event, error)) (map[string][]datamodel.Event, error) {
+	keys := []string{datamodel.KeyState, datamodel.KeyType}
+	if fields == StateTypeAndSubtype {
+		keys = append(keys, datamodel.KeySubtype)
+	}
 	cached, err := i.eventHeads()
 	if err != nil {
 		return nil, err
@@ -48,7 +53,7 @@ func (i *Index) StateEvents(heads map[string]string, fields HistoryFields, deriv
 
 	out := make(map[string][]datamodel.Event, len(heads))
 	if len(fresh) > 0 {
-		if err := i.eachHistoryEvent(fields, func(itemID string, e datamodel.Event) {
+		if err := i.eachHistoryEvent(keys, func(itemID string, e datamodel.Event) {
 			if fresh[itemID] {
 				out[itemID] = append(out[itemID], e)
 			}
@@ -69,7 +74,7 @@ func (i *Index) StateEvents(heads map[string]string, fields HistoryFields, deriv
 	}
 	for itemID := range stale {
 		for _, e := range events[itemID] {
-			if e.Field == datamodel.KeyState || fields == StateAndSubtype && e.Field == datamodel.KeySubtype {
+			if slices.Contains(keys, e.Field) {
 				out[itemID] = append(out[itemID], e)
 			}
 		}
@@ -93,14 +98,14 @@ func (i *Index) eventHeads() (map[string]string, error) {
 	})
 }
 
-func (i *Index) eachHistoryEvent(fields HistoryFields, fn func(itemID string, e datamodel.Event)) error {
-	query := `SELECT item_id, ts, field, old_value, new_value, commit_sha FROM events WHERE field = ?`
-	args := []any{datamodel.KeyState}
-	if fields == StateAndSubtype {
-		query += " OR field = ?"
-		args = append(args, datamodel.KeySubtype)
+func (i *Index) eachHistoryEvent(keys []string, fn func(itemID string, e datamodel.Event)) error {
+	query := `SELECT item_id, ts, field, old_value, new_value, commit_sha FROM events WHERE field IN (?`
+	query += strings.Repeat(", ?", len(keys)-1) + ") ORDER BY item_id, seq"
+	args := make([]any, len(keys))
+	for i, key := range keys {
+		args[i] = key
 	}
-	rows, err := i.db.Query(query+" ORDER BY item_id, seq", args...)
+	rows, err := i.db.Query(query, args...)
 	if err != nil {
 		return errx.Env("querying state events: %v", err)
 	}

@@ -36,6 +36,49 @@ func gitMerger(b, o, t string) (string, bool) {
 	return m, c
 }
 
+func TestPromotedWorkflowMerge(t *testing.T) {
+	t.Parallel()
+	baseTicket := base(func(it *datamodel.Item) { it.State, it.Subtype = "WONT_DO", new("task") })
+	promoted := *baseTicket
+	promoted.Type, promoted.State, promoted.Subtype = datamodel.TypeEpic, "DONE", nil
+	promoted.Resolution = new(datamodel.ResolutionDropped)
+	promoted.Title = "Epic title"
+	ticket := *baseTicket
+	ticket.Body = "Ticket body edited independently"
+	for _, sides := range [][2]*datamodel.Item{{&promoted, &ticket}, {&ticket, &promoted}} {
+		got := merge.Merge(baseTicket, sides[0], sides[1], merge.Theirs, conflictMerger)
+		if got.WorkflowConflict || got.Item.Type != promoted.Type || got.Item.State != promoted.State ||
+			got.Item.Subtype != nil || got.Item.Resolution == nil || *got.Item.Resolution != datamodel.ResolutionDropped ||
+			got.Item.Title != promoted.Title || got.Item.Body != ticket.Body || len(got.Arbitrated) != 0 {
+			t.Fatalf("merge = %+v, item = %+v", got, got.Item)
+		}
+	}
+	for _, scenario := range []struct {
+		name       string
+		base       *datamodel.Item
+		editTicket func(*datamodel.Item)
+	}{
+		{name: "state", base: baseTicket, editTicket: func(it *datamodel.Item) { it.State = "TODO" }},
+		{name: "subtype", base: baseTicket, editTicket: func(it *datamodel.Item) { it.Subtype = new("bug") }},
+		{name: "resolution", base: baseTicket, editTicket: func(it *datamodel.Item) { it.Resolution = new("done") }},
+		{name: "absent base"},
+		{name: "epic base", base: &promoted},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			ticket := ticket
+			if scenario.editTicket != nil {
+				scenario.editTicket(&ticket)
+			}
+			for _, sides := range [][2]*datamodel.Item{{&promoted, &ticket}, {&ticket, &promoted}} {
+				got := merge.Merge(scenario.base, sides[0], sides[1], merge.Theirs, conflictMerger)
+				if !got.WorkflowConflict || got.Item != nil {
+					t.Fatalf("merge = %+v, want workflow conflict", got)
+				}
+			}
+		})
+	}
+}
+
 func TestScalarOneSidedChangeTaken(t *testing.T) {
 	t.Parallel()
 	b := base(nil)

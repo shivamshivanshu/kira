@@ -247,7 +247,118 @@ func TestConfiguredMetricsDoNotInferHistoryFromUnknownOrDirtyState(t *testing.T)
 	}
 
 	it.State = "CLOSED"
-	if metric := metricsFromWorkflow(cfg, it, nil, nil); !metric.degraded || metric.hasDone || metric.category != datamodel.CategoryDone {
+	if metric := metricsFromWorkflow(cfg, it, nil, nil, false); !metric.degraded || metric.hasDone || metric.category != datamodel.CategoryDone {
 		t.Errorf("metrics = %+v, want live done and no synthesized history", metric)
+	}
+}
+
+func TestMetricsAcrossTicketPromotion(t *testing.T) {
+	task := "task"
+	custom := &datamodel.Config{TicketStates: map[string][]datamodel.State{
+		task: {
+			{Key: "NEW", Category: datamodel.CategoryTodo},
+			{Key: "WIP", Category: datamodel.CategoryDoing},
+			{Key: "CHECK", Category: datamodel.CategoryDoing},
+			{Key: "CLOSED", Category: datamodel.CategoryDone},
+		},
+	}}
+	for _, tc := range []struct {
+		name          string
+		cfg           *datamodel.Config
+		ticketStates  []string
+		epicState     string
+		firstDoingDay int
+		firstDoneDay  int
+		reopens       int
+		closeEpic     bool
+	}{
+		{name: "active promotion then close", ticketStates: []string{"TODO", "IN_PROGRESS"}, epicState: "ACTIVE", firstDoingDay: 6, closeEpic: true},
+		{name: "type only", ticketStates: []string{"TODO", "IN_PROGRESS", "DONE"}, epicState: "DONE", firstDoingDay: 6, firstDoneDay: 7},
+		{name: "created done", ticketStates: []string{"DONE"}, epicState: "DONE", firstDoneDay: 5},
+		{name: "built-in reopens", ticketStates: []string{"TODO", "DONE", "IN_PROGRESS", "REVIEW"}, epicState: "ACTIVE", firstDoingDay: 7, firstDoneDay: 6, reopens: 2},
+		{name: "configured reopen", cfg: custom, ticketStates: []string{"NEW", "WIP", "CLOSED", "WIP", "CHECK"}, epicState: "ACTIVE", firstDoingDay: 6, firstDoneDay: 7, reopens: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := eventRepo(t)
+			it := eventTicket()
+			if tc.cfg != nil {
+				it.Subtype = &task
+			}
+			for i, state := range tc.ticketStates {
+				commitState(t, s, it, state, promotionMetricTime(5+i).Format(time.DateOnly))
+			}
+			assertMetrics := func(phase string, doneDay int) {
+				t.Helper()
+				got, err := s.itemsMetrics(tc.cfg, []*datamodel.Item{it})
+				if err != nil {
+					t.Fatal(err)
+				}
+				category, _ := tc.cfg.ItemCategory(it)
+				want := metricItem{
+					number: it.Number, category: category, created: promotionMetricTime(5),
+					hasDoing: tc.firstDoingDay != 0, doingAt: promotionMetricTime(tc.firstDoingDay),
+					hasDone: doneDay != 0, doneAt: promotionMetricTime(doneDay), reopens: tc.reopens,
+				}
+				if got[0] != want {
+					t.Fatalf("%s metrics = %+v, want %+v", phase, got[0], want)
+				}
+			}
+			assertMetrics("ticket", tc.firstDoneDay)
+			it.Type, it.State, it.Subtype = datamodel.TypeEpic, tc.epicState, nil
+			promotionDate := promotionMetricTime(10).Format(time.DateOnly)
+			it.Updated = promotionMetricTime(10).Format(time.RFC3339)
+			path, err := s.fs().WriteItem(it)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertMetrics("unstaged", tc.firstDoneDay)
+			gitRun(t, s, it.Updated, "add", "--", path)
+			assertMetrics("staged", tc.firstDoneDay)
+			commitState(t, s, it, tc.epicState, promotionDate)
+			assertMetrics("committed with ticket cache primed", tc.firstDoneDay)
+			if err := os.RemoveAll(s.fs().CacheDir()); err != nil {
+				t.Fatal(err)
+			}
+			assertMetrics("committed cold", tc.firstDoneDay)
+			assertMetrics("committed warm", tc.firstDoneDay)
+			if tc.closeEpic {
+				commitState(t, s, it, "DONE", promotionMetricTime(11).Format(time.DateOnly))
+				assertMetrics("closed epic", 11)
+			}
+		})
+	}
+}
+
+func promotionMetricTime(day int) time.Time {
+	if day == 0 {
+		return time.Time{}
+	}
+	return time.Date(2026, 1, day, 10, 0, 0, 0, time.UTC)
+}
+
+func TestRecreatedEpicRetainsMetrics(t *testing.T) {
+	s := eventRepo(t)
+	it := eventTicket()
+	it.Type = datamodel.TypeEpic
+	commitState(t, s, it, "PLANNED", "2026-01-05")
+	commitState(t, s, it, "ACTIVE", "2026-01-06")
+	commitState(t, s, it, "DONE", "2026-01-07")
+	before, err := itemMetric(s, it)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !before.hasDoing || !before.hasDone {
+		t.Fatalf("expected active and done history, got %+v", before)
+	}
+
+	gitRun(t, s, "2026-01-08T10:00:00Z", "rm", "--", s.fs().RelToRoot(s.itemPath(it.ID)))
+	gitRun(t, s, "2026-01-08T10:00:00Z", "commit", "-m", "remove epic")
+	commitState(t, s, it, "DONE", "2026-01-09")
+	after, err := itemMetric(s, it)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after != before {
+		t.Fatalf("metrics after restoring epic = %+v, want %+v", after, before)
 	}
 }

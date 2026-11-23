@@ -17,6 +17,7 @@ func newEditCmd(g *globalFlags) *cobra.Command {
 		labels   []string
 		fromFile string
 		force    bool
+		toEpic   bool
 	)
 	typedFlags := []struct {
 		name, usage string
@@ -31,11 +32,15 @@ func newEditCmd(g *globalFlags) *cobra.Command {
 		{"due", "set due date (RFC3339 date; empty clears)", new(string)},
 		{"resolution", "set resolution directly (out-of-band correction; normally set by move)", new(string)},
 	}
+	promotionConflicts := []string{"field", "label", "from-file", "force"}
 	cmd := &cobra.Command{
 		Use:   "edit <id>...",
 		Short: "Edit one or more tickets or epics",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if toEpic {
+				return runPromotion(cmd, g, args, promotionConflicts)
+			}
 			opts := core.EditOpts{FromFile: fromFile, Force: force}
 			edits, err := parseFieldEdits(fields, "priority=P1")
 			if err != nil {
@@ -86,10 +91,29 @@ func newEditCmd(g *globalFlags) *cobra.Command {
 	f.StringArrayVar(&labels, "label", nil, "set labels (repeatable; replaces the label set)")
 	for _, tf := range typedFlags {
 		f.StringVar(tf.value, tf.name, "", tf.usage)
+		promotionConflicts = append(promotionConflicts, tf.name)
 	}
 	f.StringVar(&fromFile, "from-file", "", "round-trip an edited item file (or - for stdin)")
 	f.BoolVar(&force, "force", false, "accept field values outside the configured vocabulary and bypass workflow guards on state changes")
+	f.BoolVar(&toEpic, "to-epic", false, "promote a single ticket to an epic")
 	return cmd
+}
+
+func runPromotion(cmd *cobra.Command, g *globalFlags, args, conflictingFlags []string) error {
+	if len(args) != 1 {
+		return errx.User("--to-epic requires exactly one ticket id")
+	}
+	for _, name := range conflictingFlags {
+		if cmd.Flags().Changed(name) {
+			return errx.User("--to-epic cannot be combined with --%s", name)
+		}
+	}
+	s, cfg, err := openStore(g)
+	if err != nil {
+		return err
+	}
+	apply := func(ref string) (*datamodel.MutationResult, error) { return s.PromoteTicket(cfg, ref) }
+	return runSingleOrBulk(cmd.OutOrStdout(), cmd.ErrOrStderr(), g.json, args, apply, editLine, warnMutation)
 }
 
 func editLine(res *datamodel.MutationResult) string {

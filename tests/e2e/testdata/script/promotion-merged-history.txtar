@@ -1,0 +1,42 @@
+env GIT_CONFIG_GLOBAL=/dev/null
+env GIT_CONFIG_SYSTEM=/dev/null
+env GIT_COMMITTER_DATE=2026-01-01T10:00:00Z
+exec git init -b main
+exec git config user.email test@example.com
+exec git config user.name tester
+exec kira init --key KIRA
+exec kira create ticket --title 'Promotion after completion' --no-edit
+env GIT_COMMITTER_DATE=2026-01-02T10:00:00Z
+exec kira move KIRA-1 IN_PROGRESS
+env GIT_COMMITTER_DATE=2026-01-03T10:00:00Z
+exec kira move KIRA-1 DONE
+exec git switch -c promote
+env GIT_COMMITTER_DATE=2026-01-04T10:00:00Z
+exec kira edit KIRA-1 --to-epic
+exec git switch main
+env GIT_COMMITTER_DATE=2026-01-05T10:00:00Z
+exec kira edit KIRA-1 --field 'description=Independent edit'
+exec kira stats --json
+stdout '"p50": 1,'
+cp stdout before-promotion
+
+exec git config merge.kira.driver 'kira merge-file %O %A %B --ours=%X --incoming=%Y'
+cp attributes .git/info/attributes
+env GIT_COMMITTER_DATE=2026-01-06T10:00:00Z
+exec git merge promote
+exec kira stats --json
+cmp stdout before-promotion
+exec kira log KIRA-1 --json
+stdout '"field": "type"'
+exec kira show KIRA-1 --json
+stdout '"type": "epic"'
+stdout 'Independent edit'
+
+rm .kira/.cache
+exec kira log KIRA-1 --json
+stdout '"field": "type"'
+exec kira stats --json
+cmp stdout before-promotion
+
+-- attributes --
+.kira/tickets/*.md merge=kira

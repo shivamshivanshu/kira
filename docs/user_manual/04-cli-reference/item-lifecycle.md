@@ -207,6 +207,7 @@ and works across ids.
 | `--field key=value` | Any editable field, repeatable; same set as `create`. |
 | `--from-file` | Replace the item with a full file, or `-` for stdin. One id. |
 | `--force` | Accept out-of-vocabulary values; pass the blocker guard when `state` changes. |
+| `--to-epic` | Promote one ticket to an epic without opening the editor. Use by itself. |
 
 ```console
 $ kira edit DEMO-3 --sprint S1 --due 2026-12-01 --rank m
@@ -221,6 +222,16 @@ Edited DEMO-3: body
 $ kira edit DEMO-3 DEMO-5
 kira: editing multiple ids requires field flags; editor mode is single-id only
 ```
+
+`kira edit DEMO-3 --to-epic` keeps the item's identity, content, and
+relationships. It clears the ticket subtype and maps the workflow category
+to `PLANNED` (todo), `ACTIVE` (doing), or `DONE` (done). A done ticket
+keeps its resolution. Promotion clears any resolution on an open ticket.
+Promotion is one-way. Move a ticket with an unknown state to a declared state
+before promoting it. The field-level Kira merge driver leaves a conflict when
+one branch promotes a ticket and the other edits its state, subtype, or
+resolution. A promotion recorded directly in a merge commit can leave
+historical stats incomplete.
 
 ## `restore`
 

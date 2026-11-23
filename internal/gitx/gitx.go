@@ -182,15 +182,17 @@ func (r Repo) RangePatch(revRange, pathspec string) (string, error) {
 	return r.logPatch(revRange, "--", pathspec)
 }
 
-// LastCommitFor returns the SHA of the most recent commit touching relPath.
+// LastCommitFor returns the latest first-parent path change. A merge can
+// change a path even when Git's usual name-only log omits the merge diff.
 func (r Repo) LastCommitFor(relPath string) (string, error) {
-	return r.Output("log", "-1", "--format=%H", "--", relPath)
+	return r.Output("log", "--first-parent", "--no-renames", "--no-patch", "-1", "--format=%H", "--", relPath)
 }
 
-// LastCommits returns, for every path under pathspec, the SHA of its most
-// recent commit, keyed by path relative to r.Dir.
+// LastCommits batches the same path lookups as LastCommitFor, keyed by path
+// relative to r.Dir.
 func (r Repo) LastCommits(revision, pathspec string) (map[string]string, error) {
-	args := []string{"log", "--format=" + nulFmt + "%H", "--name-only", "--relative"}
+	args := []string{"log", "--first-parent", "--no-renames",
+		"--format=" + nulFmt + "%H", "--name-only", "--relative"}
 	if revision != "" {
 		args = append(args, revision)
 	}

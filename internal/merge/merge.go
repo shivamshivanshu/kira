@@ -6,15 +6,20 @@ import (
 	"slices"
 
 	"github.com/shivamshivanshu/kira/internal/datamodel"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/setx"
 )
 
 type Result struct {
-	Item       *datamodel.Item
-	Arbitrated []string
+	Item             *datamodel.Item
+	Arbitrated       []string
+	WorkflowConflict bool
 }
 
 func Merge(base, ours, theirs *datamodel.Item, remote Side, tm TextMerger) Result {
+	if ours.Type != theirs.Type && !isUncontestedPromotion(base, ours, theirs) {
+		return Result{WorkflowConflict: true}
+	}
 	if base == nil {
 		base = &datamodel.Item{}
 	}
@@ -25,7 +30,7 @@ func Merge(base, ours, theirs *datamodel.Item, remote Side, tm TextMerger) Resul
 	m := &datamodel.Item{
 		ID:         ours.ID,
 		Number:     number,
-		Type:       ours.Type,
+		Type:       threeWayScalar(base.Type, ours.Type, theirs.Type, winner),
 		Created:    ours.Created,
 		Aliases:    aliases,
 		Subtype:    threeWayPtr(base.Subtype, ours.Subtype, theirs.Subtype, winner),
@@ -47,6 +52,18 @@ func Merge(base, ours, theirs *datamodel.Item, remote Side, tm TextMerger) Resul
 		Body:       mergeBody(base.Body, ours.Body, theirs.Body, winner, tm),
 	}
 	return Result{Item: m, Arbitrated: arbitrated(base, ours, theirs)}
+}
+
+func isUncontestedPromotion(base, ours, theirs *datamodel.Item) bool {
+	ticket, epic := ours, theirs
+	if ours.Type == datamodel.TypeEpic {
+		ticket, epic = theirs, ours
+	}
+	if base == nil || base.Type != datamodel.TypeTicket ||
+		ticket.Type != datamodel.TypeTicket || epic.Type != datamodel.TypeEpic {
+		return false
+	}
+	return ticket.State == base.State && ptr.Equal(ticket.Subtype, base.Subtype) && ptr.Equal(ticket.Resolution, base.Resolution)
 }
 
 func arbitrated(base, ours, theirs *datamodel.Item) []string {
