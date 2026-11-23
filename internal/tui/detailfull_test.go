@@ -108,6 +108,36 @@ func TestTreeDetailPanelShowsLinkedData(t *testing.T) {
 	}
 }
 
+func TestTreeDetailTogglesStatesForSelectedSubtype(t *testing.T) {
+	t.Parallel()
+	m := newTestModel(140, 40, true)
+	m.cfg.TicketStates = map[string][]datamodel.State{
+		"bug": {
+			{Key: "Reported", Category: datamodel.CategoryTodo},
+			{Key: "Fixing", Category: datamodel.CategoryDoing},
+			{Key: "In Review", Category: datamodel.CategoryDoing},
+			{Key: "Verified", Category: datamodel.CategoryDone},
+		},
+	}
+	res := sampleDetail()
+	res.Type, res.Subtype = datamodel.TypeTicket, new("bug")
+	ts := m.screens[viewTree].(*treeScreen)
+	ts.host.cache["E1"] = res
+	ts.focus = paneDetail
+	ts.syncDetail(&m)
+	if strings.Contains(m.View(), "Available states") {
+		t.Fatal("state list should start hidden")
+	}
+	shown, cmd := m.handleKey(key("s"))
+	if cmd != nil || !strings.Contains(shown.View(), "Available states  Reported, Fixing, In Review, Verified") {
+		t.Fatalf("s should show the configured states without issuing a command:\n%s", shown.View())
+	}
+	hidden, _ := shown.(model).handleKey(key("s"))
+	if strings.Contains(hidden.View(), "Available states") {
+		t.Fatal("pressing s again should hide the state list")
+	}
+}
+
 func TestDetailCacheKeyedByResultPointer(t *testing.T) {
 	t.Parallel()
 	res := sampleDetail()

@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"slices"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/shivamshivanshu/kira/internal/core"
@@ -28,6 +30,8 @@ var treeKeys = []KeyBinding{
 	{"v", "view"},
 }
 
+var treeDetailKeys = append(slices.Clone(treeKeys), stateOptionsKey)
+
 type treeScreen struct {
 	tree  treeModel
 	host  detailHost
@@ -39,7 +43,12 @@ func newTreeScreen() *treeScreen {
 	return &treeScreen{tree: newTreeModel(), host: newDetailHost()}
 }
 
-func (s *treeScreen) keys() []KeyBinding { return treeKeys }
+func (s *treeScreen) keys() []KeyBinding {
+	if s.focus == paneDetail {
+		return treeDetailKeys
+	}
+	return treeKeys
+}
 
 func (s *treeScreen) invalidate() {}
 

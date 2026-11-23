@@ -87,6 +87,7 @@ referencing commits; the tail of the field history.
 | Key | Action |
 | --- | --- |
 | `j` / `k` (`↓` / `↑`) | Scroll |
+| `s` | Toggle the selected item's available workflow states |
 | `[` / `]` | Previous / next linked commit (`>` marks it) |
 | `enter` | `git show` the selected commit in the pager |
 | `gg` / `G` | Top / bottom |

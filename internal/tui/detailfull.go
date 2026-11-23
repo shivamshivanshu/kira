@@ -8,8 +8,10 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/shivamshivanshu/kira/internal/codec"
+	"github.com/shivamshivanshu/kira/internal/core"
 	"github.com/shivamshivanshu/kira/internal/datamodel"
 	"github.com/shivamshivanshu/kira/internal/gitx"
+	"github.com/shivamshivanshu/kira/internal/ptr"
 	"github.com/shivamshivanshu/kira/internal/showfmt"
 	"github.com/shivamshivanshu/kira/internal/timex"
 	"github.com/shivamshivanshu/kira/internal/tui/theme"
@@ -17,8 +19,11 @@ import (
 
 const detailMinWidth = 30
 
+var stateOptionsKey = KeyBinding{"s", "states"}
+
 var detailKeys = []KeyBinding{
 	{"j/k", "scroll"},
+	stateOptionsKey,
 	{"[/]", "commit"},
 	{"enter", "git show"},
 	{"gg/G", "top/bottom"},
@@ -27,8 +32,9 @@ var detailKeys = []KeyBinding{
 
 type detailPanel struct {
 	scroller
-	commitSel int
-	cache     detailContent
+	commitSel    int
+	stateOptions []string
+	cache        detailContent
 }
 
 type detailContent struct {
@@ -44,6 +50,10 @@ func newDetailPanel() *detailPanel { return &detailPanel{} }
 func (d *detailPanel) reset() {
 	d.scroll = 0
 	d.commitSel = 0
+	if d.stateOptions != nil {
+		d.stateOptions = nil
+		d.cache.lines = nil
+	}
 }
 
 func (d *detailPanel) update(m *model, res *datamodel.ShowResult, key string) (tea.Cmd, bool) {
@@ -51,6 +61,14 @@ func (d *detailPanel) update(m *model, res *datamodel.ShowResult, key string) (t
 		return nil, true
 	}
 	switch key {
+	case "s":
+		if d.stateOptions != nil {
+			d.stateOptions = nil
+		} else if res != nil {
+			d.stateOptions = core.ItemMoveTargets(m.cfg, res.Type, ptr.Deref(res.Subtype))
+			d.scroll = 0
+		}
+		d.cache.lines = nil
 	case "[":
 		d.commitSel = max(0, d.commitSel-1)
 	case "]":
@@ -93,12 +111,12 @@ func (d *detailPanel) contentLines(t theme.Theme, ic iconSet, res *datamodel.Sho
 	}
 	if d.cache.sel != d.commitSel || d.cache.lines == nil {
 		d.cache.sel = d.commitSel
-		d.cache.lines = detailLines(t, ic, res, width, d.cache.body, d.commitSel)
+		d.cache.lines = detailLines(t, ic, res, width, d.cache.body, d.commitSel, d.stateOptions)
 	}
 	return d.cache.lines
 }
 
-func detailLines(t theme.Theme, ic iconSet, res *datamodel.ShowResult, width int, body string, sel int) []string {
+func detailLines(t theme.Theme, ic iconSet, res *datamodel.ShowResult, width int, body string, sel int, stateOptions []string) []string {
 	var lines []string
 	add := func(ss ...string) {
 		for _, s := range ss {
@@ -108,6 +126,9 @@ func detailLines(t theme.Theme, ic iconSet, res *datamodel.ShowResult, width int
 	wrap := func(s string) string { return ansi.Wrap(s, width, "") }
 	add(t.Accent.Render(wrap(res.Number + "  " + res.Title)))
 	add(wrap(detailMeta(t, ic, res)))
+	if len(stateOptions) > 0 {
+		add(wrap(t.Dim.Render("Available states  ") + strings.Join(stateOptions, ", ")))
+	}
 	add("", wrap(body))
 	if len(res.Comments) > 0 {
 		add("", t.Dim.Render(showfmt.CommentsHeader))
